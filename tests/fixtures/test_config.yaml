@@ -1,0 +1,34 @@
+# Test configuration file
+home_assistant:
+  url: "http://test-ha:8123"
+  token: "test_token_12345"
+  websocket_timeout: 30
+  api_timeout: 10
+
+database:
+  connection_string: "sqlite+aiosqlite:///:memory:"
+  pool_size: 5
+  max_overflow: 10
+
+mqtt:
+  broker: "test-mqtt"
+  port: 1883
+  username: "test_user"
+  password: "test_pass"
+  topic_prefix: "test/occupancy"
+
+prediction:
+  interval_seconds: 300
+  accuracy_threshold_minutes: 15
+  confidence_threshold: 0.7
+
+features:
+  lookback_hours: 24
+  sequence_length: 50
+  temporal_features: true
+  sequential_features: true
+  contextual_features: true
+
+logging:
+  level: "DEBUG"
+  format: "structured"

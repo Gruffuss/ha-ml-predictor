@@ -1,0 +1,46 @@
+# Test room configuration
+rooms:
+  test_room:
+    name: "Test Room"
+    sensors:
+      presence:
+        main: binary_sensor.test_room_presence
+        secondary: binary_sensor.test_room_motion
+      door: binary_sensor.test_room_door
+      climate:
+        temperature: sensor.test_room_temperature
+        humidity: sensor.test_room_humidity
+      light: sensor.test_room_light
+
+  living_room:
+    name: "Living Room"
+    sensors:
+      presence:
+        main: binary_sensor.living_room_presence
+        couch: binary_sensor.living_room_couch
+      climate:
+        temperature: sensor.living_room_temperature
+
+  bedroom:
+    name: "Bedroom"
+    sensors:
+      presence:
+        full_room: binary_sensor.bedroom_presence_full
+        bed_side: binary_sensor.bedroom_bed_side
+      door: binary_sensor.bedroom_door
+      climate:
+        temperature: sensor.bedroom_temperature
+        humidity: sensor.bedroom_humidity
+
+  hallways:
+    ground_floor:
+      name: "Ground Floor Hallway"
+      sensors:
+        presence: binary_sensor.ground_floor_hallway
+        stairs: binary_sensor.stairs_ground_floor
+    upper:
+      name: "Upper Hallway"
+      sensors:
+        presence: binary_sensor.upper_hallway
+        upstairs: binary_sensor.upper_hallway_up
+        downstairs: binary_sensor.upper_hallway_down
