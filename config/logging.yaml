@@ -1,0 +1,47 @@
+# Logging configuration
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  standard:
+    format: '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+  structured:
+    format: '%(asctime)s [%(levelname)s] %(name)s: %(funcName)s:%(lineno)d - %(message)s'
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: structured
+    stream: ext://sys.stdout
+
+  file:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: structured
+    filename: logs/occupancy_prediction.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 5
+
+  error_file:
+    class: logging.handlers.RotatingFileHandler
+    level: ERROR
+    formatter: structured
+    filename: logs/errors.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 5
+
+loggers:
+  occupancy_prediction:
+    level: DEBUG
+    handlers: [console, file, error_file]
+    propagate: false
+
+  sqlalchemy.engine:
+    level: WARNING
+    handlers: [console, file]
+    propagate: false
+
+root:
+  level: INFO
+  handlers: [console, file]

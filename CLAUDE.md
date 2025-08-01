@@ -1,0 +1,192 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+@implementation-plan.md
+@occupancy-architecture.md
+
+## Project Overview
+
+This is a **Home Assistant ML Predictor** project for room occupancy prediction. Sprint 1 (Foundation & Data Infrastructure) is complete with full implementation.
+
+**Status**: Sprint 1 Complete ✅ - Foundation and data infrastructure implemented, ready for Sprint 2
+
+## Project Architecture
+
+### Core System Components
+
+The system is designed as a machine learning pipeline with the following key components:
+
+1. **Data Ingestion Layer**
+   - Home Assistant API integration (WebSocket + REST)
+   - Event processing pipeline with human/cat movement detection
+   - TimescaleDB event storage
+
+2. **Feature Engineering Engine**
+   - Temporal features (time since last occupancy, cyclical encodings)
+   - Sequential features (room transitions, movement patterns)
+   - Contextual features (environmental data, cross-room correlations)
+
+3. **Prediction Engine**
+   - Ensemble model architecture with multiple base models:
+     - LSTM Networks for sequence patterns
+     - XGBoost for temporal features
+     - Hidden Markov Models for state transitions
+     - Gaussian Process for uncertainty quantification
+   - Meta-learner with stacking ensemble
+   - Per-room model specialization
+
+4. **Self-Adaptation System**
+   - Real-time prediction validation
+   - Concept drift detection
+   - Continuous learning with online updates
+
+5. **Integration Layer**
+   - MQTT publisher for Home Assistant integration
+   - REST API for manual control and monitoring
+
+### Directory Structure (Implemented ✅)
+
+```
+ha-ml-predictor/
+├── config/                    # Configuration files ✅
+│   ├── config.yaml           # Main config (HA, DB, MQTT)
+│   ├── rooms.yaml            # Room and sensor mappings
+│   └── logging.yaml          # Logging configuration
+├── src/
+│   ├── core/                 # Core system ✅
+│   │   ├── config.py         # Configuration management
+│   │   ├── constants.py      # System constants and enums
+│   │   └── exceptions.py     # Custom exception classes
+│   ├── data/                 # Data layer ✅
+│   │   ├── ingestion/        # HA integration
+│   │   │   ├── ha_client.py  # HA WebSocket/REST client
+│   │   │   ├── event_processor.py # Event validation/processing
+│   │   │   └── bulk_importer.py   # Historical data import
+│   │   └── storage/          # Database layer
+│   │       ├── models.py     # SQLAlchemy models
+│   │       └── database.py   # Connection management
+│   ├── features/             # Feature engineering (Sprint 2)
+│   ├── models/               # ML models (Sprint 3)
+│   ├── adaptation/           # Self-adaptation (Sprint 4)
+│   ├── integration/          # MQTT/API (Sprint 5)
+│   └── utils/                # Logging, metrics
+├── scripts/                  # Setup scripts ✅
+│   └── setup_database.py     # Database initialization
+├── tests/                    # Testing framework
+├── logs/                     # Application logs
+├── requirements.txt          # Python dependencies ✅
+└── TODO.md                   # Progress tracking ✅
+```
+
+## Development Commands
+
+### Initial Setup ✅
+```bash
+# Setup Python environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Setup TimescaleDB database
+python scripts/setup_database.py
+
+# Import 6 months of historical HA data
+python -c "
+from src.data.ingestion.bulk_importer import BulkImporter, ImportConfig
+import asyncio
+
+async def import_data():
+    config = ImportConfig(months_to_import=6, batch_size=1000)
+    importer = BulkImporter(import_config=config)
+    progress = await importer.import_historical_data()
+    print(f'Imported {progress.valid_events} events')
+
+asyncio.run(import_data())
+"
+```
+
+### Development Workflow
+```bash
+# Run tests (Sprint 6)
+pytest tests/
+
+# Run linting
+black src/ tests/
+flake8 src/ tests/
+
+# Start real-time event processing
+python -c "
+from src.data.ingestion.ha_client import HomeAssistantClient
+from src.data.ingestion.event_processor import EventProcessor
+import asyncio
+
+async def start_processing():
+    async with HomeAssistantClient() as client:
+        processor = EventProcessor()
+        # Process real-time events
+        pass
+
+asyncio.run(start_processing())
+"
+
+# Database health check
+python -c "
+from src.data.storage.database import get_database_manager
+import asyncio
+
+async def check_health():
+    db_manager = await get_database_manager()
+    health = await db_manager.health_check()
+    print(f'Database health: {health}')
+
+asyncio.run(check_health())
+"
+```
+
+### Docker Deployment (Sprint 7)
+```bash
+docker-compose up -d
+```
+
+## Key Implementation Notes
+
+### Technology Stack ✅
+- **Language**: Python 3.11+
+- **Web Framework**: AsyncIO, aiohttp, websockets
+- **Database**: PostgreSQL with TimescaleDB extension, AsyncPG, SQLAlchemy 2.0
+- **ML Libraries**: scikit-learn (including MLPRegressor for LSTM), XGBoost (Sprint 3)
+- **Integration**: Home Assistant API, MQTT (paho-mqtt), FastAPI (Sprint 5)
+- **Configuration**: YAML, Pydantic dataclasses
+- **Development**: Black, Flake8, pytest, mypy
+
+### Code Standards (From Planning Documents)
+- Follow PEP 8 with 88-character line limit (Black formatter)
+- Use type hints for all function signatures
+- Docstrings for all public methods (Google style)
+- Async/await for all I/O operations
+- One class per file for major components
+- Custom exceptions for domain-specific errors
+
+### Performance Requirements (Planned)
+- Prediction generation < 100ms
+- Feature computation < 500ms
+- Model update < 5 minutes
+- Average prediction error < 15 minutes
+
+## Home Assistant Integration
+
+The system will integrate with Home Assistant via:
+- **Data Input**: WebSocket connection for real-time sensor events
+- **Data Output**: MQTT topics for predictions
+  - `occupancy/predictions/{room}/next_occupied_time`
+  - `occupancy/predictions/{room}/next_vacant_time`
+  - `occupancy/predictions/{room}/confidence`
+
+## Current State
+
+This repository contains only planning documents:
+- `implementation-plan.md`: Detailed 7-sprint implementation plan
+- `occupancy-architecture.md`: System architecture and component diagrams
+
+**Next Steps**: Begin implementing the directory structure and core components as outlined in the implementation plan.
