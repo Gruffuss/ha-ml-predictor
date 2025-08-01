@@ -97,26 +97,91 @@ occupancy-prediction/
 #### 1.1 Core Configuration System
 ```python
 # src/core/config.py
-from dataclasses import dataclass
-from typing import Dict, List, Any
+from dataclasses import dataclass, field
+from typing import Dict, List, Any, Optional
 import yaml
 
 @dataclass
+class HomeAssistantConfig:
+    """Home Assistant connection configuration."""
+    url: str
+    token: str
+    websocket_timeout: int = 30
+    api_timeout: int = 10
+
+@dataclass
+class DatabaseConfig:
+    """Database connection configuration."""
+    connection_string: str
+    pool_size: int = 10
+    max_overflow: int = 20
+
+@dataclass
+class MQTTConfig:
+    """MQTT broker configuration."""
+    broker: str
+    port: int = 1883
+    username: str = ""
+    password: str = ""
+    topic_prefix: str = "occupancy/predictions"
+
+@dataclass
+class PredictionConfig:
+    """Prediction system configuration."""
+    interval_seconds: int = 300  # 5 minutes
+    accuracy_threshold_minutes: int = 15
+    confidence_threshold: float = 0.7
+
+@dataclass
+class FeaturesConfig:
+    """Feature engineering configuration."""
+    lookback_hours: int = 24
+    sequence_length: int = 50
+    temporal_features: bool = True
+    sequential_features: bool = True
+    contextual_features: bool = True
+
+@dataclass
+class LoggingConfig:
+    """Logging configuration."""
+    level: str = "INFO"
+    format: str = "structured"
+
+@dataclass
 class RoomConfig:
-    name: str
+    """Room configuration with sensors."""
     room_id: str
-    sensors: Dict[str, Any]
-    
+    name: str
+    sensors: Dict[str, Any] = field(default_factory=dict)
+
 @dataclass
 class SystemConfig:
-    ha_url: str
-    ha_token: str
-    mqtt_broker: str
-    mqtt_port: int
-    db_connection: str
-    prediction_interval: int = 300  # 5 minutes
-    rooms: Dict[str, RoomConfig]
+    """Main system configuration with nested structures."""
+    home_assistant: HomeAssistantConfig
+    database: DatabaseConfig
+    mqtt: MQTTConfig
+    prediction: PredictionConfig
+    features: FeaturesConfig
+    logging: LoggingConfig
+    rooms: Dict[str, RoomConfig] = field(default_factory=dict)
+
+class ConfigLoader:
+    """Loads and validates configuration from YAML files."""
+    
+    def load_config(self) -> SystemConfig:
+        """Load complete system configuration with proper type validation."""
+        # Loads from config.yaml and rooms.yaml
+        # Creates nested configuration objects with validation
+        # Handles complex room structures (e.g., nested hallways)
 ```
+
+**Benefits of Nested Configuration Structure:**
+- **Logical Grouping**: Related configuration options are grouped together (e.g., all Home Assistant settings in `HomeAssistantConfig`)
+- **Type Safety**: Each configuration section has its own dataclass with proper type hints and validation
+- **Maintainability**: Adding new configuration options is cleaner and doesn't clutter the main `SystemConfig`
+- **Separation of Concerns**: Each configuration class handles a specific aspect of the system
+- **Extensibility**: Easy to add new configuration categories without affecting existing code
+- **Better Documentation**: Each nested config class can have detailed docstrings explaining its purpose
 
 #### 1.2 Data Ingestion Logic
 ```python
