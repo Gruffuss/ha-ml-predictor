@@ -71,5 +71,5 @@ dmypy.json
 .dockerignore
 
 # TimescaleDB data
-data/
+/data/
 *.dump
