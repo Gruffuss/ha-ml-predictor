@@ -41,14 +41,15 @@ class SensorEvent(Base):
     Main hypertable for storing all sensor events from Home Assistant.
     Optimized for time-series queries with proper partitioning.
     
-    Uses composite primary key (id, timestamp) for TimescaleDB hypertable compatibility
-    while maintaining id uniqueness for foreign key relationships.
+    Uses composite primary key (id, timestamp) for TimescaleDB hypertable compatibility.
+    Foreign key relationships are managed at the application level to avoid conflicts
+    with TimescaleDB's partitioning requirements.
     """
     __tablename__ = 'sensor_events'
     
     # Composite primary key for TimescaleDB hypertable compatibility
-    # id remains unique across the table via UniqueConstraint for foreign key compatibility
     # autoincrement=True ensures id values are unique across all partitions
+    # Application-level referential integrity replaces foreign key constraints
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime(timezone=True), primary_key=True, nullable=False, default=func.now())
     
@@ -68,13 +69,10 @@ class SensorEvent(Base):
     created_at = Column(DateTime(timezone=True), default=func.now())
     processed_at = Column(DateTime(timezone=True))
     
-    # Relationships
-    predictions = relationship("Prediction", back_populates="triggering_event")
+    # Note: No foreign key relationships to maintain TimescaleDB performance
+    # Application-level referential integrity is used instead
     
     __table_args__ = (
-        # Unique constraint on id for foreign key compatibility
-        # This ensures id remains unique across all partitions
-        UniqueConstraint('id', name='uq_sensor_event_id'),
         
         # Indexes for efficient time-series queries
         Index('idx_room_sensor_time', 'room_id', 'sensor_id', 'timestamp'),
@@ -171,6 +169,12 @@ class SensorEvent(Base):
             sequences.append(current_sequence)
             
         return sequences
+    
+    async def get_predictions(self, session: AsyncSession) -> List['Prediction']:
+        """Get predictions that were triggered by this sensor event using application-level join."""
+        query = select(Prediction).where(Prediction.triggering_event_id == self.id)
+        result = await session.execute(query)
+        return result.scalars().all()
 
 
 class RoomState(Base):
@@ -199,8 +203,7 @@ class RoomState(Base):
     created_at = Column(DateTime(timezone=True), default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    # Relationships
-    predictions = relationship("Prediction", back_populates="room_state")
+    # Note: Relationships managed at application level for TimescaleDB compatibility
     
     __table_args__ = (
         Index('idx_room_time_occupied', 'room_id', 'timestamp', 'is_occupied'),
@@ -233,6 +236,12 @@ class RoomState(Base):
             )
         ).order_by(cls.timestamp)
         
+        result = await session.execute(query)
+        return result.scalars().all()
+    
+    async def get_predictions(self, session: AsyncSession) -> List['Prediction']:
+        """Get predictions associated with this room state using application-level join."""
+        query = select(Prediction).where(Prediction.room_state_id == self.id)
         result = await session.execute(query)
         return result.scalars().all()
 
@@ -269,18 +278,17 @@ class Prediction(Base):
     is_accurate = Column(Boolean)  # Within threshold
     validation_timestamp = Column(DateTime(timezone=True))
     
-    # Context - Foreign keys with proper nullable constraints
-    # Note: References sensor_events.id which has a unique constraint for FK compatibility
-    triggering_event_id = Column(BigInteger, ForeignKey('sensor_events.id', ondelete='SET NULL'), nullable=True)
-    room_state_id = Column(BigInteger, ForeignKey('room_states.id', ondelete='SET NULL'), nullable=True)
+    # Context - References maintained at application level for TimescaleDB compatibility
+    # No foreign key constraints to avoid conflicts with TimescaleDB partitioning
+    triggering_event_id = Column(BigInteger, nullable=True, index=True)  # References sensor_events.id
+    room_state_id = Column(BigInteger, nullable=True, index=True)  # References room_states.id
     
     # Metadata
     created_at = Column(DateTime(timezone=True), default=func.now())
     processing_time_ms = Column(Float)  # Time to generate prediction
     
-    # Relationships
-    triggering_event = relationship("SensorEvent", back_populates="predictions")
-    room_state = relationship("RoomState", back_populates="predictions")
+    # Note: Relationships managed at application level
+    # Use get_triggering_event() and get_room_state() methods for data access
     
     __table_args__ = (
         Index('idx_room_prediction_time', 'room_id', 'prediction_time'),
@@ -288,6 +296,8 @@ class Prediction(Base):
         Index('idx_accuracy_validation', 'room_id', 'is_accurate', 'validation_timestamp'),
         Index('idx_pending_validation', 'room_id', 'predicted_transition_time',
               postgresql_where=text("actual_transition_time IS NULL")),
+        Index('idx_triggering_event', 'triggering_event_id'),  # For application-level joins
+        Index('idx_room_state_ref', 'room_state_id'),  # For application-level joins
         CheckConstraint('confidence_score >= 0 AND confidence_score <= 1'),
         CheckConstraint('prediction_interval_lower <= prediction_interval_upper'),
     )
@@ -355,6 +365,58 @@ class Prediction(Base):
             'median_error_minutes': sorted(accuracies)[len(accuracies)//2] if accuracies else 0,
             'rmse_minutes': (sum(a**2 for a in accuracies) / len(accuracies))**0.5 if accuracies else 0,
         }
+    
+    async def get_triggering_event(self, session: AsyncSession) -> Optional['SensorEvent']:
+        """Get the triggering sensor event using application-level join."""
+        if not self.triggering_event_id:
+            return None
+        
+        query = select(SensorEvent).where(SensorEvent.id == self.triggering_event_id)
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+    
+    async def get_room_state(self, session: AsyncSession) -> Optional['RoomState']:
+        """Get the associated room state using application-level join."""
+        if not self.room_state_id:
+            return None
+        
+        query = select(RoomState).where(RoomState.id == self.room_state_id)
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+    
+    @classmethod
+    async def get_predictions_with_events(
+        cls,
+        session: AsyncSession,
+        room_id: str,
+        hours: int = 24
+    ) -> List[Tuple['Prediction', Optional['SensorEvent']]]:
+        """Get predictions with their triggering events using application-level joins."""
+        
+        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        
+        # Get predictions
+        prediction_query = select(cls).where(
+            and_(
+                cls.room_id == room_id,
+                cls.prediction_time >= cutoff_time
+            )
+        ).order_by(desc(cls.prediction_time))
+        
+        prediction_result = await session.execute(prediction_query)
+        predictions = prediction_result.scalars().all()
+        
+        # Get triggering events in batch
+        event_ids = [p.triggering_event_id for p in predictions if p.triggering_event_id]
+        events_dict = {}
+        
+        if event_ids:
+            event_query = select(SensorEvent).where(SensorEvent.id.in_(event_ids))
+            event_result = await session.execute(event_query)
+            events_dict = {event.id: event for event in event_result.scalars().all()}
+        
+        # Combine results
+        return [(p, events_dict.get(p.triggering_event_id)) for p in predictions]
 
 
 class ModelAccuracy(Base):
@@ -484,7 +546,8 @@ async def create_timescale_hypertables(session: AsyncSession):
     
     The sensor_events table uses a composite primary key (id, timestamp) to satisfy
     TimescaleDB's requirement that the partitioning column be part of the primary key.
-    A separate unique constraint on 'id' ensures foreign key relationships work properly.
+    Foreign key relationships are managed at the application level to avoid conflicts
+    with TimescaleDB's unique index requirements.
     """
     
     # Create hypertable for sensor_events with timestamp partitioning
