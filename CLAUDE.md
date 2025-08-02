@@ -5,11 +5,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 @implementation-plan.md
 @occupancy-architecture.md
 
+## ⚠️ CRITICAL: Error Handling Philosophy
+
+**NEVER downplay errors, warnings, or test failures. This pattern has caused significant wasted time and broken systems.**
+
+### Absolute Rules:
+1. **FAILING TESTS = BROKEN SYSTEM** - Never declare success with failing tests
+2. **ALL WARNINGS MATTER** - Investigate every warning, don't dismiss as "minor"  
+3. **FIX COMPLETELY** - Don't move forward with "mostly working" systems
+4. **NO PREMATURE SUCCESS** - Only claim completion when ALL validation passes
+
+### Red Flags - Never Say:
+- "Just minor test issues"
+- "Mostly working, small cleanup needed"
+- "Core functionality works despite failing tests"
+- "We can fix these later"
+
+### Green Flags - Only Proceed When:
+- ✅ All tests pass completely
+- ✅ All warnings addressed or explicitly justified
+- ✅ All error messages resolved
+- ✅ System fully validated and proven functional
+
+**Remember: Broken tests mean broken system. No exceptions.**
+
 ## Project Overview
 
-This is a **Home Assistant ML Predictor** project for room occupancy prediction. Sprint 1 (Foundation & Data Infrastructure) is complete with full implementation.
+This is a **Home Assistant ML Predictor** project for room occupancy prediction. Sprint 1 (Foundation & Data Infrastructure) implementation is nearly complete but requires test validation.
 
-**Status**: Sprint 1 Complete ✅ - Foundation and data infrastructure implemented, ready for Sprint 2
+**Status**: Sprint 1 IN PROGRESS ⚠️ - Core infrastructure implemented but 4 test failures must be fixed before completion
 
 ## Project Architecture
 
