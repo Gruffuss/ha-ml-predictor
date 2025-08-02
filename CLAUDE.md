@@ -29,6 +29,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Remember: Broken tests mean broken system. No exceptions.**
 
+## 🤖 Use Specialized Agents Proactively
+
+**You have access to specialized agents with deep expertise. Use them whenever their skills match the task - don't try to do everything manually.**
+
+### Available Specialized Agents:
+- **test-automator**: Create/fix test suites, CI pipelines, test automation
+- **database-optimizer**: Fix SQL queries, optimize schemas, database performance  
+- **debugger**: Debug errors, test failures, unexpected behavior
+- **code-reviewer**: Review code quality, security, maintainability
+- **security-auditor**: Security reviews, vulnerability fixes, auth flows
+- **typescript-expert**: TypeScript development, type system design
+- **python-pro**: Python refactoring, optimization, advanced features
+- **backend-architect**: API design, system architecture, scalability
+- **frontend-developer**: Next.js, React, UI components, modern patterns
+- **deployment-engineer**: CI/CD, Docker, cloud deployments, infrastructure
+- **performance-engineer**: Profiling, optimization, caching strategies
+
+### When to Use Agents:
+- **Complex technical problems** that match their expertise
+- **Multi-step tasks** requiring specialized knowledge  
+- **Code quality issues** that need systematic fixes
+- **Architecture decisions** requiring domain expertise
+- **ANY TIME** their description matches what you need to do
+
+### Don't Try to Do Everything Yourself:
+- Agents have specialized knowledge and tools
+- They can solve problems more efficiently and thoroughly
+- Use them proactively, not just when explicitly asked
+
 ## Project Overview
 
 This is a **Home Assistant ML Predictor** project for room occupancy prediction. Sprint 1 (Foundation & Data Infrastructure) implementation is nearly complete but requires test validation.

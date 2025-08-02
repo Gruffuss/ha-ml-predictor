@@ -62,17 +62,17 @@ def test_sprint1_config_system(test_config_dir):
 
 
 @pytest.mark.asyncio
-async def test_sprint1_database_system(test_system_config):
+async def test_sprint1_database_system(test_db_engine):
     """Test that the database system works end-to-end."""
     from src.data.storage.database import DatabaseManager
     from src.data.storage.models import SensorEvent, RoomState
+    from tests.conftest import TEST_DB_URL
+    from src.core.config import DatabaseConfig
     
-    # Override with test database  
-    test_system_config.database.connection_string = "postgresql+asyncpg://occupancy_user:occupancy_pass@localhost:5432/occupancy_prediction_test"
-    
-    # Initialize database manager
-    manager = DatabaseManager(test_system_config.database)
-    await manager.initialize()
+    # Use test database engine that has tables created
+    db_config = DatabaseConfig(connection_string=TEST_DB_URL)
+    manager = DatabaseManager(db_config)
+    manager.engine = test_db_engine  # Use the fixture engine with tables
     
     try:
         # Test session creation
@@ -247,12 +247,12 @@ def test_sprint1_constants_and_enums():
 
 
 @pytest.mark.asyncio
-async def test_sprint1_model_relationships(test_db_session):
+async def test_sprint1_model_relationships(test_db_session, test_db_engine):
     """Test that database model relationships work correctly."""
     from src.data.storage.models import SensorEvent, RoomState, Prediction
     
-    # Use session context manager properly
-    async with test_db_session() as session:
+    # Use session fixture directly - it's already a context manager
+    async with test_db_session as session:
         # Create related models
         sensor_event = SensorEvent(
             room_id="sprint1_validation_room",
@@ -329,24 +329,24 @@ def test_sprint1_file_structure():
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_sprint1_end_to_end_workflow(test_system_config):
+async def test_sprint1_end_to_end_workflow(test_db_engine):
     """Test a complete end-to-end workflow for Sprint 1."""
     from src.core.config import ConfigLoader
     from src.data.storage.database import DatabaseManager
     from src.data.storage.models import SensorEvent, RoomState
     from src.data.ingestion.ha_client import HAEvent
     from src.data.ingestion.event_processor import EventProcessor
+    from tests.conftest import TEST_DB_URL
+    from src.core.config import DatabaseConfig, SystemConfig
     
-    # 1. Configuration loading
-    test_system_config.database.connection_string = "postgresql+asyncpg://occupancy_user:occupancy_pass@localhost:5432/occupancy_prediction_test"
-    
-    # 2. Database initialization
-    db_manager = DatabaseManager(test_system_config.database)
-    await db_manager.initialize()
+    # 1. Configuration loading - use test database
+    db_config = DatabaseConfig(connection_string=TEST_DB_URL)
+    db_manager = DatabaseManager(db_config)
+    db_manager.engine = test_db_engine  # Use fixture engine with tables
     
     try:
-        # 3. Event processing workflow
-        processor = EventProcessor(test_system_config)
+        # 2. Event processing workflow (will use get_config() default)
+        processor = EventProcessor()
         
         # Create HA event
         ha_event = HAEvent(
@@ -442,10 +442,10 @@ def test_sprint1_smoke_test():
     # Test configuration structure exists
     from src.core.config import HomeAssistantConfig, DatabaseConfig
     ha_config = HomeAssistantConfig(url="http://test", token="test")
-    db_config = DatabaseConfig(connection_string="postgresql://localhost/testdb")
+    db_config = DatabaseConfig(connection_string="postgresql+asyncpg://test_user:test_pass@localhost:5432/test_db")
     
     assert ha_config.url == "http://test"
-    assert db_config.connection_string == "postgresql+asyncpg://occupancy_user:occupancy_pass@localhost:5432/occupancy_prediction_test"
+    assert db_config.connection_string == "postgresql+asyncpg://test_user:test_pass@localhost:5432/test_db"
 
 
 if __name__ == "__main__":
