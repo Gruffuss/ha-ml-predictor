@@ -40,13 +40,17 @@ class SensorEvent(Base):
     """
     Main hypertable for storing all sensor events from Home Assistant.
     Optimized for time-series queries with proper partitioning.
+    
+    Uses composite primary key (id, timestamp) for TimescaleDB hypertable compatibility
+    while maintaining id uniqueness for foreign key relationships.
     """
     __tablename__ = 'sensor_events'
     
-    # Primary key for TimescaleDB hypertable
-    # Note: TimescaleDB will handle partitioning by timestamp
+    # Composite primary key for TimescaleDB hypertable compatibility
+    # id remains unique across the table via UniqueConstraint for foreign key compatibility
+    # autoincrement=True ensures id values are unique across all partitions
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime(timezone=True), nullable=False, index=True, default=func.now())
+    timestamp = Column(DateTime(timezone=True), primary_key=True, nullable=False, default=func.now())
     
     # Core event data
     room_id = Column(String(50), nullable=False, index=True)
@@ -68,6 +72,10 @@ class SensorEvent(Base):
     predictions = relationship("Prediction", back_populates="triggering_event")
     
     __table_args__ = (
+        # Unique constraint on id for foreign key compatibility
+        # This ensures id remains unique across all partitions
+        UniqueConstraint('id', name='uq_sensor_event_id'),
+        
         # Indexes for efficient time-series queries
         Index('idx_room_sensor_time', 'room_id', 'sensor_id', 'timestamp'),
         Index('idx_room_time_desc', 'room_id', desc('timestamp')),
@@ -262,6 +270,7 @@ class Prediction(Base):
     validation_timestamp = Column(DateTime(timezone=True))
     
     # Context - Foreign keys with proper nullable constraints
+    # Note: References sensor_events.id which has a unique constraint for FK compatibility
     triggering_event_id = Column(BigInteger, ForeignKey('sensor_events.id', ondelete='SET NULL'), nullable=True)
     room_state_id = Column(BigInteger, ForeignKey('room_states.id', ondelete='SET NULL'), nullable=True)
     
@@ -470,10 +479,16 @@ class FeatureStore(Base):
 
 # Utility functions for database operations
 async def create_timescale_hypertables(session: AsyncSession):
-    """Create TimescaleDB hypertables and configure partitioning."""
+    """
+    Create TimescaleDB hypertables and configure partitioning.
     
-    # Create hypertable for sensor_events
-    # Note: We partition by timestamp but keep id as a regular bigint primary key
+    The sensor_events table uses a composite primary key (id, timestamp) to satisfy
+    TimescaleDB's requirement that the partitioning column be part of the primary key.
+    A separate unique constraint on 'id' ensures foreign key relationships work properly.
+    """
+    
+    # Create hypertable for sensor_events with timestamp partitioning
+    # The composite primary key (id, timestamp) allows this to work
     await session.execute(
         text("SELECT create_hypertable('sensor_events', 'timestamp', if_not_exists => TRUE, create_default_indexes => FALSE)")
     )
@@ -547,5 +562,14 @@ def get_bulk_insert_query() -> str:
             timestamp, room_id, sensor_id, sensor_type, state, 
             previous_state, attributes, is_human_triggered, confidence_score
         ) VALUES %s
-        ON CONFLICT (id, timestamp) DO NOTHING
+        ON CONFLICT (id, timestamp) DO UPDATE SET
+            timestamp = EXCLUDED.timestamp,
+            room_id = EXCLUDED.room_id,
+            sensor_id = EXCLUDED.sensor_id,
+            sensor_type = EXCLUDED.sensor_type,
+            state = EXCLUDED.state,
+            previous_state = EXCLUDED.previous_state,
+            attributes = EXCLUDED.attributes,
+            is_human_triggered = EXCLUDED.is_human_triggered,
+            confidence_score = EXCLUDED.confidence_score
     """
