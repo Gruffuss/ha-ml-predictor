@@ -21,7 +21,6 @@ from sqlalchemy.exc import (
     SQLAlchemyError, OperationalError, DisconnectionError, 
     TimeoutError as SQLTimeoutError
 )
-from sqlalchemy.engine.events import PoolEvents
 
 from src.core.config import get_config, DatabaseConfig
 from src.core.exceptions import (
@@ -104,11 +103,10 @@ class DatabaseManager:
         elif not conn_string.startswith('postgresql+asyncpg://'):
             raise ValueError("Connection string must use postgresql:// or postgresql+asyncpg://")
         
-        # Engine configuration optimized for TimescaleDB
+        # Engine configuration optimized for TimescaleDB and SQLAlchemy 2.0
         engine_kwargs = {
             'url': conn_string,
             'echo': False,  # Set to True for SQL debugging
-            'future': True,
             'pool_size': self.config.pool_size,
             'max_overflow': self.config.max_overflow,
             'pool_timeout': 30,
@@ -128,7 +126,9 @@ class DatabaseManager:
         self._setup_connection_events()
         
     def _setup_connection_events(self) -> None:
-        """Setup database connection event listeners for monitoring."""
+        """Setup database connection event listeners for monitoring with SQLAlchemy 2.0."""
+        if self.engine is None:
+            raise RuntimeError("Engine must be created before setting up events")
         
         @event.listens_for(self.engine.sync_engine, 'connect')
         def on_connect(dbapi_connection, connection_record):
@@ -140,13 +140,16 @@ class DatabaseManager:
             )
             
             # Set connection parameters for TimescaleDB optimization
-            with dbapi_connection.cursor() as cursor:
-                # Set timezone to UTC
-                cursor.execute("SET timezone = 'UTC'")
-                # Optimize for analytical workloads
-                cursor.execute("SET default_statistics_target = 100")
-                cursor.execute("SET random_page_cost = 1.1")
-                cursor.execute("SET effective_cache_size = '256MB'")
+            try:
+                with dbapi_connection.cursor() as cursor:
+                    # Set timezone to UTC
+                    cursor.execute("SET timezone = 'UTC'")
+                    # Optimize for analytical workloads
+                    cursor.execute("SET default_statistics_target = 100")
+                    cursor.execute("SET random_page_cost = 1.1")
+                    cursor.execute("SET effective_cache_size = '256MB'")
+            except Exception as e:
+                logger.warning(f"Failed to set connection parameters: {e}")
         
         @event.listens_for(self.engine.sync_engine, 'checkout')
         def on_checkout(dbapi_connection, connection_record, connection_proxy):
@@ -162,11 +165,11 @@ class DatabaseManager:
         def on_invalidate(dbapi_connection, connection_record, exception):
             """Handle connection invalidation."""
             self._connection_stats['failed_connections'] += 1
-            self._connection_stats['last_connection_error'] = str(exception)
+            self._connection_stats['last_connection_error'] = str(exception) if exception else "Unknown error"
             logger.warning(
                 "Database connection invalidated",
                 extra={
-                    'exception': str(exception),
+                    'exception': str(exception) if exception else "Unknown error",
                     'failed_connections': self._connection_stats['failed_connections']
                 }
             )
@@ -268,7 +271,7 @@ class DatabaseManager:
                 )
             
             finally:
-                if session and not session.is_active:
+                if session:
                     await session.close()
     
     async def execute_query(
@@ -347,9 +350,24 @@ class DatabaseManager:
                 response_time = time.time() - start_time
                 health_status['performance_metrics'] = {
                     'response_time_ms': round(response_time * 1000, 2),
-                    'pool_size': self.engine.pool.size() if self.engine else 0,
-                    'checked_out_connections': self.engine.pool.checkedout() if self.engine else 0,
                 }
+                
+                # Add pool metrics if available (SQLAlchemy 2.0 compatible)
+                if self.engine and hasattr(self.engine, 'pool'):
+                    try:
+                        pool = self.engine.pool
+                        health_status['performance_metrics'].update({
+                            'pool_size': pool.size() if hasattr(pool, 'size') else 0,
+                            'checked_out_connections': pool.checkedout() if hasattr(pool, 'checkedout') else 0,
+                            'overflow_connections': pool.overflow() if hasattr(pool, 'overflow') else 0,
+                        })
+                    except Exception as e:
+                        logger.debug(f"Could not retrieve pool metrics: {e}")
+                        health_status['performance_metrics'].update({
+                            'pool_size': 0,
+                            'checked_out_connections': 0,
+                            'overflow_connections': 0,
+                        })
                 
                 # Check for recent errors
                 if self._connection_stats['last_connection_error']:
