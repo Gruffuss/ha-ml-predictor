@@ -26,11 +26,11 @@ from src.data.ingestion.event_processor import EventProcessor
 
 
 # Test database configuration
-# Use PostgreSQL for testing to match production TimescaleDB setup
+# Use actual TimescaleDB container for testing
 # Environment variable TEST_DB_URL can override this for CI/CD
 TEST_DB_URL = os.getenv(
     "TEST_DB_URL", 
-    "postgresql+asyncpg://postgres:password@localhost:5432/ha_ml_predictor_test"
+    "postgresql+asyncpg://occupancy_user:occupancy_pass@localhost:5432/occupancy_prediction_test"
 )
 
 
@@ -161,7 +161,8 @@ def test_room_config():
 
 @pytest.fixture
 async def test_db_engine():
-    """Create a test database engine with PostgreSQL."""
+    """Create a test database engine with TimescaleDB."""
+    # Use the real TimescaleDB container with a test database
     engine = create_async_engine(
         TEST_DB_URL,
         echo=False,
@@ -171,11 +172,51 @@ async def test_db_engine():
     )
     
     try:
-        # Create all tables
+        # First, check if the test database exists, create it if not
+        main_db_url = TEST_DB_URL.replace('/occupancy_prediction_test', '/occupancy_prediction')
+        main_engine = create_async_engine(main_db_url, isolation_level="AUTOCOMMIT")
+        
+        try:
+            async with main_engine.connect() as conn:
+                # Check if test database exists
+                result = await conn.execute(text(
+                    "SELECT 1 FROM pg_database WHERE datname = 'occupancy_prediction_test'"
+                ))
+                if not result.scalar():
+                    # Create test database
+                    await conn.execute(text("CREATE DATABASE occupancy_prediction_test"))
+        except Exception:
+            # Database might already exist or we don't have permissions
+            pass
+        finally:
+            await main_engine.dispose()
+        
+        # Now create tables in test database
         async with engine.begin() as conn:
-            # Drop any existing tables first
+            # Import TimescaleDB extension if available
+            try:
+                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE"))
+            except Exception:
+                pass  # TimescaleDB might not be available in test environment
+            
+            # Drop and recreate all tables for clean test state
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
+            
+            # Create hypertables if TimescaleDB is available
+            try:
+                await conn.execute(text(
+                    "SELECT create_hypertable('sensor_events', 'timestamp', if_not_exists => TRUE)"
+                ))
+                await conn.execute(text(
+                    "SELECT create_hypertable('room_states', 'timestamp', if_not_exists => TRUE)"
+                ))
+                await conn.execute(text(
+                    "SELECT create_hypertable('predictions', 'prediction_time', if_not_exists => TRUE)"
+                ))
+            except Exception:
+                # Not a problem if TimescaleDB functions aren't available
+                pass
         
         yield engine
         
@@ -199,8 +240,13 @@ async def test_db_session(test_db_engine):
     )
     
     async with async_session() as session:
-        yield session
-        await session.rollback()
+        # Start a transaction that we can rollback
+        # No need to manually begin transaction in SQLAlchemy 2.0
+        try:
+            yield session
+        finally:
+            # Always rollback to ensure clean state
+            await session.rollback()
 
 
 @pytest.fixture

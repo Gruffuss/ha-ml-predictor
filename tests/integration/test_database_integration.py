@@ -27,7 +27,9 @@ class TestDatabaseIntegration:
     async def test_database_manager_lifecycle(self, test_system_config):
         """Test complete database manager lifecycle."""
         # Override with test PostgreSQL database for testing
-        test_system_config.database.connection_string = "postgresql+asyncpg://postgres:password@localhost:5432/ha_ml_predictor_test"
+        # Use the test database configuration from conftest.py
+        from tests.conftest import TEST_DB_URL
+        test_system_config.database.connection_string = TEST_DB_URL
         test_system_config.database.pool_size = 1
         
         manager = DatabaseManager(test_system_config.database)
