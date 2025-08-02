@@ -67,8 +67,8 @@ async def test_sprint1_database_system(test_system_config):
     from src.data.storage.database import DatabaseManager
     from src.data.storage.models import SensorEvent, RoomState
     
-    # Override with test database
-    test_system_config.database.connection_string = "postgresql+asyncpg://localhost/testdb"
+    # Override with test database  
+    test_system_config.database.connection_string = "postgresql+asyncpg://occupancy_user:occupancy_pass@localhost:5432/occupancy_prediction_test"
     
     # Initialize database manager
     manager = DatabaseManager(test_system_config.database)
@@ -251,46 +251,50 @@ async def test_sprint1_model_relationships(test_db_session):
     """Test that database model relationships work correctly."""
     from src.data.storage.models import SensorEvent, RoomState, Prediction
     
-    # Create related models
-    sensor_event = SensorEvent(
-        room_id="sprint1_validation_room",
-        sensor_id="binary_sensor.validation_test",
-        sensor_type="motion",
-        state="on",
-        timestamp=datetime.utcnow()
-    )
-    test_db_session.add(sensor_event)
-    await test_db_session.flush()
+    # Use session context manager properly
+    async with test_db_session() as session:
+        # Create related models
+        sensor_event = SensorEvent(
+            room_id="sprint1_validation_room",
+            sensor_id="binary_sensor.validation_test",
+            sensor_type="motion",
+            state="on",
+            timestamp=datetime.utcnow()
+        )
+        session.add(sensor_event)
+        await session.flush()
     
-    room_state = RoomState(
-        room_id="sprint1_validation_room",
-        timestamp=datetime.utcnow(),
-        is_occupied=True,
-        occupancy_confidence=0.9
-    )
-    test_db_session.add(room_state)
-    await test_db_session.flush()
-    
-    prediction = Prediction(
-        room_id="sprint1_validation_room",
-        prediction_time=datetime.utcnow(),
-        predicted_transition_time=datetime.utcnow() + timedelta(minutes=15),
-        transition_type="occupied_to_vacant",
-        confidence_score=0.8,
-        model_type="lstm",
-        model_version="v1.0",
-        triggering_event_id=sensor_event.id,
-        room_state_id=room_state.id
-    )
-    test_db_session.add(prediction)
-    await test_db_session.commit()
-    
-    # Test relationships
-    await test_db_session.refresh(prediction)
-    assert prediction.triggering_event is not None
-    assert prediction.room_state is not None
-    assert prediction.triggering_event.id == sensor_event.id
-    assert prediction.room_state.id == room_state.id
+        room_state = RoomState(
+            room_id="sprint1_validation_room",
+            timestamp=datetime.utcnow(),
+            is_occupied=True,
+            occupancy_confidence=0.9
+        )
+        session.add(room_state)
+        await session.flush()
+        
+        prediction = Prediction(
+            room_id="sprint1_validation_room",
+            prediction_time=datetime.utcnow(),
+            predicted_transition_time=datetime.utcnow() + timedelta(minutes=15),
+            transition_type="occupied_to_vacant",
+            confidence_score=0.8,
+            model_type="lstm",
+            model_version="v1.0",
+            triggering_event_id=sensor_event.id,
+            room_state_id=room_state.id
+        )
+        session.add(prediction)
+        await session.commit()
+        
+        # Test application-level relationships
+        retrieved_event = await prediction.get_triggering_event(session)
+        retrieved_state = await prediction.get_room_state(session)
+        
+        assert retrieved_event is not None
+        assert retrieved_state is not None
+        assert retrieved_event.id == sensor_event.id
+        assert retrieved_state.id == room_state.id
 
 
 def test_sprint1_file_structure():
@@ -334,7 +338,7 @@ async def test_sprint1_end_to_end_workflow(test_system_config):
     from src.data.ingestion.event_processor import EventProcessor
     
     # 1. Configuration loading
-    test_system_config.database.connection_string = "postgresql+asyncpg://localhost/testdb"
+    test_system_config.database.connection_string = "postgresql+asyncpg://occupancy_user:occupancy_pass@localhost:5432/occupancy_prediction_test"
     
     # 2. Database initialization
     db_manager = DatabaseManager(test_system_config.database)
@@ -441,7 +445,7 @@ def test_sprint1_smoke_test():
     db_config = DatabaseConfig(connection_string="postgresql://localhost/testdb")
     
     assert ha_config.url == "http://test"
-    assert db_config.connection_string == "postgresql://localhost/testdb"
+    assert db_config.connection_string == "postgresql+asyncpg://occupancy_user:occupancy_pass@localhost:5432/occupancy_prediction_test"
 
 
 if __name__ == "__main__":
