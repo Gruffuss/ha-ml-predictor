@@ -56,11 +56,11 @@ class TestDatabaseConfig:
     def test_custom_values(self):
         """Test custom values override defaults."""
         config = DatabaseConfig(
-            connection_string="sqlite:///:memory:",
+            connection_string="postgresql://postgres:password@localhost/testdb",
             pool_size=5,
             max_overflow=15
         )
-        assert config.connection_string == "sqlite:///:memory:"
+        assert config.connection_string == "postgresql://postgres:password@localhost/testdb"
         assert config.pool_size == 5
         assert config.max_overflow == 15
 
@@ -401,7 +401,7 @@ class TestConfigLoader:
         # Test values from test config
         assert config.home_assistant.url == "http://test-ha:8123"
         assert config.home_assistant.token == "test_token_12345"
-        assert config.database.connection_string == "sqlite+aiosqlite:///:memory:"
+        assert config.database.connection_string == "postgresql+asyncpg://localhost/testdb"
         assert config.mqtt.broker == "test-mqtt"
         
         # Test rooms were loaded
@@ -437,7 +437,7 @@ class TestConfigLoader:
             # Create main config
             main_config = {
                 'home_assistant': {'url': 'http://test:8123', 'token': 'test'},
-                'database': {'connection_string': 'sqlite:///:memory:'},
+                'database': {'connection_string': 'postgresql://localhost/testdb'},
                 'mqtt': {'broker': 'test'},
                 'prediction': {},
                 'features': {},
@@ -597,7 +597,7 @@ class TestConfigValidation:
             
             main_config = {
                 'home_assistant': {'url': 'http://test:8123', 'token': 'test'},
-                'database': {'connection_string': 'sqlite:///:memory:'},
+                'database': {'connection_string': 'postgresql://localhost/testdb'},
                 'mqtt': {'broker': 'test'},
                 'prediction': {},
                 'features': {},
@@ -644,7 +644,7 @@ class TestConfigIntegration:
         assert config.home_assistant.api_timeout == 10
         
         # Check database config
-        assert "sqlite" in config.database.connection_string
+        assert "postgresql" in config.database.connection_string
         assert config.database.pool_size == 5
         assert config.database.max_overflow == 10
         

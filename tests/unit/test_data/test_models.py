@@ -687,12 +687,12 @@ class TestFeatureStore:
         assert len(all_features) == expected_count
 
 
-class TestModelRelationships:
-    """Test relationships between models."""
+class TestModelApplicationLevelRelationships:
+    """Test application-level relationships between models (no SQLAlchemy foreign keys)."""
     
     @pytest.mark.asyncio
-    async def test_sensor_event_prediction_relationship(self, test_db_session):
-        """Test relationship between SensorEvent and Prediction."""
+    async def test_sensor_event_prediction_application_relationship(self, test_db_session):
+        """Test application-level relationship between SensorEvent and Prediction."""
         # Create sensor event
         event = SensorEvent(
             room_id="test_room",
@@ -704,7 +704,7 @@ class TestModelRelationships:
         test_db_session.add(event)
         await test_db_session.flush()  # Get the ID
         
-        # Create prediction triggered by this event
+        # Create prediction triggered by this event (application-level relationship)
         prediction = Prediction(
             room_id="test_room",
             prediction_time=datetime.utcnow(),
@@ -713,19 +713,26 @@ class TestModelRelationships:
             confidence_score=0.8,
             model_type="lstm",
             model_version="v1.0",
-            triggering_event_id=event.id
+            triggering_event_id=event.id  # Application-level foreign key
         )
         test_db_session.add(prediction)
         await test_db_session.commit()
         
-        # Test relationship
+        # Test application-level relationship by querying
         await test_db_session.refresh(prediction)
-        assert prediction.triggering_event.id == event.id
-        assert prediction.triggering_event.sensor_id == "binary_sensor.test"
+        
+        # Query the related event manually (application-level join)
+        triggering_event = await test_db_session.get(SensorEvent, 
+                                                   (prediction.triggering_event_id, event.timestamp))
+        
+        assert triggering_event is not None
+        assert triggering_event.id == event.id
+        assert triggering_event.sensor_id == "binary_sensor.test"
+        assert prediction.triggering_event_id == event.id
     
     @pytest.mark.asyncio
-    async def test_room_state_prediction_relationship(self, test_db_session):
-        """Test relationship between RoomState and Prediction."""
+    async def test_room_state_prediction_application_relationship(self, test_db_session):
+        """Test application-level relationship between RoomState and Prediction."""
         # Create room state
         room_state = RoomState(
             room_id="test_room",
@@ -736,7 +743,7 @@ class TestModelRelationships:
         test_db_session.add(room_state)
         await test_db_session.flush()  # Get the ID
         
-        # Create prediction based on this room state
+        # Create prediction based on this room state (application-level relationship)
         prediction = Prediction(
             room_id="test_room",
             prediction_time=datetime.utcnow(),
@@ -745,15 +752,21 @@ class TestModelRelationships:
             confidence_score=0.75,
             model_type="xgboost",
             model_version="v1.0",
-            room_state_id=room_state.id
+            room_state_id=room_state.id  # Application-level foreign key
         )
         test_db_session.add(prediction)
         await test_db_session.commit()
         
-        # Test relationship
+        # Test application-level relationship by querying
         await test_db_session.refresh(prediction)
-        assert prediction.room_state.id == room_state.id
-        assert prediction.room_state.is_occupied is True
+        
+        # Query the related room state manually (application-level join)
+        related_room_state = await test_db_session.get(RoomState, prediction.room_state_id)
+        
+        assert related_room_state is not None
+        assert related_room_state.id == room_state.id
+        assert related_room_state.is_occupied is True
+        assert prediction.room_state_id == room_state.id
 
 
 class TestModelConstraints:
@@ -933,9 +946,13 @@ class TestModelIntegration:
         # Verify the complete workflow
         await test_db_session.refresh(prediction)
         
-        # Check relationships work
-        assert prediction.triggering_event.id == trigger_event.id
-        assert prediction.room_state.id == room_state.id
+        # Check application-level relationships work by querying related records
+        triggering_event = await test_db_session.get(SensorEvent, 
+                                                   (prediction.triggering_event_id, trigger_event.timestamp))
+        related_room_state = await test_db_session.get(RoomState, prediction.room_state_id)
+        
+        assert triggering_event.id == trigger_event.id
+        assert related_room_state.id == room_state.id
         
         # Check prediction was validated
         assert prediction.actual_transition_time is not None

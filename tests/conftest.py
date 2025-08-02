@@ -26,7 +26,12 @@ from src.data.ingestion.event_processor import EventProcessor
 
 
 # Test database configuration
-TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
+# Use PostgreSQL for testing to match production TimescaleDB setup
+# Environment variable TEST_DB_URL can override this for CI/CD
+TEST_DB_URL = os.getenv(
+    "TEST_DB_URL", 
+    "postgresql+asyncpg://postgres:password@localhost:5432/ha_ml_predictor_test"
+)
 
 
 @pytest.fixture(scope="session")
@@ -156,21 +161,32 @@ def test_room_config():
 
 @pytest.fixture
 async def test_db_engine():
-    """Create a test database engine with in-memory SQLite."""
+    """Create a test database engine with PostgreSQL."""
     engine = create_async_engine(
         TEST_DB_URL,
         echo=False,
-        future=True
+        future=True,
+        pool_size=1,
+        max_overflow=0
     )
     
-    # Create all tables
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    yield engine
-    
-    # Clean up
-    await engine.dispose()
+    try:
+        # Create all tables
+        async with engine.begin() as conn:
+            # Drop any existing tables first
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+        
+        yield engine
+        
+    finally:
+        # Clean up tables and dispose engine
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.drop_all)
+        except Exception:
+            pass  # Ignore cleanup errors
+        await engine.dispose()
 
 
 @pytest.fixture

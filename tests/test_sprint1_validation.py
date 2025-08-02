@@ -43,7 +43,7 @@ def test_sprint1_config_system(test_config_dir):
     
     # Verify configuration structure
     assert config.home_assistant.url == "http://test-ha:8123"
-    assert config.database.connection_string.startswith("sqlite")
+    assert config.database.connection_string.startswith("postgresql")
     assert len(config.rooms) >= 2
     
     # Verify room configuration
@@ -68,7 +68,7 @@ async def test_sprint1_database_system(test_system_config):
     from src.data.storage.models import SensorEvent, RoomState
     
     # Override with test database
-    test_system_config.database.connection_string = "sqlite+aiosqlite:///:memory:"
+    test_system_config.database.connection_string = "postgresql+asyncpg://localhost/testdb"
     
     # Initialize database manager
     manager = DatabaseManager(test_system_config.database)
@@ -334,7 +334,7 @@ async def test_sprint1_end_to_end_workflow(test_system_config):
     from src.data.ingestion.event_processor import EventProcessor
     
     # 1. Configuration loading
-    test_system_config.database.connection_string = "sqlite+aiosqlite:///:memory:"
+    test_system_config.database.connection_string = "postgresql+asyncpg://localhost/testdb"
     
     # 2. Database initialization
     db_manager = DatabaseManager(test_system_config.database)
@@ -438,10 +438,10 @@ def test_sprint1_smoke_test():
     # Test configuration structure exists
     from src.core.config import HomeAssistantConfig, DatabaseConfig
     ha_config = HomeAssistantConfig(url="http://test", token="test")
-    db_config = DatabaseConfig(connection_string="sqlite:///:memory:")
+    db_config = DatabaseConfig(connection_string="postgresql://localhost/testdb")
     
     assert ha_config.url == "http://test"
-    assert db_config.connection_string == "sqlite:///:memory:"
+    assert db_config.connection_string == "postgresql://localhost/testdb"
 
 
 if __name__ == "__main__":

@@ -26,8 +26,8 @@ class TestDatabaseIntegration:
     @pytest.mark.asyncio
     async def test_database_manager_lifecycle(self, test_system_config):
         """Test complete database manager lifecycle."""
-        # Override with in-memory database for testing
-        test_system_config.database.connection_string = "sqlite+aiosqlite:///:memory:"
+        # Override with test PostgreSQL database for testing
+        test_system_config.database.connection_string = "postgresql+asyncpg://postgres:password@localhost:5432/ha_ml_predictor_test"
         test_system_config.database.pool_size = 1
         
         manager = DatabaseManager(test_system_config.database)

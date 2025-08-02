@@ -24,7 +24,7 @@ from ...core.exceptions import (
     DatabaseError, HomeAssistantError, DataValidationError,
     InsufficientTrainingDataError
 )
-from ..storage.database import get_async_session
+from ..storage.database import get_db_session
 from ..storage.models import SensorEvent, get_bulk_insert_query
 from .ha_client import HomeAssistantClient, HAEvent
 from .event_processor import EventProcessor
@@ -524,7 +524,7 @@ class BulkImporter:
             return 0
         
         try:
-            async with get_async_session() as session:
+            async with get_db_session() as session:
                 # Prepare bulk insert data
                 insert_data = []
                 for event in events:
@@ -641,7 +641,7 @@ class BulkImporter:
             Validation results with recommendations
         """
         try:
-            async with get_async_session() as session:
+            async with get_db_session() as session:
                 # Count events by day for the room
                 query = text("""
                     SELECT 

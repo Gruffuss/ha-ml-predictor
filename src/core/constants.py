@@ -150,6 +150,12 @@ DEFAULT_MODEL_PARAMS = {
         "kernel": "rbf",
         "alpha": 1e-6,
         "n_restarts_optimizer": 0
+    },
+    ModelType.ENSEMBLE: {
+        "meta_learner": "xgboost",
+        "cv_folds": 5,
+        "stacking_method": "linear",
+        "blend_weights": "auto"
     }
 }
 

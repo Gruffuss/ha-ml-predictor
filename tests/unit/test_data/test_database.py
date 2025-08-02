@@ -69,7 +69,7 @@ class TestDatabaseManager:
     async def test_initialize_success(self):
         """Test successful database manager initialization."""
         config = DatabaseConfig(
-            connection_string="sqlite+aiosqlite:///:memory:",
+            connection_string="postgresql+asyncpg://user:pass@localhost/testdb",
             pool_size=5,
             max_overflow=10
         )
@@ -143,23 +143,34 @@ class TestDatabaseManager:
             mock_setup_events.assert_called_once()
     
     @pytest.mark.asyncio
-    async def test_create_engine_sqlite(self):
-        """Test engine creation for SQLite."""
+    async def test_create_engine_alternative_postgresql(self):
+        """Test engine creation for alternative PostgreSQL URL format."""
         config = DatabaseConfig(
-            connection_string="sqlite+aiosqlite:///:memory:",
-            pool_size=0  # Use NullPool for SQLite testing
+            connection_string="postgresql://user:pass@localhost/db",
+            pool_size=5,
+            max_overflow=10
         )
         
         manager = DatabaseManager(config)
         
         with patch('src.data.storage.database.create_async_engine') as mock_create_engine, \
-             patch.object(manager, '_setup_connection_events'):
+             patch.object(manager, '_setup_connection_events') as mock_setup_events:
+            
+            mock_engine = Mock()
+            mock_create_engine.return_value = mock_engine
             
             await manager._create_engine()
             
+            # Should convert to asyncpg driver
+            expected_url = "postgresql+asyncpg://user:pass@localhost/db"
+            mock_create_engine.assert_called_once()
             args, kwargs = mock_create_engine.call_args
-            assert kwargs['url'] == "sqlite+aiosqlite:///:memory:"
-            assert 'poolclass' in kwargs  # Should set poolclass for pool_size=0
+            assert kwargs['url'] == expected_url
+            assert kwargs['pool_size'] == 5
+            assert kwargs['max_overflow'] == 10
+            
+            assert manager.engine == mock_engine
+            mock_setup_events.assert_called_once()
     
     @pytest.mark.asyncio
     async def test_create_engine_invalid_url(self):
@@ -177,7 +188,7 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_setup_session_factory(self):
         """Test session factory setup."""
-        manager = DatabaseManager(DatabaseConfig(connection_string="sqlite:///:memory:"))
+        manager = DatabaseManager(DatabaseConfig(connection_string="postgresql://user:pass@localhost/db"))
         manager.engine = Mock()
         
         with patch('src.data.storage.database.async_sessionmaker') as mock_sessionmaker:
@@ -199,7 +210,7 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_setup_session_factory_no_engine(self):
         """Test session factory setup without engine."""
-        manager = DatabaseManager(DatabaseConfig(connection_string="sqlite:///:memory:"))
+        manager = DatabaseManager(DatabaseConfig(connection_string="postgresql://user:pass@localhost/db"))
         
         with pytest.raises(RuntimeError, match="Engine must be created"):
             await manager._setup_session_factory()
@@ -207,7 +218,7 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_verify_connection_success(self):
         """Test successful connection verification."""
-        manager = DatabaseManager(DatabaseConfig(connection_string="sqlite:///:memory:"))
+        manager = DatabaseManager(DatabaseConfig(connection_string="postgresql://user:pass@localhost/db"))
         
         mock_engine = Mock()
         mock_conn = AsyncMock()
@@ -231,7 +242,7 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_verify_connection_no_engine(self):
         """Test connection verification without engine."""
-        manager = DatabaseManager(DatabaseConfig(connection_string="sqlite:///:memory:"))
+        manager = DatabaseManager(DatabaseConfig(connection_string="postgresql://user:pass@localhost/db"))
         
         with pytest.raises(RuntimeError, match="Engine not initialized"):
             await manager._verify_connection()
@@ -256,7 +267,7 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_get_session_retry_on_connection_error(self):
         """Test session retry logic on connection errors."""
-        config = DatabaseConfig(connection_string="sqlite:///:memory:")
+        config = DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         manager = DatabaseManager(config)
         manager.max_retries = 2
         manager.base_delay = 0.01  # Fast retry for testing
@@ -282,7 +293,7 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_get_session_max_retries_exceeded(self):
         """Test session creation when max retries exceeded."""
-        config = DatabaseConfig(connection_string="sqlite:///:memory:")
+        config = DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         manager = DatabaseManager(config)
         manager.max_retries = 1
         manager.base_delay = 0.01
@@ -301,7 +312,7 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_get_session_non_connection_error(self):
         """Test session creation with non-connection error."""
-        config = DatabaseConfig(connection_string="sqlite:///:memory:")
+        config = DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         manager = DatabaseManager(config)
         
         manager.session_factory = Mock(side_effect=ValueError("Not a connection error"))
@@ -442,7 +453,7 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_health_check_loop(self):
         """Test background health check loop."""
-        manager = DatabaseManager(DatabaseConfig(connection_string="sqlite:///:memory:"))
+        manager = DatabaseManager(DatabaseConfig(connection_string="postgresql://user:pass@localhost/db"))
         manager.health_check = AsyncMock()
         
         # Run health check loop for a short time
@@ -463,7 +474,7 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_close_cleanup(self):
         """Test database manager cleanup on close."""
-        manager = DatabaseManager(DatabaseConfig(connection_string="sqlite:///:memory:"))
+        manager = DatabaseManager(DatabaseConfig(connection_string="postgresql://user:pass@localhost/db"))
         
         # Mock components
         mock_task = Mock()
@@ -489,7 +500,7 @@ class TestDatabaseManager:
     
     def test_get_connection_stats(self):
         """Test getting connection statistics."""
-        manager = DatabaseManager(DatabaseConfig(connection_string="sqlite:///:memory:"))
+        manager = DatabaseManager(DatabaseConfig(connection_string="postgresql://user:pass@localhost/db"))
         
         # Set some test stats
         manager._connection_stats['total_connections'] = 10
@@ -506,7 +517,7 @@ class TestDatabaseManager:
     
     def test_connection_event_handlers(self):
         """Test database connection event handlers setup."""
-        config = DatabaseConfig(connection_string="sqlite:///:memory:")
+        config = DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         manager = DatabaseManager(config)
         
         # Mock engine with event listener capability
@@ -719,7 +730,7 @@ class TestDatabaseManagerEdgeCases:
     @pytest.mark.asyncio
     async def test_initialize_already_initialized(self):
         """Test initializing already initialized manager."""
-        manager = DatabaseManager(DatabaseConfig(connection_string="sqlite:///:memory:"))
+        manager = DatabaseManager(DatabaseConfig(connection_string="postgresql://user:pass@localhost/db"))
         manager.engine = Mock()  # Simulate already initialized
         
         with patch.object(manager, '_create_engine') as mock_create:
@@ -731,7 +742,7 @@ class TestDatabaseManagerEdgeCases:
     @pytest.mark.asyncio
     async def test_verify_connection_timescaledb_warning(self):
         """Test connection verification with TimescaleDB warning."""
-        manager = DatabaseManager(DatabaseConfig(connection_string="sqlite:///:memory:"))
+        manager = DatabaseManager(DatabaseConfig(connection_string="postgresql://user:pass@localhost/db"))
         
         mock_engine = Mock()
         mock_conn = AsyncMock()
@@ -754,7 +765,7 @@ class TestDatabaseManagerEdgeCases:
     @pytest.mark.asyncio
     async def test_get_session_rollback_on_error(self):
         """Test session rollback on error during context."""
-        config = DatabaseConfig(connection_string="sqlite:///:memory:")
+        config = DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         manager = DatabaseManager(config)
         
         mock_session = AsyncMock()
@@ -820,7 +831,7 @@ class TestDatabaseManagerIntegration:
     async def test_full_lifecycle(self):
         """Test complete database manager lifecycle."""
         config = DatabaseConfig(
-            connection_string="sqlite+aiosqlite:///:memory:",
+            connection_string="postgresql+asyncpg://localhost/testdb",
             pool_size=5,
             max_overflow=10
         )
@@ -855,7 +866,7 @@ class TestDatabaseManagerIntegration:
     async def test_concurrent_sessions(self):
         """Test concurrent session usage."""
         config = DatabaseConfig(
-            connection_string="sqlite+aiosqlite:///:memory:",
+            connection_string="postgresql+asyncpg://localhost/testdb",
             pool_size=3
         )
         
@@ -879,7 +890,7 @@ class TestDatabaseManagerIntegration:
     async def test_retry_mechanism_with_real_errors(self):
         """Test retry mechanism with realistic error scenarios."""
         config = DatabaseConfig(
-            connection_string="sqlite+aiosqlite:///:memory:",
+            connection_string="postgresql+asyncpg://localhost/testdb",
             pool_size=1
         )
         

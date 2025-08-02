@@ -201,7 +201,7 @@ class EntityNotFoundError(HomeAssistantError):
         
         super().__init__(
             message=message,
-            error_code="ENTITY_NOT_FOUND",
+            error_code="ENTITY_NOT_FOUND_ERROR",
             context=context,
             severity=ErrorSeverity.MEDIUM
         )
@@ -403,7 +403,7 @@ class InsufficientTrainingDataError(ModelError):
         
         super().__init__(
             message=message,
-            error_code="INSUFFICIENT_TRAINING_DATA",
+            error_code="INSUFFICIENT_TRAINING_DATA_ERROR",
             context=context,
             severity=ErrorSeverity.MEDIUM
         )
@@ -425,7 +425,7 @@ class ModelVersionMismatchError(ModelError):
         )
         super().__init__(
             message=message,
-            error_code="MODEL_VERSION_MISMATCH",
+            error_code="MODEL_VERSION_MISMATCH_ERROR",
             context={
                 'model_type': model_type,
                 'room_id': room_id,
@@ -661,7 +661,7 @@ class RateLimitExceededError(IntegrationError):
         
         super().__init__(
             message=message,
-            error_code="RATE_LIMIT_EXCEEDED",
+            error_code="RATE_LIMIT_EXCEEDED_ERROR",
             context=context,
             severity=ErrorSeverity.MEDIUM
         )
@@ -687,7 +687,7 @@ class ResourceExhaustionError(SystemError):
         message = f"Resource exhaustion: {resource_type} usage {current_usage}{unit} exceeds limit {limit}{unit}"
         super().__init__(
             message=message,
-            error_code="RESOURCE_EXHAUSTION",
+            error_code="RESOURCE_EXHAUSTION_ERROR",
             context={
                 'resource_type': resource_type,
                 'current_usage': current_usage,
@@ -716,7 +716,7 @@ class ServiceUnavailableError(SystemError):
         
         super().__init__(
             message=message,
-            error_code="SERVICE_UNAVAILABLE",
+            error_code="SERVICE_UNAVAILABLE_ERROR",
             context=context,
             severity=ErrorSeverity.HIGH
         )
@@ -734,7 +734,7 @@ class MaintenanceModeError(SystemError):
         
         super().__init__(
             message=message,
-            error_code="MAINTENANCE_MODE",
+            error_code="MAINTENANCE_MODE_ERROR",
             context=context,
             severity=ErrorSeverity.MEDIUM
         )

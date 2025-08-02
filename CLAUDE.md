@@ -208,10 +208,19 @@ The system will integrate with Home Assistant via:
 - Automated test runner with coverage reporting
 - Test fixtures for realistic data scenarios
 
-**LXC Container**: 🔄 Environment setup in progress
-- **IP**: 192.168.51.10 (Ubuntu 24.04, 2 cores, 6GB RAM)
-- **Password**: ha-ml-predictor
-- **Status**: Ready for deployment and testing
+**LXC Container**: ✅ Environment setup in progress
+- **Hostname**: ha-ml-predictor
+- **IP**: 192.168.51.112 (Ubuntu 24.04, 2 cores, 6GB RAM)
+- **SSH Key**: ~/.ssh/ha-ml-predictor (passwordless access configured)
+- **Python**: 3.12.3 with venv support installed
+- **Project Path**: `/opt/ha-ml-predictor/` with virtual environment
+- **Important**: Always activate venv before running: `source /opt/ha-ml-predictor/venv/bin/activate`
+
+**SSH Aliases** (added to ~/.bashrc):
+- `hamp-ssh` - SSH into the container
+- `hamp-logs` - View application logs
+- `hamp-status` - Check database health status
+- `hamp-test` - Run unit tests remotely
 
 **Next Steps**: Complete LXC setup and validate Sprint 1 before Sprint 2
 
