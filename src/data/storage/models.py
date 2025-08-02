@@ -43,10 +43,10 @@ class SensorEvent(Base):
     """
     __tablename__ = 'sensor_events'
     
-    # Primary key components for TimescaleDB hypertable
+    # Primary key for TimescaleDB hypertable
+    # Note: TimescaleDB will handle partitioning by timestamp
     id = Column(BigInteger, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime(timezone=True), primary_key=True, nullable=False, 
-                      index=True, default=func.now())
+    timestamp = Column(DateTime(timezone=True), nullable=False, index=True, default=func.now())
     
     # Core event data
     room_id = Column(String(50), nullable=False, index=True)
@@ -261,9 +261,9 @@ class Prediction(Base):
     is_accurate = Column(Boolean)  # Within threshold
     validation_timestamp = Column(DateTime(timezone=True))
     
-    # Context
-    triggering_event_id = Column(BigInteger, ForeignKey('sensor_events.id'))
-    room_state_id = Column(BigInteger, ForeignKey('room_states.id'))
+    # Context - Foreign keys with proper nullable constraints
+    triggering_event_id = Column(BigInteger, ForeignKey('sensor_events.id', ondelete='SET NULL'), nullable=True)
+    room_state_id = Column(BigInteger, ForeignKey('room_states.id', ondelete='SET NULL'), nullable=True)
     
     # Metadata
     created_at = Column(DateTime(timezone=True), default=func.now())
@@ -473,8 +473,9 @@ async def create_timescale_hypertables(session: AsyncSession):
     """Create TimescaleDB hypertables and configure partitioning."""
     
     # Create hypertable for sensor_events
+    # Note: We partition by timestamp but keep id as a regular bigint primary key
     await session.execute(
-        text("SELECT create_hypertable('sensor_events', 'timestamp', if_not_exists => TRUE)")
+        text("SELECT create_hypertable('sensor_events', 'timestamp', if_not_exists => TRUE, create_default_indexes => FALSE)")
     )
     
     # Create continuous aggregates for common queries
