@@ -29,6 +29,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Remember: Broken tests mean broken system. No exceptions.**
 
+## 📋 Function Implementation Tracking - MANDATORY
+
+**⚠️ CRITICAL: ALL AGENTS MUST UPDATE TODO.md FUNCTION TRACKER**
+
+### When Creating New Functions:
+1. **BEFORE implementing**: Check TODO.md function tracker for existing implementations
+2. **DURING implementation**: Add function to appropriate Sprint section in TODO.md
+3. **AFTER implementation**: Mark function as ✅ completed with description
+
+### Function Tracker Format:
+```
+- ✅ `ClassName.method_name()` - Brief description of what it does
+```
+
+### Example:
+```
+#### Sprint 4 Functions 🔄 (IN PROGRESS)
+- ✅ `PredictionValidator.__init__()` - Initialize validator with accuracy thresholds
+- ✅ `PredictionValidator.record_prediction()` - Store prediction for validation
+```
+
+**This prevents duplicate function creation and maintains clear implementation tracking!**
+
 ## 🤖 Use Specialized Agents Proactively
 
 **You have access to specialized agents with deep expertise. Use them whenever their skills match the task - don't try to do everything manually.**
