@@ -63,6 +63,32 @@ class LoggingConfig:
 
 
 @dataclass
+class TrackingConfig:
+    """Accuracy tracking system configuration."""
+    enabled: bool = True
+    monitoring_interval_seconds: int = 60
+    auto_validation_enabled: bool = True
+    validation_window_minutes: int = 30
+    max_stored_alerts: int = 1000
+    trend_analysis_points: int = 10
+    cleanup_interval_hours: int = 24
+    alert_thresholds: Dict[str, float] = None
+    
+    def __post_init__(self):
+        """Set default alert thresholds if not provided."""
+        if self.alert_thresholds is None:
+            self.alert_thresholds = {
+                'accuracy_warning': 70.0,
+                'accuracy_critical': 50.0,
+                'error_warning': 20.0,
+                'error_critical': 30.0,
+                'trend_degrading': -5.0,
+                'validation_lag_warning': 15.0,
+                'validation_lag_critical': 30.0
+            }
+
+
+@dataclass
 class SensorConfig:
     """Individual sensor configuration."""
     entity_id: str
@@ -115,6 +141,7 @@ class SystemConfig:
     prediction: PredictionConfig
     features: FeaturesConfig
     logging: LoggingConfig
+    tracking: TrackingConfig
     rooms: Dict[str, RoomConfig] = field(default_factory=dict)
     
     def get_all_entity_ids(self) -> List[str]:
@@ -155,6 +182,7 @@ class ConfigLoader:
         prediction_config = PredictionConfig(**main_config["prediction"])
         features_config = FeaturesConfig(**main_config["features"])
         logging_config = LoggingConfig(**main_config["logging"])
+        tracking_config = TrackingConfig(**main_config.get("tracking", {}))
         
         # Process rooms configuration
         rooms = {}
@@ -185,6 +213,7 @@ class ConfigLoader:
             prediction=prediction_config,
             features=features_config,
             logging=logging_config,
+            tracking=tracking_config,
             rooms=rooms
         )
     

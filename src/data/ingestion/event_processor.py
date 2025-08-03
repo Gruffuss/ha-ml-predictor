@@ -398,7 +398,7 @@ class EventProcessor:
     - Bulk processing for historical imports
     """
     
-    def __init__(self, config: Optional[SystemConfig] = None):
+    def __init__(self, config: Optional[SystemConfig] = None, tracking_manager=None):
         self.config = config or get_config()
         self.validator = EventValidator(self.config)
         self.classifier = MovementPatternClassifier(self.config)
@@ -416,6 +416,9 @@ class EventProcessor:
             'cat_classified': 0,
             'duplicates_filtered': 0
         }
+        
+        # Tracking integration for automatic validation
+        self.tracking_manager = tracking_manager
     
     async def process_event(self, ha_event: HAEvent) -> Optional[SensorEvent]:
         """
@@ -467,6 +470,9 @@ class EventProcessor:
         
         # Update tracking
         self._update_event_tracking(sensor_event)
+        
+        # Check for room state changes and notify tracking manager
+        await self._check_room_state_change(sensor_event, room_config)
         
         self.stats['valid_events'] += 1
         return sensor_event
@@ -600,6 +606,82 @@ class EventProcessor:
             rooms_visited={e.room_id for e in sequence_events},
             sensors_triggered={e.sensor_id for e in sequence_events}
         )
+    
+    async def _check_room_state_change(self, event: SensorEvent, room_config: RoomConfig):
+        """
+        Check if this event indicates a room state change and notify tracking manager.
+        
+        Args:
+            event: The processed sensor event
+            room_config: Configuration for this room
+        """
+        if not self.tracking_manager:
+            return
+        
+        try:
+            # Detect potential occupancy changes based on sensor types and states
+            state_change_detected = False
+            new_state = None
+            previous_state = None
+            
+            # Check for presence sensor state changes
+            presence_sensors = room_config.get_sensors_by_type('presence')
+            if event.sensor_id in presence_sensors.values():
+                if event.state in ['on', 'detected', 'occupied']:
+                    new_state = 'occupied'
+                    if event.previous_state in ['off', 'clear', 'vacant']:
+                        previous_state = 'vacant'
+                        state_change_detected = True
+                elif event.state in ['off', 'clear', 'vacant']:
+                    new_state = 'vacant'
+                    if event.previous_state in ['on', 'detected', 'occupied']:
+                        previous_state = 'occupied'
+                        state_change_detected = True
+            
+            # Check for motion sensor patterns (more complex logic needed)
+            motion_sensors = room_config.get_sensors_by_type('motion')
+            if event.sensor_id in motion_sensors.values():
+                # For motion sensors, we need to analyze recent activity patterns
+                # This is a simplified approach - real implementation would be more sophisticated
+                recent_events = list(self._recent_events[event.room_id])
+                if len(recent_events) >= 2:
+                    # Look for motion start/stop patterns
+                    if event.state == 'on' and event.previous_state == 'off':
+                        # Motion detected - potential room entry
+                        new_state = 'occupied'
+                        previous_state = 'vacant'
+                        state_change_detected = True
+                    elif event.state == 'off' and event.previous_state == 'on':
+                        # Motion stopped - check if room might be vacant
+                        # Only trigger if no recent motion in last few minutes
+                        cutoff_time = event.timestamp - timedelta(minutes=5)
+                        recent_motion = any(
+                            e.timestamp > cutoff_time and e.state == 'on'
+                            for e in recent_events[-10:]
+                            if e.sensor_id in motion_sensors.values()
+                        )
+                        if not recent_motion:
+                            new_state = 'vacant'
+                            previous_state = 'occupied'
+                            state_change_detected = True
+            
+            # Notify tracking manager if state change detected
+            if state_change_detected and new_state:
+                await self.tracking_manager.handle_room_state_change(
+                    room_id=event.room_id,
+                    new_state=new_state,
+                    change_time=event.timestamp,
+                    previous_state=previous_state
+                )
+                
+                logger.debug(
+                    f"Detected room state change for {event.room_id}: "
+                    f"{previous_state} -> {new_state} at {event.timestamp}"
+                )
+        
+        except Exception as e:
+            logger.error(f"Failed to check room state change: {e}")
+            # Don't raise exception to prevent disrupting event processing
     
     def _update_event_tracking(self, event: SensorEvent):
         """Update internal tracking for sequence detection."""

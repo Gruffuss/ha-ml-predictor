@@ -37,12 +37,13 @@ class OccupancyEnsemble(BasePredictor):
     that optimally combines predictions from LSTM, XGBoost, and HMM models.
     """
     
-    def __init__(self, room_id: Optional[str] = None, **kwargs):
+    def __init__(self, room_id: Optional[str] = None, tracking_manager=None, **kwargs):
         """
         Initialize the ensemble predictor.
         
         Args:
             room_id: Specific room this model is for
+            tracking_manager: Optional tracking manager for automatic accuracy tracking
             **kwargs: Additional parameters for ensemble configuration
         """
         super().__init__(ModelType.ENSEMBLE, room_id)
@@ -79,6 +80,9 @@ class OccupancyEnsemble(BasePredictor):
         # Training state
         self.base_models_trained = False
         self.meta_learner_trained = False
+        
+        # Accuracy tracking integration
+        self.tracking_manager = tracking_manager
     
     async def train(
         self,
@@ -608,8 +612,9 @@ class OccupancyEnsemble(BasePredictor):
             
             ensemble_results.append(result)
             
-            # Record prediction for accuracy tracking
-            self._record_prediction(prediction_time, result)
+            # Record prediction for accuracy tracking if tracking manager is available
+            if self.tracking_manager:
+                await self.tracking_manager.record_prediction(result)
         
         return ensemble_results
     
