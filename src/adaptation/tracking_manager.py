@@ -17,6 +17,7 @@ from ..core.exceptions import OccupancyPredictionError, ErrorSeverity
 from ..core.constants import ModelType
 from .validator import PredictionValidator
 from .tracker import AccuracyTracker, AccuracyAlert, RealTimeMetrics
+from .drift_detector import ConceptDriftDetector, DriftMetrics, DriftSeverity
 from ..models.base.predictor import PredictionResult
 from ..data.storage.models import SensorEvent, RoomState
 
@@ -35,6 +36,16 @@ class TrackingConfig:
     max_stored_alerts: int = 1000
     trend_analysis_points: int = 10
     cleanup_interval_hours: int = 24
+    
+    # Drift detection configuration
+    drift_detection_enabled: bool = True
+    drift_check_interval_hours: int = 24
+    drift_baseline_days: int = 30
+    drift_current_days: int = 7
+    drift_min_samples: int = 100
+    drift_significance_threshold: float = 0.05
+    drift_psi_threshold: float = 0.25
+    drift_ph_threshold: float = 50.0
     
     def __post_init__(self):
         """Set default alert thresholds if not provided."""
@@ -86,6 +97,7 @@ class TrackingManager:
         # Initialize core tracking components
         self.validator: Optional[PredictionValidator] = None
         self.accuracy_tracker: Optional[AccuracyTracker] = None
+        self.drift_detector: Optional[ConceptDriftDetector] = None
         
         # Background tasks
         self._background_tasks: List[asyncio.Task] = []
@@ -102,6 +114,8 @@ class TrackingManager:
         # Performance metrics
         self._total_predictions_recorded = 0
         self._total_validations_performed = 0
+        self._total_drift_checks_performed = 0
+        self._last_drift_check_time: Optional[datetime] = None
         self._system_start_time = datetime.utcnow()
         
         logger.info(f"Initialized TrackingManager with config: {config}")
@@ -127,6 +141,17 @@ class TrackingManager:
                 trend_analysis_points=self.config.trend_analysis_points,
                 notification_callbacks=self.notification_callbacks
             )
+            
+            # Initialize drift detector if enabled
+            if self.config.drift_detection_enabled:
+                self.drift_detector = ConceptDriftDetector(
+                    baseline_days=self.config.drift_baseline_days,
+                    current_days=self.config.drift_current_days,
+                    min_samples=self.config.drift_min_samples,
+                    alpha=self.config.drift_significance_threshold,
+                    ph_threshold=self.config.drift_ph_threshold,
+                    psi_threshold=self.config.drift_psi_threshold
+                )
             
             # Start tracking systems
             await self.start_tracking()
@@ -159,6 +184,11 @@ class TrackingManager:
             # Start cleanup task
             cleanup_task = asyncio.create_task(self._cleanup_loop())
             self._background_tasks.append(cleanup_task)
+            
+            # Start drift detection task if enabled
+            if self.config.drift_detection_enabled and self.drift_detector:
+                drift_task = asyncio.create_task(self._drift_detection_loop())
+                self._background_tasks.append(drift_task)
             
             self._tracking_active = True
             logger.info("Started TrackingManager monitoring tasks")
@@ -300,6 +330,8 @@ class TrackingManager:
                 'performance': {
                     'total_predictions_recorded': self._total_predictions_recorded,
                     'total_validations_performed': self._total_validations_performed,
+                    'total_drift_checks_performed': self._total_drift_checks_performed,
+                    'last_drift_check_time': self._last_drift_check_time.isoformat() if self._last_drift_check_time else None,
                     'system_uptime_seconds': (
                         datetime.utcnow() - self._system_start_time
                     ).total_seconds(),
@@ -318,6 +350,17 @@ class TrackingManager:
             # Add accuracy tracker status
             if self.accuracy_tracker:
                 status['accuracy_tracker'] = self.accuracy_tracker.get_tracker_stats()
+            
+            # Add drift detector status
+            if self.drift_detector:
+                status['drift_detector'] = {
+                    'enabled': self.config.drift_detection_enabled,
+                    'check_interval_hours': self.config.drift_check_interval_hours,
+                    'baseline_days': self.config.drift_baseline_days,
+                    'current_days': self.config.drift_current_days,
+                    'total_checks_performed': self._total_drift_checks_performed,
+                    'last_check_time': self._last_drift_check_time.isoformat() if self._last_drift_check_time else None
+                }
             
             # Add pending predictions cache status
             with self._prediction_cache_lock:
@@ -400,6 +443,94 @@ class TrackingManager:
                 self.accuracy_tracker.remove_notification_callback(callback)
             
             logger.info("Removed notification callback from TrackingManager")
+    
+    async def check_drift(self, room_id: str, feature_engineering_engine=None) -> Optional[DriftMetrics]:
+        """
+        Manually trigger drift detection for a specific room.
+        
+        Args:
+            room_id: Room to check for drift
+            feature_engineering_engine: Engine for feature extraction (optional)
+            
+        Returns:
+            DriftMetrics if detection completed, None if disabled or failed
+        """
+        try:
+            if not self.config.drift_detection_enabled or not self.drift_detector:
+                logger.debug("Drift detection disabled or not initialized")
+                return None
+            
+            if not self.validator:
+                logger.warning("No validator available for drift detection")
+                return None
+            
+            logger.info(f"Running manual drift detection for room {room_id}")
+            
+            drift_metrics = await self.drift_detector.detect_drift(
+                room_id=room_id,
+                prediction_validator=self.validator,
+                feature_engineering_engine=feature_engineering_engine
+            )
+            
+            self._total_drift_checks_performed += 1
+            
+            # Handle drift detection results
+            await self._handle_drift_detection_results(room_id, drift_metrics)
+            
+            logger.info(
+                f"Drift detection completed for {room_id}: "
+                f"severity={drift_metrics.drift_severity.value}, "
+                f"score={drift_metrics.overall_drift_score:.3f}"
+            )
+            
+            return drift_metrics
+            
+        except Exception as e:
+            logger.error(f"Failed to check drift for {room_id}: {e}")
+            return None
+    
+    async def get_drift_status(self, room_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get drift detection status and recent results.
+        
+        Args:
+            room_id: Optional room filter
+            
+        Returns:
+            Dictionary with drift detection status and metrics
+        """
+        try:
+            status = {
+                'drift_detection_enabled': self.config.drift_detection_enabled,
+                'drift_detector_available': self.drift_detector is not None,
+                'total_drift_checks': self._total_drift_checks_performed,
+                'last_drift_check': self._last_drift_check_time.isoformat() if self._last_drift_check_time else None,
+                'next_drift_check': None
+            }
+            
+            if self._last_drift_check_time:
+                next_check = self._last_drift_check_time + timedelta(
+                    hours=self.config.drift_check_interval_hours
+                )
+                status['next_drift_check'] = next_check.isoformat()
+            
+            # Add configuration details
+            if self.config.drift_detection_enabled:
+                status['drift_config'] = {
+                    'check_interval_hours': self.config.drift_check_interval_hours,
+                    'baseline_days': self.config.drift_baseline_days,
+                    'current_days': self.config.drift_current_days,
+                    'min_samples': self.config.drift_min_samples,
+                    'significance_threshold': self.config.drift_significance_threshold,
+                    'psi_threshold': self.config.drift_psi_threshold,
+                    'ph_threshold': self.config.drift_ph_threshold
+                }
+            
+            return status
+            
+        except Exception as e:
+            logger.error(f"Failed to get drift status: {e}")
+            return {'error': str(e)}
     
     # Private methods
     
@@ -501,6 +632,173 @@ class TrackingManager:
             
         except Exception as e:
             logger.error(f"Failed to perform cleanup: {e}")
+    
+    async def _drift_detection_loop(self) -> None:
+        """Background loop for automatic drift detection."""
+        try:
+            while not self._shutdown_event.is_set():
+                try:
+                    await self._perform_drift_detection()
+                    
+                    # Wait for next drift detection cycle
+                    await asyncio.wait_for(
+                        self._shutdown_event.wait(),
+                        timeout=self.config.drift_check_interval_hours * 3600
+                    )
+                    
+                except asyncio.TimeoutError:
+                    # Expected timeout for drift detection interval
+                    continue
+                except Exception as e:
+                    logger.error(f"Error in drift detection loop: {e}")
+                    await asyncio.sleep(300)  # Wait 5 minutes before retrying
+                    
+        except asyncio.CancelledError:
+            logger.info("Drift detection loop cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"Drift detection loop failed: {e}")
+    
+    async def _perform_drift_detection(self) -> None:
+        """Perform automatic drift detection for all rooms."""
+        try:
+            if not self.config.drift_detection_enabled or not self.drift_detector:
+                return
+            
+            if not self.validator:
+                logger.warning("No validator available for drift detection")
+                return
+            
+            logger.info("Starting automatic drift detection for all rooms")
+            
+            # Get all rooms from config (would need to be passed in or accessed globally)
+            # For now, we'll get rooms from recent predictions
+            rooms_to_check = await self._get_rooms_with_recent_activity()
+            
+            if not rooms_to_check:
+                logger.debug("No rooms with recent activity for drift detection")
+                return
+            
+            drift_results = {}
+            
+            for room_id in rooms_to_check:
+                try:
+                    logger.debug(f"Checking drift for room {room_id}")
+                    
+                    drift_metrics = await self.drift_detector.detect_drift(
+                        room_id=room_id,
+                        prediction_validator=self.validator,
+                        feature_engineering_engine=None  # Would need to be injected
+                    )
+                    
+                    drift_results[room_id] = drift_metrics
+                    
+                    # Handle drift detection results
+                    await self._handle_drift_detection_results(room_id, drift_metrics)
+                    
+                    self._total_drift_checks_performed += 1
+                    
+                except Exception as e:
+                    logger.error(f"Error checking drift for room {room_id}: {e}")
+                    continue
+            
+            self._last_drift_check_time = datetime.utcnow()
+            
+            # Log summary of drift detection
+            significant_drifts = [
+                room_id for room_id, metrics in drift_results.items()
+                if metrics.drift_severity in [DriftSeverity.MAJOR, DriftSeverity.CRITICAL]
+            ]
+            
+            if significant_drifts:
+                logger.warning(
+                    f"Significant drift detected in rooms: {significant_drifts}"
+                )
+            else:
+                logger.info(
+                    f"Drift detection completed for {len(drift_results)} rooms - no significant drift"
+                )
+            
+        except Exception as e:
+            logger.error(f"Failed to perform drift detection: {e}")
+    
+    async def _get_rooms_with_recent_activity(self) -> List[str]:
+        """Get rooms that have recent prediction activity for drift detection."""
+        try:
+            # Get rooms from recent predictions
+            with self._prediction_cache_lock:
+                rooms = list(self._pending_predictions.keys())
+            
+            # Also get rooms from validator if available
+            if self.validator:
+                validator_stats = await self.validator.get_validation_stats()
+                if 'room_prediction_counts' in validator_stats:
+                    rooms.extend(validator_stats['room_prediction_counts'].keys())
+            
+            # Remove duplicates and return
+            return list(set(rooms))
+            
+        except Exception as e:
+            logger.error(f"Error getting rooms with recent activity: {e}")
+            return []
+    
+    async def _handle_drift_detection_results(
+        self,
+        room_id: str,
+        drift_metrics: DriftMetrics
+    ) -> None:
+        """Handle drift detection results by generating alerts and notifications."""
+        try:
+            # Generate alert for significant drift
+            if drift_metrics.drift_severity in [DriftSeverity.MAJOR, DriftSeverity.CRITICAL]:
+                alert_severity = 'critical' if drift_metrics.drift_severity == DriftSeverity.CRITICAL else 'warning'
+                
+                # Create drift alert through accuracy tracker
+                if self.accuracy_tracker:
+                    # This would require extending AccuracyTracker to handle drift alerts
+                    # For now, we'll log the significant drift
+                    logger.warning(
+                        f"Significant {drift_metrics.drift_severity.value} drift detected in {room_id}: "
+                        f"score={drift_metrics.overall_drift_score:.3f}, "
+                        f"retraining_recommended={drift_metrics.retraining_recommended}"
+                    )
+            
+            # If immediate attention required, escalate notifications
+            if drift_metrics.immediate_attention_required:
+                logger.critical(
+                    f"IMMEDIATE ATTENTION: Critical drift in {room_id} requires intervention. "
+                    f"Accuracy degradation: {drift_metrics.accuracy_degradation:.1f} minutes, "
+                    f"Page-Hinkley drift: {drift_metrics.ph_drift_detected}"
+                )
+                
+                # Notify callbacks about critical drift
+                for callback in self.notification_callbacks:
+                    try:
+                        # Create a mock alert for drift (would need proper DriftAlert class)
+                        drift_alert_message = (
+                            f"Critical concept drift detected in {room_id}. "
+                            f"Severity: {drift_metrics.drift_severity.value}, "
+                            f"Score: {drift_metrics.overall_drift_score:.3f}"
+                        )
+                        
+                        if asyncio.iscoroutinefunction(callback):
+                            await callback(drift_alert_message)
+                        else:
+                            callback(drift_alert_message)
+                    except Exception as e:
+                        logger.error(f"Error in drift notification callback: {e}")
+            
+            # Log drift detection results for monitoring
+            logger.info(
+                f"Drift detection for {room_id}: "
+                f"severity={drift_metrics.drift_severity.value}, "
+                f"score={drift_metrics.overall_drift_score:.3f}, "
+                f"types={[dt.value for dt in drift_metrics.drift_types]}, "
+                f"retraining_recommended={drift_metrics.retraining_recommended}"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error handling drift detection results for {room_id}: {e}")
 
 
 class TrackingManagerError(OccupancyPredictionError):

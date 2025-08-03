@@ -52,6 +52,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **This prevents duplicate function creation and maintains clear implementation tracking!**
 
+## 🔧 Component Integration - MANDATORY
+
+**⚠️ CRITICAL: ALL AGENTS MUST INTEGRATE COMPONENTS INTO MAIN SYSTEM**
+
+### Integration Requirements:
+1. **NEVER create standalone components** - Always integrate into main system workflow
+2. **NO example-only implementations** - Components must work automatically in production
+3. **ALWAYS modify existing system files** to use new components
+4. **ENSURE automatic operation** - No manual setup required for core functionality
+
+### Integration Checklist for All Agents:
+- [ ] Component is used by main system automatically (not just in examples)
+- [ ] Modified existing files to integrate the new component
+- [ ] Component works without manual setup or configuration
+- [ ] Integration follows existing system patterns and architecture
+- [ ] Background tasks or event triggers are properly integrated
+
+### Bad Examples (DON'T DO):
+```python
+# ❌ BAD: Standalone component with only example usage
+# example_component_usage.py
+from new_component import NewComponent
+component = NewComponent()
+component.do_something()  # Manual setup required
+```
+
+### Good Examples (DO THIS):
+```python
+# ✅ GOOD: Integrated into main system
+# src/main_system.py
+class MainSystem:
+    def __init__(self):
+        self.new_component = NewComponent()  # Automatic integration
+        
+    async def process(self):
+        # Component used automatically in main workflow
+        await self.new_component.do_something()
+```
+
+**Remember: If users need to manually run example scripts, the integration is incomplete!**
+
 ## 🤖 Use Specialized Agents Proactively
 
 **You have access to specialized agents with deep expertise. Use them whenever their skills match the task - don't try to do everything manually.**

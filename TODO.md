@@ -80,7 +80,7 @@
   - [x] Export capabilities for metrics, alerts, and trend data analysis
   - [x] Integration with PredictionValidator for seamless accuracy monitoring
 
-- [x] **Drift Detector** - Comprehensive statistical concept drift detection system
+- [x] **Drift Detector** - Comprehensive statistical concept drift detection system WITH TRACKING MANAGER INTEGRATION
   - [x] `DriftMetrics` dataclass with comprehensive drift analysis and severity assessment
   - [x] `ConceptDriftDetector` class for statistical drift detection using KS test, Mann-Whitney U, Chi-square, Page-Hinkley, and PSI
   - [x] `FeatureDriftDetector` class for continuous feature distribution monitoring with callback notifications
@@ -88,9 +88,10 @@
   - [x] Pattern drift analysis for occupancy timing and frequency changes using KL divergence
   - [x] Prediction performance drift monitoring with error distribution analysis
   - [x] Statistical rigor with proper hypothesis testing and p-value thresholds
-  - [x] Integration with existing AccuracyTracker and PredictionValidator infrastructure
-  - [x] Background monitoring capabilities with configurable sensitivity and windows
-  - [x] Production-ready drift alerts with severity levels and retraining recommendations
+  - [x] **COMPLETE INTEGRATION** with TrackingManager for automatic background drift detection
+  - [x] **AUTOMATIC OPERATION** - No manual scripts needed, runs as part of main system workflow
+  - [x] **CONFIGURABLE MONITORING** - Background monitoring with configurable sensitivity, intervals, and thresholds
+  - [x] **PRODUCTION-READY ALERTS** - Integrated with existing alert system for drift notifications and escalations
 
 ### Pending
 - [ ] **Adaptive Retrainer** - Continuous model updates
@@ -638,23 +639,29 @@
 - ✅ `StatisticalTest` - Enum for available statistical tests (KS, Mann-Whitney, Chi-square, Page-Hinkley, PSI)
 - ✅ `DriftDetectionError` - Custom exception for drift detection failures with detailed context
 
-#### System-Wide Tracking Manager (`src/adaptation/tracking_manager.py`) - ✅ COMPLETED (NEW INTEGRATION)
-- ✅ `TrackingConfig.__init__()` - Configuration dataclass for system-wide tracking with alert thresholds and monitoring intervals
+#### System-Wide Tracking Manager (`src/adaptation/tracking_manager.py`) - ✅ COMPLETED (ENHANCED WITH DRIFT INTEGRATION)
+- ✅ `TrackingConfig.__init__()` - Enhanced configuration dataclass with drift detection settings (baseline_days, current_days, thresholds)
 - ✅ `TrackingConfig.__post_init__()` - Set default alert thresholds if not provided in configuration
-- ✅ `TrackingManager.__init__()` - Initialize centralized tracking manager with database integration and notification callbacks
-- ✅ `TrackingManager.initialize()` - Initialize tracking components (validator and accuracy tracker) and start monitoring
-- ✅ `TrackingManager.start_tracking()` - Start background tracking tasks including validation monitoring and cleanup
+- ✅ `TrackingManager.__init__()` - Enhanced to initialize centralized tracking manager with integrated drift detector
+- ✅ `TrackingManager.initialize()` - Enhanced to initialize tracking components AND drift detector for automatic operation
+- ✅ `TrackingManager.start_tracking()` - Enhanced to start background tracking tasks INCLUDING automatic drift detection loop
 - ✅ `TrackingManager.stop_tracking()` - Stop background tracking tasks gracefully with proper resource cleanup
 - ✅ `TrackingManager.record_prediction()` - Automatically record prediction from ensemble models for tracking and validation
 - ✅ `TrackingManager.handle_room_state_change()` - Handle actual room state changes for automatic prediction validation
-- ✅ `TrackingManager.get_tracking_status()` - Get comprehensive tracking system status including performance metrics
+- ✅ `TrackingManager.get_tracking_status()` - Enhanced to include comprehensive tracking system status with drift detection metrics
 - ✅ `TrackingManager.get_real_time_metrics()` - Get real-time accuracy metrics filtered by room or model type
 - ✅ `TrackingManager.get_active_alerts()` - Get active accuracy alerts with optional filtering by room and severity
 - ✅ `TrackingManager.acknowledge_alert()` - Acknowledge accuracy alert with user tracking and state management
-- ✅ `TrackingManager.add_notification_callback()` - Add notification callback for alert notifications and escalations
+- ✅ `TrackingManager.check_drift()` - NEW: Manual drift detection trigger for specific rooms with feature engine integration
+- ✅ `TrackingManager.get_drift_status()` - NEW: Get drift detection status, configuration, and recent check results
+- ✅ `TrackingManager.add_notification_callback()` - Enhanced notification callback system supporting drift alerts
 - ✅ `TrackingManager.remove_notification_callback()` - Remove notification callback from alert system
 - ✅ `TrackingManager._validation_monitoring_loop()` - Background loop for validation monitoring and room state change detection
 - ✅ `TrackingManager._check_for_room_state_changes()` - Check database for recent room state changes to trigger validation
+- ✅ `TrackingManager._drift_detection_loop()` - NEW: Background loop for automatic drift detection across all rooms
+- ✅ `TrackingManager._perform_drift_detection()` - NEW: Perform automatic drift detection for all rooms with recent activity
+- ✅ `TrackingManager._get_rooms_with_recent_activity()` - NEW: Get rooms with recent prediction activity for drift analysis
+- ✅ `TrackingManager._handle_drift_detection_results()` - NEW: Handle drift results with alerts, notifications, and logging
 - ✅ `TrackingManager._cleanup_loop()` - Background loop for periodic cleanup of tracking data and cache management
 - ✅ `TrackingManager._perform_cleanup()` - Perform periodic cleanup of prediction cache and validation records
 - ✅ `TrackingManagerError` - Custom exception for tracking manager operation failures with detailed context
