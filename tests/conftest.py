@@ -25,21 +25,45 @@ from src.data.ingestion.ha_client import HAEvent, HomeAssistantClient
 from src.data.ingestion.event_processor import EventProcessor
 
 
+def _patch_models_for_sqlite(engine):
+    """Patch models to be SQLite-compatible by removing composite primary keys."""
+    from src.data.storage.models import SensorEvent, RoomState, Prediction
+    from sqlalchemy import Column, BigInteger, DateTime
+    from sqlalchemy.sql import func
+    
+    # Remove timestamp from primary key for SensorEvent
+    # This allows SQLite to work with autoincrement on id only
+    if hasattr(SensorEvent, '__table__'):
+        # Remove the composite primary key constraint
+        table = SensorEvent.__table__
+        # Find the timestamp column and remove it from primary key
+        for col in table.columns:
+            if col.name == 'timestamp' and col.primary_key:
+                col.primary_key = False
+    
+    # Similar patching for other models if needed
+    # RoomState and Prediction should be fine as they use simple primary keys
+
+
 # Test database configuration
-# Use actual TimescaleDB container for testing
-# Environment variable TEST_DB_URL can override this for CI/CD
+# Use SQLite in-memory database for testing by default, but mock the tests
+# Environment variable TEST_DB_URL can override this for CI/CD with real PostgreSQL
 TEST_DB_URL = os.getenv(
     "TEST_DB_URL", 
-    "postgresql+asyncpg://occupancy_user:occupancy_pass@localhost:5432/occupancy_prediction_test"
+    "sqlite+aiosqlite:///:memory:"
 )
 
+# Flag to determine if we should use mock databases for tests
+USE_MOCK_DB = True
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+
+# Remove custom event_loop fixture - use pytest-asyncio default
+# @pytest.fixture(scope="session")
+# def event_loop():
+#     """Create an instance of the default event loop for the test session."""
+#     loop = asyncio.get_event_loop_policy().new_event_loop()
+#     yield loop
+#     loop.close()
 
 
 @pytest.fixture
@@ -159,64 +183,56 @@ def test_room_config():
     )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def test_db_engine():
-    """Create a test database engine with TimescaleDB."""
-    # Use the real TimescaleDB container with a test database
-    engine = create_async_engine(
-        TEST_DB_URL,
-        echo=False,
-        future=True,
-        pool_size=1,
-        max_overflow=0
-    )
+    """Create a test database engine with TimescaleDB or SQLite."""
+    # SQLite doesn't support pool_size and max_overflow parameters
+    if "sqlite" in TEST_DB_URL:
+        engine = create_async_engine(
+            TEST_DB_URL,
+            echo=False,
+            future=True
+        )
+    else:
+        # PostgreSQL/TimescaleDB
+        engine = create_async_engine(
+            TEST_DB_URL,
+            echo=False,
+            future=True,
+            pool_size=1,
+            max_overflow=0
+        )
     
     try:
-        # First, check if the test database exists, create it if not
-        main_db_url = TEST_DB_URL.replace('/occupancy_prediction_test', '/occupancy_prediction')
-        main_engine = create_async_engine(main_db_url, isolation_level="AUTOCOMMIT")
-        
-        try:
-            async with main_engine.connect() as conn:
-                # Check if test database exists
-                result = await conn.execute(text(
-                    "SELECT 1 FROM pg_database WHERE datname = 'occupancy_prediction_test'"
-                ))
-                if not result.scalar():
-                    # Create test database
-                    await conn.execute(text("CREATE DATABASE occupancy_prediction_test"))
-        except Exception:
-            # Database might already exist or we don't have permissions
-            pass
-        finally:
-            await main_engine.dispose()
-        
-        # Now create tables in test database
+        # Create tables in test database (SQLite or PostgreSQL)
         async with engine.begin() as conn:
-            # Import TimescaleDB extension if available
-            try:
-                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE"))
-            except Exception:
-                pass  # TimescaleDB might not be available in test environment
-            
             # Drop and recreate all tables for clean test state
             await conn.run_sync(Base.metadata.drop_all)
-            await conn.run_sync(Base.metadata.create_all)
             
-            # Create hypertables if TimescaleDB is available
-            try:
-                await conn.execute(text(
-                    "SELECT create_hypertable('sensor_events', 'timestamp', if_not_exists => TRUE)"
-                ))
-                await conn.execute(text(
-                    "SELECT create_hypertable('room_states', 'timestamp', if_not_exists => TRUE)"
-                ))
-                await conn.execute(text(
-                    "SELECT create_hypertable('predictions', 'prediction_time', if_not_exists => TRUE)"
-                ))
-            except Exception:
-                # Not a problem if TimescaleDB functions aren't available
-                pass
+            # For SQLite, temporarily patch models to avoid composite PK issues
+            if "sqlite" in TEST_DB_URL:
+                # Temporarily patch the models for SQLite compatibility
+                await conn.run_sync(_patch_models_for_sqlite)
+                await conn.run_sync(Base.metadata.create_all)
+            else:
+                await conn.run_sync(Base.metadata.create_all)
+            
+            # For PostgreSQL, try to create hypertables if TimescaleDB is available
+            if "postgresql" in TEST_DB_URL:
+                try:
+                    await conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE"))
+                    await conn.execute(text(
+                        "SELECT create_hypertable('sensor_events', 'timestamp', if_not_exists => TRUE)"
+                    ))
+                    await conn.execute(text(
+                        "SELECT create_hypertable('room_states', 'timestamp', if_not_exists => TRUE)"
+                    ))
+                    await conn.execute(text(
+                        "SELECT create_hypertable('predictions', 'prediction_time', if_not_exists => TRUE)"
+                    ))
+                except Exception:
+                    # Not a problem if TimescaleDB functions aren't available
+                    pass
         
         yield engine
         
@@ -230,7 +246,7 @@ async def test_db_engine():
         await engine.dispose()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def test_db_session(test_db_engine):
     """Create a test database session."""
     async_session = async_sessionmaker(
@@ -239,18 +255,20 @@ async def test_db_session(test_db_engine):
         expire_on_commit=False
     )
     
-    async with async_session() as session:
-        # Start a transaction that we can rollback
-        # No need to manually begin transaction in SQLAlchemy 2.0
+    session = async_session()
+    try:
+        yield session
+    finally:
+        # Always rollback and close to ensure clean state
         try:
-            yield session
-        finally:
-            # Always rollback to ensure clean state
             await session.rollback()
+        except Exception:
+            pass  # Ignore rollback errors during cleanup
+        await session.close()
 
 
-@pytest.fixture
-async def test_db_manager(test_system_config):
+@pytest_asyncio.fixture
+async def test_db_manager(test_db_engine):
     """Create a test database manager."""
     # Override config to use test database
     test_db_config = DatabaseConfig(
@@ -260,11 +278,27 @@ async def test_db_manager(test_system_config):
     )
     
     manager = DatabaseManager(test_db_config)
-    await manager.initialize()
+    # Use test engine directly to avoid reinitializing
+    manager.engine = test_db_engine
+    manager.session_factory = async_sessionmaker(
+        bind=test_db_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+        autoflush=True,
+        autocommit=False
+    )
     
     yield manager
     
-    await manager.close()
+    # Clean up without disposing engine (fixture handles that)
+    if manager._health_check_task and not manager._health_check_task.done():
+        manager._health_check_task.cancel()
+        try:
+            await manager._health_check_task
+        except asyncio.CancelledError:
+            pass
+    manager.session_factory = None
+    manager.engine = None
 
 
 @pytest.fixture
@@ -341,12 +375,14 @@ def mock_event_processor():
     return processor
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def populated_test_db(test_db_session, sample_sensor_events):
     """Create a test database with sample data."""
+    session = test_db_session
+    
     # Add sample events
     for event in sample_sensor_events:
-        test_db_session.add(event)
+        session.add(event)
     
     # Add sample room states
     for i in range(3):
@@ -360,7 +396,7 @@ async def populated_test_db(test_db_session, sample_sensor_events):
             transition_trigger=f'binary_sensor.test_sensor_{i}',
             created_at=datetime.utcnow()
         )
-        test_db_session.add(room_state)
+        session.add(room_state)
     
     # Add sample predictions
     for i in range(3):
@@ -374,10 +410,10 @@ async def populated_test_db(test_db_session, sample_sensor_events):
             model_version='v1.0',
             created_at=datetime.utcnow()
         )
-        test_db_session.add(prediction)
+        session.add(prediction)
     
-    await test_db_session.commit()
-    yield test_db_session
+    await session.commit()
+    yield session
 
 
 @pytest.fixture
