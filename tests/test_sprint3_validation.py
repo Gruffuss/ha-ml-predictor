@@ -8,11 +8,14 @@ model components are working correctly before proceeding to Sprint 4.
 import pytest
 import pytest_asyncio
 import asyncio
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Any
 import pandas as pd
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 # Test that all core imports work
 def test_sprint3_imports():

@@ -46,9 +46,16 @@ class LSTMPredictor(BasePredictor):
         default_params = DEFAULT_MODEL_PARAMS[ModelType.LSTM].copy()
         default_params.update(kwargs)
         
+        # Handle hidden_units conversion to hidden_layers
+        hidden_units = default_params.get('hidden_units', [64, 32])
+        if isinstance(hidden_units, int):
+            hidden_layers = [hidden_units, hidden_units // 2]
+        else:
+            hidden_layers = hidden_units
+            
         self.model_params = {
             'sequence_length': default_params.get('sequence_length', 50),
-            'hidden_layers': default_params.get('hidden_units', [64, 32]),
+            'hidden_layers': hidden_layers,
             'learning_rate': default_params.get('learning_rate', 0.001),
             'max_iter': default_params.get('max_iter', 1000),
             'early_stopping': default_params.get('early_stopping', True),
@@ -100,7 +107,9 @@ class LSTMPredictor(BasePredictor):
             
             if len(X_sequences) < 10:
                 raise ModelTrainingError(
-                    f"Insufficient sequence data: only {len(X_sequences)} sequences available"
+                    model_type='lstm',
+                    room_id=self.room_id,
+                    cause=ValueError(f"Insufficient sequence data: only {len(X_sequences)} sequences available")
                 )
             
             logger.info(f"Generated {len(X_sequences)} sequences of length {self.sequence_length}")
@@ -216,7 +225,11 @@ class LSTMPredictor(BasePredictor):
             )
             
             self.training_history.append(result)
-            raise ModelTrainingError(error_msg)
+            raise ModelTrainingError(
+                model_type='lstm',
+                room_id=self.room_id,
+                cause=e
+            )
     
     async def predict(
         self,

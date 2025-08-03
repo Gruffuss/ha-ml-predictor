@@ -146,7 +146,7 @@ class XGBoostPredictor(BasePredictor):
             self.feature_names = list(features.columns)
             self.feature_importance_ = dict(zip(
                 self.feature_names,
-                self.model.feature_importances_
+                [float(importance) for importance in self.model.feature_importances_]
             ))
             
             # Calculate training metrics
