@@ -19,6 +19,7 @@ from .validator import PredictionValidator
 from .tracker import AccuracyTracker, AccuracyAlert, RealTimeMetrics
 from .drift_detector import ConceptDriftDetector, DriftMetrics, DriftSeverity
 from .retrainer import AdaptiveRetrainer, RetrainingRequest, RetrainingTrigger, RetrainingStatus
+from .optimizer import ModelOptimizer, OptimizationConfig, OptimizationStrategy, OptimizationObjective
 from ..models.base.predictor import PredictionResult
 from ..data.storage.models import SensorEvent, RoomState
 
@@ -60,6 +61,13 @@ class TrackingConfig:
     auto_feature_refresh: bool = True            # Automatically refresh features for retraining
     retraining_validation_split: float = 0.2    # Validation split for retraining
     retraining_lookback_days: int = 14           # Days of data to use for retraining
+    
+    # Model optimization configuration
+    optimization_enabled: bool = True            # Enable automatic parameter optimization during retraining
+    optimization_strategy: str = "bayesian"     # Optimization strategy: bayesian, grid_search, random_search
+    optimization_max_time_minutes: int = 30     # Maximum time for optimization per model
+    optimization_n_calls: int = 50              # Number of optimization iterations
+    optimization_min_improvement: float = 0.01  # Minimum improvement to apply optimization results
     
     def __post_init__(self):
         """Set default alert thresholds if not provided."""
@@ -123,6 +131,7 @@ class TrackingManager:
         self.accuracy_tracker: Optional[AccuracyTracker] = None
         self.drift_detector: Optional[ConceptDriftDetector] = None
         self.adaptive_retrainer: Optional[AdaptiveRetrainer] = None
+        self.model_optimizer: Optional[ModelOptimizer] = None
         
         # Background tasks
         self._background_tasks: List[asyncio.Task] = []
@@ -178,13 +187,31 @@ class TrackingManager:
                     psi_threshold=self.config.drift_psi_threshold
                 )
             
+            # Initialize model optimizer if enabled
+            if self.config.optimization_enabled:
+                optimization_config = OptimizationConfig(
+                    enabled=self.config.optimization_enabled,
+                    strategy=OptimizationStrategy(self.config.optimization_strategy),
+                    max_optimization_time_minutes=self.config.optimization_max_time_minutes,
+                    n_calls=self.config.optimization_n_calls,
+                    min_improvement_threshold=self.config.optimization_min_improvement
+                )
+                
+                self.model_optimizer = ModelOptimizer(
+                    config=optimization_config,
+                    accuracy_tracker=self.accuracy_tracker,
+                    drift_detector=self.drift_detector
+                )
+                logger.info(f"ModelOptimizer initialized with strategy: {self.config.optimization_strategy}")
+            
             # Initialize adaptive retrainer if enabled
             if self.config.adaptive_retraining_enabled:
                 self.adaptive_retrainer = AdaptiveRetrainer(
                     tracking_config=self.config,
                     model_registry=self.model_registry,
                     feature_engineering_engine=self.feature_engineering_engine,
-                    notification_callbacks=self.notification_callbacks
+                    notification_callbacks=self.notification_callbacks,
+                    model_optimizer=self.model_optimizer  # Pass optimizer to retrainer
                 )
                 await self.adaptive_retrainer.initialize()
             

@@ -24,6 +24,7 @@ from ..core.exceptions import OccupancyPredictionError, ErrorSeverity
 from ..core.constants import ModelType
 from .validator import PredictionValidator, AccuracyMetrics
 from .drift_detector import ConceptDriftDetector, DriftMetrics, DriftSeverity
+from .optimizer import ModelOptimizer, OptimizationConfig, OptimizationResult
 from ..models.base.predictor import PredictionResult, TrainingResult
 
 
@@ -170,7 +171,8 @@ class AdaptiveRetrainer:
         tracking_config,
         model_registry: Optional[Dict[str, Any]] = None,
         feature_engineering_engine=None,
-        notification_callbacks: Optional[List] = None
+        notification_callbacks: Optional[List] = None,
+        model_optimizer: Optional[ModelOptimizer] = None
     ):
         """
         Initialize the adaptive retrainer.
@@ -180,11 +182,13 @@ class AdaptiveRetrainer:
             model_registry: Registry of available models for retraining
             feature_engineering_engine: Engine for feature extraction
             notification_callbacks: Callbacks for retraining notifications
+            model_optimizer: ModelOptimizer for automatic hyperparameter optimization
         """
         self.config = tracking_config
         self.model_registry = model_registry or {}
         self.feature_engineering_engine = feature_engineering_engine
         self.notification_callbacks = notification_callbacks or []
+        self.model_optimizer = model_optimizer
         
         # Retraining queue and tracking
         self._retraining_queue: List[RetrainingRequest] = []
@@ -823,7 +827,7 @@ class AdaptiveRetrainer:
         val_features: Optional[pd.DataFrame],
         val_targets: Optional[pd.DataFrame]
     ) -> TrainingResult:
-        """Retrain the model based on strategy."""
+        """Retrain the model based on strategy with optional optimization."""
         logger.info(f"Retraining {request.model_type} for {request.room_id} using {request.strategy.value} strategy")
         
         # Get model from registry
@@ -833,17 +837,75 @@ class AdaptiveRetrainer:
         
         model = self.model_registry[model_key]
         
+        # Optimize model parameters if optimizer is available and strategy is FULL_RETRAIN
+        if (self.model_optimizer and 
+            request.strategy == RetrainingStrategy.FULL_RETRAIN and
+            hasattr(self.config, 'optimization_enabled') and 
+            getattr(self.config, 'optimization_enabled', True)):
+            
+            logger.info(f"Optimizing parameters for {request.model_type} before retraining")
+            
+            # Prepare performance context for optimization
+            performance_context = {
+                'accuracy_metrics': request.accuracy_metrics,
+                'drift_metrics': request.drift_metrics,
+                'trigger': request.trigger.value,
+                'performance_degradation': request.performance_degradation
+            }
+            
+            try:
+                # Run parameter optimization
+                optimization_result = await self.model_optimizer.optimize_model_parameters(
+                    model=model,
+                    model_type=request.model_type,
+                    room_id=request.room_id,
+                    X_train=features,
+                    y_train=targets,
+                    X_val=val_features,
+                    y_val=val_targets,
+                    performance_context=performance_context
+                )
+                
+                if optimization_result.success and optimization_result.improvement_over_default > 0.01:
+                    logger.info(
+                        f"Parameter optimization successful: "
+                        f"improvement={optimization_result.improvement_over_default:.3f}, "
+                        f"best_score={optimization_result.best_score:.3f}"
+                    )
+                    
+                    # Apply optimized parameters to model
+                    if optimization_result.best_parameters and hasattr(model, 'set_parameters'):
+                        model.set_parameters(optimization_result.best_parameters)
+                        logger.info(f"Applied optimized parameters: {optimization_result.best_parameters}")
+                else:
+                    logger.info("Parameter optimization did not improve performance significantly, using defaults")
+                
+            except Exception as e:
+                logger.warning(f"Parameter optimization failed, proceeding with default parameters: {e}")
+        
         # Apply retraining strategy
         if request.strategy == RetrainingStrategy.INCREMENTAL:
             return await self._incremental_retrain(model, features, targets)
         elif request.strategy == RetrainingStrategy.FULL_RETRAIN:
-            return await model.train(features, targets, val_features, val_targets)
+            return await self._full_retrain_with_optimization(model, features, targets, val_features, val_targets)
         elif request.strategy == RetrainingStrategy.FEATURE_REFRESH:
             return await self._feature_refresh_retrain(model, features, targets, val_features, val_targets)
         elif request.strategy == RetrainingStrategy.ENSEMBLE_REBALANCE:
             return await self._ensemble_rebalance(model, features, targets)
         else:
             raise RetrainingError(f"Unknown retraining strategy: {request.strategy}")
+    
+    async def _full_retrain_with_optimization(
+        self, 
+        model, 
+        features: pd.DataFrame, 
+        targets: pd.DataFrame,
+        val_features: Optional[pd.DataFrame],
+        val_targets: Optional[pd.DataFrame]
+    ) -> TrainingResult:
+        """Perform full retraining (potentially with pre-optimized parameters)."""
+        logger.info("Performing full retraining with optimized parameters")
+        return await model.train(features, targets, val_features, val_targets)
     
     async def _incremental_retrain(self, model, features: pd.DataFrame, targets: pd.DataFrame) -> TrainingResult:
         """Perform incremental retraining (online learning)."""
