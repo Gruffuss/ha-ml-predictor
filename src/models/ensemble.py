@@ -83,6 +83,10 @@ class OccupancyEnsemble(BasePredictor):
         
         # Accuracy tracking integration
         self.tracking_manager = tracking_manager
+        
+        # Register with tracking manager for adaptive retraining
+        if self.tracking_manager and self.room_id:
+            self.tracking_manager.register_model(self.room_id, self.model_type.value, self)
     
     async def train(
         self,
@@ -307,6 +311,131 @@ class OccupancyEnsemble(BasePredictor):
             }
         
         return combined_importance
+    
+    async def incremental_update(
+        self,
+        features: pd.DataFrame,
+        targets: pd.DataFrame,
+        learning_rate: float = 0.1
+    ) -> TrainingResult:
+        """
+        Perform incremental update of the ensemble model.
+        
+        This method provides online learning capabilities for adapting to new data
+        without full retraining. Suitable for adaptive retraining when accuracy
+        degradation is moderate.
+        
+        Args:
+            features: New training feature matrix
+            targets: New training target values
+            learning_rate: Learning rate for incremental updates
+            
+        Returns:
+            TrainingResult with incremental update statistics
+        """
+        start_time = datetime.utcnow()
+        
+        try:
+            logger.info(f"Starting incremental update for ensemble model {self.room_id}")
+            
+            if not self.is_trained:
+                logger.warning("Model not trained yet, performing full training instead")
+                return await self.train(features, targets)
+            
+            if len(features) < 10:
+                raise ModelTrainingError(
+                    f"Insufficient data for incremental update: only {len(features)} samples"
+                )
+            
+            # Update base models incrementally
+            base_update_results = {}
+            for model_name, model in self.base_models.items():
+                if model.is_trained and hasattr(model, 'incremental_update'):
+                    try:
+                        result = await model.incremental_update(features, targets, learning_rate)
+                        base_update_results[model_name] = result
+                        logger.debug(f"Incremental update completed for {model_name}")
+                    except Exception as e:
+                        logger.warning(f"Incremental update failed for {model_name}: {e}")
+                        # Continue with other models
+            
+            # Update ensemble weights based on new data
+            if self.meta_learner_trained:
+                # Re-calculate model weights with new data
+                y_true = self._prepare_targets(targets)
+                
+                # Create temporary meta-features for weight calculation
+                temp_meta_features = {}
+                for model_name, model in self.base_models.items():
+                    if model.is_trained:
+                        try:
+                            temp_predictions = await model.predict(features, datetime.utcnow(), 'unknown')
+                            temp_meta_features[model_name] = [
+                                (pred.predicted_time - datetime.utcnow()).total_seconds()
+                                for pred in temp_predictions
+                            ]
+                        except Exception as e:
+                            logger.warning(f"Failed to get predictions from {model_name}: {e}")
+                
+                if temp_meta_features:
+                    temp_meta_df = pd.DataFrame(temp_meta_features)
+                    self._calculate_model_weights(temp_meta_df, y_true)
+            
+            # Calculate performance on new data
+            ensemble_predictions = await self._predict_ensemble(features)
+            y_true = self._prepare_targets(targets)
+            
+            from sklearn.metrics import r2_score, mean_absolute_error
+            training_score = r2_score(y_true, ensemble_predictions)
+            training_mae = mean_absolute_error(y_true, ensemble_predictions)
+            
+            # Update model version for incremental update
+            import time
+            self.model_version = f"{self.model_version}_inc_{int(time.time())}"
+            
+            training_time = (datetime.utcnow() - start_time).total_seconds()
+            
+            result = TrainingResult(
+                success=True,
+                training_time_seconds=training_time,
+                model_version=self.model_version,
+                training_samples=len(features),
+                training_score=training_score,
+                training_metrics={
+                    'update_type': 'incremental',
+                    'incremental_mae': training_mae,
+                    'incremental_r2': training_score,
+                    'learning_rate': learning_rate,
+                    'base_models_updated': list(base_update_results.keys()),
+                    'ensemble_weights_updated': True,
+                    'model_weights': self.model_weights.copy()
+                }
+            )
+            
+            self.training_history.append(result)
+            
+            logger.info(
+                f"Incremental update completed in {training_time:.2f}s: "
+                f"R²={training_score:.4f}, MAE={training_mae:.2f}min"
+            )
+            
+            return result
+            
+        except Exception as e:
+            training_time = (datetime.utcnow() - start_time).total_seconds()
+            error_msg = f"Incremental update failed: {str(e)}"
+            logger.error(error_msg)
+            
+            result = TrainingResult(
+                success=False,
+                training_time_seconds=training_time,
+                model_version=self.model_version,
+                training_samples=0,
+                error_message=error_msg
+            )
+            
+            self.training_history.append(result)
+            raise ModelTrainingError(error_msg)
     
     async def _train_base_models_cv(
         self, 
@@ -614,6 +743,8 @@ class OccupancyEnsemble(BasePredictor):
             
             # Record prediction for accuracy tracking if tracking manager is available
             if self.tracking_manager:
+                # Add room_id to prediction metadata for tracking
+                result.prediction_metadata['room_id'] = self.room_id
                 await self.tracking_manager.record_prediction(result)
         
         return ensemble_results

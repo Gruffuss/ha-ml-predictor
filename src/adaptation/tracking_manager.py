@@ -18,6 +18,7 @@ from ..core.constants import ModelType
 from .validator import PredictionValidator
 from .tracker import AccuracyTracker, AccuracyAlert, RealTimeMetrics
 from .drift_detector import ConceptDriftDetector, DriftMetrics, DriftSeverity
+from .retrainer import AdaptiveRetrainer, RetrainingRequest, RetrainingTrigger, RetrainingStatus
 from ..models.base.predictor import PredictionResult
 from ..data.storage.models import SensorEvent, RoomState
 
@@ -47,6 +48,19 @@ class TrackingConfig:
     drift_psi_threshold: float = 0.25
     drift_ph_threshold: float = 50.0
     
+    # Adaptive retraining configuration
+    adaptive_retraining_enabled: bool = True
+    retraining_accuracy_threshold: float = 60.0  # Minimum accuracy % before retraining
+    retraining_error_threshold: float = 25.0     # Maximum error minutes before retraining
+    retraining_drift_threshold: float = 0.3      # Drift score threshold for retraining
+    retraining_check_interval_hours: int = 6     # How often to check for retraining needs
+    incremental_retraining_threshold: float = 70.0  # Use incremental if accuracy above this
+    max_concurrent_retrains: int = 2             # Maximum models retraining simultaneously
+    retraining_cooldown_hours: int = 12          # Minimum time between retrains for same model
+    auto_feature_refresh: bool = True            # Automatically refresh features for retraining
+    retraining_validation_split: float = 0.2    # Validation split for retraining
+    retraining_lookback_days: int = 14           # Days of data to use for retraining
+    
     def __post_init__(self):
         """Set default alert thresholds if not provided."""
         if self.alert_thresholds is None:
@@ -57,7 +71,11 @@ class TrackingConfig:
                 'error_critical': 30.0,
                 'trend_degrading': -5.0,
                 'validation_lag_warning': 15.0,
-                'validation_lag_critical': 30.0
+                'validation_lag_critical': 30.0,
+                'retraining_needed': 60.0,
+                'retraining_urgent': 50.0,
+                'drift_retraining': 0.3,
+                'retraining_failure': 0.0
             }
 
 
@@ -80,6 +98,8 @@ class TrackingManager:
         self,
         config: TrackingConfig,
         database_manager=None,
+        model_registry: Optional[Dict[str, Any]] = None,
+        feature_engineering_engine=None,
         notification_callbacks: Optional[List[Callable]] = None
     ):
         """
@@ -88,16 +108,21 @@ class TrackingManager:
         Args:
             config: Tracking configuration
             database_manager: Database manager for accessing room states
+            model_registry: Registry of available models for retraining
+            feature_engineering_engine: Engine for feature extraction
             notification_callbacks: List of notification callbacks for alerts
         """
         self.config = config
         self.database_manager = database_manager
+        self.model_registry = model_registry or {}
+        self.feature_engineering_engine = feature_engineering_engine
         self.notification_callbacks = notification_callbacks or []
         
         # Initialize core tracking components
         self.validator: Optional[PredictionValidator] = None
         self.accuracy_tracker: Optional[AccuracyTracker] = None
         self.drift_detector: Optional[ConceptDriftDetector] = None
+        self.adaptive_retrainer: Optional[AdaptiveRetrainer] = None
         
         # Background tasks
         self._background_tasks: List[asyncio.Task] = []
@@ -152,6 +177,16 @@ class TrackingManager:
                     ph_threshold=self.config.drift_ph_threshold,
                     psi_threshold=self.config.drift_psi_threshold
                 )
+            
+            # Initialize adaptive retrainer if enabled
+            if self.config.adaptive_retraining_enabled:
+                self.adaptive_retrainer = AdaptiveRetrainer(
+                    tracking_config=self.config,
+                    model_registry=self.model_registry,
+                    feature_engineering_engine=self.feature_engineering_engine,
+                    notification_callbacks=self.notification_callbacks
+                )
+                await self.adaptive_retrainer.initialize()
             
             # Start tracking systems
             await self.start_tracking()
@@ -209,6 +244,10 @@ class TrackingManager:
             # Stop accuracy tracker
             if self.accuracy_tracker:
                 await self.accuracy_tracker.stop_monitoring()
+            
+            # Stop adaptive retrainer
+            if self.adaptive_retrainer:
+                await self.adaptive_retrainer.shutdown()
             
             # Wait for background tasks to complete
             if self._background_tasks:
@@ -312,6 +351,10 @@ class TrackingManager:
                 f"{previous_state} -> {new_state} at {change_time}"
             )
             
+            # Check if retraining is needed based on recent accuracy
+            if self.adaptive_retrainer and self.validator:
+                await self._evaluate_accuracy_based_retraining(room_id)
+            
         except Exception as e:
             logger.error(f"Failed to handle room state change: {e}")
             # Don't raise exception to prevent disrupting event processing
@@ -361,6 +404,10 @@ class TrackingManager:
                     'total_checks_performed': self._total_drift_checks_performed,
                     'last_check_time': self._last_drift_check_time.isoformat() if self._last_drift_check_time else None
                 }
+            
+            # Add adaptive retrainer status
+            if self.adaptive_retrainer:
+                status['adaptive_retrainer'] = self.adaptive_retrainer.get_retrainer_stats()
             
             # Add pending predictions cache status
             with self._prediction_cache_lock:
@@ -474,8 +521,12 @@ class TrackingManager:
             
             self._total_drift_checks_performed += 1
             
-            # Handle drift detection results
+            # Handle drift detection results and check for retraining needs
             await self._handle_drift_detection_results(room_id, drift_metrics)
+            
+            # Evaluate retraining need based on drift results
+            if self.adaptive_retrainer and drift_metrics:
+                await self._evaluate_drift_based_retraining(room_id, drift_metrics)
             
             logger.info(
                 f"Drift detection completed for {room_id}: "
@@ -799,6 +850,189 @@ class TrackingManager:
             
         except Exception as e:
             logger.error(f"Error handling drift detection results for {room_id}: {e}")
+    
+    async def _evaluate_accuracy_based_retraining(self, room_id: str) -> None:
+        """Evaluate if retraining is needed based on accuracy metrics."""
+        try:
+            if not self.adaptive_retrainer or not self.validator:
+                return
+            
+            # Get recent accuracy metrics for this room
+            accuracy_metrics = await self.validator.get_room_accuracy(room_id, hours_back=24)
+            
+            if accuracy_metrics.total_predictions < 10:
+                # Need more data before evaluating retraining
+                return
+            
+            # Check all model types in the registry for this room
+            models_to_evaluate = [
+                model_key for model_key in self.model_registry.keys()
+                if model_key.startswith(f"{room_id}_")
+            ]
+            
+            for model_key in models_to_evaluate:
+                model_type = model_key.replace(f"{room_id}_", "")
+                
+                # Evaluate retraining need
+                retraining_request = await self.adaptive_retrainer.evaluate_retraining_need(
+                    room_id=room_id,
+                    model_type=model_type,
+                    accuracy_metrics=accuracy_metrics
+                )
+                
+                if retraining_request:
+                    logger.info(
+                        f"Accuracy-based retraining needed for {model_key}: "
+                        f"accuracy={accuracy_metrics.accuracy_rate:.1f}%, "
+                        f"error={accuracy_metrics.mean_error_minutes:.1f}min"
+                    )
+            
+        except Exception as e:
+            logger.error(f"Error evaluating accuracy-based retraining for {room_id}: {e}")
+    
+    async def _evaluate_drift_based_retraining(self, room_id: str, drift_metrics: DriftMetrics) -> None:
+        """Evaluate if retraining is needed based on drift detection results."""
+        try:
+            if not self.adaptive_retrainer or not self.validator:
+                return
+            
+            # Get recent accuracy metrics for context
+            accuracy_metrics = await self.validator.get_room_accuracy(room_id, hours_back=24)
+            
+            # Check all model types in the registry for this room
+            models_to_evaluate = [
+                model_key for model_key in self.model_registry.keys()
+                if model_key.startswith(f"{room_id}_")
+            ]
+            
+            for model_key in models_to_evaluate:
+                model_type = model_key.replace(f"{room_id}_", "")
+                
+                # Evaluate retraining need with drift context
+                retraining_request = await self.adaptive_retrainer.evaluate_retraining_need(
+                    room_id=room_id,
+                    model_type=model_type,
+                    accuracy_metrics=accuracy_metrics,
+                    drift_metrics=drift_metrics
+                )
+                
+                if retraining_request:
+                    logger.info(
+                        f"Drift-based retraining needed for {model_key}: "
+                        f"drift_score={drift_metrics.overall_drift_score:.3f}, "
+                        f"severity={drift_metrics.drift_severity.value}"
+                    )
+            
+        except Exception as e:
+            logger.error(f"Error evaluating drift-based retraining for {room_id}: {e}")
+    
+    async def request_manual_retraining(
+        self,
+        room_id: str,
+        model_type: str,
+        strategy: Optional[str] = None,
+        priority: float = 5.0
+    ) -> Optional[str]:
+        """
+        Request manual retraining for a specific model.
+        
+        Args:
+            room_id: Room to retrain model for
+            model_type: Type of model to retrain
+            strategy: Retraining strategy (optional)
+            priority: Request priority (0-10, higher = more urgent)
+            
+        Returns:
+            Request ID if successful, None otherwise
+        """
+        try:
+            if not self.adaptive_retrainer:
+                logger.error("Adaptive retrainer not available for manual request")
+                return None
+            
+            # Convert strategy string to enum if provided
+            retraining_strategy = None
+            if strategy:
+                from .retrainer import RetrainingStrategy
+                try:
+                    retraining_strategy = RetrainingStrategy(strategy.lower())
+                except ValueError:
+                    logger.warning(f"Unknown retraining strategy: {strategy}, using default")
+            
+            # Request retraining
+            request_id = await self.adaptive_retrainer.request_retraining(
+                room_id=room_id,
+                model_type=model_type,
+                trigger=RetrainingTrigger.MANUAL_REQUEST,
+                strategy=retraining_strategy,
+                priority=priority
+            )
+            
+            logger.info(f"Manual retraining requested: {request_id}")
+            return request_id
+            
+        except Exception as e:
+            logger.error(f"Failed to request manual retraining: {e}")
+            return None
+    
+    async def get_retraining_status(self, request_id: Optional[str] = None) -> Union[Dict[str, Any], List[Dict[str, Any]], None]:
+        """Get status of retraining operations."""
+        try:
+            if not self.adaptive_retrainer:
+                return None
+            
+            return await self.adaptive_retrainer.get_retraining_status(request_id)
+            
+        except Exception as e:
+            logger.error(f"Failed to get retraining status: {e}")
+            return None
+    
+    async def cancel_retraining(self, request_id: str) -> bool:
+        """Cancel a retraining request."""
+        try:
+            if not self.adaptive_retrainer:
+                return False
+            
+            return await self.adaptive_retrainer.cancel_retraining(request_id)
+            
+        except Exception as e:
+            logger.error(f"Failed to cancel retraining: {e}")
+            return False
+    
+    def register_model(self, room_id: str, model_type: str, model_instance) -> None:
+        """
+        Register a model instance for adaptive retraining.
+        
+        Args:
+            room_id: Room the model is for
+            model_type: Type of model
+            model_instance: The actual model instance
+        """
+        try:
+            model_key = f"{room_id}_{model_type}"
+            self.model_registry[model_key] = model_instance
+            
+            logger.info(f"Registered model for adaptive retraining: {model_key}")
+            
+        except Exception as e:
+            logger.error(f"Failed to register model {room_id}_{model_type}: {e}")
+    
+    def unregister_model(self, room_id: str, model_type: str) -> None:
+        """
+        Unregister a model from adaptive retraining.
+        
+        Args:
+            room_id: Room the model is for
+            model_type: Type of model
+        """
+        try:
+            model_key = f"{room_id}_{model_type}"
+            if model_key in self.model_registry:
+                del self.model_registry[model_key]
+                logger.info(f"Unregistered model from adaptive retraining: {model_key}")
+            
+        except Exception as e:
+            logger.error(f"Failed to unregister model {room_id}_{model_type}: {e}")
 
 
 class TrackingManagerError(OccupancyPredictionError):
