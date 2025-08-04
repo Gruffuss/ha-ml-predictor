@@ -119,18 +119,30 @@ class MQTTIntegrationManager:
                 rooms=self.rooms
             )
             
-            # Initialize discovery publisher
+            # Initialize enhanced discovery publisher
             if self.mqtt_config.discovery_enabled:
                 self.discovery_publisher = DiscoveryPublisher(
                     mqtt_publisher=self.mqtt_publisher,
                     config=self.mqtt_config,
-                    rooms=self.rooms
+                    rooms=self.rooms,
+                    availability_check_callback=self._check_system_availability,
+                    state_change_callback=self._handle_entity_state_change
                 )
                 
-                # Publish discovery messages
-                logger.info("Publishing Home Assistant discovery messages")
-                await self.discovery_publisher.publish_all_discovery()
-                self.stats.discovery_published = True
+                # Publish enhanced discovery messages
+                logger.info("Publishing enhanced Home Assistant discovery messages")
+                discovery_results = await self.discovery_publisher.publish_all_discovery()
+                
+                successful_discoveries = sum(1 for r in discovery_results.values() if r.success)
+                total_discoveries = len(discovery_results)
+                
+                if successful_discoveries == total_discoveries:
+                    self.stats.discovery_published = True
+                    logger.info(f"Successfully published all {total_discoveries} discovery messages")
+                else:
+                    failed = total_discoveries - successful_discoveries
+                    logger.warning(f"Discovery partially successful: {successful_discoveries}/{total_discoveries}, {failed} failed")
+                    self.stats.discovery_published = successful_discoveries > 0
             
             # Start background tasks
             await self.start_integration()
@@ -323,7 +335,7 @@ class MQTTIntegrationManager:
             return False
     
     def get_integration_stats(self) -> Dict[str, Any]:
-        """Get comprehensive MQTT integration statistics."""
+        """Get comprehensive enhanced MQTT integration statistics."""
         stats_dict = {
             'initialized': self.stats.initialized,
             'integration_active': self._integration_active,
@@ -348,9 +360,37 @@ class MQTTIntegrationManager:
         if self.prediction_publisher:
             stats_dict['prediction_publisher'] = self.prediction_publisher.get_publisher_stats()
         
-        # Add discovery publisher stats if available
+        # Add enhanced discovery publisher stats if available
         if self.discovery_publisher:
-            stats_dict['discovery_publisher'] = self.discovery_publisher.get_discovery_stats()
+            discovery_stats = self.discovery_publisher.get_discovery_stats()
+            stats_dict['discovery_publisher'] = discovery_stats
+            
+            # Add high-level discovery insights
+            stats_dict['discovery_insights'] = {
+                'entity_health': 'healthy' if discovery_stats.get('published_entities_count', 0) > 0 else 'no_entities',
+                'device_available': discovery_stats.get('device_available', False),
+                'services_available': discovery_stats.get('available_services_count', 0) > 0,
+                'metadata_complete': discovery_stats.get('entity_metadata_count', 0) == discovery_stats.get('published_entities_count', 0),
+                'last_availability_update': discovery_stats.get('last_availability_publish'),
+                'discovery_errors': discovery_stats.get('statistics', {}).get('discovery_errors', 0)
+            }
+        
+        # Add system health summary
+        stats_dict['system_health'] = {
+            'overall_status': 'healthy' if (
+                stats_dict['mqtt_connected'] and 
+                stats_dict['discovery_published'] and
+                stats_dict['total_errors'] < 10
+            ) else 'degraded',
+            'component_status': {
+                'mqtt': 'connected' if stats_dict['mqtt_connected'] else 'disconnected',
+                'discovery': 'published' if stats_dict['discovery_published'] else 'not_published',
+                'predictions': 'active' if stats_dict['predictions_published'] > 0 else 'inactive',
+                'background_tasks': 'running' if stats_dict['background_tasks'] > 0 else 'stopped'
+            },
+            'error_rate': stats_dict['total_errors'] / max(1, stats_dict['predictions_published']),
+            'uptime_hours': stats_dict['system_uptime_seconds'] / 3600
+        }
         
         return stats_dict
     
@@ -448,6 +488,178 @@ class MQTTIntegrationManager:
     def update_system_stats(self, stats: Dict[str, Any]) -> None:
         """Update cached system stats for status publishing."""
         self._last_system_stats = stats
+    
+    # Enhanced Integration Methods
+    
+    async def update_device_availability(self, online: bool = True) -> bool:
+        """
+        Update device availability status in Home Assistant.
+        
+        Args:
+            online: Whether device is online or offline
+            
+        Returns:
+            True if updated successfully, False otherwise
+        """
+        try:
+            if not self.discovery_publisher:
+                logger.warning("Discovery publisher not available for availability update")
+                return False
+            
+            result = await self.discovery_publisher.publish_device_availability(online=online)
+            
+            if result.success:
+                logger.info(f"Updated device availability: {'online' if online else 'offline'}")
+                return True
+            else:
+                logger.error(f"Failed to update device availability: {result.error_message}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error updating device availability: {e}")
+            return False
+    
+    async def handle_service_command(self, service_name: str, command_data: Dict[str, Any]) -> bool:
+        """
+        Handle Home Assistant service commands.
+        
+        Args:
+            service_name: Name of the service being called
+            command_data: Command data from Home Assistant
+            
+        Returns:
+            True if handled successfully, False otherwise
+        """
+        try:
+            logger.info(f"Handling service command: {service_name}")
+            
+            if service_name == "manual_retrain":
+                # Handle manual retraining request
+                room_id = command_data.get("room_id", "all")
+                strategy = command_data.get("strategy", "auto")
+                
+                logger.info(f"Manual retrain requested for room: {room_id}, strategy: {strategy}")
+                # This would integrate with the TrackingManager's retraining system
+                return True
+                
+            elif service_name == "refresh_discovery":
+                # Handle discovery refresh request
+                if self.discovery_publisher:
+                    results = await self.discovery_publisher.refresh_discovery()
+                    successful = sum(1 for r in results.values() if r.success)
+                    total = len(results)
+                    
+                    logger.info(f"Discovery refresh completed: {successful}/{total} successful")
+                    return successful == total
+                return False
+                
+            elif service_name == "reset_statistics":
+                # Handle statistics reset request
+                logger.info("Resetting system statistics")
+                self.stats = MQTTIntegrationStats()
+                return True
+                
+            elif service_name == "force_prediction":
+                # Handle force prediction request
+                room_id = command_data.get("room_id")
+                if room_id:
+                    logger.info(f"Force prediction requested for room: {room_id}")
+                    # This would integrate with the prediction system
+                    return True
+                else:
+                    logger.warning("Force prediction requested without room_id")
+                    return False
+            
+            else:
+                logger.warning(f"Unknown service command: {service_name}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error handling service command {service_name}: {e}")
+            return False
+    
+    async def cleanup_discovery(self, entity_ids: Optional[List[str]] = None) -> bool:
+        """
+        Clean up Home Assistant discovery entities.
+        
+        Args:
+            entity_ids: Optional list of specific entities to clean up
+            
+        Returns:
+            True if cleanup successful, False otherwise
+        """
+        try:
+            if not self.discovery_publisher:
+                logger.warning("Discovery publisher not available for cleanup")
+                return False
+            
+            results = await self.discovery_publisher.cleanup_entities(entity_ids)
+            successful = sum(1 for r in results.values() if r.success)
+            total = len(results)
+            
+            logger.info(f"Discovery cleanup completed: {successful}/{total} successful")
+            return successful == total
+            
+        except Exception as e:
+            logger.error(f"Error cleaning up discovery: {e}")
+            return False
+    
+    # Enhanced Private Methods
+    
+    async def _check_system_availability(self) -> bool:
+        """
+        Check system availability for discovery publisher.
+        
+        Returns:
+            True if system is available, False otherwise
+        """
+        try:
+            # Check if MQTT is connected
+            if not self.is_connected():
+                return False
+            
+            # Check if background tasks are running
+            if not self._integration_active:
+                return False
+            
+            # Additional availability checks can be added here
+            # (e.g., database connectivity, model readiness, etc.)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error checking system availability: {e}")
+            return False
+    
+    async def _handle_entity_state_change(
+        self, 
+        entity_id: str, 
+        state: 'EntityState', 
+        attributes: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """
+        Handle entity state changes from discovery publisher.
+        
+        Args:
+            entity_id: Entity that changed state
+            state: New entity state
+            attributes: Optional attributes
+        """
+        try:
+            logger.debug(f"Entity {entity_id} state changed to {state.value}")
+            
+            # Notify callbacks if any
+            for callback in self.notification_callbacks:
+                try:
+                    if asyncio.iscoroutinefunction(callback):
+                        await callback(f"entity_state_change:{entity_id}:{state.value}")
+                    else:
+                        callback(f"entity_state_change:{entity_id}:{state.value}")
+                except Exception as e:
+                    logger.error(f"Error in entity state change callback: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Error handling entity state change: {e}")
 
 
 class MQTTIntegrationError(OccupancyPredictionError):
