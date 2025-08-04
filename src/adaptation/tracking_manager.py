@@ -108,7 +108,8 @@ class TrackingManager:
         database_manager=None,
         model_registry: Optional[Dict[str, Any]] = None,
         feature_engineering_engine=None,
-        notification_callbacks: Optional[List[Callable]] = None
+        notification_callbacks: Optional[List[Callable]] = None,
+        mqtt_integration_manager=None
     ):
         """
         Initialize the tracking manager.
@@ -119,12 +120,16 @@ class TrackingManager:
             model_registry: Registry of available models for retraining
             feature_engineering_engine: Engine for feature extraction
             notification_callbacks: List of notification callbacks for alerts
+            mqtt_integration_manager: MQTT integration manager for automatic publishing
         """
         self.config = config
         self.database_manager = database_manager
         self.model_registry = model_registry or {}
         self.feature_engineering_engine = feature_engineering_engine
         self.notification_callbacks = notification_callbacks or []
+        
+        # MQTT integration for automatic Home Assistant publishing
+        self.mqtt_integration_manager = mqtt_integration_manager
         
         # Initialize core tracking components
         self.validator: Optional[PredictionValidator] = None
@@ -293,7 +298,7 @@ class TrackingManager:
         Record a prediction for tracking and future validation.
         
         This method is called automatically by ensemble models when
-        they generate predictions.
+        they generate predictions. Also automatically publishes to Home Assistant via MQTT.
         
         Args:
             prediction_result: The prediction result to record
@@ -327,6 +332,19 @@ class TrackingManager:
                 ]
             
             self._total_predictions_recorded += 1
+            
+            # Automatically publish prediction to Home Assistant via MQTT
+            if self.mqtt_integration_manager:
+                try:
+                    await self.mqtt_integration_manager.publish_prediction(
+                        prediction_result=prediction_result,
+                        room_id=room_id,
+                        current_state=None  # Could be determined from room state if available
+                    )
+                    logger.debug(f"Published prediction to Home Assistant for room {room_id}")
+                except Exception as mqtt_error:
+                    logger.warning(f"Failed to publish prediction to MQTT for room {room_id}: {mqtt_error}")
+                    # Don't raise exception - MQTT publishing is optional
             
             logger.debug(
                 f"Recorded prediction for room {room_id}: "

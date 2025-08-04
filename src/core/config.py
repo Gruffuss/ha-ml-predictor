@@ -35,6 +35,30 @@ class MQTTConfig:
     username: str = ""
     password: str = ""
     topic_prefix: str = "occupancy/predictions"
+    
+    # Home Assistant MQTT Discovery
+    discovery_enabled: bool = True
+    discovery_prefix: str = "homeassistant"
+    device_name: str = "Occupancy Predictor"
+    device_identifier: str = "ha_ml_predictor"
+    device_manufacturer: str = "HA ML Predictor"
+    device_model: str = "Smart Room Occupancy Predictor"
+    device_sw_version: str = "1.0.0"
+    
+    # Publishing configuration
+    publishing_enabled: bool = True
+    publish_system_status: bool = True
+    status_update_interval_seconds: int = 300  # 5 minutes
+    prediction_qos: int = 1  # QoS level for prediction messages
+    system_qos: int = 0      # QoS level for system status
+    retain_predictions: bool = True  # Retain prediction messages
+    retain_system_status: bool = True  # Retain system status
+    
+    # Connection settings
+    keepalive: int = 60
+    connection_timeout: int = 30
+    reconnect_delay_seconds: int = 5
+    max_reconnect_attempts: int = -1  # Infinite retries
 
 
 @dataclass
