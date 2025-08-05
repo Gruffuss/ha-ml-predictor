@@ -1,10 +1,20 @@
 """
-System Integration Example - Demonstrates MQTT Publisher Infrastructure.
+DEPRECATED: System Integration Example - MQTT Publisher Infrastructure.
 
-This example shows how the MQTT publishing infrastructure integrates seamlessly
-with the existing system for automatic Home Assistant integration.
+⚠️ This file is now DEPRECATED. MQTT publishing is now fully integrated
+into TrackingManager and uses Enhanced MQTT Manager by default.
 
-This is a demonstration of the complete Sprint 5 Task 1 implementation.
+✅ USE INSTEAD: src/main_system.py - Complete integrated system
+✅ AUTOMATIC OPERATION: Enhanced MQTT Manager starts automatically with TrackingManager
+✅ NO MANUAL SETUP: Multi-channel publishing (MQTT, WebSocket, SSE) seamless
+
+INTEGRATION STATUS:
+- MQTT Publishing: ✅ Enhanced MQTT Manager integrated by default in TrackingManager
+- Home Assistant Discovery: ✅ Automatic MQTT discovery configuration
+- Multi-channel Broadcasting: ✅ MQTT + WebSocket + SSE automatically
+- Prediction Publishing: ✅ Automatic when predictions are recorded
+
+This file remains for reference only.
 """
 
 import asyncio

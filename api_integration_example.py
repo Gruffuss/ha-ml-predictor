@@ -1,8 +1,14 @@
 """
-Example integration of REST API Server with TrackingManager.
+DEPRECATED: Example integration of REST API Server with TrackingManager.
 
-This demonstrates how the API server automatically starts as part of 
-the main system workflow without requiring manual setup.
+⚠️ This file is now DEPRECATED. The API server is now fully integrated
+into the main system and starts automatically.
+
+✅ USE INSTEAD: src/main_system.py - Complete integrated system
+✅ AUTOMATIC STARTUP: API server starts automatically with TrackingManager
+✅ NO MANUAL SETUP: All components integrated seamlessly
+
+This file remains for reference only.
 """
 
 import asyncio

@@ -22,6 +22,19 @@ from .retrainer import AdaptiveRetrainer, RetrainingRequest, RetrainingTrigger, 
 from .optimizer import ModelOptimizer, OptimizationConfig, OptimizationStrategy, OptimizationObjective
 from ..models.base.predictor import PredictionResult
 from ..data.storage.models import SensorEvent, RoomState
+from ..integration.realtime_publisher import RealtimePublishingSystem, PublishingChannel
+from ..integration.enhanced_mqtt_manager import EnhancedMQTTIntegrationManager
+
+# Import dashboard components with graceful fallback
+try:
+    from ..integration.dashboard import PerformanceDashboard, DashboardConfig, DashboardMode
+    DASHBOARD_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Dashboard components not available: {e}")
+    DASHBOARD_AVAILABLE = False
+    PerformanceDashboard = None
+    DashboardConfig = None
+    DashboardMode = None
 
 
 logger = logging.getLogger(__name__)
@@ -38,6 +51,31 @@ class TrackingConfig:
     max_stored_alerts: int = 1000
     trend_analysis_points: int = 10
     cleanup_interval_hours: int = 24
+    
+    # Real-time publishing configuration
+    realtime_publishing_enabled: bool = True
+    websocket_enabled: bool = True
+    sse_enabled: bool = True
+    websocket_port: int = 8765
+    realtime_system_status_interval_seconds: int = 30
+    realtime_broadcast_alerts: bool = True
+    realtime_broadcast_drift_events: bool = True
+    realtime_max_connections: int = 100
+    
+    # Performance Dashboard configuration
+    dashboard_enabled: bool = True
+    dashboard_host: str = "0.0.0.0"
+    dashboard_port: int = 8888
+    dashboard_debug: bool = False
+    dashboard_websocket_enabled: bool = True
+    dashboard_update_interval_seconds: int = 5
+    dashboard_max_websocket_connections: int = 50
+    dashboard_cache_ttl_seconds: int = 30
+    dashboard_metrics_retention_hours: int = 72
+    dashboard_enable_retraining_controls: bool = True
+    dashboard_enable_alert_management: bool = True
+    dashboard_enable_historical_charts: bool = True
+    dashboard_enable_drift_visualization: bool = True
     
     # Drift detection configuration
     drift_detection_enabled: bool = True
@@ -109,7 +147,8 @@ class TrackingManager:
         model_registry: Optional[Dict[str, Any]] = None,
         feature_engineering_engine=None,
         notification_callbacks: Optional[List[Callable]] = None,
-        mqtt_integration_manager=None
+        mqtt_integration_manager=None,
+        api_config=None
     ):
         """
         Initialize the tracking manager.
@@ -121,6 +160,7 @@ class TrackingManager:
             feature_engineering_engine: Engine for feature extraction
             notification_callbacks: List of notification callbacks for alerts
             mqtt_integration_manager: MQTT integration manager for automatic publishing
+            api_config: API configuration for automatic server integration
         """
         self.config = config
         self.database_manager = database_manager
@@ -128,8 +168,24 @@ class TrackingManager:
         self.feature_engineering_engine = feature_engineering_engine
         self.notification_callbacks = notification_callbacks or []
         
-        # MQTT integration for automatic Home Assistant publishing
-        self.mqtt_integration_manager = mqtt_integration_manager
+        # Enhanced MQTT integration for automatic Home Assistant publishing with real-time features
+        # Use Enhanced MQTT Manager by default, fall back to basic if provided explicitly
+        if mqtt_integration_manager is None:
+            # Initialize Enhanced MQTT Manager automatically with default configuration
+            from ..core.config import get_config
+            system_config = get_config()
+            self.mqtt_integration_manager = EnhancedMQTTIntegrationManager(
+                mqtt_config=system_config.mqtt,
+                rooms=system_config.rooms,
+                notification_callbacks=notification_callbacks
+            )
+        else:
+            # Use the provided integration manager (backward compatibility)
+            self.mqtt_integration_manager = mqtt_integration_manager
+        
+        # API server integration for automatic REST API
+        self.api_config = api_config
+        self.api_server = None
         
         # Initialize core tracking components
         self.validator: Optional[PredictionValidator] = None
@@ -137,6 +193,12 @@ class TrackingManager:
         self.drift_detector: Optional[ConceptDriftDetector] = None
         self.adaptive_retrainer: Optional[AdaptiveRetrainer] = None
         self.model_optimizer: Optional[ModelOptimizer] = None
+        
+        # Real-time publishing system
+        self.realtime_publisher: Optional[RealtimePublishingSystem] = None
+        
+        # Performance Dashboard
+        self.dashboard: Optional[PerformanceDashboard] = None
         
         # Background tasks
         self._background_tasks: List[asyncio.Task] = []
@@ -220,8 +282,22 @@ class TrackingManager:
                 )
                 await self.adaptive_retrainer.initialize()
             
+            # Initialize Enhanced MQTT integration if available
+            if self.mqtt_integration_manager and hasattr(self.mqtt_integration_manager, 'initialize'):
+                await self.mqtt_integration_manager.initialize()
+                logger.info("Enhanced MQTT integration initialized successfully")
+            
             # Start tracking systems
             await self.start_tracking()
+            
+            # Initialize and start real-time publishing system if enabled
+            await self._initialize_realtime_publishing()
+            
+            # Initialize and start performance dashboard if enabled
+            await self._initialize_dashboard()
+            
+            # Start API server automatically if enabled
+            await self._start_api_server_if_enabled()
             
             logger.info("TrackingManager initialized successfully")
             
@@ -281,6 +357,20 @@ class TrackingManager:
             if self.adaptive_retrainer:
                 await self.adaptive_retrainer.shutdown()
             
+            # Stop Enhanced MQTT integration if available
+            if self.mqtt_integration_manager and hasattr(self.mqtt_integration_manager, 'shutdown'):
+                await self.mqtt_integration_manager.shutdown()
+                logger.info("Enhanced MQTT integration shutdown complete")
+            
+            # Stop API server if running
+            await self.stop_api_server()
+            
+            # Stop performance dashboard if running
+            await self._shutdown_dashboard()
+            
+            # Stop real-time publishing system
+            await self._shutdown_realtime_publishing()
+            
             # Wait for background tasks to complete
             if self._background_tasks:
                 await asyncio.gather(*self._background_tasks, return_exceptions=True)
@@ -333,18 +423,47 @@ class TrackingManager:
             
             self._total_predictions_recorded += 1
             
-            # Automatically publish prediction to Home Assistant via MQTT
+            # Automatically publish prediction to Home Assistant via Enhanced MQTT (includes real-time broadcasting)
             if self.mqtt_integration_manager:
                 try:
-                    await self.mqtt_integration_manager.publish_prediction(
+                    publish_results = await self.mqtt_integration_manager.publish_prediction(
                         prediction_result=prediction_result,
                         room_id=room_id,
                         current_state=None  # Could be determined from room state if available
                     )
-                    logger.debug(f"Published prediction to Home Assistant for room {room_id}")
+                    
+                    # Log enhanced publishing results
+                    if isinstance(publish_results, dict):
+                        successful_channels = []
+                        if publish_results.get('mqtt', {}).get('success', False):
+                            successful_channels.append("MQTT")
+                        if publish_results.get('websocket', {}).get('success', False):
+                            ws_clients = publish_results['websocket'].get('clients_notified', 0)
+                            successful_channels.append(f"WebSocket({ws_clients} clients)")
+                        if publish_results.get('sse', {}).get('success', False):
+                            sse_clients = publish_results['sse'].get('clients_notified', 0)
+                            successful_channels.append(f"SSE({sse_clients} clients)")
+                        
+                        if successful_channels:
+                            logger.debug(f"Published prediction for room {room_id} via Enhanced MQTT: {', '.join(successful_channels)}")
+                    else:
+                        logger.debug(f"Published prediction to Home Assistant for room {room_id}")
                 except Exception as mqtt_error:
-                    logger.warning(f"Failed to publish prediction to MQTT for room {room_id}: {mqtt_error}")
+                    logger.warning(f"Failed to publish prediction via Enhanced MQTT for room {room_id}: {mqtt_error}")
                     # Don't raise exception - MQTT publishing is optional
+            
+            # Note: Real-time broadcasting is now handled by Enhanced MQTT Manager automatically
+            # No need for separate real-time publisher when using Enhanced MQTT Manager
+            
+            # Automatically notify dashboard via WebSocket if enabled
+            if self.dashboard and self.config.dashboard_enabled:
+                try:
+                    # Dashboard will automatically receive the prediction data through its integration
+                    # with the tracking manager via real-time updates
+                    logger.debug(f"Dashboard integration active for prediction in room {room_id}")
+                except Exception as dashboard_error:
+                    logger.warning(f"Dashboard integration error for room {room_id}: {dashboard_error}")
+                    # Don't raise exception - dashboard integration is optional
             
             logger.debug(
                 f"Recorded prediction for room {room_id}: "
@@ -460,6 +579,12 @@ class TrackingManager:
                 for room_id, predictions in self._pending_predictions.items():
                     cache_status[room_id] = len(predictions)
                 status['prediction_cache'] = cache_status
+            
+            # Add Enhanced MQTT integration status (includes real-time publishing)
+            status['enhanced_mqtt_integration'] = self.get_enhanced_mqtt_status()
+            
+            # Add real-time publishing status (for backward compatibility)
+            status['realtime_publishing'] = self.get_realtime_publishing_status()
             
             return status
             
@@ -971,6 +1096,63 @@ class TrackingManager:
         except Exception as e:
             logger.error(f"Error evaluating drift-based retraining for {room_id}: {e}")
     
+    async def _initialize_realtime_publishing(self) -> None:
+        """Initialize and start the real-time publishing system."""
+        try:
+            if not self.config.realtime_publishing_enabled:
+                logger.debug("Real-time publishing disabled in configuration")
+                return
+            
+            from ..core.config import get_config
+            system_config = get_config()
+            
+            # Determine enabled channels based on configuration
+            enabled_channels = []
+            if self.mqtt_integration_manager:
+                enabled_channels.append(PublishingChannel.MQTT)
+            if self.config.websocket_enabled:
+                enabled_channels.append(PublishingChannel.WEBSOCKET)
+            if self.config.sse_enabled:
+                enabled_channels.append(PublishingChannel.SSE)
+            
+            if not enabled_channels:
+                logger.warning("No real-time publishing channels enabled")
+                return
+            
+            # Initialize real-time publishing system
+            self.realtime_publisher = RealtimePublishingSystem(
+                mqtt_config=system_config.mqtt,
+                rooms=system_config.rooms,
+                prediction_publisher=None,  # Will be set if MQTT manager available
+                enabled_channels=enabled_channels
+            )
+            
+            # Set MQTT prediction publisher if available
+            if self.mqtt_integration_manager and hasattr(self.mqtt_integration_manager, 'prediction_publisher'):
+                self.realtime_publisher.prediction_publisher = self.mqtt_integration_manager.prediction_publisher
+            
+            # Initialize the publishing system
+            await self.realtime_publisher.initialize()
+            
+            logger.info(
+                f"Real-time publishing system initialized with channels: "
+                f"{[channel.value for channel in enabled_channels]}"
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize real-time publishing system: {e}")
+            # Don't raise exception - real-time publishing is optional
+    
+    async def _shutdown_realtime_publishing(self) -> None:
+        """Shutdown the real-time publishing system gracefully."""
+        try:
+            if self.realtime_publisher:
+                await self.realtime_publisher.shutdown()
+                self.realtime_publisher = None
+                logger.info("Real-time publishing system shutdown complete")
+        except Exception as e:
+            logger.error(f"Error shutting down real-time publishing system: {e}")
+    
     async def request_manual_retraining(
         self,
         room_id: str,
@@ -1079,6 +1261,17 @@ class TrackingManager:
         except Exception as e:
             logger.error(f"Failed to unregister model {room_id}_{model_type}: {e}")
     
+    async def _start_api_server_if_enabled(self) -> None:
+        """Start API server automatically if enabled in configuration."""
+        if self.api_config and self.api_config.enabled:
+            api_server = await self.start_api_server()
+            if api_server:
+                logger.info(f"API server automatically started on {self.api_config.host}:{self.api_config.port}")
+            else:
+                logger.warning("API server failed to start automatically")
+        else:
+            logger.debug("API server disabled or no configuration provided")
+    
     async def start_api_server(self) -> Optional["APIServer"]:
         """
         Start the integrated REST API server.
@@ -1133,6 +1326,106 @@ class TrackingManager:
         except Exception as e:
             logger.error(f"Failed to get API server status: {e}")
             return {"enabled": False, "running": False, "error": str(e)}
+    
+    def get_enhanced_mqtt_status(self) -> Dict[str, Any]:
+        """Get Enhanced MQTT integration status including all channels."""
+        try:
+            if self.mqtt_integration_manager and hasattr(self.mqtt_integration_manager, 'get_integration_stats'):
+                stats = self.mqtt_integration_manager.get_integration_stats()
+                return {
+                    "enabled": True,
+                    "type": "enhanced",
+                    "mqtt_connected": stats.get('mqtt_integration', {}).get('mqtt_connected', False),
+                    "discovery_published": stats.get('mqtt_integration', {}).get('discovery_published', False),
+                    "realtime_publishing_active": stats.get('realtime_publishing', {}).get('system_active', False),
+                    "total_channels": stats.get('channels', {}).get('total_active', 0),
+                    "websocket_connections": stats.get('connections', {}).get('websocket_clients', 0),
+                    "sse_connections": stats.get('connections', {}).get('sse_clients', 0),
+                    "predictions_per_minute": stats.get('performance', {}).get('predictions_per_minute', 0),
+                    "average_publish_latency_ms": stats.get('performance', {}).get('average_publish_latency_ms', 0),
+                    "publish_success_rate": stats.get('performance', {}).get('publish_success_rate', 0),
+                    "enabled_channels": stats.get('channels', {}).get('enabled_channels', [])
+                }
+            elif self.mqtt_integration_manager and hasattr(self.mqtt_integration_manager, 'get_integration_stats'):
+                # Basic MQTT integration
+                stats = self.mqtt_integration_manager.get_integration_stats()
+                return {
+                    "enabled": True,
+                    "type": "basic",
+                    "mqtt_connected": stats.get('mqtt_connected', False),
+                    "discovery_published": stats.get('discovery_published', False),
+                    "realtime_publishing_active": False,
+                    "total_channels": 1 if stats.get('mqtt_connected', False) else 0,
+                    "websocket_connections": 0,
+                    "sse_connections": 0,
+                    "predictions_per_minute": 0,
+                    "average_publish_latency_ms": 0,
+                    "publish_success_rate": 0,
+                    "enabled_channels": ["mqtt"] if stats.get('mqtt_connected', False) else []
+                }
+            else:
+                return {
+                    "enabled": False,
+                    "type": "none",
+                    "mqtt_connected": False,
+                    "discovery_published": False,
+                    "realtime_publishing_active": False,
+                    "total_channels": 0,
+                    "websocket_connections": 0,
+                    "sse_connections": 0,
+                    "predictions_per_minute": 0,
+                    "average_publish_latency_ms": 0,
+                    "publish_success_rate": 0,
+                    "enabled_channels": []
+                }
+        except Exception as e:
+            logger.error(f"Failed to get Enhanced MQTT integration status: {e}")
+            return {"enabled": False, "type": "error", "error": str(e)}
+    
+    def get_realtime_publishing_status(self) -> Dict[str, Any]:
+        """Get real-time publishing system status information."""
+        try:
+            # Enhanced MQTT Manager provides real-time publishing - check that first
+            enhanced_status = self.get_enhanced_mqtt_status()
+            if enhanced_status.get("type") == "enhanced":
+                return {
+                    "enabled": True,
+                    "active": enhanced_status.get("realtime_publishing_active", False),
+                    "enabled_channels": enhanced_status.get("enabled_channels", []),
+                    "websocket_connections": enhanced_status.get("websocket_connections", 0),
+                    "sse_connections": enhanced_status.get("sse_connections", 0),
+                    "total_predictions_published": 0,  # Would need to track this
+                    "uptime_seconds": 0,  # Would need to track this
+                    "source": "enhanced_mqtt_manager"
+                }
+            
+            # Fall back to standalone real-time publisher if available
+            if self.realtime_publisher and self.config.realtime_publishing_enabled:
+                stats = self.realtime_publisher.get_publishing_stats()
+                return {
+                    "enabled": True,
+                    "active": stats.get('system_active', False),
+                    "enabled_channels": stats.get('enabled_channels', []),
+                    "websocket_connections": stats.get('websocket_stats', {}).get('total_active_connections', 0),
+                    "sse_connections": stats.get('sse_stats', {}).get('total_active_connections', 0),
+                    "total_predictions_published": stats.get('metrics', {}).get('total_predictions_published', 0),
+                    "uptime_seconds": stats.get('uptime_seconds', 0),
+                    "source": "standalone_realtime_publisher"
+                }
+            else:
+                return {
+                    "enabled": self.config.realtime_publishing_enabled,
+                    "active": False,
+                    "enabled_channels": [],
+                    "websocket_connections": 0,
+                    "sse_connections": 0,
+                    "total_predictions_published": 0,
+                    "uptime_seconds": 0,
+                    "source": "none"
+                }
+        except Exception as e:
+            logger.error(f"Failed to get real-time publishing status: {e}")
+            return {"enabled": False, "active": False, "error": str(e), "source": "error"}
     
     async def get_room_prediction(self, room_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -1326,7 +1619,10 @@ class TrackingManager:
                     "completed_retraining_jobs": 0,
                     "failed_retraining_jobs": 0
                 },
-                "api_server_stats": self.get_api_server_status()
+                "api_server_stats": self.get_api_server_status(),
+                "enhanced_mqtt_stats": self.get_enhanced_mqtt_status(),
+                "realtime_publishing_stats": self.get_realtime_publishing_status(),
+                "dashboard_stats": self.get_dashboard_status()
             }
             
             # Add tracker-specific stats if available
@@ -1362,8 +1658,112 @@ class TrackingManager:
                 "tracking_stats": {"error": str(e)},
                 "drift_detection_stats": {"error": str(e)},
                 "retraining_stats": {"error": str(e)},
-                "api_server_stats": {"error": str(e)}
+                "api_server_stats": {"error": str(e)},
+                "dashboard_stats": {"error": str(e)}
             }
+    
+    async def _initialize_dashboard(self) -> None:
+        """Initialize and start the performance dashboard if enabled."""
+        try:
+            if not self.config.dashboard_enabled:
+                logger.debug("Performance dashboard disabled in configuration")
+                return
+            
+            if not DASHBOARD_AVAILABLE:
+                logger.warning("Dashboard components not available - cannot start dashboard")
+                return
+            
+            logger.info("Initializing performance monitoring dashboard...")
+            
+            # Create dashboard configuration from tracking config
+            dashboard_config = DashboardConfig(
+                enabled=self.config.dashboard_enabled,
+                host=self.config.dashboard_host,
+                port=self.config.dashboard_port,
+                debug=self.config.dashboard_debug,
+                mode=DashboardMode.DEVELOPMENT if self.config.dashboard_debug else DashboardMode.PRODUCTION,
+                
+                # Real-time features
+                websocket_enabled=self.config.dashboard_websocket_enabled,
+                update_interval_seconds=self.config.dashboard_update_interval_seconds,
+                max_websocket_connections=self.config.dashboard_max_websocket_connections,
+                
+                # Performance settings
+                cache_ttl_seconds=self.config.dashboard_cache_ttl_seconds,
+                metrics_retention_hours=self.config.dashboard_metrics_retention_hours,
+                
+                # Dashboard features
+                enable_retraining_controls=self.config.dashboard_enable_retraining_controls,
+                enable_alert_management=self.config.dashboard_enable_alert_management,
+                enable_historical_charts=self.config.dashboard_enable_historical_charts,
+                enable_drift_visualization=self.config.dashboard_enable_drift_visualization,
+                enable_export_features=True
+            )
+            
+            # Initialize dashboard with this tracking manager
+            self.dashboard = PerformanceDashboard(
+                tracking_manager=self,
+                config=dashboard_config
+            )
+            
+            # Start the dashboard server
+            await self.dashboard.start_dashboard()
+            
+            logger.info(
+                f"Performance dashboard started successfully on http://{dashboard_config.host}:{dashboard_config.port}"
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize performance dashboard: {e}")
+            # Don't raise exception - dashboard is optional functionality
+    
+    async def _shutdown_dashboard(self) -> None:
+        """Shutdown the performance dashboard gracefully."""
+        try:
+            if self.dashboard:
+                logger.info("Shutting down performance dashboard...")
+                await self.dashboard.stop_dashboard()
+                self.dashboard = None
+                logger.info("Performance dashboard shutdown complete")
+        except Exception as e:
+            logger.error(f"Error shutting down performance dashboard: {e}")
+    
+    def get_dashboard_status(self) -> Dict[str, Any]:
+        """Get performance dashboard status information."""
+        try:
+            if self.dashboard and self.config.dashboard_enabled:
+                return {
+                    "enabled": True,
+                    "running": self.dashboard._running if hasattr(self.dashboard, '_running') else False,
+                    "host": self.dashboard.config.host,
+                    "port": self.dashboard.config.port,
+                    "websocket_enabled": self.dashboard.config.websocket_enabled,
+                    "debug": self.dashboard.config.debug,
+                    "mode": self.dashboard.config.mode.value,
+                    "active_websocket_connections": (
+                        len(self.dashboard.websocket_manager.active_connections)
+                        if self.dashboard.websocket_manager else 0
+                    ),
+                    "uptime_hours": (
+                        (datetime.utcnow() - self.dashboard._dashboard_start_time).total_seconds() / 3600
+                        if hasattr(self.dashboard, '_dashboard_start_time') else 0
+                    )
+                }
+            else:
+                return {
+                    "enabled": self.config.dashboard_enabled,
+                    "running": False,
+                    "host": self.config.dashboard_host,
+                    "port": self.config.dashboard_port,
+                    "websocket_enabled": self.config.dashboard_websocket_enabled,
+                    "debug": self.config.dashboard_debug,
+                    "mode": "disabled",
+                    "active_websocket_connections": 0,
+                    "uptime_hours": 0
+                }
+        except Exception as e:
+            logger.error(f"Failed to get dashboard status: {e}")
+            return {"enabled": False, "running": False, "error": str(e)}
 
 
 class TrackingManagerError(OccupancyPredictionError):

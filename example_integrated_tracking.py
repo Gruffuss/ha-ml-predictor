@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 """
-Example: Integrated Accuracy Tracking System
+DEPRECATED: Example: Integrated Accuracy Tracking System
 
-This example demonstrates how the AccuracyTracker is now fully integrated
-into the main prediction system for automatic tracking without manual setup.
+⚠️ This file is now DEPRECATED. Accuracy tracking is now fully integrated
+into TrackingManager and starts automatically with the main system.
 
-The tracking system automatically:
-1. Records predictions when ensemble models generate them
-2. Validates predictions when actual room state changes occur
-3. Provides real-time monitoring and alerting
-4. Requires no manual intervention - it's seamless
+✅ USE INSTEAD: src/main_system.py - Complete integrated system
+✅ AUTOMATIC OPERATION: Tracking starts automatically with TrackingManager.initialize()
+✅ NO MANUAL SETUP: All tracking happens seamlessly in production
+
+INTEGRATION STATUS:
+- AccuracyTracker: ✅ Automatically initialized in TrackingManager
+- Prediction Recording: ✅ Automatic when predictions are generated
+- Validation: ✅ Automatic when room state changes occur
+- Monitoring: ✅ Background tasks start automatically
+- Alerting: ✅ Built into system workflow
+
+This file remains for reference only.
 """
 
 import asyncio

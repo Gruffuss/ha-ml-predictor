@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
 """
-Example: Complete Real-time Prediction Publishing Integration
+DEPRECATED: Example: Complete Real-time Prediction Publishing Integration
 
-This example demonstrates how to set up the complete real-time prediction
-publishing system with TrackingManager integration, enabling automatic
-broadcasting of predictions across MQTT, WebSocket, and Server-Sent Events.
+⚠️ This file is now DEPRECATED. Real-time prediction publishing is now fully integrated
+into TrackingManager and starts automatically with the main system.
 
-Features demonstrated:
-- Automatic TrackingManager integration with real-time publishing
-- Multi-channel prediction broadcasting
-- WebSocket and SSE client connections
+✅ USE INSTEAD: src/main_system.py - Complete integrated system
+✅ AUTOMATIC OPERATION: Real-time publishing starts automatically with TrackingManager
+✅ NO MANUAL SETUP: All channels (MQTT, WebSocket, SSE) start seamlessly
+
+INTEGRATION STATUS:
+- Real-time Publishing: ✅ Automatically initialized in TrackingManager
+- MQTT Publishing: ✅ Enhanced MQTT Manager integrated by default
+- WebSocket Server: ✅ Automatic startup when enabled in config
+- SSE Server: ✅ Automatic startup when enabled in config
+- API Endpoints: ✅ Real-time endpoints integrated in API server
+- Multi-channel Broadcasting: ✅ Automatic across all channels
+
+AUTOMATIC FEATURES NOW AVAILABLE:
+- Multi-channel prediction broadcasting (MQTT, WebSocket, SSE)
 - Real-time system monitoring and statistics
-- API server with real-time endpoints
+- Client connection management
+- Performance tracking and metrics
 
-Usage:
-    python example_realtime_integration.py
-
-This will:
-1. Set up the complete integrated system
-2. Start prediction generation and real-time broadcasting
-3. Provide WebSocket and SSE endpoints for clients
-4. Show system statistics and connection information
+This file remains for reference only.
 """
 
 import asyncio
