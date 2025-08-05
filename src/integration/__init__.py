@@ -79,48 +79,49 @@ Key Features:
 - Production-ready performance and scalability
 """
 
+from .api_server import APIServer, integrate_with_tracking_manager
+from .discovery_publisher import DeviceInfo, DiscoveryPublisher, SensorConfig
+
 # Import main integration components
 from .enhanced_mqtt_manager import (
-    EnhancedMQTTIntegrationManager,
     EnhancedIntegrationStats,
-    EnhancedMQTTIntegrationError
+    EnhancedMQTTIntegrationError,
+    EnhancedMQTTIntegrationManager,
 )
-
-from .realtime_publisher import (
-    RealtimePublishingSystem,
-    PublishingChannel,
-    RealtimePredictionEvent,
-    ClientConnection,
-    PublishingMetrics,
-    WebSocketConnectionManager,
-    SSEConnectionManager,
-    RealtimePublishingError
-)
-
-from .tracking_integration import (
-    TrackingIntegrationManager,
-    IntegrationConfig,
-    integrate_tracking_with_realtime_publishing,
-    create_integrated_tracking_manager,
-    TrackingIntegrationError
-)
-
-from .realtime_api_endpoints import (
-    realtime_router,
-    set_integration_manager,
-    get_integration_manager,
-    WebSocketSubscription,
-    RealtimeStatsResponse,
-    WebSocketConnectionHandler
-)
+from .mqtt_integration_manager import MQTTIntegrationManager, MQTTIntegrationStats
 
 # Import existing components for backward compatibility
-from .mqtt_publisher import MQTTPublisher, MQTTPublishResult, MQTTConnectionStatus
-from .prediction_publisher import PredictionPublisher, PredictionPayload, SystemStatusPayload
-from .discovery_publisher import DiscoveryPublisher, DeviceInfo, SensorConfig
-from .mqtt_integration_manager import MQTTIntegrationManager, MQTTIntegrationStats
-from .api_server import APIServer, integrate_with_tracking_manager
-
+from .mqtt_publisher import MQTTConnectionStatus, MQTTPublisher, MQTTPublishResult
+from .prediction_publisher import (
+    PredictionPayload,
+    PredictionPublisher,
+    SystemStatusPayload,
+)
+from .realtime_api_endpoints import (
+    RealtimeStatsResponse,
+    WebSocketConnectionHandler,
+    WebSocketSubscription,
+    get_integration_manager,
+    realtime_router,
+    set_integration_manager,
+)
+from .realtime_publisher import (
+    ClientConnection,
+    PublishingChannel,
+    PublishingMetrics,
+    RealtimePredictionEvent,
+    RealtimePublishingError,
+    RealtimePublishingSystem,
+    SSEConnectionManager,
+    WebSocketConnectionManager,
+)
+from .tracking_integration import (
+    IntegrationConfig,
+    TrackingIntegrationError,
+    TrackingIntegrationManager,
+    create_integrated_tracking_manager,
+    integrate_tracking_with_realtime_publishing,
+)
 
 # Version information
 __version__ = "1.0.0"
@@ -132,24 +133,21 @@ __all__ = [
     "EnhancedMQTTIntegrationManager",
     "EnhancedIntegrationStats",
     "EnhancedMQTTIntegrationError",
-    
     # Real-time Publishing
     "RealtimePublishingSystem",
-    "PublishingChannel", 
+    "PublishingChannel",
     "RealtimePredictionEvent",
     "ClientConnection",
     "PublishingMetrics",
     "WebSocketConnectionManager",
     "SSEConnectionManager",
     "RealtimePublishingError",
-    
     # TrackingManager Integration
     "TrackingIntegrationManager",
     "IntegrationConfig",
     "integrate_tracking_with_realtime_publishing",
     "create_integrated_tracking_manager",
     "TrackingIntegrationError",
-    
     # API Endpoints
     "realtime_router",
     "set_integration_manager",
@@ -157,7 +155,6 @@ __all__ = [
     "WebSocketSubscription",
     "RealtimeStatsResponse",
     "WebSocketConnectionHandler",
-    
     # Base Components (backward compatibility)
     "MQTTPublisher",
     "MQTTPublishResult",
@@ -171,80 +168,71 @@ __all__ = [
     "MQTTIntegrationManager",
     "MQTTIntegrationStats",
     "APIServer",
-    "integrate_with_tracking_manager"
+    "integrate_with_tracking_manager",
 ]
 
 
 # Convenience functions for common integration patterns
 
+
 async def create_enhanced_system(
-    tracking_config=None,
-    integration_config=None,
-    **kwargs
+    tracking_config=None, integration_config=None, **kwargs
 ):
     """
     Create a complete enhanced system with real-time publishing.
-    
+
     This is the simplest way to get a fully-featured system with
     TrackingManager, MQTT, WebSocket, SSE, and API server.
-    
+
     Args:
         tracking_config: TrackingConfig instance
         integration_config: IntegrationConfig instance
         **kwargs: Additional arguments for TrackingManager
-        
+
     Returns:
         Tuple of (TrackingManager, TrackingIntegrationManager, APIServer)
     """
     # Create integrated tracking manager
     tracking_manager, integration_manager = await create_integrated_tracking_manager(
-        tracking_config=tracking_config,
-        integration_config=integration_config,
-        **kwargs
+        tracking_config=tracking_config, integration_config=integration_config, **kwargs
     )
-    
+
     # Create API server with real-time endpoints
     from .api_server import integrate_with_tracking_manager
+
     api_server = await integrate_with_tracking_manager(tracking_manager)
-    
+
     # Set integration manager for real-time endpoints
     set_integration_manager(integration_manager)
-    
+
     return tracking_manager, integration_manager, api_server
 
 
 async def setup_realtime_only_system(
-    mqtt_config=None,
-    rooms=None,
-    enabled_channels=None
+    mqtt_config=None, rooms=None, enabled_channels=None
 ):
     """
     Setup real-time publishing system without full TrackingManager integration.
-    
+
     Useful for standalone real-time publishing or custom integrations.
-    
+
     Args:
         mqtt_config: MQTT configuration
         rooms: Room configurations
         enabled_channels: List of PublishingChannel enums
-        
+
     Returns:
         RealtimePublishingSystem instance
     """
     from .realtime_publisher import PublishingChannel
-    
+
     if enabled_channels is None:
-        enabled_channels = [
-            PublishingChannel.WEBSOCKET,
-            PublishingChannel.SSE
-        ]
-    
+        enabled_channels = [PublishingChannel.WEBSOCKET, PublishingChannel.SSE]
+
     realtime_system = RealtimePublishingSystem(
-        mqtt_config=mqtt_config,
-        rooms=rooms,
-        enabled_channels=enabled_channels
+        mqtt_config=mqtt_config, rooms=rooms, enabled_channels=enabled_channels
     )
-    
+
     await realtime_system.initialize()
     return realtime_system
 
@@ -258,15 +246,15 @@ def get_integration_info():
             "realtime_publisher": "WebSocket and SSE streaming",
             "tracking_integration": "Seamless TrackingManager integration",
             "api_endpoints": "FastAPI real-time endpoints",
-            "base_mqtt": "Original MQTT publishing (backward compatibility)"
+            "base_mqtt": "Original MQTT publishing (backward compatibility)",
         },
         "channels": [channel.value for channel in PublishingChannel],
         "integration_patterns": [
             "full_enhanced_system",
-            "tracking_manager_integration", 
+            "tracking_manager_integration",
             "realtime_only",
             "mqtt_enhanced",
-            "api_server_with_realtime"
+            "api_server_with_realtime",
         ],
         "features": [
             "Multi-channel broadcasting",
@@ -274,6 +262,6 @@ def get_integration_info():
             "Performance monitoring",
             "Automatic failover",
             "Production-ready scaling",
-            "Backward compatibility"
-        ]
+            "Backward compatibility",
+        ],
     }

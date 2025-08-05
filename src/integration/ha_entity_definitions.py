@@ -17,22 +17,28 @@ Features:
 
 import json
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union, Callable, Tuple
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum, auto
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from ..core.config import MQTTConfig, RoomConfig, TrackingConfig
-from ..core.exceptions import OccupancyPredictionError, ErrorSeverity
+from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
+from .discovery_publisher import (
+    DeviceInfo,
+    DiscoveryPublisher,
+    EntityMetadata,
+    EntityState,
+    SensorConfig,
+)
 from .mqtt_publisher import MQTTPublisher, MQTTPublishResult
-from .discovery_publisher import DiscoveryPublisher, DeviceInfo, SensorConfig, EntityMetadata, EntityState
-
 
 logger = logging.getLogger(__name__)
 
 
 class HAEntityType(Enum):
     """Home Assistant entity types supported by the system."""
+
     SENSOR = "sensor"
     BINARY_SENSOR = "binary_sensor"
     BUTTON = "button"
@@ -50,6 +56,7 @@ class HAEntityType(Enum):
 
 class HADeviceClass(Enum):
     """Home Assistant device classes for proper categorization."""
+
     # Sensor device classes
     TIMESTAMP = "timestamp"
     DURATION = "duration"
@@ -64,7 +71,7 @@ class HADeviceClass(Enum):
     SPEED = "speed"
     VOLTAGE = "voltage"
     CURRENT = "current"
-    
+
     # Binary sensor device classes
     CONNECTIVITY = "connectivity"
     PROBLEM = "problem"
@@ -74,12 +81,12 @@ class HADeviceClass(Enum):
     MOTION = "motion"
     OCCUPANCY = "occupancy"
     OPENING = "opening"
-    
+
     # Number device classes
     DISTANCE = "distance"
     WEIGHT = "weight"
     VOLUME = "volume"
-    
+
     # Button device classes
     RESTART = "restart"
     IDENTIFY = "identify"
@@ -88,6 +95,7 @@ class HADeviceClass(Enum):
 
 class HAEntityCategory(Enum):
     """Home Assistant entity categories for organization."""
+
     CONFIG = "config"
     DIAGNOSTIC = "diagnostic"
     SYSTEM = "system"
@@ -95,6 +103,7 @@ class HAEntityCategory(Enum):
 
 class HAStateClass(Enum):
     """Home Assistant state classes for sensor entities."""
+
     MEASUREMENT = "measurement"
     TOTAL = "total"
     TOTAL_INCREASING = "total_increasing"
@@ -103,12 +112,13 @@ class HAStateClass(Enum):
 @dataclass
 class HAEntityConfig:
     """Base configuration for Home Assistant entities."""
+
     entity_type: HAEntityType
     name: str
     unique_id: str
     state_topic: str
     device: DeviceInfo
-    
+
     # Common attributes
     icon: Optional[str] = None
     entity_category: Optional[str] = None
@@ -116,10 +126,10 @@ class HAEntityConfig:
     availability_topic: Optional[str] = None
     availability_template: Optional[str] = None
     expire_after: Optional[int] = None
-    
+
     # Entity-specific attributes
     extra_attributes: Dict[str, Any] = field(default_factory=dict)
-    
+
     # Metadata
     description: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.utcnow)
@@ -128,8 +138,9 @@ class HAEntityConfig:
 @dataclass
 class HASensorEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant sensor entities."""
+
     entity_type: HAEntityType = HAEntityType.SENSOR
-    
+
     # Sensor-specific attributes
     value_template: Optional[str] = None
     json_attributes_topic: Optional[str] = None
@@ -146,8 +157,9 @@ class HASensorEntityConfig(HAEntityConfig):
 @dataclass
 class HABinarySensorEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant binary sensor entities."""
+
     entity_type: HAEntityType = HAEntityType.BINARY_SENSOR
-    
+
     # Binary sensor-specific attributes
     value_template: Optional[str] = None
     payload_on: str = "ON"
@@ -159,8 +171,9 @@ class HABinarySensorEntityConfig(HAEntityConfig):
 @dataclass
 class HAButtonEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant button entities."""
+
     entity_type: HAEntityType = HAEntityType.BUTTON
-    
+
     # Button-specific attributes
     command_topic: str = ""
     command_template: Optional[str] = None
@@ -173,8 +186,9 @@ class HAButtonEntityConfig(HAEntityConfig):
 @dataclass
 class HASwitchEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant switch entities."""
+
     entity_type: HAEntityType = HAEntityType.SWITCH
-    
+
     # Switch-specific attributes
     command_topic: str
     state_on: str = "ON"
@@ -191,8 +205,9 @@ class HASwitchEntityConfig(HAEntityConfig):
 @dataclass
 class HANumberEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant number entities."""
+
     entity_type: HAEntityType = HAEntityType.NUMBER
-    
+
     # Number-specific attributes
     command_topic: str
     command_template: Optional[str] = None
@@ -207,8 +222,9 @@ class HANumberEntityConfig(HAEntityConfig):
 @dataclass
 class HASelectEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant select entities."""
+
     entity_type: HAEntityType = HAEntityType.SELECT
-    
+
     # Select-specific attributes
     command_topic: str
     command_template: Optional[str] = None
@@ -220,8 +236,9 @@ class HASelectEntityConfig(HAEntityConfig):
 @dataclass
 class HATextEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant text entities."""
+
     entity_type: HAEntityType = HAEntityType.TEXT
-    
+
     # Text-specific attributes
     command_topic: str
     command_template: Optional[str] = None
@@ -232,11 +249,12 @@ class HATextEntityConfig(HAEntityConfig):
     pattern: Optional[str] = None
 
 
-@dataclass 
+@dataclass
 class HAImageEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant image entities."""
+
     entity_type: HAEntityType = HAEntityType.IMAGE
-    
+
     # Image-specific attributes
     url_template: str
     content_type: str = "image/jpeg"
@@ -246,8 +264,9 @@ class HAImageEntityConfig(HAEntityConfig):
 @dataclass
 class HADateTimeEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant datetime entities."""
+
     entity_type: HAEntityType = HAEntityType.DATETIME
-    
+
     # DateTime-specific attributes
     command_topic: str
     command_template: Optional[str] = None
@@ -258,20 +277,21 @@ class HADateTimeEntityConfig(HAEntityConfig):
 @dataclass
 class HAServiceDefinition:
     """Home Assistant service definition."""
+
     service_name: str
     domain: str
     friendly_name: str
     description: str
     icon: str
-    
+
     # Service fields
     fields: Dict[str, Dict[str, Any]] = field(default_factory=dict)
-    
+
     # MQTT integration
     command_topic: str = ""
     command_template: Optional[str] = None
     response_topic: Optional[str] = None
-    
+
     # Service metadata
     target_selector: Optional[Dict[str, Any]] = None
     supports_response: bool = False
@@ -280,22 +300,22 @@ class HAServiceDefinition:
 class HAEntityDefinitions:
     """
     Comprehensive Home Assistant entity definitions and MQTT discovery enhancements.
-    
+
     This class builds on the existing DiscoveryPublisher to create a complete
     ecosystem of HA entities with proper device classes, units, and service
     definitions for comprehensive system control and monitoring.
     """
-    
+
     def __init__(
         self,
         discovery_publisher: DiscoveryPublisher,
         mqtt_config: MQTTConfig,
         rooms: Dict[str, RoomConfig],
-        tracking_config: Optional[TrackingConfig] = None
+        tracking_config: Optional[TrackingConfig] = None,
     ):
         """
         Initialize HA entity definitions system.
-        
+
         Args:
             discovery_publisher: Existing discovery publisher to enhance
             mqtt_config: MQTT configuration
@@ -306,123 +326,125 @@ class HAEntityDefinitions:
         self.mqtt_config = mqtt_config
         self.rooms = rooms
         self.tracking_config = tracking_config or TrackingConfig()
-        
+
         # Entity registry
         self.entity_definitions: Dict[str, HAEntityConfig] = {}
         self.service_definitions: Dict[str, HAServiceDefinition] = {}
-        
+
         # State management
         self.entity_states: Dict[str, Any] = {}
         self.entity_availability: Dict[str, bool] = {}
-        
+
         # Statistics
         self.stats = {
-            'entities_defined': 0,
-            'services_defined': 0,
-            'entities_published': 0,
-            'services_published': 0,
-            'last_update': None,
-            'definition_errors': 0
+            "entities_defined": 0,
+            "services_defined": 0,
+            "entities_published": 0,
+            "services_published": 0,
+            "last_update": None,
+            "definition_errors": 0,
         }
-        
+
         logger.info(f"Initialized HAEntityDefinitions for {len(rooms)} rooms")
-    
+
     def define_all_entities(self) -> Dict[str, HAEntityConfig]:
         """
         Define all Home Assistant entities for the system.
-        
+
         Returns:
             Dictionary mapping entity IDs to entity configurations
         """
         try:
             logger.info("Defining comprehensive HA entity ecosystem")
-            
+
             # Clear existing definitions
             self.entity_definitions.clear()
-            
+
             # Define room-specific entities
             for room_id, room_config in self.rooms.items():
                 room_entities = self._define_room_entities(room_id, room_config)
                 self.entity_definitions.update(room_entities)
-            
+
             # Define system-wide entities
             system_entities = self._define_system_entities()
             self.entity_definitions.update(system_entities)
-            
+
             # Define diagnostic entities
             diagnostic_entities = self._define_diagnostic_entities()
             self.entity_definitions.update(diagnostic_entities)
-            
+
             # Define control entities
             control_entities = self._define_control_entities()
             self.entity_definitions.update(control_entities)
-            
+
             # Update statistics
-            self.stats['entities_defined'] = len(self.entity_definitions)
-            self.stats['last_update'] = datetime.utcnow()
-            
+            self.stats["entities_defined"] = len(self.entity_definitions)
+            self.stats["last_update"] = datetime.utcnow()
+
             logger.info(f"Defined {len(self.entity_definitions)} HA entities")
             return self.entity_definitions
-            
+
         except Exception as e:
-            self.stats['definition_errors'] += 1
+            self.stats["definition_errors"] += 1
             logger.error(f"Error defining HA entities: {e}")
             return {}
-    
+
     def define_all_services(self) -> Dict[str, HAServiceDefinition]:
         """
         Define all Home Assistant services for system control.
-        
+
         Returns:
             Dictionary mapping service names to service definitions
         """
         try:
             logger.info("Defining HA services for system control")
-            
+
             # Clear existing service definitions
             self.service_definitions.clear()
-            
+
             # Model management services
             model_services = self._define_model_services()
             self.service_definitions.update(model_services)
-            
+
             # System control services
             system_services = self._define_system_services()
             self.service_definitions.update(system_services)
-            
+
             # Diagnostic services
             diagnostic_services = self._define_diagnostic_services()
             self.service_definitions.update(diagnostic_services)
-            
+
             # Room-specific services
             room_services = self._define_room_services()
             self.service_definitions.update(room_services)
-            
+
             # Update statistics
-            self.stats['services_defined'] = len(self.service_definitions)
-            
+            self.stats["services_defined"] = len(self.service_definitions)
+
             logger.info(f"Defined {len(self.service_definitions)} HA services")
             return self.service_definitions
-            
+
         except Exception as e:
-            self.stats['definition_errors'] += 1
+            self.stats["definition_errors"] += 1
             logger.error(f"Error defining HA services: {e}")
             return {}
-    
+
     async def publish_all_entities(self) -> Dict[str, MQTTPublishResult]:
         """
         Publish all defined entities to Home Assistant via MQTT discovery.
-        
+
         Returns:
             Dictionary mapping entity IDs to publish results
         """
         try:
             if not self.entity_definitions:
-                logger.warning("No entities defined - calling define_all_entities first")
+                logger.warning(
+                    "No entities defined - calling define_all_entities first"
+                )
                 self.define_all_entities()
-            
+
             results = {}
-            
+
             # Publish entities by type for proper ordering
             entity_types = [
                 HAEntityType.SENSOR,
@@ -433,101 +455,116 @@ class HAEntityDefinitions:
                 HAEntityType.SELECT,
                 HAEntityType.TEXT,
                 HAEntityType.IMAGE,
-                HAEntityType.DATETIME
+                HAEntityType.DATETIME,
             ]
-            
+
             for entity_type in entity_types:
                 type_entities = {
-                    entity_id: config for entity_id, config in self.entity_definitions.items()
+                    entity_id: config
+                    for entity_id, config in self.entity_definitions.items()
                     if config.entity_type == entity_type
                 }
-                
+
                 if type_entities:
-                    logger.info(f"Publishing {len(type_entities)} {entity_type.value} entities")
-                    
+                    logger.info(
+                        f"Publishing {len(type_entities)} {entity_type.value} entities"
+                    )
+
                     for entity_id, config in type_entities.items():
                         result = await self._publish_entity_discovery(config)
                         results[entity_id] = result
-                        
+
                         if result.success:
-                            self.stats['entities_published'] += 1
-            
+                            self.stats["entities_published"] += 1
+
             successful = sum(1 for r in results.values() if r.success)
             logger.info(f"Published {successful}/{len(results)} entities successfully")
-            
+
             return results
-            
+
         except Exception as e:
             logger.error(f"Error publishing HA entities: {e}")
             return {}
-    
+
     async def publish_all_services(self) -> Dict[str, MQTTPublishResult]:
         """
         Publish all defined services as HA button entities.
-        
+
         Returns:
             Dictionary mapping service names to publish results
         """
         try:
             if not self.service_definitions:
-                logger.warning("No services defined - calling define_all_services first")
+                logger.warning(
+                    "No services defined - calling define_all_services first"
+                )
                 self.define_all_services()
-            
+
             results = {}
-            
+
             for service_name, service_def in self.service_definitions.items():
                 # Create button entity for service
                 button_config = self._create_service_button_config(service_def)
-                
+
                 result = await self._publish_entity_discovery(button_config)
                 results[service_name] = result
-                
+
                 if result.success:
-                    self.stats['services_published'] += 1
-            
+                    self.stats["services_published"] += 1
+
             logger.info(f"Published {len(results)} service buttons")
             return results
-            
+
         except Exception as e:
             logger.error(f"Error publishing HA services: {e}")
             return {}
-    
+
     def get_entity_definition(self, entity_id: str) -> Optional[HAEntityConfig]:
         """Get entity definition by ID."""
         return self.entity_definitions.get(entity_id)
-    
-    def get_service_definition(self, service_name: str) -> Optional[HAServiceDefinition]:
+
+    def get_service_definition(
+        self, service_name: str
+    ) -> Optional[HAServiceDefinition]:
         """Get service definition by name."""
         return self.service_definitions.get(service_name)
-    
+
     def get_entity_stats(self) -> Dict[str, Any]:
         """Get entity definition statistics."""
         return {
             **self.stats,
-            'entity_types': {
-                entity_type.value: len([
-                    e for e in self.entity_definitions.values()
-                    if e.entity_type == entity_type
-                ])
+            "entity_types": {
+                entity_type.value: len(
+                    [
+                        e
+                        for e in self.entity_definitions.values()
+                        if e.entity_type == entity_type
+                    ]
+                )
                 for entity_type in HAEntityType
             },
-            'entity_categories': {
-                category: len([
-                    e for e in self.entity_definitions.values()
-                    if e.entity_category == category
-                ])
-                for category in ['config', 'diagnostic', 'system', None]
-            }
+            "entity_categories": {
+                category: len(
+                    [
+                        e
+                        for e in self.entity_definitions.values()
+                        if e.entity_category == category
+                    ]
+                )
+                for category in ["config", "diagnostic", "system", None]
+            },
         }
-    
+
     # Private methods - Entity definition creators
-    
-    def _define_room_entities(self, room_id: str, room_config: RoomConfig) -> Dict[str, HAEntityConfig]:
+
+    def _define_room_entities(
+        self, room_id: str, room_config: RoomConfig
+    ) -> Dict[str, HAEntityConfig]:
         """Define entities specific to a room."""
         entities = {}
         room_name = room_config.name
         device_info = self.discovery_publisher.device_info
-        
+
         # Main prediction sensor
         entities[f"{room_id}_prediction"] = HASensorEntityConfig(
             name=f"{room_name} Occupancy Prediction",
@@ -540,9 +577,9 @@ class HAEntityDefinitions:
             icon="mdi:home-account",
             entity_category="diagnostic",
             expire_after=600,
-            description=f"Predicted occupancy state transition for {room_name}"
+            description=f"Predicted occupancy state transition for {room_name}",
         )
-        
+
         # Next transition timestamp
         entities[f"{room_id}_next_transition"] = HASensorEntityConfig(
             name=f"{room_name} Next Transition",
@@ -553,9 +590,9 @@ class HAEntityDefinitions:
             device_class=HADeviceClass.TIMESTAMP.value,
             icon="mdi:clock-outline",
             expire_after=600,
-            description=f"Timestamp of next predicted transition for {room_name}"
+            description=f"Timestamp of next predicted transition for {room_name}",
         )
-        
+
         # Confidence percentage
         entities[f"{room_id}_confidence"] = HASensorEntityConfig(
             name=f"{room_name} Confidence",
@@ -569,9 +606,9 @@ class HAEntityDefinitions:
             entity_category="diagnostic",
             expire_after=600,
             suggested_display_precision=1,
-            description=f"Prediction confidence percentage for {room_name}"
+            description=f"Prediction confidence percentage for {room_name}",
         )
-        
+
         # Time until next transition
         entities[f"{room_id}_time_until"] = HASensorEntityConfig(
             name=f"{room_name} Time Until",
@@ -581,9 +618,9 @@ class HAEntityDefinitions:
             value_template="{{ value_json.time_until_human }}",
             icon="mdi:timer-outline",
             expire_after=600,
-            description=f"Human-readable time until next transition for {room_name}"
+            description=f"Human-readable time until next transition for {room_name}",
         )
-        
+
         # Prediction reliability
         entities[f"{room_id}_reliability"] = HASensorEntityConfig(
             name=f"{room_name} Reliability",
@@ -594,9 +631,9 @@ class HAEntityDefinitions:
             icon="mdi:check-circle-outline",
             entity_category="diagnostic",
             expire_after=600,
-            description=f"Current prediction reliability status for {room_name}"
+            description=f"Current prediction reliability status for {room_name}",
         )
-        
+
         # Room occupancy binary sensor
         entities[f"{room_id}_occupied"] = HABinarySensorEntityConfig(
             name=f"{room_name} Currently Occupied",
@@ -606,9 +643,9 @@ class HAEntityDefinitions:
             value_template="{{ 'ON' if value_json.currently_occupied else 'OFF' }}",
             device_class=HADeviceClass.CONNECTIVITY.value,
             icon="mdi:account-check",
-            description=f"Current occupancy state for {room_name}"
+            description=f"Current occupancy state for {room_name}",
         )
-        
+
         # Room accuracy sensor
         entities[f"{room_id}_accuracy"] = HASensorEntityConfig(
             name=f"{room_name} Accuracy",
@@ -621,9 +658,9 @@ class HAEntityDefinitions:
             icon="mdi:target",
             entity_category="diagnostic",
             suggested_display_precision=1,
-            description=f"Prediction accuracy percentage for {room_name}"
+            description=f"Prediction accuracy percentage for {room_name}",
         )
-        
+
         # Room motion detection
         entities[f"{room_id}_motion_detected"] = HABinarySensorEntityConfig(
             name=f"{room_name} Motion Detected",
@@ -634,9 +671,9 @@ class HAEntityDefinitions:
             device_class=HADeviceClass.MOTION.value,
             icon="mdi:motion-sensor",
             off_delay=30,  # 30 second delay before turning off
-            description=f"Motion detection status for {room_name}"
+            description=f"Motion detection status for {room_name}",
         )
-        
+
         # Room occupancy confidence level
         entities[f"{room_id}_occupancy_confidence"] = HASensorEntityConfig(
             name=f"{room_name} Occupancy Confidence",
@@ -649,9 +686,9 @@ class HAEntityDefinitions:
             icon="mdi:gauge",
             entity_category="diagnostic",
             suggested_display_precision=1,
-            description=f"Current occupancy detection confidence for {room_name}"
+            description=f"Current occupancy detection confidence for {room_name}",
         )
-        
+
         # Time since last occupancy change
         entities[f"{room_id}_time_since_change"] = HASensorEntityConfig(
             name=f"{room_name} Time Since Change",
@@ -663,9 +700,9 @@ class HAEntityDefinitions:
             device_class=HADeviceClass.DURATION.value,
             state_class=HAStateClass.MEASUREMENT.value,
             icon="mdi:clock-outline",
-            description=f"Minutes since last occupancy change in {room_name}"
+            description=f"Minutes since last occupancy change in {room_name}",
         )
-        
+
         # Room prediction model in use
         entities[f"{room_id}_model_used"] = HASensorEntityConfig(
             name=f"{room_name} Model Used",
@@ -675,9 +712,9 @@ class HAEntityDefinitions:
             value_template="{{ value_json.model_used }}",
             icon="mdi:brain",
             entity_category="diagnostic",
-            description=f"Prediction model currently used for {room_name}"
+            description=f"Prediction model currently used for {room_name}",
         )
-        
+
         # Alternative predictions count
         entities[f"{room_id}_alternatives_count"] = HASensorEntityConfig(
             name=f"{room_name} Alternative Predictions",
@@ -688,16 +725,16 @@ class HAEntityDefinitions:
             state_class=HAStateClass.MEASUREMENT.value,
             icon="mdi:format-list-numbered",
             entity_category="diagnostic",
-            description=f"Number of alternative predictions available for {room_name}"
+            description=f"Number of alternative predictions available for {room_name}",
         )
-        
+
         return entities
-    
+
     def _define_system_entities(self) -> Dict[str, HAEntityConfig]:
         """Define system-wide entities."""
         entities = {}
         device_info = self.discovery_publisher.device_info
-        
+
         # System status
         entities["system_status"] = HASensorEntityConfig(
             name="System Status",
@@ -709,9 +746,9 @@ class HAEntityDefinitions:
             json_attributes_template="{{ value_json | tojson }}",
             icon="mdi:server",
             entity_category="diagnostic",
-            description="Overall system operational status"
+            description="Overall system operational status",
         )
-        
+
         # System uptime
         entities["system_uptime"] = HASensorEntityConfig(
             name="System Uptime",
@@ -724,9 +761,9 @@ class HAEntityDefinitions:
             state_class=HAStateClass.TOTAL.value,
             icon="mdi:clock-check-outline",
             entity_category="diagnostic",
-            description="System uptime in seconds"
+            description="System uptime in seconds",
         )
-        
+
         # Total predictions made
         entities["predictions_count"] = HASensorEntityConfig(
             name="Total Predictions",
@@ -737,9 +774,9 @@ class HAEntityDefinitions:
             state_class=HAStateClass.TOTAL_INCREASING.value,
             icon="mdi:counter",
             entity_category="diagnostic",
-            description="Total number of predictions made by the system"
+            description="Total number of predictions made by the system",
         )
-        
+
         # Average system accuracy
         entities["system_accuracy"] = HASensorEntityConfig(
             name="System Accuracy",
@@ -752,9 +789,9 @@ class HAEntityDefinitions:
             icon="mdi:target",
             entity_category="diagnostic",
             suggested_display_precision=1,
-            description="Average prediction accuracy across all rooms"
+            description="Average prediction accuracy across all rooms",
         )
-        
+
         # Active alerts count
         entities["active_alerts"] = HASensorEntityConfig(
             name="Active Alerts",
@@ -765,16 +802,16 @@ class HAEntityDefinitions:
             state_class=HAStateClass.MEASUREMENT.value,
             icon="mdi:alert-circle-outline",
             entity_category="diagnostic",
-            description="Number of active system alerts"
+            description="Number of active system alerts",
         )
-        
+
         return entities
-    
+
     def _define_diagnostic_entities(self) -> Dict[str, HAEntityConfig]:
         """Define diagnostic and monitoring entities."""
         entities = {}
         device_info = self.discovery_publisher.device_info
-        
+
         # Database connection status
         entities["database_connected"] = HABinarySensorEntityConfig(
             name="Database Connected",
@@ -785,9 +822,9 @@ class HAEntityDefinitions:
             device_class=HADeviceClass.CONNECTIVITY.value,
             icon="mdi:database",
             entity_category="diagnostic",
-            description="Database connection status"
+            description="Database connection status",
         )
-        
+
         # MQTT connection status
         entities["mqtt_connected"] = HABinarySensorEntityConfig(
             name="MQTT Connected",
@@ -798,9 +835,9 @@ class HAEntityDefinitions:
             device_class=HADeviceClass.CONNECTIVITY.value,
             icon="mdi:wifi",
             entity_category="diagnostic",
-            description="MQTT broker connection status"
+            description="MQTT broker connection status",
         )
-        
+
         # Tracking system status
         entities["tracking_active"] = HABinarySensorEntityConfig(
             name="Tracking Active",
@@ -811,9 +848,9 @@ class HAEntityDefinitions:
             device_class=HADeviceClass.RUNNING.value,
             icon="mdi:chart-line",
             entity_category="diagnostic",
-            description="Accuracy tracking system status"
+            description="Accuracy tracking system status",
         )
-        
+
         # Model training status
         entities["model_training"] = HABinarySensorEntityConfig(
             name="Model Training",
@@ -824,9 +861,9 @@ class HAEntityDefinitions:
             device_class=HADeviceClass.RUNNING.value,
             icon="mdi:brain",
             entity_category="diagnostic",
-            description="Model training process status"
+            description="Model training process status",
         )
-        
+
         # Memory usage
         entities["memory_usage"] = HASensorEntityConfig(
             name="Memory Usage",
@@ -839,9 +876,9 @@ class HAEntityDefinitions:
             state_class=HAStateClass.MEASUREMENT.value,
             icon="mdi:memory",
             entity_category="diagnostic",
-            description="System memory usage in megabytes"
+            description="System memory usage in megabytes",
         )
-        
+
         # CPU usage
         entities["cpu_usage"] = HASensorEntityConfig(
             name="CPU Usage",
@@ -854,9 +891,9 @@ class HAEntityDefinitions:
             icon="mdi:speedometer",
             entity_category="diagnostic",
             suggested_display_precision=1,
-            description="System CPU usage percentage"
+            description="System CPU usage percentage",
         )
-        
+
         # Disk usage
         entities["disk_usage"] = HASensorEntityConfig(
             name="Disk Usage",
@@ -869,12 +906,12 @@ class HAEntityDefinitions:
             icon="mdi:harddisk",
             entity_category="diagnostic",
             suggested_display_precision=1,
-            description="System disk usage percentage"
+            description="System disk usage percentage",
         )
-        
+
         # Network connectivity
         entities["network_status"] = HABinarySensorEntityConfig(
-            name="Network Connected", 
+            name="Network Connected",
             unique_id=f"{self.mqtt_config.device_identifier}_network",
             state_topic=f"{self.mqtt_config.topic_prefix}/system/diagnostics",
             device=device_info,
@@ -882,9 +919,9 @@ class HAEntityDefinitions:
             device_class=HADeviceClass.CONNECTIVITY.value,
             icon="mdi:network",
             entity_category="diagnostic",
-            description="Network connectivity status"
+            description="Network connectivity status",
         )
-        
+
         # Home Assistant connection status
         entities["ha_connection"] = HABinarySensorEntityConfig(
             name="Home Assistant Connected",
@@ -895,9 +932,9 @@ class HAEntityDefinitions:
             device_class=HADeviceClass.CONNECTIVITY.value,
             icon="mdi:home-assistant",
             entity_category="diagnostic",
-            description="Home Assistant API connection status"
+            description="Home Assistant API connection status",
         )
-        
+
         # System load average
         entities["load_average"] = HASensorEntityConfig(
             name="System Load",
@@ -909,9 +946,9 @@ class HAEntityDefinitions:
             icon="mdi:gauge",
             entity_category="diagnostic",
             suggested_display_precision=2,
-            description="System load average (1 minute)"
+            description="System load average (1 minute)",
         )
-        
+
         # Process count
         entities["process_count"] = HASensorEntityConfig(
             name="Active Processes",
@@ -922,16 +959,16 @@ class HAEntityDefinitions:
             state_class=HAStateClass.MEASUREMENT.value,
             icon="mdi:application-cog",
             entity_category="diagnostic",
-            description="Number of active system processes"
+            description="Number of active system processes",
         )
-        
+
         return entities
-    
+
     def _define_control_entities(self) -> Dict[str, HAEntityConfig]:
         """Define control and configuration entities."""
         entities = {}
         device_info = self.discovery_publisher.device_info
-        
+
         # Prediction system enable/disable switch
         entities["prediction_enabled"] = HASwitchEntityConfig(
             name="Prediction System",
@@ -944,9 +981,9 @@ class HAEntityDefinitions:
             payload_off="OFF",
             icon="mdi:toggle-switch",
             entity_category="config",
-            description="Enable or disable the prediction system"
+            description="Enable or disable the prediction system",
         )
-        
+
         # MQTT publishing enable/disable
         entities["mqtt_publishing"] = HASwitchEntityConfig(
             name="MQTT Publishing",
@@ -959,9 +996,9 @@ class HAEntityDefinitions:
             payload_off="OFF",
             icon="mdi:publish",
             entity_category="config",
-            description="Enable or disable MQTT publishing"
+            description="Enable or disable MQTT publishing",
         )
-        
+
         # Prediction interval configuration
         entities["prediction_interval"] = HANumberEntityConfig(
             name="Prediction Interval",
@@ -977,9 +1014,9 @@ class HAEntityDefinitions:
             unit_of_measurement="s",
             icon="mdi:timer",
             entity_category="config",
-            description="Prediction generation interval in seconds"
+            description="Prediction generation interval in seconds",
         )
-        
+
         # Log level selection
         entities["log_level"] = HASelectEntityConfig(
             name="Log Level",
@@ -991,9 +1028,9 @@ class HAEntityDefinitions:
             value_template="{{ value_json.log_level }}",
             icon="mdi:file-document-outline",
             entity_category="config",
-            description="System logging level"
+            description="System logging level",
         )
-        
+
         # Accuracy threshold configuration
         entities["accuracy_threshold"] = HANumberEntityConfig(
             name="Accuracy Threshold",
@@ -1009,9 +1046,9 @@ class HAEntityDefinitions:
             unit_of_measurement="min",
             icon="mdi:target",
             entity_category="config",
-            description="Prediction accuracy threshold in minutes"
+            description="Prediction accuracy threshold in minutes",
         )
-        
+
         # Feature engineering configuration
         entities["feature_lookback"] = HANumberEntityConfig(
             name="Feature Lookback Hours",
@@ -1027,9 +1064,9 @@ class HAEntityDefinitions:
             unit_of_measurement="h",
             icon="mdi:clock-time-four",
             entity_category="config",
-            description="Hours of historical data for feature engineering"
+            description="Hours of historical data for feature engineering",
         )
-        
+
         # Model selection
         entities["primary_model"] = HASelectEntityConfig(
             name="Primary Model",
@@ -1041,9 +1078,9 @@ class HAEntityDefinitions:
             value_template="{{ value_json.primary_model }}",
             icon="mdi:brain",
             entity_category="config",
-            description="Primary model for predictions"
+            description="Primary model for predictions",
         )
-        
+
         # Maintenance mode switch
         entities["maintenance_mode"] = HASwitchEntityConfig(
             name="Maintenance Mode",
@@ -1056,9 +1093,9 @@ class HAEntityDefinitions:
             payload_off="OFF",
             icon="mdi:wrench",
             entity_category="config",
-            description="Enable maintenance mode (stops predictions)"
+            description="Enable maintenance mode (stops predictions)",
         )
-        
+
         # Data collection configuration
         entities["data_collection"] = HASwitchEntityConfig(
             name="Data Collection",
@@ -1071,9 +1108,9 @@ class HAEntityDefinitions:
             payload_off="OFF",
             icon="mdi:database-plus",
             entity_category="config",
-            description="Enable data collection from Home Assistant"
+            description="Enable data collection from Home Assistant",
         )
-        
+
         # Debug information text entity
         entities["debug_info"] = HATextEntityConfig(
             name="Debug Information",
@@ -1086,15 +1123,15 @@ class HAEntityDefinitions:
             mode="text",
             icon="mdi:bug",
             entity_category="diagnostic",
-            description="System debug information and status messages"
+            description="System debug information and status messages",
         )
-        
+
         return entities
-    
+
     def _define_model_services(self) -> Dict[str, HAServiceDefinition]:
         """Define model management services."""
         services = {}
-        
+
         # Manual model retraining
         services["retrain_model"] = HAServiceDefinition(
             service_name="retrain_model",
@@ -1108,18 +1145,18 @@ class HAEntityDefinitions:
                 "room_id": {
                     "description": "Room ID to retrain (leave empty for all rooms)",
                     "example": "living_room",
-                    "selector": {"text": {}}
+                    "selector": {"text": {}},
                 },
                 "force": {
                     "description": "Force retraining even if not needed",
                     "default": False,
-                    "selector": {"boolean": {}}
-                }
+                    "selector": {"boolean": {}},
+                },
             },
             target_selector={"entity": {"domain": "sensor"}},
-            supports_response=True
+            supports_response=True,
         )
-        
+
         # Model validation
         services["validate_model"] = HAServiceDefinition(
             service_name="validate_model",
@@ -1132,16 +1169,16 @@ class HAEntityDefinitions:
                 "room_id": {
                     "description": "Room ID to validate (leave empty for all rooms)",
                     "example": "living_room",
-                    "selector": {"text": {}}
+                    "selector": {"text": {}},
                 },
                 "days": {
                     "description": "Number of days to validate against",
                     "default": 7,
-                    "selector": {"number": {"min": 1, "max": 30, "mode": "box"}}
-                }
-            }
+                    "selector": {"number": {"min": 1, "max": 30, "mode": "box"}},
+                },
+            },
         )
-        
+
         # Export model
         services["export_model"] = HAServiceDefinition(
             service_name="export_model",
@@ -1154,17 +1191,17 @@ class HAEntityDefinitions:
                 "room_id": {
                     "description": "Room ID to export (leave empty for all rooms)",
                     "example": "living_room",
-                    "selector": {"text": {}}
+                    "selector": {"text": {}},
                 },
                 "format": {
                     "description": "Export format",
                     "default": "pickle",
-                    "selector": {"select": {"options": ["pickle", "joblib", "onnx"]}}
-                }
+                    "selector": {"select": {"options": ["pickle", "joblib", "onnx"]}},
+                },
             },
-            supports_response=True
+            supports_response=True,
         )
-        
+
         # Import model
         services["import_model"] = HAServiceDefinition(
             service_name="import_model",
@@ -1178,23 +1215,23 @@ class HAEntityDefinitions:
                     "description": "Room ID to import for",
                     "required": True,
                     "example": "living_room",
-                    "selector": {"text": {}}
+                    "selector": {"text": {}},
                 },
                 "model_path": {
                     "description": "Path to model file",
                     "required": True,
-                    "selector": {"text": {}}
-                }
+                    "selector": {"text": {}},
+                },
             },
-            supports_response=True
+            supports_response=True,
         )
-        
+
         return services
-    
+
     def _define_system_services(self) -> Dict[str, HAServiceDefinition]:
         """Define system control services."""
         services = {}
-        
+
         # System restart
         services["restart_system"] = HAServiceDefinition(
             service_name="restart_system",
@@ -1203,9 +1240,9 @@ class HAEntityDefinitions:
             description="Restart the occupancy prediction system",
             icon="mdi:restart",
             command_topic=f"{self.mqtt_config.topic_prefix}/commands/restart",
-            command_template='{{ {"action": "restart", "timestamp": now().isoformat()} | tojson }}'
+            command_template='{{ {"action": "restart", "timestamp": now().isoformat()} | tojson }}',
         )
-        
+
         # Refresh discovery
         services["refresh_discovery"] = HAServiceDefinition(
             service_name="refresh_discovery",
@@ -1214,9 +1251,9 @@ class HAEntityDefinitions:
             description="Refresh Home Assistant MQTT discovery messages",
             icon="mdi:refresh",
             command_topic=f"{self.mqtt_config.topic_prefix}/commands/refresh_discovery",
-            command_template='{{ {"action": "refresh_discovery", "timestamp": now().isoformat()} | tojson }}'
+            command_template='{{ {"action": "refresh_discovery", "timestamp": now().isoformat()} | tojson }}',
         )
-        
+
         # Reset statistics
         services["reset_statistics"] = HAServiceDefinition(
             service_name="reset_statistics",
@@ -1229,11 +1266,11 @@ class HAEntityDefinitions:
                 "confirm": {
                     "description": "Confirm reset operation",
                     "default": False,
-                    "selector": {"boolean": {}}
+                    "selector": {"boolean": {}},
                 }
-            }
+            },
         )
-        
+
         # Update configuration
         services["update_config"] = HAServiceDefinition(
             service_name="update_config",
@@ -1246,17 +1283,21 @@ class HAEntityDefinitions:
                 "config_section": {
                     "description": "Configuration section to update",
                     "required": True,
-                    "selector": {"select": {"options": ["prediction", "features", "logging", "mqtt"]}}
+                    "selector": {
+                        "select": {
+                            "options": ["prediction", "features", "logging", "mqtt"]
+                        }
+                    },
                 },
                 "config_data": {
                     "description": "Configuration data (JSON format)",
                     "required": True,
-                    "selector": {"text": {"multiline": True}}
-                }
+                    "selector": {"text": {"multiline": True}},
+                },
             },
-            supports_response=True
+            supports_response=True,
         )
-        
+
         # Backup system
         services["backup_system"] = HAServiceDefinition(
             service_name="backup_system",
@@ -1269,17 +1310,17 @@ class HAEntityDefinitions:
                 "include_models": {
                     "description": "Include trained models in backup",
                     "default": True,
-                    "selector": {"boolean": {}}
+                    "selector": {"boolean": {}},
                 },
                 "include_data": {
                     "description": "Include historical data in backup",
                     "default": False,
-                    "selector": {"boolean": {}}
-                }
+                    "selector": {"boolean": {}},
+                },
             },
-            supports_response=True
+            supports_response=True,
         )
-        
+
         # Restore system
         services["restore_system"] = HAServiceDefinition(
             service_name="restore_system",
@@ -1292,28 +1333,28 @@ class HAEntityDefinitions:
                 "backup_path": {
                     "description": "Path to backup file",
                     "required": True,
-                    "selector": {"text": {}}
+                    "selector": {"text": {}},
                 },
                 "restore_models": {
                     "description": "Restore trained models",
                     "default": True,
-                    "selector": {"boolean": {}}
+                    "selector": {"boolean": {}},
                 },
                 "restore_config": {
                     "description": "Restore configuration",
                     "default": True,
-                    "selector": {"boolean": {}}
-                }
+                    "selector": {"boolean": {}},
+                },
             },
-            supports_response=True
+            supports_response=True,
         )
-        
+
         return services
-    
+
     def _define_diagnostic_services(self) -> Dict[str, HAServiceDefinition]:
         """Define diagnostic and monitoring services."""
         services = {}
-        
+
         # Generate diagnostic report
         services["generate_diagnostic"] = HAServiceDefinition(
             service_name="generate_diagnostic",
@@ -1326,17 +1367,17 @@ class HAEntityDefinitions:
                 "include_logs": {
                     "description": "Include recent log entries",
                     "default": True,
-                    "selector": {"boolean": {}}
+                    "selector": {"boolean": {}},
                 },
                 "include_metrics": {
                     "description": "Include performance metrics",
                     "default": True,
-                    "selector": {"boolean": {}}
-                }
+                    "selector": {"boolean": {}},
+                },
             },
-            supports_response=True
+            supports_response=True,
         )
-        
+
         # Database health check
         services["check_database"] = HAServiceDefinition(
             service_name="check_database",
@@ -1345,15 +1386,15 @@ class HAEntityDefinitions:
             description="Perform database health check and optimization",
             icon="mdi:database-check",
             command_topic=f"{self.mqtt_config.topic_prefix}/commands/db_check",
-            supports_response=True
+            supports_response=True,
         )
-        
+
         return services
-    
+
     def _define_room_services(self) -> Dict[str, HAServiceDefinition]:
         """Define room-specific services."""
         services = {}
-        
+
         # Force prediction for specific room
         services["force_prediction"] = HAServiceDefinition(
             service_name="force_prediction",
@@ -1367,16 +1408,18 @@ class HAEntityDefinitions:
                     "description": "Room ID to generate prediction for",
                     "required": True,
                     "example": "living_room",
-                    "selector": {"text": {}}
+                    "selector": {"text": {}},
                 }
             },
             target_selector={"entity": {"domain": "sensor"}},
-            supports_response=True
+            supports_response=True,
         )
-        
+
         return services
-    
-    def _create_service_button_config(self, service_def: HAServiceDefinition) -> HAButtonEntityConfig:
+
+    def _create_service_button_config(
+        self, service_def: HAServiceDefinition
+    ) -> HAButtonEntityConfig:
         """Create button entity configuration for a service."""
         return HAButtonEntityConfig(
             name=service_def.friendly_name,
@@ -1385,16 +1428,20 @@ class HAEntityDefinitions:
             command_topic=service_def.command_topic,
             device=self.discovery_publisher.device_info,
             command_template=service_def.command_template,
-            payload_press=json.dumps({
-                "action": service_def.service_name,
-                "timestamp": "{{ now().isoformat() }}"
-            }),
+            payload_press=json.dumps(
+                {
+                    "action": service_def.service_name,
+                    "timestamp": "{{ now().isoformat() }}",
+                }
+            ),
             icon=service_def.icon,
             entity_category="config",
-            description=service_def.description
+            description=service_def.description,
         )
-    
-    async def _publish_entity_discovery(self, config: HAEntityConfig) -> MQTTPublishResult:
+
+    async def _publish_entity_discovery(
+        self, config: HAEntityConfig
+    ) -> MQTTPublishResult:
         """Publish entity discovery message based on entity type."""
         try:
             # Create discovery topic
@@ -1404,7 +1451,7 @@ class HAEntityDefinitions:
                 f"{self.mqtt_config.device_identifier}/"
                 f"{config.unique_id}/config"
             )
-            
+
             # Create base discovery payload
             discovery_payload = {
                 "name": config.name,
@@ -1414,10 +1461,10 @@ class HAEntityDefinitions:
                     "name": config.device.name,
                     "manufacturer": config.device.manufacturer,
                     "model": config.device.model,
-                    "sw_version": config.device.sw_version
-                }
+                    "sw_version": config.device.sw_version,
+                },
             }
-            
+
             # Add common attributes
             if config.icon:
                 discovery_payload["icon"] = config.icon
@@ -1428,14 +1475,16 @@ class HAEntityDefinitions:
             if config.availability_topic:
                 discovery_payload["availability_topic"] = config.availability_topic
             if config.availability_template:
-                discovery_payload["availability_template"] = config.availability_template
+                discovery_payload["availability_template"] = (
+                    config.availability_template
+                )
             if config.expire_after:
                 discovery_payload["expire_after"] = config.expire_after
-            
+
             # Add entity-type specific attributes
-            if hasattr(config, 'state_topic') and config.state_topic:
+            if hasattr(config, "state_topic") and config.state_topic:
                 discovery_payload["state_topic"] = config.state_topic
-            
+
             # Add type-specific attributes
             if isinstance(config, HASensorEntityConfig):
                 self._add_sensor_attributes(discovery_payload, config)
@@ -1455,31 +1504,32 @@ class HAEntityDefinitions:
                 self._add_image_attributes(discovery_payload, config)
             elif isinstance(config, HADateTimeEntityConfig):
                 self._add_datetime_attributes(discovery_payload, config)
-            
+
             # Add device availability if configured
             if self.discovery_publisher.device_info.availability_topic:
                 discovery_payload["availability"] = {
                     "topic": self.discovery_publisher.device_info.availability_topic,
                     "payload_available": "online",
                     "payload_not_available": "offline",
-                    "value_template": "{{ 'online' if value_json.status == 'online' else 'offline' }}"
+                    "value_template": "{{ 'online' if value_json.status == 'online' else 'offline' }}",
                 }
-            
+
             # Publish discovery message
             result = await self.discovery_publisher.mqtt_publisher.publish_json(
-                topic=discovery_topic,
-                data=discovery_payload,
-                qos=1,
-                retain=True
+                topic=discovery_topic, data=discovery_payload, qos=1, retain=True
             )
-            
+
             if result.success:
-                logger.debug(f"Published {config.entity_type.value} discovery: {config.name}")
+                logger.debug(
+                    f"Published {config.entity_type.value} discovery: {config.name}"
+                )
             else:
-                logger.error(f"Failed to publish {config.entity_type.value} discovery: {result.error_message}")
-            
+                logger.error(
+                    f"Failed to publish {config.entity_type.value} discovery: {result.error_message}"
+                )
+
             return result
-            
+
         except Exception as e:
             logger.error(f"Error publishing entity discovery: {e}")
             return MQTTPublishResult(
@@ -1487,10 +1537,12 @@ class HAEntityDefinitions:
                 topic="",
                 payload_size=0,
                 publish_time=datetime.utcnow(),
-                error_message=str(e)
+                error_message=str(e),
             )
-    
-    def _add_sensor_attributes(self, payload: Dict[str, Any], config: HASensorEntityConfig) -> None:
+
+    def _add_sensor_attributes(
+        self, payload: Dict[str, Any], config: HASensorEntityConfig
+    ) -> None:
         """Add sensor-specific attributes to discovery payload."""
         if config.value_template:
             payload["value_template"] = config.value_template
@@ -1512,8 +1564,10 @@ class HAEntityDefinitions:
             payload["last_reset_topic"] = config.last_reset_topic
         if config.last_reset_value_template:
             payload["last_reset_value_template"] = config.last_reset_value_template
-    
-    def _add_binary_sensor_attributes(self, payload: Dict[str, Any], config: HABinarySensorEntityConfig) -> None:
+
+    def _add_binary_sensor_attributes(
+        self, payload: Dict[str, Any], config: HABinarySensorEntityConfig
+    ) -> None:
         """Add binary sensor-specific attributes to discovery payload."""
         if config.value_template:
             payload["value_template"] = config.value_template
@@ -1525,8 +1579,10 @@ class HAEntityDefinitions:
             payload["device_class"] = config.device_class
         if config.off_delay:
             payload["off_delay"] = config.off_delay
-    
-    def _add_button_attributes(self, payload: Dict[str, Any], config: HAButtonEntityConfig) -> None:
+
+    def _add_button_attributes(
+        self, payload: Dict[str, Any], config: HAButtonEntityConfig
+    ) -> None:
         """Add button-specific attributes to discovery payload."""
         payload["command_topic"] = config.command_topic
         if config.command_template:
@@ -1539,8 +1595,10 @@ class HAEntityDefinitions:
             payload["retain"] = config.retain
         if config.qos != 1:
             payload["qos"] = config.qos
-    
-    def _add_switch_attributes(self, payload: Dict[str, Any], config: HASwitchEntityConfig) -> None:
+
+    def _add_switch_attributes(
+        self, payload: Dict[str, Any], config: HASwitchEntityConfig
+    ) -> None:
         """Add switch-specific attributes to discovery payload."""
         payload["command_topic"] = config.command_topic
         if config.state_on != "ON":
@@ -1561,8 +1619,10 @@ class HAEntityDefinitions:
             payload["retain"] = config.retain
         if config.qos != 1:
             payload["qos"] = config.qos
-    
-    def _add_number_attributes(self, payload: Dict[str, Any], config: HANumberEntityConfig) -> None:
+
+    def _add_number_attributes(
+        self, payload: Dict[str, Any], config: HANumberEntityConfig
+    ) -> None:
         """Add number-specific attributes to discovery payload."""
         payload["command_topic"] = config.command_topic
         if config.command_template:
@@ -1576,8 +1636,10 @@ class HAEntityDefinitions:
             payload["unit_of_measurement"] = config.unit_of_measurement
         if config.device_class:
             payload["device_class"] = config.device_class
-    
-    def _add_select_attributes(self, payload: Dict[str, Any], config: HASelectEntityConfig) -> None:
+
+    def _add_select_attributes(
+        self, payload: Dict[str, Any], config: HASelectEntityConfig
+    ) -> None:
         """Add select-specific attributes to discovery payload."""
         payload["command_topic"] = config.command_topic
         if config.command_template:
@@ -1587,8 +1649,10 @@ class HAEntityDefinitions:
             payload["value_template"] = config.value_template
         if config.optimistic:
             payload["optimistic"] = config.optimistic
-    
-    def _add_text_attributes(self, payload: Dict[str, Any], config: HATextEntityConfig) -> None:
+
+    def _add_text_attributes(
+        self, payload: Dict[str, Any], config: HATextEntityConfig
+    ) -> None:
         """Add text-specific attributes to discovery payload."""
         payload["command_topic"] = config.command_topic
         if config.command_template:
@@ -1601,16 +1665,20 @@ class HAEntityDefinitions:
             payload["mode"] = config.mode
         if config.pattern:
             payload["pattern"] = config.pattern
-    
-    def _add_image_attributes(self, payload: Dict[str, Any], config: HAImageEntityConfig) -> None:
+
+    def _add_image_attributes(
+        self, payload: Dict[str, Any], config: HAImageEntityConfig
+    ) -> None:
         """Add image-specific attributes to discovery payload."""
         payload["url_template"] = config.url_template
         if config.content_type != "image/jpeg":
             payload["content_type"] = config.content_type
         if not config.verify_ssl:
             payload["verify_ssl"] = config.verify_ssl
-    
-    def _add_datetime_attributes(self, payload: Dict[str, Any], config: HADateTimeEntityConfig) -> None:
+
+    def _add_datetime_attributes(
+        self, payload: Dict[str, Any], config: HADateTimeEntityConfig
+    ) -> None:
         """Add datetime-specific attributes to discovery payload."""
         payload["command_topic"] = config.command_topic
         if config.command_template:
@@ -1623,11 +1691,11 @@ class HAEntityDefinitions:
 
 class HAEntityDefinitionsError(OccupancyPredictionError):
     """Raised when HA entity definition operations fail."""
-    
+
     def __init__(self, message: str, **kwargs):
         super().__init__(
             message=message,
             error_code="HA_ENTITY_DEFINITIONS_ERROR",
-            severity=kwargs.get('severity', ErrorSeverity.MEDIUM),
-            **kwargs
+            severity=kwargs.get("severity", ErrorSeverity.MEDIUM),
+            **kwargs,
         )

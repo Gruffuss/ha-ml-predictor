@@ -8,26 +8,41 @@ validation, and real-time monitoring without manual intervention.
 
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable, Union
-from dataclasses import dataclass
 import threading
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Callable, Dict, List, Optional, Union
 
-from ..core.exceptions import OccupancyPredictionError, ErrorSeverity
 from ..core.constants import ModelType
-from .validator import PredictionValidator
-from .tracker import AccuracyTracker, AccuracyAlert, RealTimeMetrics
-from .drift_detector import ConceptDriftDetector, DriftMetrics, DriftSeverity
-from .retrainer import AdaptiveRetrainer, RetrainingRequest, RetrainingTrigger, RetrainingStatus
-from .optimizer import ModelOptimizer, OptimizationConfig, OptimizationStrategy, OptimizationObjective
-from ..models.base.predictor import PredictionResult
-from ..data.storage.models import SensorEvent, RoomState
-from ..integration.realtime_publisher import RealtimePublishingSystem, PublishingChannel
+from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
+from ..data.storage.models import RoomState, SensorEvent
 from ..integration.enhanced_mqtt_manager import EnhancedMQTTIntegrationManager
+from ..integration.realtime_publisher import PublishingChannel, RealtimePublishingSystem
+from ..models.base.predictor import PredictionResult
+from .drift_detector import ConceptDriftDetector, DriftMetrics, DriftSeverity
+from .optimizer import (
+    ModelOptimizer,
+    OptimizationConfig,
+    OptimizationObjective,
+    OptimizationStrategy,
+)
+from .retrainer import (
+    AdaptiveRetrainer,
+    RetrainingRequest,
+    RetrainingStatus,
+    RetrainingTrigger,
+)
+from .tracker import AccuracyAlert, AccuracyTracker, RealTimeMetrics
+from .validator import PredictionValidator
 
 # Import dashboard components with graceful fallback
 try:
-    from ..integration.dashboard import PerformanceDashboard, DashboardConfig, DashboardMode
+    from ..integration.dashboard import (
+        DashboardConfig,
+        DashboardMode,
+        PerformanceDashboard,
+    )
+
     DASHBOARD_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"Dashboard components not available: {e}")
@@ -43,6 +58,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TrackingConfig:
     """Configuration for system-wide tracking."""
+
     enabled: bool = True
     monitoring_interval_seconds: int = 60
     auto_validation_enabled: bool = True
@@ -51,7 +67,7 @@ class TrackingConfig:
     max_stored_alerts: int = 1000
     trend_analysis_points: int = 10
     cleanup_interval_hours: int = 24
-    
+
     # Real-time publishing configuration
     realtime_publishing_enabled: bool = True
     websocket_enabled: bool = True
@@ -61,7 +77,7 @@ class TrackingConfig:
     realtime_broadcast_alerts: bool = True
     realtime_broadcast_drift_events: bool = True
     realtime_max_connections: int = 100
-    
+
     # Performance Dashboard configuration
     dashboard_enabled: bool = True
     dashboard_host: str = "0.0.0.0"
@@ -76,7 +92,7 @@ class TrackingConfig:
     dashboard_enable_alert_management: bool = True
     dashboard_enable_historical_charts: bool = True
     dashboard_enable_drift_visualization: bool = True
-    
+
     # Drift detection configuration
     drift_detection_enabled: bool = True
     drift_check_interval_hours: int = 24
@@ -86,52 +102,60 @@ class TrackingConfig:
     drift_significance_threshold: float = 0.05
     drift_psi_threshold: float = 0.25
     drift_ph_threshold: float = 50.0
-    
+
     # Adaptive retraining configuration
     adaptive_retraining_enabled: bool = True
     retraining_accuracy_threshold: float = 60.0  # Minimum accuracy % before retraining
-    retraining_error_threshold: float = 25.0     # Maximum error minutes before retraining
-    retraining_drift_threshold: float = 0.3      # Drift score threshold for retraining
-    retraining_check_interval_hours: int = 6     # How often to check for retraining needs
-    incremental_retraining_threshold: float = 70.0  # Use incremental if accuracy above this
-    max_concurrent_retrains: int = 2             # Maximum models retraining simultaneously
-    retraining_cooldown_hours: int = 12          # Minimum time between retrains for same model
-    auto_feature_refresh: bool = True            # Automatically refresh features for retraining
-    retraining_validation_split: float = 0.2    # Validation split for retraining
-    retraining_lookback_days: int = 14           # Days of data to use for retraining
-    
+    retraining_error_threshold: float = 25.0  # Maximum error minutes before retraining
+    retraining_drift_threshold: float = 0.3  # Drift score threshold for retraining
+    retraining_check_interval_hours: int = 6  # How often to check for retraining needs
+    incremental_retraining_threshold: float = (
+        70.0  # Use incremental if accuracy above this
+    )
+    max_concurrent_retrains: int = 2  # Maximum models retraining simultaneously
+    retraining_cooldown_hours: int = 12  # Minimum time between retrains for same model
+    auto_feature_refresh: bool = True  # Automatically refresh features for retraining
+    retraining_validation_split: float = 0.2  # Validation split for retraining
+    retraining_lookback_days: int = 14  # Days of data to use for retraining
+
     # Model optimization configuration
-    optimization_enabled: bool = True            # Enable automatic parameter optimization during retraining
-    optimization_strategy: str = "bayesian"     # Optimization strategy: bayesian, grid_search, random_search
-    optimization_max_time_minutes: int = 30     # Maximum time for optimization per model
-    optimization_n_calls: int = 50              # Number of optimization iterations
-    optimization_min_improvement: float = 0.01  # Minimum improvement to apply optimization results
-    
+    optimization_enabled: bool = (
+        True  # Enable automatic parameter optimization during retraining
+    )
+    optimization_strategy: str = (
+        "bayesian"  # Optimization strategy: bayesian, grid_search, random_search
+    )
+    optimization_max_time_minutes: int = 30  # Maximum time for optimization per model
+    optimization_n_calls: int = 50  # Number of optimization iterations
+    optimization_min_improvement: float = (
+        0.01  # Minimum improvement to apply optimization results
+    )
+
     def __post_init__(self):
         """Set default alert thresholds if not provided."""
         if self.alert_thresholds is None:
             self.alert_thresholds = {
-                'accuracy_warning': 70.0,
-                'accuracy_critical': 50.0,
-                'error_warning': 20.0,
-                'error_critical': 30.0,
-                'trend_degrading': -5.0,
-                'validation_lag_warning': 15.0,
-                'validation_lag_critical': 30.0,
-                'retraining_needed': 60.0,
-                'retraining_urgent': 50.0,
-                'drift_retraining': 0.3,
-                'retraining_failure': 0.0
+                "accuracy_warning": 70.0,
+                "accuracy_critical": 50.0,
+                "error_warning": 20.0,
+                "error_critical": 30.0,
+                "trend_degrading": -5.0,
+                "validation_lag_warning": 15.0,
+                "validation_lag_critical": 30.0,
+                "retraining_needed": 60.0,
+                "retraining_urgent": 50.0,
+                "drift_retraining": 0.3,
+                "retraining_failure": 0.0,
             }
 
 
 class TrackingManager:
     """
     Centralized tracking manager for automatic accuracy monitoring.
-    
+
     Provides seamless integration between prediction generation, validation,
     and real-time monitoring across the entire occupancy prediction system.
-    
+
     Features:
     - Automatic prediction recording when ensemble models make predictions
     - Real-time validation based on actual room state changes
@@ -139,7 +163,7 @@ class TrackingManager:
     - Event-driven accuracy updates
     - System-wide tracking coordination
     """
-    
+
     def __init__(
         self,
         config: TrackingConfig,
@@ -148,11 +172,11 @@ class TrackingManager:
         feature_engineering_engine=None,
         notification_callbacks: Optional[List[Callable]] = None,
         mqtt_integration_manager=None,
-        api_config=None
+        api_config=None,
     ):
         """
         Initialize the tracking manager.
-        
+
         Args:
             config: Tracking configuration
             database_manager: Database manager for accessing room states
@@ -167,72 +191,71 @@ class TrackingManager:
         self.model_registry = model_registry or {}
         self.feature_engineering_engine = feature_engineering_engine
         self.notification_callbacks = notification_callbacks or []
-        
+
         # Enhanced MQTT integration for automatic Home Assistant publishing with real-time features
         # Use Enhanced MQTT Manager by default, fall back to basic if provided explicitly
         if mqtt_integration_manager is None:
             # Initialize Enhanced MQTT Manager automatically with default configuration
             from ..core.config import get_config
+
             system_config = get_config()
             self.mqtt_integration_manager = EnhancedMQTTIntegrationManager(
                 mqtt_config=system_config.mqtt,
                 rooms=system_config.rooms,
-                notification_callbacks=notification_callbacks
+                notification_callbacks=notification_callbacks,
             )
         else:
             # Use the provided integration manager (backward compatibility)
             self.mqtt_integration_manager = mqtt_integration_manager
-        
+
         # API server integration for automatic REST API
         self.api_config = api_config
         self.api_server = None
-        
+
         # Initialize core tracking components
         self.validator: Optional[PredictionValidator] = None
         self.accuracy_tracker: Optional[AccuracyTracker] = None
         self.drift_detector: Optional[ConceptDriftDetector] = None
         self.adaptive_retrainer: Optional[AdaptiveRetrainer] = None
         self.model_optimizer: Optional[ModelOptimizer] = None
-        
+
         # Real-time publishing system
         self.realtime_publisher: Optional[RealtimePublishingSystem] = None
-        
+
         # Performance Dashboard
         self.dashboard: Optional[PerformanceDashboard] = None
-        
+
         # Background tasks
         self._background_tasks: List[asyncio.Task] = []
         self._shutdown_event = asyncio.Event()
         self._tracking_active = False
-        
+
         # Thread safety
         self._lock = threading.RLock()
-        
+
         # Prediction cache for validation correlation
         self._pending_predictions: Dict[str, List[PredictionResult]] = {}
         self._prediction_cache_lock = threading.RLock()
-        
+
         # Performance metrics
         self._total_predictions_recorded = 0
         self._total_validations_performed = 0
         self._total_drift_checks_performed = 0
         self._last_drift_check_time: Optional[datetime] = None
         self._system_start_time = datetime.utcnow()
-        
+
         logger.info(f"Initialized TrackingManager with config: {config}")
-    
+
     async def initialize(self) -> None:
         """Initialize tracking components and start monitoring."""
         try:
             if not self.config.enabled:
                 logger.info("Tracking is disabled in configuration")
                 return
-            
+
             # Initialize validator
-            self.validator = PredictionValidator(
-                accuracy_threshold_minutes=15
-            )
-            
+            self.validator = PredictionValidator(accuracy_threshold_minutes=15)
+
             # Initialize accuracy tracker
             self.accuracy_tracker = AccuracyTracker(
                 prediction_validator=self.validator,
@@ -240,9 +263,9 @@ class TrackingManager:
                 alert_thresholds=self.config.alert_thresholds,
                 max_stored_alerts=self.config.max_stored_alerts,
                 trend_analysis_points=self.config.trend_analysis_points,
-                notification_callbacks=self.notification_callbacks
+                notification_callbacks=self.notification_callbacks,
             )
-            
+
             # Initialize drift detector if enabled
             if self.config.drift_detection_enabled:
                 self.drift_detector = ConceptDriftDetector(
@@ -251,9 +274,9 @@ class TrackingManager:
                     min_samples=self.config.drift_min_samples,
                     alpha=self.config.drift_significance_threshold,
                     ph_threshold=self.config.drift_ph_threshold,
-                    psi_threshold=self.config.drift_psi_threshold
+                    psi_threshold=self.config.drift_psi_threshold,
                 )
-            
+
             # Initialize model optimizer if enabled
             if self.config.optimization_enabled:
                 optimization_config = OptimizationConfig(
@@ -261,16 +284,18 @@ class TrackingManager:
                     strategy=OptimizationStrategy(self.config.optimization_strategy),
                     max_optimization_time_minutes=self.config.optimization_max_time_minutes,
                     n_calls=self.config.optimization_n_calls,
-                    min_improvement_threshold=self.config.optimization_min_improvement
+                    min_improvement_threshold=self.config.optimization_min_improvement,
                 )
-                
+
                 self.model_optimizer = ModelOptimizer(
                     config=optimization_config,
                     accuracy_tracker=self.accuracy_tracker,
-                    drift_detector=self.drift_detector
+                    drift_detector=self.drift_detector,
                 )
-                logger.info(f"ModelOptimizer initialized with strategy: {self.config.optimization_strategy}")
-            
+                logger.info(
+                    f"ModelOptimizer initialized with strategy: {self.config.optimization_strategy}"
+                )
+
             # Initialize adaptive retrainer if enabled
             if self.config.adaptive_retraining_enabled:
                 self.adaptive_retrainer = AdaptiveRetrainer(
@@ -278,215 +303,236 @@ class TrackingManager:
                     model_registry=self.model_registry,
                     feature_engineering_engine=self.feature_engineering_engine,
                     notification_callbacks=self.notification_callbacks,
-                    model_optimizer=self.model_optimizer  # Pass optimizer to retrainer
+                    model_optimizer=self.model_optimizer,  # Pass optimizer to retrainer
                 )
                 await self.adaptive_retrainer.initialize()
-            
+
             # Initialize Enhanced MQTT integration if available
-            if self.mqtt_integration_manager and hasattr(self.mqtt_integration_manager, 'initialize'):
+            if self.mqtt_integration_manager and hasattr(
+                self.mqtt_integration_manager, "initialize"
+            ):
                 await self.mqtt_integration_manager.initialize()
                 logger.info("Enhanced MQTT integration initialized successfully")
-            
+
             # Start tracking systems
             await self.start_tracking()
-            
+
             # Initialize and start real-time publishing system if enabled
             await self._initialize_realtime_publishing()
-            
+
             # Initialize and start performance dashboard if enabled
             await self._initialize_dashboard()
-            
+
             # Start API server automatically if enabled
             await self._start_api_server_if_enabled()
-            
+
             logger.info("TrackingManager initialized successfully")
-            
+
         except Exception as e:
             logger.error(f"Failed to initialize TrackingManager: {e}")
             raise TrackingManagerError("Failed to initialize tracking manager", cause=e)
-    
+
     async def start_tracking(self) -> None:
         """Start background tracking tasks."""
         try:
             if self._tracking_active:
                 logger.warning("Tracking already active")
                 return
-            
+
             if not self.config.enabled:
                 logger.info("Tracking is disabled, not starting monitoring")
                 return
-            
+
             # Start accuracy tracker monitoring
             if self.accuracy_tracker:
                 await self.accuracy_tracker.start_monitoring()
-            
+
             # Start validation monitoring task
             validation_task = asyncio.create_task(self._validation_monitoring_loop())
             self._background_tasks.append(validation_task)
-            
+
             # Start cleanup task
             cleanup_task = asyncio.create_task(self._cleanup_loop())
             self._background_tasks.append(cleanup_task)
-            
+
             # Start drift detection task if enabled
             if self.config.drift_detection_enabled and self.drift_detector:
                 drift_task = asyncio.create_task(self._drift_detection_loop())
                 self._background_tasks.append(drift_task)
-            
+
             self._tracking_active = True
             logger.info("Started TrackingManager monitoring tasks")
-            
+
         except Exception as e:
             logger.error(f"Failed to start tracking: {e}")
             raise TrackingManagerError("Failed to start tracking", cause=e)
-    
+
     async def stop_tracking(self) -> None:
         """Stop background tracking tasks gracefully."""
         try:
             if not self._tracking_active:
                 return
-            
+
             # Signal shutdown
             self._shutdown_event.set()
-            
+
             # Stop accuracy tracker
             if self.accuracy_tracker:
                 await self.accuracy_tracker.stop_monitoring()
-            
+
             # Stop adaptive retrainer
             if self.adaptive_retrainer:
                 await self.adaptive_retrainer.shutdown()
-            
+
             # Stop Enhanced MQTT integration if available
-            if self.mqtt_integration_manager and hasattr(self.mqtt_integration_manager, 'shutdown'):
+            if self.mqtt_integration_manager and hasattr(
+                self.mqtt_integration_manager, "shutdown"
+            ):
                 await self.mqtt_integration_manager.shutdown()
                 logger.info("Enhanced MQTT integration shutdown complete")
-            
+
             # Stop API server if running
             await self.stop_api_server()
-            
+
             # Stop performance dashboard if running
             await self._shutdown_dashboard()
-            
+
             # Stop real-time publishing system
             await self._shutdown_realtime_publishing()
-            
+
             # Wait for background tasks to complete
             if self._background_tasks:
                 await asyncio.gather(*self._background_tasks, return_exceptions=True)
-            
+
             self._background_tasks.clear()
             self._tracking_active = False
-            
+
             logger.info("Stopped TrackingManager monitoring tasks")
-            
+
         except Exception as e:
             logger.error(f"Error stopping tracking: {e}")
-    
+
     async def record_prediction(self, prediction_result: PredictionResult) -> None:
         """
         Record a prediction for tracking and future validation.
-        
+
         This method is called automatically by ensemble models when
         they generate predictions. Also automatically publishes to Home Assistant via MQTT.
-        
+
         Args:
             prediction_result: The prediction result to record
         """
         try:
             if not self.config.enabled or not self.validator:
                 return
-            
+
             # Record prediction with validator
             await self.validator.record_prediction(
-                room_id=prediction_result.prediction_metadata.get('room_id', 'unknown'),
+                room_id=prediction_result.prediction_metadata.get("room_id", "unknown"),
                 predicted_time=prediction_result.predicted_time,
                 confidence=prediction_result.confidence_score,
                 model_type=prediction_result.model_type,
                 transition_type=prediction_result.transition_type,
-                prediction_metadata=prediction_result.prediction_metadata
+                prediction_metadata=prediction_result.prediction_metadata,
             )
-            
+
             # Cache prediction for validation correlation
-            room_id = prediction_result.prediction_metadata.get('room_id', 'unknown')
+            room_id = prediction_result.prediction_metadata.get("room_id", "unknown")
             with self._prediction_cache_lock:
                 if room_id not in self._pending_predictions:
                     self._pending_predictions[room_id] = []
                 self._pending_predictions[room_id].append(prediction_result)
-                
+
                 # Clean old predictions from cache
                 cutoff_time = datetime.utcnow() - timedelta(hours=2)
                 self._pending_predictions[room_id] = [
-                    p for p in self._pending_predictions[room_id]
+                    p
+                    for p in self._pending_predictions[room_id]
                     if p.predicted_time >= cutoff_time
                 ]
-            
+
             self._total_predictions_recorded += 1
-            
+
             # Automatically publish prediction to Home Assistant via Enhanced MQTT (includes real-time broadcasting)
             if self.mqtt_integration_manager:
                 try:
                     publish_results = await self.mqtt_integration_manager.publish_prediction(
                         prediction_result=prediction_result,
                         room_id=room_id,
-                        current_state=None  # Could be determined from room state if available
+                        current_state=None,  # Could be determined from room state if available
                     )
-                    
+
                     # Log enhanced publishing results
                     if isinstance(publish_results, dict):
                         successful_channels = []
-                        if publish_results.get('mqtt', {}).get('success', False):
+                        if publish_results.get("mqtt", {}).get("success", False):
                             successful_channels.append("MQTT")
-                        if publish_results.get('websocket', {}).get('success', False):
-                            ws_clients = publish_results['websocket'].get('clients_notified', 0)
-                            successful_channels.append(f"WebSocket({ws_clients} clients)")
-                        if publish_results.get('sse', {}).get('success', False):
-                            sse_clients = publish_results['sse'].get('clients_notified', 0)
+                        if publish_results.get("websocket", {}).get("success", False):
+                            ws_clients = publish_results["websocket"].get(
+                                "clients_notified", 0
+                            )
+                            successful_channels.append(
+                                f"WebSocket({ws_clients} clients)"
+                            )
+                        if publish_results.get("sse", {}).get("success", False):
+                            sse_clients = publish_results["sse"].get(
+                                "clients_notified", 0
+                            )
                             successful_channels.append(f"SSE({sse_clients} clients)")
-                        
+
                         if successful_channels:
-                            logger.debug(f"Published prediction for room {room_id} via Enhanced MQTT: {', '.join(successful_channels)}")
+                            logger.debug(
+                                f"Published prediction for room {room_id} via Enhanced MQTT: {', '.join(successful_channels)}"
+                            )
                     else:
-                        logger.debug(f"Published prediction to Home Assistant for room {room_id}")
+                        logger.debug(
+                            f"Published prediction to Home Assistant for room {room_id}"
+                        )
                 except Exception as mqtt_error:
-                    logger.warning(f"Failed to publish prediction via Enhanced MQTT for room {room_id}: {mqtt_error}")
+                    logger.warning(
+                        f"Failed to publish prediction via Enhanced MQTT for room {room_id}: {mqtt_error}"
+                    )
                     # Don't raise exception - MQTT publishing is optional
-            
+
             # Note: Real-time broadcasting is now handled by Enhanced MQTT Manager automatically
             # No need for separate real-time publisher when using Enhanced MQTT Manager
-            
+
             # Automatically notify dashboard via WebSocket if enabled
             if self.dashboard and self.config.dashboard_enabled:
                 try:
                     # Dashboard will automatically receive the prediction data through its integration
                     # with the tracking manager via real-time updates
-                    logger.debug(f"Dashboard integration active for prediction in room {room_id}")
+                    logger.debug(
+                        f"Dashboard integration active for prediction in room {room_id}"
+                    )
                 except Exception as dashboard_error:
-                    logger.warning(f"Dashboard integration error for room {room_id}: {dashboard_error}")
+                    logger.warning(
+                        f"Dashboard integration error for room {room_id}: {dashboard_error}"
+                    )
                     # Don't raise exception - dashboard integration is optional
-            
+
             logger.debug(
                 f"Recorded prediction for room {room_id}: "
                 f"{prediction_result.predicted_time} ({prediction_result.transition_type})"
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to record prediction: {e}")
             # Don't raise exception to prevent disrupting prediction flow
-    
+
     async def handle_room_state_change(
         self,
         room_id: str,
         new_state: str,
         change_time: datetime,
-        previous_state: Optional[str] = None
+        previous_state: Optional[str] = None,
     ) -> None:
         """
         Handle room state change for automatic validation.
-        
+
         This method should be called by the event processing pipeline
         when actual room occupancy changes occur.
-        
+
         Args:
             room_id: Room that changed state
             new_state: New occupancy state (occupied/vacant)
@@ -496,179 +542,196 @@ class TrackingManager:
         try:
             if not self.config.enabled or not self.config.auto_validation_enabled:
                 return
-            
+
             if not self.validator:
                 logger.warning("No validator available for state change handling")
                 return
-            
+
             # Validate any pending predictions for this room
             await self.validator.validate_prediction(
                 room_id=room_id,
                 actual_time=change_time,
-                transition_type=f"{previous_state or 'unknown'}_to_{new_state}"
+                transition_type=f"{previous_state or 'unknown'}_to_{new_state}",
             )
-            
+
             self._total_validations_performed += 1
-            
+
             logger.debug(
                 f"Handled room state change for {room_id}: "
                 f"{previous_state} -> {new_state} at {change_time}"
             )
-            
+
             # Check if retraining is needed based on recent accuracy
             if self.adaptive_retrainer and self.validator:
                 await self._evaluate_accuracy_based_retraining(room_id)
-            
+
         except Exception as e:
             logger.error(f"Failed to handle room state change: {e}")
             # Don't raise exception to prevent disrupting event processing
-    
+
     async def get_tracking_status(self) -> Dict[str, Any]:
         """Get comprehensive tracking system status."""
         try:
             status = {
-                'tracking_active': self._tracking_active,
-                'config': {
-                    'enabled': self.config.enabled,
-                    'monitoring_interval_seconds': self.config.monitoring_interval_seconds,
-                    'auto_validation_enabled': self.config.auto_validation_enabled,
-                    'validation_window_minutes': self.config.validation_window_minutes
+                "tracking_active": self._tracking_active,
+                "config": {
+                    "enabled": self.config.enabled,
+                    "monitoring_interval_seconds": self.config.monitoring_interval_seconds,
+                    "auto_validation_enabled": self.config.auto_validation_enabled,
+                    "validation_window_minutes": self.config.validation_window_minutes,
                 },
-                'performance': {
-                    'total_predictions_recorded': self._total_predictions_recorded,
-                    'total_validations_performed': self._total_validations_performed,
-                    'total_drift_checks_performed': self._total_drift_checks_performed,
-                    'last_drift_check_time': self._last_drift_check_time.isoformat() if self._last_drift_check_time else None,
-                    'system_uptime_seconds': (
+                "performance": {
+                    "total_predictions_recorded": self._total_predictions_recorded,
+                    "total_validations_performed": self._total_validations_performed,
+                    "total_drift_checks_performed": self._total_drift_checks_performed,
+                    "last_drift_check_time": (
+                        self._last_drift_check_time.isoformat()
+                        if self._last_drift_check_time
+                        else None
+                    ),
+                    "system_uptime_seconds": (
                         datetime.utcnow() - self._system_start_time
                     ).total_seconds(),
-                    'background_tasks': len(self._background_tasks)
-                }
+                    "background_tasks": len(self._background_tasks),
+                },
             }
-            
+
             # Add validator status
             if self.validator:
-                status['validator'] = {
-                    'total_predictions': await self.validator.get_total_predictions(),
-                    'validation_rate': await self.validator.get_validation_rate(),
-                    'pending_validations': len(self.validator._pending_predictions)
+                status["validator"] = {
+                    "total_predictions": await self.validator.get_total_predictions(),
+                    "validation_rate": await self.validator.get_validation_rate(),
+                    "pending_validations": len(self.validator._pending_predictions),
                 }
-            
+
             # Add accuracy tracker status
             if self.accuracy_tracker:
-                status['accuracy_tracker'] = self.accuracy_tracker.get_tracker_stats()
-            
+                status["accuracy_tracker"] = self.accuracy_tracker.get_tracker_stats()
+
             # Add drift detector status
             if self.drift_detector:
-                status['drift_detector'] = {
-                    'enabled': self.config.drift_detection_enabled,
-                    'check_interval_hours': self.config.drift_check_interval_hours,
-                    'baseline_days': self.config.drift_baseline_days,
-                    'current_days': self.config.drift_current_days,
-                    'total_checks_performed': self._total_drift_checks_performed,
-                    'last_check_time': self._last_drift_check_time.isoformat() if self._last_drift_check_time else None
+                status["drift_detector"] = {
+                    "enabled": self.config.drift_detection_enabled,
+                    "check_interval_hours": self.config.drift_check_interval_hours,
+                    "baseline_days": self.config.drift_baseline_days,
+                    "current_days": self.config.drift_current_days,
+                    "total_checks_performed": self._total_drift_checks_performed,
+                    "last_check_time": (
+                        self._last_drift_check_time.isoformat()
+                        if self._last_drift_check_time
+                        else None
+                    ),
                 }
-            
+
             # Add adaptive retrainer status
             if self.adaptive_retrainer:
-                status['adaptive_retrainer'] = self.adaptive_retrainer.get_retrainer_stats()
-            
+                status["adaptive_retrainer"] = (
+                    self.adaptive_retrainer.get_retrainer_stats()
+                )
+
             # Add pending predictions cache status
             with self._prediction_cache_lock:
                 cache_status = {}
                 for room_id, predictions in self._pending_predictions.items():
                     cache_status[room_id] = len(predictions)
-                status['prediction_cache'] = cache_status
-            
+                status["prediction_cache"] = cache_status
+
             # Add Enhanced MQTT integration status (includes real-time publishing)
-            status['enhanced_mqtt_integration'] = self.get_enhanced_mqtt_status()
-            
+            status["enhanced_mqtt_integration"] = self.get_enhanced_mqtt_status()
+
             # Add real-time publishing status (for backward compatibility)
-            status['realtime_publishing'] = self.get_realtime_publishing_status()
-            
+            status["realtime_publishing"] = self.get_realtime_publishing_status()
+
             return status
-            
+
         except Exception as e:
             logger.error(f"Failed to get tracking status: {e}")
-            return {'error': str(e)}
-    
+            return {"error": str(e)}
+
     async def get_real_time_metrics(
-        self,
-        room_id: Optional[str] = None,
-        model_type: Optional[str] = None
+        self, room_id: Optional[str] = None, model_type: Optional[str] = None
     ) -> Union[RealTimeMetrics, Dict[str, RealTimeMetrics], None]:
         """Get real-time accuracy metrics."""
         try:
             if not self.accuracy_tracker:
                 return None
-            
-            return await self.accuracy_tracker.get_real_time_metrics(room_id, model_type)
-            
+
+            return await self.accuracy_tracker.get_real_time_metrics(
+                room_id, model_type
+            )
+
         except Exception as e:
             logger.error(f"Failed to get real-time metrics: {e}")
             return None
-    
+
     async def get_active_alerts(
-        self,
-        room_id: Optional[str] = None,
-        severity: Optional[str] = None
+        self, room_id: Optional[str] = None, severity: Optional[str] = None
     ) -> List[AccuracyAlert]:
         """Get active accuracy alerts."""
         try:
             if not self.accuracy_tracker:
                 return []
-            
+
             from .tracker import AlertSeverity
+
             severity_enum = None
             if severity:
                 severity_enum = AlertSeverity(severity)
-            
+
             return await self.accuracy_tracker.get_active_alerts(room_id, severity_enum)
-            
+
         except Exception as e:
             logger.error(f"Failed to get active alerts: {e}")
             return []
-    
+
     async def acknowledge_alert(self, alert_id: str, acknowledged_by: str) -> bool:
         """Acknowledge an accuracy alert."""
         try:
             if not self.accuracy_tracker:
                 return False
-            
-            return await self.accuracy_tracker.acknowledge_alert(alert_id, acknowledged_by)
-            
+
+            return await self.accuracy_tracker.acknowledge_alert(
+                alert_id, acknowledged_by
+            )
+
         except Exception as e:
             logger.error(f"Failed to acknowledge alert: {e}")
             return False
-    
-    def add_notification_callback(self, callback: Callable[[AccuracyAlert], None]) -> None:
+
+    def add_notification_callback(
+        self, callback: Callable[[AccuracyAlert], None]
+    ) -> None:
         """Add a notification callback for alerts."""
         if callback not in self.notification_callbacks:
             self.notification_callbacks.append(callback)
-            
+
             if self.accuracy_tracker:
                 self.accuracy_tracker.add_notification_callback(callback)
-            
+
             logger.info("Added notification callback to TrackingManager")
-    
-    def remove_notification_callback(self, callback: Callable[[AccuracyAlert], None]) -> None:
+
+    def remove_notification_callback(
+        self, callback: Callable[[AccuracyAlert], None]
+    ) -> None:
         """Remove a notification callback."""
         if callback in self.notification_callbacks:
             self.notification_callbacks.remove(callback)
-            
+
             if self.accuracy_tracker:
                 self.accuracy_tracker.remove_notification_callback(callback)
-            
+
             logger.info("Removed notification callback from TrackingManager")
-    
-    async def check_drift(self, room_id: str, feature_engineering_engine=None) -> Optional[DriftMetrics]:
+
+    async def check_drift(
+        self, room_id: str, feature_engineering_engine=None
+    ) -> Optional[DriftMetrics]:
         """
         Manually trigger drift detection for a specific room.
-        
+
         Args:
             room_id: Room to check for drift
             feature_engineering_engine: Engine for feature extraction (optional)
-            
+
         Returns:
             DriftMetrics if detection completed, None if disabled or failed
         """
@@ -676,85 +739,89 @@ class TrackingManager:
             if not self.config.drift_detection_enabled or not self.drift_detector:
                 logger.debug("Drift detection disabled or not initialized")
                 return None
-            
+
             if not self.validator:
                 logger.warning("No validator available for drift detection")
                 return None
-            
+
             logger.info(f"Running manual drift detection for room {room_id}")
-            
+
             drift_metrics = await self.drift_detector.detect_drift(
                 room_id=room_id,
                 prediction_validator=self.validator,
-                feature_engineering_engine=feature_engineering_engine
+                feature_engineering_engine=feature_engineering_engine,
             )
-            
+
             self._total_drift_checks_performed += 1
-            
+
             # Handle drift detection results and check for retraining needs
             await self._handle_drift_detection_results(room_id, drift_metrics)
-            
+
             # Evaluate retraining need based on drift results
             if self.adaptive_retrainer and drift_metrics:
                 await self._evaluate_drift_based_retraining(room_id, drift_metrics)
-            
+
             logger.info(
                 f"Drift detection completed for {room_id}: "
                 f"severity={drift_metrics.drift_severity.value}, "
                 f"score={drift_metrics.overall_drift_score:.3f}"
             )
-            
+
             return drift_metrics
-            
+
         except Exception as e:
             logger.error(f"Failed to check drift for {room_id}: {e}")
             return None
-    
+
     async def get_drift_status(self, room_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Get drift detection status and recent results.
-        
+
         Args:
             room_id: Optional room filter
-            
+
         Returns:
             Dictionary with drift detection status and metrics
         """
         try:
             status = {
-                'drift_detection_enabled': self.config.drift_detection_enabled,
-                'drift_detector_available': self.drift_detector is not None,
-                'total_drift_checks': self._total_drift_checks_performed,
-                'last_drift_check': self._last_drift_check_time.isoformat() if self._last_drift_check_time else None,
-                'next_drift_check': None
+                "drift_detection_enabled": self.config.drift_detection_enabled,
+                "drift_detector_available": self.drift_detector is not None,
+                "total_drift_checks": self._total_drift_checks_performed,
+                "last_drift_check": (
+                    self._last_drift_check_time.isoformat()
+                    if self._last_drift_check_time
+                    else None
+                ),
+                "next_drift_check": None,
             }
-            
+
             if self._last_drift_check_time:
                 next_check = self._last_drift_check_time + timedelta(
                     hours=self.config.drift_check_interval_hours
                 )
-                status['next_drift_check'] = next_check.isoformat()
-            
+                status["next_drift_check"] = next_check.isoformat()
+
             # Add configuration details
             if self.config.drift_detection_enabled:
-                status['drift_config'] = {
-                    'check_interval_hours': self.config.drift_check_interval_hours,
-                    'baseline_days': self.config.drift_baseline_days,
-                    'current_days': self.config.drift_current_days,
-                    'min_samples': self.config.drift_min_samples,
-                    'significance_threshold': self.config.drift_significance_threshold,
-                    'psi_threshold': self.config.drift_psi_threshold,
-                    'ph_threshold': self.config.drift_ph_threshold
+                status["drift_config"] = {
+                    "check_interval_hours": self.config.drift_check_interval_hours,
+                    "baseline_days": self.config.drift_baseline_days,
+                    "current_days": self.config.drift_current_days,
+                    "min_samples": self.config.drift_min_samples,
+                    "significance_threshold": self.config.drift_significance_threshold,
+                    "psi_threshold": self.config.drift_psi_threshold,
+                    "ph_threshold": self.config.drift_ph_threshold,
                 }
-            
+
             return status
-            
+
         except Exception as e:
             logger.error(f"Failed to get drift status: {e}")
-            return {'error': str(e)}
-    
+            return {"error": str(e)}
+
     # Private methods
-    
+
     async def _validation_monitoring_loop(self) -> None:
         """Background loop for validation monitoring."""
         try:
@@ -762,175 +829,178 @@ class TrackingManager:
                 try:
                     if self.config.auto_validation_enabled and self.database_manager:
                         await self._check_for_room_state_changes()
-                    
+
                     # Wait for next monitoring cycle
                     await asyncio.wait_for(
                         self._shutdown_event.wait(),
-                        timeout=self.config.validation_window_minutes * 60
+                        timeout=self.config.validation_window_minutes * 60,
                     )
-                    
+
                 except asyncio.TimeoutError:
                     # Expected timeout for monitoring interval
                     continue
                 except Exception as e:
                     logger.error(f"Error in validation monitoring loop: {e}")
                     await asyncio.sleep(30)  # Wait before retrying
-                    
+
         except asyncio.CancelledError:
             logger.info("Validation monitoring loop cancelled")
             raise
         except Exception as e:
             logger.error(f"Validation monitoring loop failed: {e}")
-    
+
     async def _check_for_room_state_changes(self) -> None:
         """Check database for recent room state changes to trigger validation."""
         try:
             if not self.database_manager:
                 return
-            
+
             # Get recent room state changes
             cutoff_time = datetime.utcnow() - timedelta(
                 minutes=self.config.validation_window_minutes
             )
-            
+
             # This would require a method in the database manager to get recent state changes
             # For now, we'll skip this implementation as it requires database integration
             # In practice, this would be called by the event processing pipeline
-            
+
             logger.debug("Checked for room state changes")
-            
+
         except Exception as e:
             logger.error(f"Failed to check for room state changes: {e}")
-    
+
     async def _cleanup_loop(self) -> None:
         """Background loop for periodic cleanup."""
         try:
             while not self._shutdown_event.is_set():
                 try:
                     await self._perform_cleanup()
-                    
+
                     # Wait for next cleanup cycle
                     await asyncio.wait_for(
                         self._shutdown_event.wait(),
-                        timeout=self.config.cleanup_interval_hours * 3600
+                        timeout=self.config.cleanup_interval_hours * 3600,
                     )
-                    
+
                 except asyncio.TimeoutError:
                     # Expected timeout for cleanup interval
                     continue
                 except Exception as e:
                     logger.error(f"Error in cleanup loop: {e}")
                     await asyncio.sleep(300)  # Wait 5 minutes before retrying
-                    
+
         except asyncio.CancelledError:
             logger.info("Cleanup loop cancelled")
             raise
         except Exception as e:
             logger.error(f"Cleanup loop failed: {e}")
-    
+
     async def _perform_cleanup(self) -> None:
         """Perform periodic cleanup of tracking data."""
         try:
             # Clean prediction cache
             cutoff_time = datetime.utcnow() - timedelta(hours=2)
-            
+
             with self._prediction_cache_lock:
                 for room_id in list(self._pending_predictions.keys()):
                     self._pending_predictions[room_id] = [
-                        p for p in self._pending_predictions[room_id]
+                        p
+                        for p in self._pending_predictions[room_id]
                         if p.predicted_time >= cutoff_time
                     ]
-                    
+
                     # Remove empty room entries
                     if not self._pending_predictions[room_id]:
                         del self._pending_predictions[room_id]
-            
+
             # Clean validator data if available
             if self.validator:
                 await self.validator.cleanup_old_predictions(days_to_keep=7)
-            
+
             logger.debug("Performed tracking data cleanup")
-            
+
         except Exception as e:
             logger.error(f"Failed to perform cleanup: {e}")
-    
+
     async def _drift_detection_loop(self) -> None:
         """Background loop for automatic drift detection."""
         try:
             while not self._shutdown_event.is_set():
                 try:
                     await self._perform_drift_detection()
-                    
+
                     # Wait for next drift detection cycle
                     await asyncio.wait_for(
                         self._shutdown_event.wait(),
-                        timeout=self.config.drift_check_interval_hours * 3600
+                        timeout=self.config.drift_check_interval_hours * 3600,
                     )
-                    
+
                 except asyncio.TimeoutError:
                     # Expected timeout for drift detection interval
                     continue
                 except Exception as e:
                     logger.error(f"Error in drift detection loop: {e}")
                     await asyncio.sleep(300)  # Wait 5 minutes before retrying
-                    
+
         except asyncio.CancelledError:
             logger.info("Drift detection loop cancelled")
             raise
         except Exception as e:
             logger.error(f"Drift detection loop failed: {e}")
-    
+
     async def _perform_drift_detection(self) -> None:
         """Perform automatic drift detection for all rooms."""
         try:
             if not self.config.drift_detection_enabled or not self.drift_detector:
                 return
-            
+
             if not self.validator:
                 logger.warning("No validator available for drift detection")
                 return
-            
+
             logger.info("Starting automatic drift detection for all rooms")
-            
+
             # Get all rooms from config (would need to be passed in or accessed globally)
             # For now, we'll get rooms from recent predictions
             rooms_to_check = await self._get_rooms_with_recent_activity()
-            
+
             if not rooms_to_check:
                 logger.debug("No rooms with recent activity for drift detection")
                 return
-            
+
             drift_results = {}
-            
+
             for room_id in rooms_to_check:
                 try:
                     logger.debug(f"Checking drift for room {room_id}")
-                    
+
                     drift_metrics = await self.drift_detector.detect_drift(
                         room_id=room_id,
                         prediction_validator=self.validator,
-                        feature_engineering_engine=None  # Would need to be injected
+                        feature_engineering_engine=None,  # Would need to be injected
                     )
-                    
+
                     drift_results[room_id] = drift_metrics
-                    
+
                     # Handle drift detection results
                     await self._handle_drift_detection_results(room_id, drift_metrics)
-                    
+
                     self._total_drift_checks_performed += 1
-                    
+
                 except Exception as e:
                     logger.error(f"Error checking drift for room {room_id}: {e}")
                     continue
-            
+
             self._last_drift_check_time = datetime.utcnow()
-            
+
             # Log summary of drift detection
             significant_drifts = [
-                room_id for room_id, metrics in drift_results.items()
-                if metrics.drift_severity in [DriftSeverity.MAJOR, DriftSeverity.CRITICAL]
+                room_id
+                for room_id, metrics in drift_results.items()
+                if metrics.drift_severity
+                in [DriftSeverity.MAJOR, DriftSeverity.CRITICAL]
             ]
-            
+
             if significant_drifts:
                 logger.warning(
                     f"Significant drift detected in rooms: {significant_drifts}"
@@ -939,41 +1009,46 @@ class TrackingManager:
                 logger.info(
                     f"Drift detection completed for {len(drift_results)} rooms - no significant drift"
                 )
-            
+
         except Exception as e:
             logger.error(f"Failed to perform drift detection: {e}")
-    
+
     async def _get_rooms_with_recent_activity(self) -> List[str]:
         """Get rooms that have recent prediction activity for drift detection."""
         try:
             # Get rooms from recent predictions
             with self._prediction_cache_lock:
                 rooms = list(self._pending_predictions.keys())
-            
+
             # Also get rooms from validator if available
             if self.validator:
                 validator_stats = await self.validator.get_validation_stats()
-                if 'room_prediction_counts' in validator_stats:
-                    rooms.extend(validator_stats['room_prediction_counts'].keys())
-            
+                if "room_prediction_counts" in validator_stats:
+                    rooms.extend(validator_stats["room_prediction_counts"].keys())
+
             # Remove duplicates and return
             return list(set(rooms))
-            
+
         except Exception as e:
             logger.error(f"Error getting rooms with recent activity: {e}")
             return []
-    
+
     async def _handle_drift_detection_results(
-        self,
-        room_id: str,
-        drift_metrics: DriftMetrics
+        self, room_id: str, drift_metrics: DriftMetrics
     ) -> None:
         """Handle drift detection results by generating alerts and notifications."""
         try:
             # Generate alert for significant drift
-            if drift_metrics.drift_severity in [DriftSeverity.MAJOR, DriftSeverity.CRITICAL]:
-                alert_severity = 'critical' if drift_metrics.drift_severity == DriftSeverity.CRITICAL else 'warning'
-                
+            if drift_metrics.drift_severity in [
+                DriftSeverity.MAJOR,
+                DriftSeverity.CRITICAL,
+            ]:
+                alert_severity = (
+                    "critical"
+                    if drift_metrics.drift_severity == DriftSeverity.CRITICAL
+                    else "warning"
+                )
+
                 # Create drift alert through accuracy tracker
                 if self.accuracy_tracker:
                     # This would require extending AccuracyTracker to handle drift alerts
@@ -983,7 +1058,7 @@ class TrackingManager:
                         f"score={drift_metrics.overall_drift_score:.3f}, "
                         f"retraining_recommended={drift_metrics.retraining_recommended}"
                     )
-            
+
             # If immediate attention required, escalate notifications
             if drift_metrics.immediate_attention_required:
                 logger.critical(
@@ -991,7 +1066,7 @@ class TrackingManager:
                     f"Accuracy degradation: {drift_metrics.accuracy_degradation:.1f} minutes, "
                     f"Page-Hinkley drift: {drift_metrics.ph_drift_detected}"
                 )
-                
+
                 # Notify callbacks about critical drift
                 for callback in self.notification_callbacks:
                     try:
@@ -1001,14 +1076,14 @@ class TrackingManager:
                             f"Severity: {drift_metrics.drift_severity.value}, "
                             f"Score: {drift_metrics.overall_drift_score:.3f}"
                         )
-                        
+
                         if asyncio.iscoroutinefunction(callback):
                             await callback(drift_alert_message)
                         else:
                             callback(drift_alert_message)
                     except Exception as e:
                         logger.error(f"Error in drift notification callback: {e}")
-            
+
             # Log drift detection results for monitoring
             logger.info(
                 f"Drift detection for {room_id}: "
@@ -1017,95 +1092,110 @@ class TrackingManager:
                 f"types={[dt.value for dt in drift_metrics.drift_types]}, "
                 f"retraining_recommended={drift_metrics.retraining_recommended}"
             )
-            
+
         except Exception as e:
             logger.error(f"Error handling drift detection results for {room_id}: {e}")
-    
+
     async def _evaluate_accuracy_based_retraining(self, room_id: str) -> None:
         """Evaluate if retraining is needed based on accuracy metrics."""
         try:
             if not self.adaptive_retrainer or not self.validator:
                 return
-            
+
             # Get recent accuracy metrics for this room
-            accuracy_metrics = await self.validator.get_room_accuracy(room_id, hours_back=24)
-            
+            accuracy_metrics = await self.validator.get_room_accuracy(
+                room_id, hours_back=24
+            )
+
             if accuracy_metrics.total_predictions < 10:
                 # Need more data before evaluating retraining
                 return
-            
+
             # Check all model types in the registry for this room
             models_to_evaluate = [
-                model_key for model_key in self.model_registry.keys()
+                model_key
+                for model_key in self.model_registry.keys()
                 if model_key.startswith(f"{room_id}_")
             ]
-            
+
             for model_key in models_to_evaluate:
                 model_type = model_key.replace(f"{room_id}_", "")
-                
+
                 # Evaluate retraining need
-                retraining_request = await self.adaptive_retrainer.evaluate_retraining_need(
-                    room_id=room_id,
-                    model_type=model_type,
-                    accuracy_metrics=accuracy_metrics
+                retraining_request = (
+                    await self.adaptive_retrainer.evaluate_retraining_need(
+                        room_id=room_id,
+                        model_type=model_type,
+                        accuracy_metrics=accuracy_metrics,
+                    )
                 )
-                
+
                 if retraining_request:
                     logger.info(
                         f"Accuracy-based retraining needed for {model_key}: "
                         f"accuracy={accuracy_metrics.accuracy_rate:.1f}%, "
                         f"error={accuracy_metrics.mean_error_minutes:.1f}min"
                     )
-            
+
         except Exception as e:
-            logger.error(f"Error evaluating accuracy-based retraining for {room_id}: {e}")
-    
-    async def _evaluate_drift_based_retraining(self, room_id: str, drift_metrics: DriftMetrics) -> None:
+            logger.error(
+                f"Error evaluating accuracy-based retraining for {room_id}: {e}"
+            )
+
+    async def _evaluate_drift_based_retraining(
+        self, room_id: str, drift_metrics: DriftMetrics
+    ) -> None:
         """Evaluate if retraining is needed based on drift detection results."""
         try:
             if not self.adaptive_retrainer or not self.validator:
                 return
-            
+
             # Get recent accuracy metrics for context
-            accuracy_metrics = await self.validator.get_room_accuracy(room_id, hours_back=24)
-            
+            accuracy_metrics = await self.validator.get_room_accuracy(
+                room_id, hours_back=24
+            )
+
             # Check all model types in the registry for this room
             models_to_evaluate = [
-                model_key for model_key in self.model_registry.keys()
+                model_key
+                for model_key in self.model_registry.keys()
                 if model_key.startswith(f"{room_id}_")
             ]
-            
+
             for model_key in models_to_evaluate:
                 model_type = model_key.replace(f"{room_id}_", "")
-                
+
                 # Evaluate retraining need with drift context
-                retraining_request = await self.adaptive_retrainer.evaluate_retraining_need(
-                    room_id=room_id,
-                    model_type=model_type,
-                    accuracy_metrics=accuracy_metrics,
-                    drift_metrics=drift_metrics
+                retraining_request = (
+                    await self.adaptive_retrainer.evaluate_retraining_need(
+                        room_id=room_id,
+                        model_type=model_type,
+                        accuracy_metrics=accuracy_metrics,
+                        drift_metrics=drift_metrics,
+                    )
                 )
-                
+
                 if retraining_request:
                     logger.info(
                         f"Drift-based retraining needed for {model_key}: "
                         f"drift_score={drift_metrics.overall_drift_score:.3f}, "
                         f"severity={drift_metrics.drift_severity.value}"
                     )
-            
+
         except Exception as e:
             logger.error(f"Error evaluating drift-based retraining for {room_id}: {e}")
-    
+
     async def _initialize_realtime_publishing(self) -> None:
         """Initialize and start the real-time publishing system."""
         try:
             if not self.config.realtime_publishing_enabled:
                 logger.debug("Real-time publishing disabled in configuration")
                 return
-            
+
             from ..core.config import get_config
+
             system_config = get_config()
-            
+
             # Determine enabled channels based on configuration
             enabled_channels = []
             if self.mqtt_integration_manager:
@@ -1114,35 +1204,39 @@ class TrackingManager:
                 enabled_channels.append(PublishingChannel.WEBSOCKET)
             if self.config.sse_enabled:
                 enabled_channels.append(PublishingChannel.SSE)
-            
+
             if not enabled_channels:
                 logger.warning("No real-time publishing channels enabled")
                 return
-            
+
             # Initialize real-time publishing system
             self.realtime_publisher = RealtimePublishingSystem(
                 mqtt_config=system_config.mqtt,
                 rooms=system_config.rooms,
                 prediction_publisher=None,  # Will be set if MQTT manager available
-                enabled_channels=enabled_channels
+                enabled_channels=enabled_channels,
             )
-            
+
             # Set MQTT prediction publisher if available
-            if self.mqtt_integration_manager and hasattr(self.mqtt_integration_manager, 'prediction_publisher'):
-                self.realtime_publisher.prediction_publisher = self.mqtt_integration_manager.prediction_publisher
-            
+            if self.mqtt_integration_manager and hasattr(
+                self.mqtt_integration_manager, "prediction_publisher"
+            ):
+                self.realtime_publisher.prediction_publisher = (
+                    self.mqtt_integration_manager.prediction_publisher
+                )
+
             # Initialize the publishing system
             await self.realtime_publisher.initialize()
-            
+
             logger.info(
                 f"Real-time publishing system initialized with channels: "
                 f"{[channel.value for channel in enabled_channels]}"
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to initialize real-time publishing system: {e}")
             # Don't raise exception - real-time publishing is optional
-    
+
     async def _shutdown_realtime_publishing(self) -> None:
         """Shutdown the real-time publishing system gracefully."""
         try:
@@ -1152,23 +1246,23 @@ class TrackingManager:
                 logger.info("Real-time publishing system shutdown complete")
         except Exception as e:
             logger.error(f"Error shutting down real-time publishing system: {e}")
-    
+
     async def request_manual_retraining(
         self,
         room_id: str,
         model_type: str,
         strategy: Optional[str] = None,
-        priority: float = 5.0
+        priority: float = 5.0,
     ) -> Optional[str]:
         """
         Request manual retraining for a specific model.
-        
+
         Args:
             room_id: Room to retrain model for
             model_type: Type of model to retrain
             strategy: Retraining strategy (optional)
             priority: Request priority (0-10, higher = more urgent)
-            
+
         Returns:
             Request ID if successful, None otherwise
         """
@@ -1176,60 +1270,65 @@ class TrackingManager:
             if not self.adaptive_retrainer:
                 logger.error("Adaptive retrainer not available for manual request")
                 return None
-            
+
             # Convert strategy string to enum if provided
             retraining_strategy = None
             if strategy:
                 from .retrainer import RetrainingStrategy
+
                 try:
                     retraining_strategy = RetrainingStrategy(strategy.lower())
                 except ValueError:
-                    logger.warning(f"Unknown retraining strategy: {strategy}, using default")
-            
+                    logger.warning(
+                        f"Unknown retraining strategy: {strategy}, using default"
+                    )
+
             # Request retraining
             request_id = await self.adaptive_retrainer.request_retraining(
                 room_id=room_id,
                 model_type=model_type,
                 trigger=RetrainingTrigger.MANUAL_REQUEST,
                 strategy=retraining_strategy,
-                priority=priority
+                priority=priority,
             )
-            
+
             logger.info(f"Manual retraining requested: {request_id}")
             return request_id
-            
+
         except Exception as e:
             logger.error(f"Failed to request manual retraining: {e}")
             return None
-    
-    async def get_retraining_status(self, request_id: Optional[str] = None) -> Union[Dict[str, Any], List[Dict[str, Any]], None]:
+
+    async def get_retraining_status(
+        self, request_id: Optional[str] = None
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]], None]:
         """Get status of retraining operations."""
         try:
             if not self.adaptive_retrainer:
                 return None
-            
+
             return await self.adaptive_retrainer.get_retraining_status(request_id)
-            
+
         except Exception as e:
             logger.error(f"Failed to get retraining status: {e}")
             return None
-    
+
     async def cancel_retraining(self, request_id: str) -> bool:
         """Cancel a retraining request."""
         try:
             if not self.adaptive_retrainer:
                 return False
-            
+
             return await self.adaptive_retrainer.cancel_retraining(request_id)
-            
+
         except Exception as e:
             logger.error(f"Failed to cancel retraining: {e}")
             return False
-    
+
     def register_model(self, room_id: str, model_type: str, model_instance) -> None:
         """
         Register a model instance for adaptive retraining.
-        
+
         Args:
             room_id: Room the model is for
             model_type: Type of model
@@ -1238,16 +1337,16 @@ class TrackingManager:
         try:
             model_key = f"{room_id}_{model_type}"
             self.model_registry[model_key] = model_instance
-            
+
             logger.info(f"Registered model for adaptive retraining: {model_key}")
-            
+
         except Exception as e:
             logger.error(f"Failed to register model {room_id}_{model_type}: {e}")
-    
+
     def unregister_model(self, room_id: str, model_type: str) -> None:
         """
         Unregister a model from adaptive retraining.
-        
+
         Args:
             room_id: Room the model is for
             model_type: Type of model
@@ -1257,63 +1356,65 @@ class TrackingManager:
             if model_key in self.model_registry:
                 del self.model_registry[model_key]
                 logger.info(f"Unregistered model from adaptive retraining: {model_key}")
-            
+
         except Exception as e:
             logger.error(f"Failed to unregister model {room_id}_{model_type}: {e}")
-    
+
     async def _start_api_server_if_enabled(self) -> None:
         """Start API server automatically if enabled in configuration."""
         if self.api_config and self.api_config.enabled:
             api_server = await self.start_api_server()
             if api_server:
-                logger.info(f"API server automatically started on {self.api_config.host}:{self.api_config.port}")
+                logger.info(
+                    f"API server automatically started on {self.api_config.host}:{self.api_config.port}"
+                )
             else:
                 logger.warning("API server failed to start automatically")
         else:
             logger.debug("API server disabled or no configuration provided")
-    
+
     async def start_api_server(self) -> Optional["APIServer"]:
         """
         Start the integrated REST API server.
-        
+
         Returns:
             APIServer instance if enabled, None otherwise
         """
         try:
             from ..integration.api_server import integrate_with_tracking_manager
-            
+
             logger.info("Starting integrated REST API server...")
             api_server = await integrate_with_tracking_manager(self)
             await api_server.start()
-            
+
             self.api_server = api_server
             logger.info("REST API server started successfully")
             return api_server
-            
+
         except Exception as e:
             logger.error(f"Failed to start API server: {e}")
             return None
-    
+
     async def stop_api_server(self) -> None:
         """Stop the integrated REST API server."""
         try:
-            if hasattr(self, 'api_server') and self.api_server:
+            if hasattr(self, "api_server") and self.api_server:
                 await self.api_server.stop()
                 self.api_server = None
                 logger.info("REST API server stopped")
         except Exception as e:
             logger.error(f"Failed to stop API server: {e}")
-    
+
     def get_api_server_status(self) -> Dict[str, Any]:
         """Get API server status information."""
         try:
-            if hasattr(self, 'api_server') and self.api_server:
+            if hasattr(self, "api_server") and self.api_server:
                 return {
                     "enabled": True,
                     "running": self.api_server.is_running(),
                     "host": self.api_server.config.host,
                     "port": self.api_server.config.port,
-                    "debug": self.api_server.config.debug
+                    "debug": self.api_server.config.debug,
                 }
             else:
                 return {
@@ -1321,47 +1422,71 @@ class TrackingManager:
                     "running": False,
                     "host": None,
                     "port": None,
-                    "debug": None
+                    "debug": None,
                 }
         except Exception as e:
             logger.error(f"Failed to get API server status: {e}")
             return {"enabled": False, "running": False, "error": str(e)}
-    
+
     def get_enhanced_mqtt_status(self) -> Dict[str, Any]:
         """Get Enhanced MQTT integration status including all channels."""
         try:
-            if self.mqtt_integration_manager and hasattr(self.mqtt_integration_manager, 'get_integration_stats'):
+            if self.mqtt_integration_manager and hasattr(
+                self.mqtt_integration_manager, "get_integration_stats"
+            ):
                 stats = self.mqtt_integration_manager.get_integration_stats()
                 return {
                     "enabled": True,
                     "type": "enhanced",
-                    "mqtt_connected": stats.get('mqtt_integration', {}).get('mqtt_connected', False),
-                    "discovery_published": stats.get('mqtt_integration', {}).get('discovery_published', False),
-                    "realtime_publishing_active": stats.get('realtime_publishing', {}).get('system_active', False),
-                    "total_channels": stats.get('channels', {}).get('total_active', 0),
-                    "websocket_connections": stats.get('connections', {}).get('websocket_clients', 0),
-                    "sse_connections": stats.get('connections', {}).get('sse_clients', 0),
-                    "predictions_per_minute": stats.get('performance', {}).get('predictions_per_minute', 0),
-                    "average_publish_latency_ms": stats.get('performance', {}).get('average_publish_latency_ms', 0),
-                    "publish_success_rate": stats.get('performance', {}).get('publish_success_rate', 0),
-                    "enabled_channels": stats.get('channels', {}).get('enabled_channels', [])
+                    "mqtt_connected": stats.get("mqtt_integration", {}).get(
+                        "mqtt_connected", False
+                    ),
+                    "discovery_published": stats.get("mqtt_integration", {}).get(
+                        "discovery_published", False
+                    ),
+                    "realtime_publishing_active": stats.get(
+                        "realtime_publishing", {}
+                    ).get("system_active", False),
+                    "total_channels": stats.get("channels", {}).get("total_active", 0),
+                    "websocket_connections": stats.get("connections", {}).get(
+                        "websocket_clients", 0
+                    ),
+                    "sse_connections": stats.get("connections", {}).get(
+                        "sse_clients", 0
+                    ),
+                    "predictions_per_minute": stats.get("performance", {}).get(
+                        "predictions_per_minute", 0
+                    ),
+                    "average_publish_latency_ms": stats.get("performance", {}).get(
+                        "average_publish_latency_ms", 0
+                    ),
+                    "publish_success_rate": stats.get("performance", {}).get(
+                        "publish_success_rate", 0
+                    ),
+                    "enabled_channels": stats.get("channels", {}).get(
+                        "enabled_channels", []
+                    ),
                 }
-            elif self.mqtt_integration_manager and hasattr(self.mqtt_integration_manager, 'get_integration_stats'):
+            elif self.mqtt_integration_manager and hasattr(
+                self.mqtt_integration_manager, "get_integration_stats"
+            ):
                 # Basic MQTT integration
                 stats = self.mqtt_integration_manager.get_integration_stats()
                 return {
                     "enabled": True,
                     "type": "basic",
-                    "mqtt_connected": stats.get('mqtt_connected', False),
-                    "discovery_published": stats.get('discovery_published', False),
+                    "mqtt_connected": stats.get("mqtt_connected", False),
+                    "discovery_published": stats.get("discovery_published", False),
                     "realtime_publishing_active": False,
-                    "total_channels": 1 if stats.get('mqtt_connected', False) else 0,
+                    "total_channels": 1 if stats.get("mqtt_connected", False) else 0,
                     "websocket_connections": 0,
                     "sse_connections": 0,
                     "predictions_per_minute": 0,
                     "average_publish_latency_ms": 0,
                     "publish_success_rate": 0,
-                    "enabled_channels": ["mqtt"] if stats.get('mqtt_connected', False) else []
+                    "enabled_channels": (
+                        ["mqtt"] if stats.get("mqtt_connected", False) else []
+                    ),
                 }
             else:
                 return {
@@ -1376,12 +1501,12 @@ class TrackingManager:
                     "predictions_per_minute": 0,
                     "average_publish_latency_ms": 0,
                     "publish_success_rate": 0,
-                    "enabled_channels": []
+                    "enabled_channels": [],
                 }
         except Exception as e:
             logger.error(f"Failed to get Enhanced MQTT integration status: {e}")
             return {"enabled": False, "type": "error", "error": str(e)}
-    
+
     def get_realtime_publishing_status(self) -> Dict[str, Any]:
         """Get real-time publishing system status information."""
         try:
@@ -1392,25 +1517,33 @@ class TrackingManager:
                     "enabled": True,
                     "active": enhanced_status.get("realtime_publishing_active", False),
                     "enabled_channels": enhanced_status.get("enabled_channels", []),
-                    "websocket_connections": enhanced_status.get("websocket_connections", 0),
+                    "websocket_connections": enhanced_status.get(
+                        "websocket_connections", 0
+                    ),
                     "sse_connections": enhanced_status.get("sse_connections", 0),
                     "total_predictions_published": 0,  # Would need to track this
                     "uptime_seconds": 0,  # Would need to track this
-                    "source": "enhanced_mqtt_manager"
+                    "source": "enhanced_mqtt_manager",
                 }
-            
+
             # Fall back to standalone real-time publisher if available
             if self.realtime_publisher and self.config.realtime_publishing_enabled:
                 stats = self.realtime_publisher.get_publishing_stats()
                 return {
                     "enabled": True,
-                    "active": stats.get('system_active', False),
-                    "enabled_channels": stats.get('enabled_channels', []),
-                    "websocket_connections": stats.get('websocket_stats', {}).get('total_active_connections', 0),
-                    "sse_connections": stats.get('sse_stats', {}).get('total_active_connections', 0),
-                    "total_predictions_published": stats.get('metrics', {}).get('total_predictions_published', 0),
-                    "uptime_seconds": stats.get('uptime_seconds', 0),
-                    "source": "standalone_realtime_publisher"
+                    "active": stats.get("system_active", False),
+                    "enabled_channels": stats.get("enabled_channels", []),
+                    "websocket_connections": stats.get("websocket_stats", {}).get(
+                        "total_active_connections", 0
+                    ),
+                    "sse_connections": stats.get("sse_stats", {}).get(
+                        "total_active_connections", 0
+                    ),
+                    "total_predictions_published": stats.get("metrics", {}).get(
+                        "total_predictions_published", 0
+                    ),
+                    "uptime_seconds": stats.get("uptime_seconds", 0),
+                    "source": "standalone_realtime_publisher",
                 }
             else:
                 return {
@@ -1421,19 +1554,24 @@ class TrackingManager:
                     "sse_connections": 0,
                     "total_predictions_published": 0,
                     "uptime_seconds": 0,
-                    "source": "none"
+                    "source": "none",
                 }
         except Exception as e:
             logger.error(f"Failed to get real-time publishing status: {e}")
-            return {"enabled": False, "active": False, "error": str(e), "source": "error"}
-    
+            return {
+                "enabled": False,
+                "active": False,
+                "error": str(e),
+                "source": "error",
+            }
+
     async def get_room_prediction(self, room_id: str) -> Optional[Dict[str, Any]]:
         """
         Get current prediction for a specific room.
-        
+
         Args:
             room_id: Room identifier
-        
+
         Returns:
             Prediction data or None if no prediction available
         """
@@ -1441,49 +1579,53 @@ class TrackingManager:
             # This would need to interact with ensemble models
             # For now, return mock data structure
             logger.info(f"Getting prediction for room: {room_id}")
-            
+
             # In a real implementation, this would:
             # 1. Get current room state
             # 2. Generate features for current time
             # 3. Use ensemble model to make prediction
             # 4. Return formatted prediction
-            
+
             return {
                 "room_id": room_id,
                 "prediction_time": datetime.now().isoformat(),
-                "next_transition_time": (datetime.now() + timedelta(minutes=30)).isoformat(),
+                "next_transition_time": (
+                    datetime.now() + timedelta(minutes=30)
+                ).isoformat(),
                 "transition_type": "occupied",
                 "confidence": 0.85,
                 "time_until_transition": "30 minutes",
                 "alternatives": [],
-                "model_info": {"model_type": "ensemble", "version": "1.0"}
+                "model_info": {"model_type": "ensemble", "version": "1.0"},
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to get prediction for room {room_id}: {e}")
             return None
-    
-    async def get_accuracy_metrics(self, room_id: Optional[str] = None, hours: int = 24) -> Dict[str, Any]:
+
+    async def get_accuracy_metrics(
+        self, room_id: Optional[str] = None, hours: int = 24
+    ) -> Dict[str, Any]:
         """
         Get accuracy metrics for a room or overall system.
-        
+
         Args:
             room_id: Specific room ID (None for all rooms)
             hours: Time window in hours
-        
+
         Returns:
             Accuracy metrics dictionary
         """
         try:
             logger.info(f"Getting accuracy metrics for room: {room_id}, hours: {hours}")
-            
+
             # Get metrics from accuracy tracker
-            if hasattr(self, 'accuracy_tracker') and self.accuracy_tracker:
+            if hasattr(self, "accuracy_tracker") and self.accuracy_tracker:
                 if room_id:
                     metrics = await self.accuracy_tracker.get_room_metrics(room_id)
                 else:
                     metrics = await self.accuracy_tracker.get_overall_metrics()
-                
+
                 # Convert to API format
                 return {
                     "room_id": room_id,
@@ -1493,7 +1635,7 @@ class TrackingManager:
                     "total_predictions": metrics.total_predictions,
                     "total_validations": metrics.total_validations,
                     "time_window_hours": hours,
-                    "trend_direction": metrics.trend_direction
+                    "trend_direction": metrics.trend_direction,
                 }
             else:
                 # Return mock metrics if tracker not available
@@ -1505,9 +1647,9 @@ class TrackingManager:
                     "total_predictions": 150,
                     "total_validations": 145,
                     "time_window_hours": hours,
-                    "trend_direction": "stable"
+                    "trend_direction": "stable",
                 }
-                
+
         except Exception as e:
             logger.error(f"Failed to get accuracy metrics: {e}")
             return {
@@ -1519,35 +1661,37 @@ class TrackingManager:
                 "total_validations": 0,
                 "time_window_hours": hours,
                 "trend_direction": "unknown",
-                "error": str(e)
+                "error": str(e),
             }
-    
+
     async def trigger_manual_retrain(
         self,
         room_id: Optional[str] = None,
         force: bool = False,
         strategy: str = "auto",
-        reason: str = "manual_request"
+        reason: str = "manual_request",
     ) -> Dict[str, Any]:
         """
         Trigger manual model retraining.
-        
+
         Args:
             room_id: Specific room to retrain (None for all)
             force: Force retrain even if not needed
             strategy: Retraining strategy
             reason: Reason for retraining
-        
+
         Returns:
             Retraining status information
         """
         try:
-            logger.info(f"Triggering manual retrain: room={room_id}, strategy={strategy}, force={force}")
-            
+            logger.info(
+                f"Triggering manual retrain: room={room_id}, strategy={strategy}, force={force}"
+            )
+
             # Use adaptive retrainer if available
-            if hasattr(self, 'adaptive_retrainer') and self.adaptive_retrainer:
-                from .retrainer import RetrainingTrigger, RetrainingRequest
-                
+            if hasattr(self, "adaptive_retrainer") and self.adaptive_retrainer:
+                from .retrainer import RetrainingRequest, RetrainingTrigger
+
                 # Create retraining request
                 request = RetrainingRequest(
                     room_id=room_id,
@@ -1556,19 +1700,23 @@ class TrackingManager:
                     reason=reason,
                     priority=1 if force else 3,
                     force_retrain=force,
-                    strategy=strategy
+                    strategy=strategy,
                 )
-                
+
                 # Submit request
                 success = await self.adaptive_retrainer.request_retraining(request)
-                
+
                 return {
                     "success": success,
                     "room_id": room_id or "all_rooms",
                     "strategy": strategy,
                     "force": force,
                     "reason": reason,
-                    "message": "Retraining request submitted successfully" if success else "Failed to submit retraining request"
+                    "message": (
+                        "Retraining request submitted successfully"
+                        if success
+                        else "Failed to submit retraining request"
+                    ),
                 }
             else:
                 logger.warning("Adaptive retrainer not available for manual retrain")
@@ -1578,9 +1726,9 @@ class TrackingManager:
                     "strategy": strategy,
                     "force": force,
                     "reason": reason,
-                    "message": "Adaptive retrainer not available"
+                    "message": "Adaptive retrainer not available",
                 }
-                
+
         except Exception as e:
             logger.error(f"Failed to trigger manual retrain: {e}")
             return {
@@ -1589,13 +1737,13 @@ class TrackingManager:
                 "strategy": strategy,
                 "force": force,
                 "reason": reason,
-                "message": f"Retraining failed: {str(e)}"
+                "message": f"Retraining failed: {str(e)}",
             }
-    
+
     async def get_system_stats(self) -> Dict[str, Any]:
         """
         Get comprehensive system statistics for API.
-        
+
         Returns:
             System statistics dictionary
         """
@@ -1606,52 +1754,66 @@ class TrackingManager:
                     "monitoring_interval_seconds": self.config.monitoring_interval_seconds,
                     "active_alerts": 0,
                     "total_predictions_tracked": 0,
-                    "total_validations": 0
+                    "total_validations": 0,
                 },
                 "drift_detection_stats": {
                     "drift_detection_enabled": self.config.drift_detection_enabled,
                     "last_drift_check": None,
-                    "drift_alerts": 0
+                    "drift_alerts": 0,
                 },
                 "retraining_stats": {
                     "adaptive_retraining_enabled": self.config.adaptive_retraining_enabled,
                     "active_retraining_jobs": 0,
                     "completed_retraining_jobs": 0,
-                    "failed_retraining_jobs": 0
+                    "failed_retraining_jobs": 0,
                 },
                 "api_server_stats": self.get_api_server_status(),
                 "enhanced_mqtt_stats": self.get_enhanced_mqtt_status(),
                 "realtime_publishing_stats": self.get_realtime_publishing_status(),
-                "dashboard_stats": self.get_dashboard_status()
+                "dashboard_stats": self.get_dashboard_status(),
             }
-            
+
             # Add tracker-specific stats if available
-            if hasattr(self, 'accuracy_tracker') and self.accuracy_tracker:
+            if hasattr(self, "accuracy_tracker") and self.accuracy_tracker:
                 tracker_stats = await self.accuracy_tracker.get_tracker_stats()
-                stats["tracking_stats"].update({
-                    "active_alerts": len(tracker_stats.get("active_alerts", [])),
-                    "total_predictions_tracked": tracker_stats.get("total_predictions", 0),
-                    "total_validations": tracker_stats.get("total_validations", 0)
-                })
-            
+                stats["tracking_stats"].update(
+                    {
+                        "active_alerts": len(tracker_stats.get("active_alerts", [])),
+                        "total_predictions_tracked": tracker_stats.get(
+                            "total_predictions", 0
+                        ),
+                        "total_validations": tracker_stats.get("total_validations", 0),
+                    }
+                )
+
             # Add drift detector stats if available
-            if hasattr(self, 'drift_detector') and self.drift_detector:
-                stats["drift_detection_stats"].update({
-                    "last_drift_check": getattr(self.drift_detector, 'last_check_time', None),
-                    "drift_alerts": getattr(self.drift_detector, 'total_drift_alerts', 0)
-                })
-            
+            if hasattr(self, "drift_detector") and self.drift_detector:
+                stats["drift_detection_stats"].update(
+                    {
+                        "last_drift_check": getattr(
+                            self.drift_detector, "last_check_time", None
+                        ),
+                        "drift_alerts": getattr(
+                            self.drift_detector, "total_drift_alerts", 0
+                        ),
+                    }
+                )
+
             # Add retrainer stats if available
-            if hasattr(self, 'adaptive_retrainer') and self.adaptive_retrainer:
+            if hasattr(self, "adaptive_retrainer") and self.adaptive_retrainer:
                 retrainer_stats = await self.adaptive_retrainer.get_retraining_stats()
-                stats["retraining_stats"].update({
-                    "active_retraining_jobs": retrainer_stats.get("active_jobs", 0),
-                    "completed_retraining_jobs": retrainer_stats.get("completed_jobs", 0),
-                    "failed_retraining_jobs": retrainer_stats.get("failed_jobs", 0)
-                })
-            
+                stats["retraining_stats"].update(
+                    {
+                        "active_retraining_jobs": retrainer_stats.get("active_jobs", 0),
+                        "completed_retraining_jobs": retrainer_stats.get(
+                            "completed_jobs", 0
+                        ),
+                        "failed_retraining_jobs": retrainer_stats.get("failed_jobs", 0),
+                    }
+                )
+
             return stats
-            
+
         except Exception as e:
             logger.error(f"Failed to get system stats: {e}")
             return {
@@ -1659,64 +1821,66 @@ class TrackingManager:
                 "drift_detection_stats": {"error": str(e)},
                 "retraining_stats": {"error": str(e)},
                 "api_server_stats": {"error": str(e)},
-                "dashboard_stats": {"error": str(e)}
+                "dashboard_stats": {"error": str(e)},
             }
-    
+
     async def _initialize_dashboard(self) -> None:
         """Initialize and start the performance dashboard if enabled."""
         try:
             if not self.config.dashboard_enabled:
                 logger.debug("Performance dashboard disabled in configuration")
                 return
-            
+
             if not DASHBOARD_AVAILABLE:
-                logger.warning("Dashboard components not available - cannot start dashboard")
+                logger.warning(
+                    "Dashboard components not available - cannot start dashboard"
+                )
                 return
-            
+
             logger.info("Initializing performance monitoring dashboard...")
-            
+
             # Create dashboard configuration from tracking config
             dashboard_config = DashboardConfig(
                 enabled=self.config.dashboard_enabled,
                 host=self.config.dashboard_host,
                 port=self.config.dashboard_port,
                 debug=self.config.dashboard_debug,
-                mode=DashboardMode.DEVELOPMENT if self.config.dashboard_debug else DashboardMode.PRODUCTION,
-                
+                mode=(
+                    DashboardMode.DEVELOPMENT
+                    if self.config.dashboard_debug
+                    else DashboardMode.PRODUCTION
+                ),
                 # Real-time features
                 websocket_enabled=self.config.dashboard_websocket_enabled,
                 update_interval_seconds=self.config.dashboard_update_interval_seconds,
                 max_websocket_connections=self.config.dashboard_max_websocket_connections,
-                
                 # Performance settings
                 cache_ttl_seconds=self.config.dashboard_cache_ttl_seconds,
                 metrics_retention_hours=self.config.dashboard_metrics_retention_hours,
-                
                 # Dashboard features
                 enable_retraining_controls=self.config.dashboard_enable_retraining_controls,
                 enable_alert_management=self.config.dashboard_enable_alert_management,
                 enable_historical_charts=self.config.dashboard_enable_historical_charts,
                 enable_drift_visualization=self.config.dashboard_enable_drift_visualization,
-                enable_export_features=True
+                enable_export_features=True,
             )
-            
+
             # Initialize dashboard with this tracking manager
             self.dashboard = PerformanceDashboard(
-                tracking_manager=self,
-                config=dashboard_config
+                tracking_manager=self, config=dashboard_config
             )
-            
+
             # Start the dashboard server
             await self.dashboard.start_dashboard()
-            
+
             logger.info(
                 f"Performance dashboard started successfully on http://{dashboard_config.host}:{dashboard_config.port}"
             )
-            
+
         except Exception as e:
             logger.error(f"Failed to initialize performance dashboard: {e}")
             # Don't raise exception - dashboard is optional functionality
-    
+
     async def _shutdown_dashboard(self) -> None:
         """Shutdown the performance dashboard gracefully."""
         try:
@@ -1727,14 +1891,18 @@ class TrackingManager:
                 logger.info("Performance dashboard shutdown complete")
         except Exception as e:
             logger.error(f"Error shutting down performance dashboard: {e}")
-    
+
     def get_dashboard_status(self) -> Dict[str, Any]:
         """Get performance dashboard status information."""
         try:
             if self.dashboard and self.config.dashboard_enabled:
                 return {
                     "enabled": True,
-                    "running": self.dashboard._running if hasattr(self.dashboard, '_running') else False,
+                    "running": (
+                        self.dashboard._running
+                        if hasattr(self.dashboard, "_running")
+                        else False
+                    ),
                     "host": self.dashboard.config.host,
                     "port": self.dashboard.config.port,
                     "websocket_enabled": self.dashboard.config.websocket_enabled,
@@ -1742,12 +1910,17 @@ class TrackingManager:
                     "mode": self.dashboard.config.mode.value,
                     "active_websocket_connections": (
                         len(self.dashboard.websocket_manager.active_connections)
-                        if self.dashboard.websocket_manager else 0
+                        if self.dashboard.websocket_manager
+                        else 0
                     ),
                     "uptime_hours": (
-                        (datetime.utcnow() - self.dashboard._dashboard_start_time).total_seconds() / 3600
-                        if hasattr(self.dashboard, '_dashboard_start_time') else 0
-                    )
+                        (
+                            datetime.utcnow() - self.dashboard._dashboard_start_time
+                        ).total_seconds()
+                        / 3600
+                        if hasattr(self.dashboard, "_dashboard_start_time")
+                        else 0
+                    ),
                 }
             else:
                 return {
@@ -1759,7 +1932,7 @@ class TrackingManager:
                     "debug": self.config.dashboard_debug,
                     "mode": "disabled",
                     "active_websocket_connections": 0,
-                    "uptime_hours": 0
+                    "uptime_hours": 0,
                 }
         except Exception as e:
             logger.error(f"Failed to get dashboard status: {e}")
@@ -1768,11 +1941,11 @@ class TrackingManager:
 
 class TrackingManagerError(OccupancyPredictionError):
     """Raised when tracking manager operations fail."""
-    
+
     def __init__(self, message: str, **kwargs):
         super().__init__(
             message=message,
             error_code="TRACKING_MANAGER_ERROR",
-            severity=kwargs.get('severity', ErrorSeverity.MEDIUM),
-            **kwargs
+            severity=kwargs.get("severity", ErrorSeverity.MEDIUM),
+            **kwargs,
         )

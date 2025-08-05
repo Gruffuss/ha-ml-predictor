@@ -9,23 +9,26 @@ Includes automatic reconnection, rate limiting, and event processing.
 import asyncio
 import json
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Callable, Any, AsyncGenerator
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
 from urllib.parse import urljoin
+
 import aiohttp
 import websockets
 from websockets.exceptions import ConnectionClosed, InvalidStatusCode, InvalidURI
 
 from ...core.config import SystemConfig, get_config
+from ...core.constants import INVALID_STATES, MIN_EVENT_SEPARATION, SensorState
 from ...core.exceptions import (
-    HomeAssistantConnectionError, HomeAssistantAuthenticationError,
-    HomeAssistantAPIError, EntityNotFoundError, WebSocketError,
-    RateLimitExceededError
+    EntityNotFoundError,
+    HomeAssistantAPIError,
+    HomeAssistantAuthenticationError,
+    HomeAssistantConnectionError,
+    RateLimitExceededError,
+    WebSocketError,
 )
-from ...core.constants import SensorState, INVALID_STATES, MIN_EVENT_SEPARATION
 from ..storage.models import SensorEvent
-
 
 logger = logging.getLogger(__name__)
 
@@ -33,54 +36,60 @@ logger = logging.getLogger(__name__)
 @dataclass
 class HAEvent:
     """Represents a Home Assistant event."""
+
     entity_id: str
     state: str
     previous_state: Optional[str]
     timestamp: datetime
     attributes: Dict[str, Any]
     event_type: str = "state_changed"
-    
+
     def is_valid(self) -> bool:
         """Check if the event contains valid data."""
         return (
-            self.state not in INVALID_STATES and
-            self.entity_id and
-            self.timestamp is not None
+            self.state not in INVALID_STATES
+            and self.entity_id
+            and self.timestamp is not None
         )
 
 
 class RateLimiter:
     """Simple rate limiter for API requests."""
-    
+
     def __init__(self, max_requests: int = 300, window_seconds: int = 60):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self.requests = []
         self._lock = asyncio.Lock()
-    
+
     async def acquire(self):
         """Wait if necessary to respect rate limits."""
         async with self._lock:
             now = datetime.utcnow()
             # Remove old requests outside the window
-            self.requests = [req_time for req_time in self.requests 
-                           if (now - req_time).total_seconds() < self.window_seconds]
-            
+            self.requests = [
+                req_time
+                for req_time in self.requests
+                if (now - req_time).total_seconds() < self.window_seconds
+            ]
+
             if len(self.requests) >= self.max_requests:
                 # Calculate wait time
                 oldest_request = min(self.requests)
                 wait_time = self.window_seconds - (now - oldest_request).total_seconds()
                 if wait_time > 0:
-                    logger.warning(f"Rate limit reached, waiting {wait_time:.2f} seconds")
+                    logger.warning(
+                        f"Rate limit reached, waiting {wait_time:.2f} seconds"
+                    )
                     await asyncio.sleep(wait_time)
-            
+
             self.requests.append(now)
 
 
 class HomeAssistantClient:
     """
     Home Assistant API client with WebSocket and REST support.
-    
+
     Provides:
     - Real-time event streaming via WebSocket
     - Historical data fetching via REST API
@@ -88,74 +97,74 @@ class HomeAssistantClient:
     - Rate limiting and connection management
     - Event processing and filtering
     """
-    
+
     def __init__(self, config: Optional[SystemConfig] = None):
         self.config = config or get_config()
         self.ha_config = self.config.home_assistant
         self.session: Optional[aiohttp.ClientSession] = None
         self.websocket: Optional[websockets.WebSocketServerProtocol] = None
         self.rate_limiter = RateLimiter()
-        
+
         # Connection state
         self._connected = False
         self._reconnect_attempts = 0
         self._max_reconnect_attempts = 10
         self._base_reconnect_delay = 5  # seconds
-        
+
         # Event handling
         self._event_handlers: List[Callable[[HAEvent], None]] = []
         self._subscribed_entities: set = set()
         self._last_event_times: Dict[str, datetime] = {}
-        
+
         # WebSocket message tracking
         self._ws_message_id = 1
         self._pending_responses: Dict[int, asyncio.Future] = {}
-        
+
     async def __aenter__(self):
         """Async context manager entry."""
         await self.connect()
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         await self.disconnect()
-    
+
     async def connect(self):
         """Establish connection to Home Assistant."""
         if self._connected:
             return
-            
+
         try:
             # Create HTTP session
             timeout = aiohttp.ClientTimeout(total=self.ha_config.api_timeout)
             self.session = aiohttp.ClientSession(
                 timeout=timeout,
                 headers={
-                    'Authorization': f'Bearer {self.ha_config.token}',
-                    'Content-Type': 'application/json'
-                }
+                    "Authorization": f"Bearer {self.ha_config.token}",
+                    "Content-Type": "application/json",
+                },
             )
-            
+
             # Test authentication
             await self._test_authentication()
-            
+
             # Connect WebSocket
             await self._connect_websocket()
-            
+
             self._connected = True
             self._reconnect_attempts = 0
             logger.info("Successfully connected to Home Assistant")
-            
+
         except Exception as e:
             await self._cleanup_connections()
             raise HomeAssistantConnectionError(self.ha_config.url, cause=e)
-    
+
     async def disconnect(self):
         """Disconnect from Home Assistant."""
         self._connected = False
         await self._cleanup_connections()
         logger.info("Disconnected from Home Assistant")
-    
+
     async def _cleanup_connections(self):
         """Clean up all connections."""
         if self.websocket:
@@ -164,22 +173,21 @@ class HomeAssistantClient:
             except Exception:
                 pass
             self.websocket = None
-            
+
         if self.session:
             try:
                 await self.session.close()
             except Exception:
                 pass
             self.session = None
-    
+
     async def _test_authentication(self):
         """Test if authentication is working."""
         try:
             async with self.session.get(f"{self.ha_config.url}/api/") as response:
                 if response.status == 401:
                     raise HomeAssistantAuthenticationError(
-                        self.ha_config.url, 
-                        len(self.ha_config.token)
+                        self.ha_config.url, len(self.ha_config.token)
                     )
                 elif response.status != 200:
                     raise HomeAssistantAPIError(
@@ -187,52 +195,55 @@ class HomeAssistantClient:
                     )
         except aiohttp.ClientError as e:
             raise HomeAssistantConnectionError(self.ha_config.url, cause=e)
-    
+
     async def _connect_websocket(self):
         """Connect to Home Assistant WebSocket API."""
-        ws_url = self.ha_config.url.replace('http://', 'ws://').replace('https://', 'wss://')
+        ws_url = self.ha_config.url.replace("http://", "ws://").replace(
+            "https://", "wss://"
+        )
         ws_url = f"{ws_url}/api/websocket"
-        
+
         try:
             self.websocket = await websockets.connect(
                 ws_url,
                 timeout=self.ha_config.websocket_timeout,
                 ping_interval=20,
-                ping_timeout=10
+                ping_timeout=10,
             )
-            
+
             # Handle authentication
             await self._authenticate_websocket()
-            
+
             # Start message handling task
             asyncio.create_task(self._handle_websocket_messages())
-            
+
         except (ConnectionClosed, InvalidStatusCode, InvalidURI) as e:
             raise WebSocketError(str(e), ws_url)
-    
+
     async def _authenticate_websocket(self):
         """Authenticate WebSocket connection."""
         # Wait for auth_required message
         auth_msg = await self.websocket.recv()
         auth_data = json.loads(auth_msg)
-        
-        if auth_data.get('type') != 'auth_required':
-            raise WebSocketError(f"Expected auth_required, got {auth_data.get('type')}", "")
-        
+
+        if auth_data.get("type") != "auth_required":
+            raise WebSocketError(
+                f"Expected auth_required, got {auth_data.get('type')}", ""
+            )
+
         # Send authentication
-        auth_response = {
-            'type': 'auth',
-            'access_token': self.ha_config.token
-        }
+        auth_response = {"type": "auth", "access_token": self.ha_config.token}
         await self.websocket.send(json.dumps(auth_response))
-        
+
         # Wait for auth result
         result_msg = await self.websocket.recv()
         result_data = json.loads(result_msg)
-        
-        if result_data.get('type') != 'auth_ok':
-            raise HomeAssistantAuthenticationError(self.ha_config.url, len(self.ha_config.token))
-    
+
+        if result_data.get("type") != "auth_ok":
+            raise HomeAssistantAuthenticationError(
+                self.ha_config.url, len(self.ha_config.token)
+            )
+
     async def _handle_websocket_messages(self):
         """Handle incoming WebSocket messages."""
         try:
@@ -252,76 +263,78 @@ class HomeAssistantClient:
             logger.error(f"WebSocket error: {e}")
             if self._connected:
                 asyncio.create_task(self._reconnect())
-    
+
     async def _process_websocket_message(self, data: Dict[str, Any]):
         """Process a WebSocket message."""
-        msg_type = data.get('type')
-        
-        if msg_type == 'event':
+        msg_type = data.get("type")
+
+        if msg_type == "event":
             await self._handle_event(data)
-        elif msg_type == 'result':
+        elif msg_type == "result":
             # Handle command responses
-            msg_id = data.get('id')
+            msg_id = data.get("id")
             if msg_id in self._pending_responses:
                 future = self._pending_responses.pop(msg_id)
                 if not future.done():
                     future.set_result(data)
-        elif msg_type == 'pong':
+        elif msg_type == "pong":
             # Handle ping/pong
             pass
         else:
             logger.debug(f"Unhandled message type: {msg_type}")
-    
+
     async def _handle_event(self, event_data: Dict[str, Any]):
         """Handle state change events."""
         try:
-            event_info = event_data.get('event', {})
-            if event_info.get('event_type') != 'state_changed':
+            event_info = event_data.get("event", {})
+            if event_info.get("event_type") != "state_changed":
                 return
-            
-            data = event_info.get('data', {})
-            entity_id = data.get('entity_id')
-            new_state = data.get('new_state', {})
-            old_state = data.get('old_state', {})
-            
+
+            data = event_info.get("data", {})
+            entity_id = data.get("entity_id")
+            new_state = data.get("new_state", {})
+            old_state = data.get("old_state", {})
+
             if not entity_id or not new_state:
                 return
-            
+
             # Filter subscribed entities
             if self._subscribed_entities and entity_id not in self._subscribed_entities:
                 return
-            
+
             # Create HAEvent
             ha_event = HAEvent(
                 entity_id=entity_id,
-                state=new_state.get('state', ''),
-                previous_state=old_state.get('state') if old_state else None,
-                timestamp=datetime.fromisoformat(new_state.get('last_changed', '').replace('Z', '+00:00')),
-                attributes=new_state.get('attributes', {})
+                state=new_state.get("state", ""),
+                previous_state=old_state.get("state") if old_state else None,
+                timestamp=datetime.fromisoformat(
+                    new_state.get("last_changed", "").replace("Z", "+00:00")
+                ),
+                attributes=new_state.get("attributes", {}),
             )
-            
+
             # Apply deduplication
             if self._should_process_event(ha_event):
                 await self._notify_event_handlers(ha_event)
                 self._last_event_times[entity_id] = ha_event.timestamp
-            
+
         except Exception as e:
             logger.error(f"Error handling event: {e}")
-    
+
     def _should_process_event(self, event: HAEvent) -> bool:
         """Check if event should be processed (deduplication)."""
         if not event.is_valid():
             return False
-        
+
         # Check minimum time separation
         last_time = self._last_event_times.get(event.entity_id)
         if last_time:
             time_diff = (event.timestamp - last_time).total_seconds()
             if time_diff < MIN_EVENT_SEPARATION:
                 return False
-        
+
         return True
-    
+
     async def _notify_event_handlers(self, event: HAEvent):
         """Notify all registered event handlers."""
         for handler in self._event_handlers:
@@ -332,79 +345,85 @@ class HomeAssistantClient:
                     handler(event)
             except Exception as e:
                 logger.error(f"Error in event handler: {e}")
-    
+
     async def _reconnect(self):
         """Attempt to reconnect to Home Assistant."""
         if self._reconnect_attempts >= self._max_reconnect_attempts:
             logger.error("Max reconnection attempts reached")
             return
-        
+
         self._reconnect_attempts += 1
-        delay = self._base_reconnect_delay * (2 ** (self._reconnect_attempts - 1))  # Exponential backoff
+        delay = self._base_reconnect_delay * (
+            2 ** (self._reconnect_attempts - 1)
+        )  # Exponential backoff
         delay = min(delay, 300)  # Cap at 5 minutes
-        
-        logger.info(f"Reconnecting to Home Assistant (attempt {self._reconnect_attempts}/{self._max_reconnect_attempts}) in {delay}s")
+
+        logger.info(
+            f"Reconnecting to Home Assistant (attempt {self._reconnect_attempts}/{self._max_reconnect_attempts}) in {delay}s"
+        )
         await asyncio.sleep(delay)
-        
+
         try:
             await self._cleanup_connections()
             await self.connect()
-            
+
             # Re-subscribe to entities
             if self._subscribed_entities:
                 await self.subscribe_to_events(list(self._subscribed_entities))
-                
+
         except Exception as e:
             logger.error(f"Reconnection failed: {e}")
             asyncio.create_task(self._reconnect())
-    
+
     async def subscribe_to_events(self, entity_ids: List[str]):
         """
         Subscribe to state change events for specific entities.
-        
+
         Args:
             entity_ids: List of entity IDs to subscribe to
         """
         if not self._connected or not self.websocket:
             raise HomeAssistantConnectionError(self.ha_config.url)
-        
+
         self._subscribed_entities.update(entity_ids)
-        
+
         # Subscribe to state change events
         command = {
-            'id': self._ws_message_id,
-            'type': 'subscribe_events',
-            'event_type': 'state_changed'
+            "id": self._ws_message_id,
+            "type": "subscribe_events",
+            "event_type": "state_changed",
         }
-        
+
         future = asyncio.Future()
         self._pending_responses[self._ws_message_id] = future
         self._ws_message_id += 1
-        
+
         await self.websocket.send(json.dumps(command))
-        
+
         try:
             result = await asyncio.wait_for(future, timeout=10)
-            if not result.get('success'):
+            if not result.get("success"):
                 raise HomeAssistantAPIError("subscribe_events", 0, str(result))
         except asyncio.TimeoutError:
-            raise HomeAssistantAPIError("subscribe_events", 0, "Timeout waiting for response")
-        
+            raise HomeAssistantAPIError(
+                "subscribe_events", 0, "Timeout waiting for response"
+            )
+
         logger.info(f"Subscribed to events for {len(entity_ids)} entities")
-    
+
     def add_event_handler(self, handler: Callable[[HAEvent], None]):
         """Add an event handler for state changes."""
         self._event_handlers.append(handler)
-    
+
     def remove_event_handler(self, handler: Callable[[HAEvent], None]):
         """Remove an event handler."""
         if handler in self._event_handlers:
             self._event_handlers.remove(handler)
-    
+
     async def get_entity_state(self, entity_id: str) -> Optional[Dict[str, Any]]:
         """Get current state of an entity."""
         await self.rate_limiter.acquire()
-        
+
         try:
             url = f"{self.ha_config.url}/api/states/{entity_id}"
             async with self.session.get(url) as response:
@@ -412,40 +431,36 @@ class HomeAssistantClient:
                     return None
                 elif response.status != 200:
                     raise HomeAssistantAPIError(
-                        f"/api/states/{entity_id}", response.status, 
-                        await response.text(), "GET"
+                        f"/api/states/{entity_id}",
+                        response.status,
+                        await response.text(),
+                        "GET",
                     )
                 return await response.json()
         except aiohttp.ClientError as e:
             raise HomeAssistantConnectionError(self.ha_config.url, cause=e)
-    
+
     async def get_entity_history(
-        self,
-        entity_id: str,
-        start_time: datetime,
-        end_time: Optional[datetime] = None
+        self, entity_id: str, start_time: datetime, end_time: Optional[datetime] = None
     ) -> List[Dict[str, Any]]:
         """
         Get historical state changes for an entity.
-        
+
         Args:
             entity_id: Entity ID to get history for
             start_time: Start of time range
             end_time: End of time range (defaults to now)
-            
+
         Returns:
             List of state change records
         """
         await self.rate_limiter.acquire()
-        
+
         if end_time is None:
             end_time = datetime.utcnow()
-        
-        params = {
-            'filter_entity_id': entity_id,
-            'end_time': end_time.isoformat() + 'Z'
-        }
-        
+
+        params = {"filter_entity_id": entity_id, "end_time": end_time.isoformat() + "Z"}
+
         try:
             url = f"{self.ha_config.url}/api/history/period/{start_time.isoformat()}Z"
             async with self.session.get(url, params=params) as response:
@@ -454,73 +469,77 @@ class HomeAssistantClient:
                 elif response.status != 200:
                     raise HomeAssistantAPIError(
                         f"/api/history/period/{start_time.isoformat()}Z",
-                        response.status, await response.text(), "GET"
+                        response.status,
+                        await response.text(),
+                        "GET",
                     )
-                
+
                 data = await response.json()
                 # Home Assistant returns a list of lists, we want the first (and typically only) list
                 return data[0] if data and len(data) > 0 else []
-                
+
         except aiohttp.ClientError as e:
             raise HomeAssistantConnectionError(self.ha_config.url, cause=e)
-    
+
     async def get_bulk_history(
         self,
         entity_ids: List[str],
         start_time: datetime,
         end_time: Optional[datetime] = None,
-        batch_size: int = 50
+        batch_size: int = 50,
     ) -> AsyncGenerator[List[Dict[str, Any]], None]:
         """
         Get historical data for multiple entities in batches.
-        
+
         Args:
             entity_ids: List of entity IDs
             start_time: Start of time range
             end_time: End of time range
             batch_size: Number of entities to fetch per batch
-            
+
         Yields:
             Batches of historical records
         """
         if end_time is None:
             end_time = datetime.utcnow()
-        
+
         # Process entities in batches to avoid overwhelming the API
         for i in range(0, len(entity_ids), batch_size):
-            batch_entities = entity_ids[i:i + batch_size]
+            batch_entities = entity_ids[i : i + batch_size]
             batch_results = []
-            
+
             for entity_id in batch_entities:
                 try:
-                    history = await self.get_entity_history(entity_id, start_time, end_time)
+                    history = await self.get_entity_history(
+                        entity_id, start_time, end_time
+                    )
                     batch_results.extend(history)
-                    
+
                     # Small delay between requests to be nice to HA
                     await asyncio.sleep(0.1)
-                    
+
                 except EntityNotFoundError:
                     logger.warning(f"Entity {entity_id} not found, skipping")
                     continue
                 except Exception as e:
                     logger.error(f"Error fetching history for {entity_id}: {e}")
                     continue
-            
+
             if batch_results:
                 yield batch_results
-    
+
     async def validate_entities(self, entity_ids: List[str]) -> Dict[str, bool]:
         """
         Validate that entities exist in Home Assistant.
-        
+
         Args:
             entity_ids: List of entity IDs to validate
-            
+
         Returns:
             Dictionary mapping entity_id to existence boolean
         """
         results = {}
-        
+
         for entity_id in entity_ids:
             try:
                 state = await self.get_entity_state(entity_id)
@@ -528,14 +547,11 @@ class HomeAssistantClient:
             except Exception as e:
                 logger.warning(f"Error validating entity {entity_id}: {e}")
                 results[entity_id] = False
-        
+
         return results
-    
+
     def convert_ha_event_to_sensor_event(
-        self,
-        ha_event: HAEvent,
-        room_id: str,
-        sensor_type: str
+        self, ha_event: HAEvent, room_id: str, sensor_type: str
     ) -> SensorEvent:
         """Convert HA event to internal SensorEvent model."""
         return SensorEvent(
@@ -547,47 +563,46 @@ class HomeAssistantClient:
             timestamp=ha_event.timestamp,
             attributes=ha_event.attributes,
             is_human_triggered=True,  # Will be updated by event processor
-            created_at=datetime.utcnow()
+            created_at=datetime.utcnow(),
         )
-    
+
     def convert_history_to_sensor_events(
-        self,
-        history_data: List[Dict[str, Any]],
-        room_id: str,
-        sensor_type: str
+        self, history_data: List[Dict[str, Any]], room_id: str, sensor_type: str
     ) -> List[SensorEvent]:
         """Convert Home Assistant history data to SensorEvent models."""
         events = []
         previous_state = None
-        
+
         for record in history_data:
-            timestamp_str = record.get('last_changed', record.get('last_updated', ''))
+            timestamp_str = record.get("last_changed", record.get("last_updated", ""))
             if timestamp_str:
                 try:
-                    timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                    timestamp = datetime.fromisoformat(
+                        timestamp_str.replace("Z", "+00:00")
+                    )
                 except ValueError:
                     logger.warning(f"Invalid timestamp format: {timestamp_str}")
                     continue
             else:
                 continue
-            
+
             event = SensorEvent(
                 room_id=room_id,
-                sensor_id=record.get('entity_id', ''),
+                sensor_id=record.get("entity_id", ""),
                 sensor_type=sensor_type,
-                state=record.get('state', ''),
+                state=record.get("state", ""),
                 previous_state=previous_state,
                 timestamp=timestamp,
-                attributes=record.get('attributes', {}),
+                attributes=record.get("attributes", {}),
                 is_human_triggered=True,  # Will be updated by event processor
-                created_at=datetime.utcnow()
+                created_at=datetime.utcnow(),
             )
-            
+
             events.append(event)
             previous_state = event.state
-        
+
         return events
-    
+
     @property
     def is_connected(self) -> bool:
         """Check if client is connected to Home Assistant."""
