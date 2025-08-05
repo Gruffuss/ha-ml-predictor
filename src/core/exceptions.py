@@ -738,3 +738,76 @@ class MaintenanceModeError(SystemError):
             context=context,
             severity=ErrorSeverity.MEDIUM
         )
+
+
+# API and Integration Errors
+
+class APIError(OccupancyPredictionError):
+    """Base class for REST API-related errors."""
+    pass
+
+
+class APIAuthenticationError(APIError):
+    """Raised when API authentication fails."""
+    
+    def __init__(self, endpoint: str, reason: str = "Invalid API key"):
+        message = f"Authentication failed for endpoint '{endpoint}': {reason}"
+        super().__init__(
+            message=message,
+            error_code="API_AUTHENTICATION_ERROR",
+            context={'endpoint': endpoint, 'reason': reason},
+            severity=ErrorSeverity.HIGH
+        )
+
+
+class APIRateLimitError(APIError):
+    """Raised when API rate limit is exceeded."""
+    
+    def __init__(self, client_ip: str, limit: int, window: str):
+        message = f"Rate limit exceeded for client {client_ip}: {limit} requests per {window}"
+        super().__init__(
+            message=message,
+            error_code="API_RATE_LIMIT_ERROR",
+            context={'client_ip': client_ip, 'limit': limit, 'window': window},
+            severity=ErrorSeverity.MEDIUM
+        )
+
+
+class APIValidationError(APIError):
+    """Raised when API request validation fails."""
+    
+    def __init__(self, field: str, value: Any, validation_error: str):
+        message = f"Validation failed for field '{field}': {validation_error}"
+        super().__init__(
+            message=message,
+            error_code="API_VALIDATION_ERROR",
+            context={'field': field, 'value': str(value), 'validation_error': validation_error},
+            severity=ErrorSeverity.LOW
+        )
+
+
+class APIResourceNotFoundError(APIError):
+    """Raised when requested API resource is not found."""
+    
+    def __init__(self, resource_type: str, resource_id: str):
+        message = f"{resource_type} with ID '{resource_id}' not found"
+        super().__init__(
+            message=message,
+            error_code="API_RESOURCE_NOT_FOUND",
+            context={'resource_type': resource_type, 'resource_id': resource_id},
+            severity=ErrorSeverity.LOW
+        )
+
+
+class APIServerError(APIError):
+    """Raised when internal API server error occurs."""
+    
+    def __init__(self, operation: str, cause: Optional[Exception] = None):
+        message = f"Internal server error during operation: {operation}"
+        super().__init__(
+            message=message,
+            error_code="API_SERVER_ERROR",
+            context={'operation': operation},
+            severity=ErrorSeverity.HIGH,
+            cause=cause
+        )

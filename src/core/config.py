@@ -113,6 +113,47 @@ class TrackingConfig:
 
 
 @dataclass
+class APIConfig:
+    """REST API server configuration."""
+    enabled: bool = True
+    host: str = "0.0.0.0"
+    port: int = 8000
+    debug: bool = False
+    
+    # Security configuration
+    enable_cors: bool = True
+    cors_origins: List[str] = None
+    api_key_enabled: bool = False
+    api_key: Optional[str] = None
+    
+    # Rate limiting
+    rate_limit_enabled: bool = True
+    requests_per_minute: int = 60
+    burst_limit: int = 100
+    
+    # Request/response configuration
+    request_timeout_seconds: int = 30
+    max_request_size_mb: int = 10
+    include_docs: bool = True
+    docs_url: str = "/docs"
+    redoc_url: str = "/redoc"
+    
+    # Background task configuration
+    background_tasks_enabled: bool = True
+    health_check_interval_seconds: int = 60
+    
+    # Logging configuration
+    access_log: bool = True
+    log_requests: bool = True
+    log_responses: bool = False  # Can be verbose
+    
+    def __post_init__(self):
+        """Set default CORS origins if not provided."""
+        if self.cors_origins is None:
+            self.cors_origins = ["*"]  # Allow all origins by default
+
+
+@dataclass
 class SensorConfig:
     """Individual sensor configuration."""
     entity_id: str
@@ -166,6 +207,7 @@ class SystemConfig:
     features: FeaturesConfig
     logging: LoggingConfig
     tracking: TrackingConfig
+    api: APIConfig
     rooms: Dict[str, RoomConfig] = field(default_factory=dict)
     
     def get_all_entity_ids(self) -> List[str]:
@@ -207,6 +249,7 @@ class ConfigLoader:
         features_config = FeaturesConfig(**main_config["features"])
         logging_config = LoggingConfig(**main_config["logging"])
         tracking_config = TrackingConfig(**main_config.get("tracking", {}))
+        api_config = APIConfig(**main_config.get("api", {}))
         
         # Process rooms configuration
         rooms = {}
@@ -238,6 +281,7 @@ class ConfigLoader:
             features=features_config,
             logging=logging_config,
             tracking=tracking_config,
+            api=api_config,
             rooms=rooms
         )
     

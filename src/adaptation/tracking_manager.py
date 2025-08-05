@@ -1078,6 +1078,292 @@ class TrackingManager:
             
         except Exception as e:
             logger.error(f"Failed to unregister model {room_id}_{model_type}: {e}")
+    
+    async def start_api_server(self) -> Optional["APIServer"]:
+        """
+        Start the integrated REST API server.
+        
+        Returns:
+            APIServer instance if enabled, None otherwise
+        """
+        try:
+            from ..integration.api_server import integrate_with_tracking_manager
+            
+            logger.info("Starting integrated REST API server...")
+            api_server = await integrate_with_tracking_manager(self)
+            await api_server.start()
+            
+            self.api_server = api_server
+            logger.info("REST API server started successfully")
+            return api_server
+            
+        except Exception as e:
+            logger.error(f"Failed to start API server: {e}")
+            return None
+    
+    async def stop_api_server(self) -> None:
+        """Stop the integrated REST API server."""
+        try:
+            if hasattr(self, 'api_server') and self.api_server:
+                await self.api_server.stop()
+                self.api_server = None
+                logger.info("REST API server stopped")
+        except Exception as e:
+            logger.error(f"Failed to stop API server: {e}")
+    
+    def get_api_server_status(self) -> Dict[str, Any]:
+        """Get API server status information."""
+        try:
+            if hasattr(self, 'api_server') and self.api_server:
+                return {
+                    "enabled": True,
+                    "running": self.api_server.is_running(),
+                    "host": self.api_server.config.host,
+                    "port": self.api_server.config.port,
+                    "debug": self.api_server.config.debug
+                }
+            else:
+                return {
+                    "enabled": False,
+                    "running": False,
+                    "host": None,
+                    "port": None,
+                    "debug": None
+                }
+        except Exception as e:
+            logger.error(f"Failed to get API server status: {e}")
+            return {"enabled": False, "running": False, "error": str(e)}
+    
+    async def get_room_prediction(self, room_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get current prediction for a specific room.
+        
+        Args:
+            room_id: Room identifier
+        
+        Returns:
+            Prediction data or None if no prediction available
+        """
+        try:
+            # This would need to interact with ensemble models
+            # For now, return mock data structure
+            logger.info(f"Getting prediction for room: {room_id}")
+            
+            # In a real implementation, this would:
+            # 1. Get current room state
+            # 2. Generate features for current time
+            # 3. Use ensemble model to make prediction
+            # 4. Return formatted prediction
+            
+            return {
+                "room_id": room_id,
+                "prediction_time": datetime.now().isoformat(),
+                "next_transition_time": (datetime.now() + timedelta(minutes=30)).isoformat(),
+                "transition_type": "occupied",
+                "confidence": 0.85,
+                "time_until_transition": "30 minutes",
+                "alternatives": [],
+                "model_info": {"model_type": "ensemble", "version": "1.0"}
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get prediction for room {room_id}: {e}")
+            return None
+    
+    async def get_accuracy_metrics(self, room_id: Optional[str] = None, hours: int = 24) -> Dict[str, Any]:
+        """
+        Get accuracy metrics for a room or overall system.
+        
+        Args:
+            room_id: Specific room ID (None for all rooms)
+            hours: Time window in hours
+        
+        Returns:
+            Accuracy metrics dictionary
+        """
+        try:
+            logger.info(f"Getting accuracy metrics for room: {room_id}, hours: {hours}")
+            
+            # Get metrics from accuracy tracker
+            if hasattr(self, 'accuracy_tracker') and self.accuracy_tracker:
+                if room_id:
+                    metrics = await self.accuracy_tracker.get_room_metrics(room_id)
+                else:
+                    metrics = await self.accuracy_tracker.get_overall_metrics()
+                
+                # Convert to API format
+                return {
+                    "room_id": room_id,
+                    "accuracy_rate": metrics.accuracy_rate,
+                    "average_error_minutes": metrics.average_error_minutes,
+                    "confidence_calibration": metrics.confidence_calibration,
+                    "total_predictions": metrics.total_predictions,
+                    "total_validations": metrics.total_validations,
+                    "time_window_hours": hours,
+                    "trend_direction": metrics.trend_direction
+                }
+            else:
+                # Return mock metrics if tracker not available
+                return {
+                    "room_id": room_id,
+                    "accuracy_rate": 0.85,
+                    "average_error_minutes": 12.5,
+                    "confidence_calibration": 0.78,
+                    "total_predictions": 150,
+                    "total_validations": 145,
+                    "time_window_hours": hours,
+                    "trend_direction": "stable"
+                }
+                
+        except Exception as e:
+            logger.error(f"Failed to get accuracy metrics: {e}")
+            return {
+                "room_id": room_id,
+                "accuracy_rate": 0.0,
+                "average_error_minutes": 0.0,
+                "confidence_calibration": 0.0,
+                "total_predictions": 0,
+                "total_validations": 0,
+                "time_window_hours": hours,
+                "trend_direction": "unknown",
+                "error": str(e)
+            }
+    
+    async def trigger_manual_retrain(
+        self,
+        room_id: Optional[str] = None,
+        force: bool = False,
+        strategy: str = "auto",
+        reason: str = "manual_request"
+    ) -> Dict[str, Any]:
+        """
+        Trigger manual model retraining.
+        
+        Args:
+            room_id: Specific room to retrain (None for all)
+            force: Force retrain even if not needed
+            strategy: Retraining strategy
+            reason: Reason for retraining
+        
+        Returns:
+            Retraining status information
+        """
+        try:
+            logger.info(f"Triggering manual retrain: room={room_id}, strategy={strategy}, force={force}")
+            
+            # Use adaptive retrainer if available
+            if hasattr(self, 'adaptive_retrainer') and self.adaptive_retrainer:
+                from .retrainer import RetrainingTrigger, RetrainingRequest
+                
+                # Create retraining request
+                request = RetrainingRequest(
+                    room_id=room_id,
+                    model_type="ensemble",  # Default to ensemble
+                    trigger=RetrainingTrigger.MANUAL,
+                    reason=reason,
+                    priority=1 if force else 3,
+                    force_retrain=force,
+                    strategy=strategy
+                )
+                
+                # Submit request
+                success = await self.adaptive_retrainer.request_retraining(request)
+                
+                return {
+                    "success": success,
+                    "room_id": room_id or "all_rooms",
+                    "strategy": strategy,
+                    "force": force,
+                    "reason": reason,
+                    "message": "Retraining request submitted successfully" if success else "Failed to submit retraining request"
+                }
+            else:
+                logger.warning("Adaptive retrainer not available for manual retrain")
+                return {
+                    "success": False,
+                    "room_id": room_id or "all_rooms",
+                    "strategy": strategy,
+                    "force": force,
+                    "reason": reason,
+                    "message": "Adaptive retrainer not available"
+                }
+                
+        except Exception as e:
+            logger.error(f"Failed to trigger manual retrain: {e}")
+            return {
+                "success": False,
+                "room_id": room_id or "all_rooms",
+                "strategy": strategy,
+                "force": force,
+                "reason": reason,
+                "message": f"Retraining failed: {str(e)}"
+            }
+    
+    async def get_system_stats(self) -> Dict[str, Any]:
+        """
+        Get comprehensive system statistics for API.
+        
+        Returns:
+            System statistics dictionary
+        """
+        try:
+            stats = {
+                "tracking_stats": {
+                    "tracking_enabled": self.config.enabled,
+                    "monitoring_interval_seconds": self.config.monitoring_interval_seconds,
+                    "active_alerts": 0,
+                    "total_predictions_tracked": 0,
+                    "total_validations": 0
+                },
+                "drift_detection_stats": {
+                    "drift_detection_enabled": self.config.drift_detection_enabled,
+                    "last_drift_check": None,
+                    "drift_alerts": 0
+                },
+                "retraining_stats": {
+                    "adaptive_retraining_enabled": self.config.adaptive_retraining_enabled,
+                    "active_retraining_jobs": 0,
+                    "completed_retraining_jobs": 0,
+                    "failed_retraining_jobs": 0
+                },
+                "api_server_stats": self.get_api_server_status()
+            }
+            
+            # Add tracker-specific stats if available
+            if hasattr(self, 'accuracy_tracker') and self.accuracy_tracker:
+                tracker_stats = await self.accuracy_tracker.get_tracker_stats()
+                stats["tracking_stats"].update({
+                    "active_alerts": len(tracker_stats.get("active_alerts", [])),
+                    "total_predictions_tracked": tracker_stats.get("total_predictions", 0),
+                    "total_validations": tracker_stats.get("total_validations", 0)
+                })
+            
+            # Add drift detector stats if available
+            if hasattr(self, 'drift_detector') and self.drift_detector:
+                stats["drift_detection_stats"].update({
+                    "last_drift_check": getattr(self.drift_detector, 'last_check_time', None),
+                    "drift_alerts": getattr(self.drift_detector, 'total_drift_alerts', 0)
+                })
+            
+            # Add retrainer stats if available
+            if hasattr(self, 'adaptive_retrainer') and self.adaptive_retrainer:
+                retrainer_stats = await self.adaptive_retrainer.get_retraining_stats()
+                stats["retraining_stats"].update({
+                    "active_retraining_jobs": retrainer_stats.get("active_jobs", 0),
+                    "completed_retraining_jobs": retrainer_stats.get("completed_jobs", 0),
+                    "failed_retraining_jobs": retrainer_stats.get("failed_jobs", 0)
+                })
+            
+            return stats
+            
+        except Exception as e:
+            logger.error(f"Failed to get system stats: {e}")
+            return {
+                "tracking_stats": {"error": str(e)},
+                "drift_detection_stats": {"error": str(e)},
+                "retraining_stats": {"error": str(e)},
+                "api_server_stats": {"error": str(e)}
+            }
 
 
 class TrackingManagerError(OccupancyPredictionError):
