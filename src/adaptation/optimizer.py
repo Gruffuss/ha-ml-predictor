@@ -18,13 +18,24 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import skopt
 from scipy.optimize import minimize
 
 # Optimization libraries
 from sklearn.model_selection import ParameterGrid
-from skopt import gp_minimize
-from skopt.space import Categorical, Integer, Real
+
+# Optional optimization libraries for advanced features
+try:
+    import skopt
+    from skopt import gp_minimize
+    from skopt.space import Categorical, Integer, Real
+    SKOPT_AVAILABLE = True
+except ImportError:
+    skopt = None
+    gp_minimize = None
+    Categorical = None
+    Integer = None 
+    Real = None
+    SKOPT_AVAILABLE = False
 
 from ..core.constants import ModelType
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
@@ -567,6 +578,12 @@ class ModelOptimizer:
     ) -> OptimizationResult:
         """Run Bayesian optimization synchronously."""
         try:
+            if not SKOPT_AVAILABLE:
+                raise OptimizationError(
+                    "Bayesian optimization requires scikit-optimize (skopt). "
+                    "Install with: pip install scikit-optimize"
+                )
+            
             # Convert parameter space to skopt format
             dimensions = []
             param_names = []

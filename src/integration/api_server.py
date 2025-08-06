@@ -21,7 +21,7 @@ import traceback
 from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import uvicorn
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
@@ -31,7 +31,8 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field, validator
 
-from ..adaptation.tracking_manager import TrackingManager
+if TYPE_CHECKING:
+    from ..adaptation.tracking_manager import TrackingManager
 from ..core.config import APIConfig, get_config
 from ..core.exceptions import (
     APIAuthenticationError,
@@ -97,7 +98,7 @@ class ManualRetrainRequest(BaseModel):
         None, description="Specific room to retrain (all if None)"
     )
     force: bool = Field(False, description="Force retrain even if not needed")
-    strategy: str = Field("auto", regex="^(auto|incremental|full|feature_refresh)$")
+    strategy: str = Field("auto", pattern="^(auto|incremental|full|feature_refresh)$")
     reason: str = Field("manual_request", description="Reason for retraining")
 
 
@@ -165,16 +166,28 @@ security_scheme = HTTPBearer(auto_error=False)
 _tracking_manager_instance = None
 
 
-async def get_tracking_manager() -> TrackingManager:
+async def get_tracking_manager() -> "TrackingManager":
     """Get the system tracking manager."""
     global _tracking_manager_instance
     if _tracking_manager_instance is None:
+        # Lazy import to prevent circular dependency
+        from ..adaptation.tracking_manager import TrackingManager
+        from ..adaptation.tracking_manager import TrackingConfig
+        
         config = get_config()
-        _tracking_manager_instance = TrackingManager(config.tracking)
+        # Create default tracking config if not available
+        tracking_config = getattr(config, 'tracking', None)
+        if tracking_config is None:
+            tracking_config = TrackingConfig()
+        
+        _tracking_manager_instance = TrackingManager(tracking_config)
+        # Initialize the tracking manager if it hasn't been initialized
+        if not hasattr(_tracking_manager_instance, '_tracking_active') or not _tracking_manager_instance._tracking_active:
+            await _tracking_manager_instance.initialize()
     return _tracking_manager_instance
 
 
-def set_tracking_manager(tracking_manager: TrackingManager):
+def set_tracking_manager(tracking_manager: "TrackingManager"):
     """Set the tracking manager instance for API endpoints."""
     global _tracking_manager_instance
     _tracking_manager_instance = tracking_manager
@@ -711,7 +724,7 @@ class APIServer:
     as part of the integrated system workflow.
     """
 
-    def __init__(self, tracking_manager: TrackingManager):
+    def __init__(self, tracking_manager: "TrackingManager"):
         """Initialize API server with tracking manager integration."""
         self.tracking_manager = tracking_manager
         self.config = get_config().api
@@ -758,7 +771,7 @@ class APIServer:
 
 
 async def integrate_with_tracking_manager(
-    tracking_manager: TrackingManager,
+    tracking_manager: "TrackingManager",
 ) -> APIServer:
     """
     Create and integrate API server with tracking manager.

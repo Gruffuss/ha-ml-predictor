@@ -35,6 +35,8 @@ from .retrainer import (
 from .tracker import AccuracyAlert, AccuracyTracker, RealTimeMetrics
 from .validator import PredictionValidator
 
+logger = logging.getLogger(__name__)
+
 # Import dashboard components with graceful fallback
 try:
     from ..integration.dashboard import (
@@ -50,9 +52,6 @@ except ImportError as e:
     PerformanceDashboard = None
     DashboardConfig = None
     DashboardMode = None
-
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -77,6 +76,16 @@ class TrackingConfig:
     realtime_broadcast_alerts: bool = True
     realtime_broadcast_drift_events: bool = True
     realtime_max_connections: int = 100
+
+    # WebSocket API configuration
+    websocket_api_enabled: bool = True
+    websocket_api_host: str = "0.0.0.0"
+    websocket_api_port: int = 8766
+    websocket_api_max_connections: int = 500
+    websocket_api_max_messages_per_minute: int = 60
+    websocket_api_heartbeat_interval_seconds: int = 30
+    websocket_api_connection_timeout_seconds: int = 300
+    websocket_api_message_acknowledgment_timeout_seconds: int = 30
 
     # Performance Dashboard configuration
     dashboard_enabled: bool = True
@@ -222,6 +231,9 @@ class TrackingManager:
         # Real-time publishing system
         self.realtime_publisher: Optional[RealtimePublishingSystem] = None
 
+        # WebSocket API server
+        self.websocket_api_server = None
+
         # Performance Dashboard
         self.dashboard: Optional[PerformanceDashboard] = None
 
@@ -323,6 +335,9 @@ class TrackingManager:
             # Initialize and start performance dashboard if enabled
             await self._initialize_dashboard()
 
+            # Initialize and start WebSocket API server if enabled
+            await self._initialize_websocket_api()
+
             # Start API server automatically if enabled
             await self._start_api_server_if_enabled()
 
@@ -396,6 +411,9 @@ class TrackingManager:
 
             # Stop performance dashboard if running
             await self._shutdown_dashboard()
+
+            # Stop WebSocket API server if running
+            await self._shutdown_websocket_api()
 
             # Stop real-time publishing system
             await self._shutdown_realtime_publishing()
@@ -496,6 +514,30 @@ class TrackingManager:
 
             # Note: Real-time broadcasting is now handled by Enhanced MQTT Manager automatically
             # No need for separate real-time publisher when using Enhanced MQTT Manager
+
+            # Automatically publish to WebSocket API clients if enabled
+            if self.websocket_api_server and self.config.websocket_api_enabled:
+                try:
+                    websocket_results = await self.websocket_api_server.publish_prediction_update(
+                        prediction_result=prediction_result,
+                        room_id=room_id,
+                        current_state=None  # Could be determined from room state if available
+                    )
+                    
+                    if websocket_results.get("success", False):
+                        clients_notified = websocket_results.get("clients_notified", 0)
+                        logger.debug(
+                            f"Published prediction for room {room_id} via WebSocket API to {clients_notified} clients"
+                        )
+                    else:
+                        logger.warning(
+                            f"Failed to publish prediction via WebSocket API for room {room_id}: {websocket_results.get('error', 'Unknown error')}"
+                        )
+                except Exception as websocket_error:
+                    logger.warning(
+                        f"Failed to publish prediction via WebSocket API for room {room_id}: {websocket_error}"
+                    )
+                    # Don't raise exception - WebSocket API publishing is optional
 
             # Automatically notify dashboard via WebSocket if enabled
             if self.dashboard and self.config.dashboard_enabled:
@@ -641,6 +683,9 @@ class TrackingManager:
 
             # Add real-time publishing status (for backward compatibility)
             status["realtime_publishing"] = self.get_realtime_publishing_status()
+
+            # Add WebSocket API status
+            status["websocket_api"] = self.get_websocket_api_status()
 
             return status
 
@@ -1381,6 +1426,7 @@ class TrackingManager:
             APIServer instance if enabled, None otherwise
         """
         try:
+            # Use late import to avoid circular dependency during module initialization
             from ..integration.api_server import integrate_with_tracking_manager
 
             logger.info("Starting integrated REST API server...")
@@ -1770,6 +1816,7 @@ class TrackingManager:
                 "api_server_stats": self.get_api_server_status(),
                 "enhanced_mqtt_stats": self.get_enhanced_mqtt_status(),
                 "realtime_publishing_stats": self.get_realtime_publishing_status(),
+                "websocket_api_stats": self.get_websocket_api_status(),
                 "dashboard_stats": self.get_dashboard_status(),
             }
 
@@ -1821,8 +1868,131 @@ class TrackingManager:
                 "drift_detection_stats": {"error": str(e)},
                 "retraining_stats": {"error": str(e)},
                 "api_server_stats": {"error": str(e)},
+                "websocket_api_stats": {"error": str(e)},
                 "dashboard_stats": {"error": str(e)},
             }
+
+    async def _initialize_websocket_api(self) -> None:
+        """Initialize and start the WebSocket API server if enabled."""
+        try:
+            if not self.config.websocket_api_enabled:
+                logger.debug("WebSocket API server disabled in configuration")
+                return
+
+            logger.info("Initializing WebSocket API server...")
+
+            # Import WebSocket API components
+            from ..integration.websocket_api import WebSocketAPIServer
+
+            # Create WebSocket API configuration
+            websocket_config = {
+                "enabled": self.config.websocket_api_enabled,
+                "host": self.config.websocket_api_host,
+                "port": self.config.websocket_api_port,
+                "max_connections": self.config.websocket_api_max_connections,
+                "max_messages_per_minute": self.config.websocket_api_max_messages_per_minute,
+                "heartbeat_interval_seconds": self.config.websocket_api_heartbeat_interval_seconds,
+                "connection_timeout_seconds": self.config.websocket_api_connection_timeout_seconds,
+                "acknowledgment_timeout_seconds": self.config.websocket_api_message_acknowledgment_timeout_seconds,
+            }
+
+            # Initialize WebSocket API server with this tracking manager
+            self.websocket_api_server = WebSocketAPIServer(
+                tracking_manager=self, config=websocket_config
+            )
+
+            # Initialize and start the WebSocket API server
+            await self.websocket_api_server.initialize()
+            await self.websocket_api_server.start()
+
+            logger.info(
+                f"WebSocket API server started successfully on ws://{websocket_config['host']}:{websocket_config['port']}"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to initialize WebSocket API server: {e}")
+            # Don't raise exception - WebSocket API is optional functionality
+
+    async def _shutdown_websocket_api(self) -> None:
+        """Shutdown the WebSocket API server gracefully."""
+        try:
+            if self.websocket_api_server:
+                logger.info("Shutting down WebSocket API server...")
+                await self.websocket_api_server.stop()
+                self.websocket_api_server = None
+                logger.info("WebSocket API server shutdown complete")
+        except Exception as e:
+            logger.error(f"Error shutting down WebSocket API server: {e}")
+
+    def get_websocket_api_status(self) -> Dict[str, Any]:
+        """Get WebSocket API server status information."""
+        try:
+            if self.websocket_api_server and self.config.websocket_api_enabled:
+                server_stats = self.websocket_api_server.get_server_stats()
+                return {
+                    "enabled": True,
+                    "running": server_stats["server_running"],
+                    "host": server_stats["host"],
+                    "port": server_stats["port"],
+                    "active_connections": server_stats["connection_stats"]["active_connections"],
+                    "authenticated_connections": server_stats["connection_stats"]["authenticated_connections"],
+                    "total_connections_served": server_stats["connection_stats"]["total_connections"],
+                    "predictions_connections": server_stats["connection_stats"]["predictions_connections"],
+                    "system_status_connections": server_stats["connection_stats"]["system_status_connections"],
+                    "alerts_connections": server_stats["connection_stats"]["alerts_connections"],
+                    "room_specific_connections": server_stats["connection_stats"]["room_specific_connections"],
+                    "total_messages_sent": server_stats["connection_stats"]["total_messages_sent"],
+                    "total_messages_received": server_stats["connection_stats"]["total_messages_received"],
+                    "rate_limited_clients": server_stats["connection_stats"]["rate_limited_clients"],
+                    "authentication_failures": server_stats["connection_stats"]["authentication_failures"],
+                    "tracking_manager_integrated": server_stats["tracking_manager_integrated"],
+                }
+            else:
+                return {
+                    "enabled": self.config.websocket_api_enabled,
+                    "running": False,
+                    "host": self.config.websocket_api_host,
+                    "port": self.config.websocket_api_port,
+                    "active_connections": 0,
+                    "authenticated_connections": 0,
+                    "total_connections_served": 0,
+                    "predictions_connections": 0,
+                    "system_status_connections": 0,
+                    "alerts_connections": 0,
+                    "room_specific_connections": 0,
+                    "total_messages_sent": 0,
+                    "total_messages_received": 0,
+                    "rate_limited_clients": 0,
+                    "authentication_failures": 0,
+                    "tracking_manager_integrated": False,
+                }
+        except Exception as e:
+            logger.error(f"Failed to get WebSocket API status: {e}")
+            return {"enabled": False, "running": False, "error": str(e)}
+
+    async def publish_system_status_update(self, status_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Publish system status update via WebSocket API."""
+        try:
+            if self.websocket_api_server and self.config.websocket_api_enabled:
+                return await self.websocket_api_server.publish_system_status_update(status_data)
+            else:
+                return {"success": False, "error": "WebSocket API not available"}
+        except Exception as e:
+            logger.error(f"Failed to publish system status update: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def publish_alert_notification(
+        self, alert_data: Dict[str, Any], room_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Publish alert notification via WebSocket API."""
+        try:
+            if self.websocket_api_server and self.config.websocket_api_enabled:
+                return await self.websocket_api_server.publish_alert_notification(alert_data, room_id)
+            else:
+                return {"success": False, "error": "WebSocket API not available"}
+        except Exception as e:
+            logger.error(f"Failed to publish alert notification: {e}")
+            return {"success": False, "error": str(e)}
 
     async def _initialize_dashboard(self) -> None:
         """Initialize and start the performance dashboard if enabled."""

@@ -19,7 +19,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
-from ..adaptation.tracking_manager import TrackingConfig, TrackingManager
+# Defer imports to prevent circular dependency
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..adaptation.tracking_manager import TrackingConfig, TrackingManager
 from ..core.config import MQTTConfig, RoomConfig, get_config
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
 from .enhanced_mqtt_manager import EnhancedMQTTIntegrationManager
@@ -59,7 +63,7 @@ class TrackingIntegrationManager:
 
     def __init__(
         self,
-        tracking_manager: TrackingManager,
+        tracking_manager: "TrackingManager",
         integration_config: Optional[IntegrationConfig] = None,
     ):
         """
@@ -372,7 +376,7 @@ class TrackingIntegrationManager:
 
 # Integration function for easy setup
 async def integrate_tracking_with_realtime_publishing(
-    tracking_manager: TrackingManager,
+    tracking_manager: "TrackingManager",
     integration_config: Optional[IntegrationConfig] = None,
 ) -> TrackingIntegrationManager:
     """
@@ -407,10 +411,10 @@ async def integrate_tracking_with_realtime_publishing(
 
 # Factory function for creating integrated tracking manager
 async def create_integrated_tracking_manager(
-    tracking_config: TrackingConfig,
+    tracking_config: "TrackingConfig",
     integration_config: Optional[IntegrationConfig] = None,
     **tracking_manager_kwargs,
-) -> tuple[TrackingManager, TrackingIntegrationManager]:
+) -> tuple["TrackingManager", TrackingIntegrationManager]:
     """
     Create a TrackingManager with real-time publishing integration.
 
@@ -426,6 +430,9 @@ async def create_integrated_tracking_manager(
         Tuple of (TrackingManager, TrackingIntegrationManager)
     """
     try:
+        # Lazy import to prevent circular dependency
+        from ..adaptation.tracking_manager import TrackingManager
+        
         # Create TrackingManager
         tracking_manager = TrackingManager(
             config=tracking_config, **tracking_manager_kwargs

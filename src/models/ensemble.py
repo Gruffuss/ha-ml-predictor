@@ -20,6 +20,7 @@ from sklearn.preprocessing import StandardScaler
 
 from ..core.constants import DEFAULT_MODEL_PARAMS, ModelType
 from ..core.exceptions import ModelPredictionError, ModelTrainingError
+from .base.gp_predictor import GaussianProcessPredictor
 from .base.hmm_predictor import HMMPredictor
 from .base.lstm_predictor import LSTMPredictor
 from .base.predictor import BasePredictor, PredictionResult, TrainingResult
@@ -61,11 +62,12 @@ class OccupancyEnsemble(BasePredictor):
             "meta_features_only": default_params.get("meta_features_only", False),
         }
 
-        # Base models
+        # Base models including Gaussian Process for uncertainty quantification
         self.base_models: Dict[str, BasePredictor] = {
             "lstm": LSTMPredictor(room_id),
             "xgboost": XGBoostPredictor(room_id),
             "hmm": HMMPredictor(room_id),
+            "gp": GaussianProcessPredictor(room_id),
         }
 
         # Meta-learner
@@ -494,6 +496,8 @@ class OccupancyEnsemble(BasePredictor):
                         fold_model = XGBoostPredictor(self.room_id)
                     elif model_name == "hmm":
                         fold_model = HMMPredictor(self.room_id)
+                    elif model_name == "gp":
+                        fold_model = GaussianProcessPredictor(self.room_id)
                     else:
                         continue
 
@@ -803,9 +807,10 @@ class OccupancyEnsemble(BasePredictor):
         idx: int,
         ensemble_prediction: float,
     ) -> float:
-        """Calculate confidence for ensemble prediction."""
+        """Calculate confidence for ensemble prediction with GP uncertainty quantification."""
         confidences = []
         predictions = []
+        gp_uncertainty = None
 
         for model_name, results in base_results.items():
             if idx < len(results):
@@ -814,6 +819,17 @@ class OccupancyEnsemble(BasePredictor):
                     results[idx].predicted_time - datetime.utcnow()
                 ).total_seconds()
                 predictions.append(pred_time)
+                
+                # Extract GP uncertainty information if available
+                if model_name == "gp" and results[idx].prediction_metadata:
+                    metadata = results[idx].prediction_metadata
+                    if "uncertainty_quantification" in metadata:
+                        uncertainty_info = metadata["uncertainty_quantification"]
+                        gp_uncertainty = {
+                            "aleatoric": uncertainty_info.get("aleatoric_uncertainty", 0),
+                            "epistemic": uncertainty_info.get("epistemic_uncertainty", 0),
+                            "prediction_std": metadata.get("prediction_std", 0),
+                        }
 
         if not confidences:
             return 0.7
@@ -827,6 +843,21 @@ class OccupancyEnsemble(BasePredictor):
             pred_std = np.std(predictions)
             agreement_factor = 1.0 / (1.0 + pred_std / 3600.0)  # Normalize by 1 hour
             weighted_confidence *= agreement_factor
+
+        # Incorporate GP uncertainty quantification if available
+        if gp_uncertainty is not None:
+            # Lower uncertainty should increase confidence
+            total_uncertainty = gp_uncertainty["aleatoric"] + gp_uncertainty["epistemic"]
+            
+            # Normalize uncertainty (assuming max reasonable uncertainty is 1 hour = 3600 seconds)
+            normalized_uncertainty = total_uncertainty / 3600.0
+            uncertainty_factor = 1.0 / (1.0 + normalized_uncertainty)
+            
+            # Weight GP uncertainty more heavily if GP model has high weight
+            gp_weight = self.model_weights.get("gp", 0.25)
+            uncertainty_adjustment = gp_weight * uncertainty_factor + (1 - gp_weight) * 1.0
+            
+            weighted_confidence *= uncertainty_adjustment
 
         return float(np.clip(weighted_confidence, 0.1, 0.95))
 

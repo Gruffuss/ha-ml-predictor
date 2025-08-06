@@ -68,7 +68,11 @@ from ..adaptation.tracker import (
     RealTimeMetrics,
     TrendDirection,
 )
-from ..adaptation.tracking_manager import TrackingConfig, TrackingManager
+# Defer imports to prevent circular dependency
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..adaptation.tracking_manager import TrackingConfig, TrackingManager
 from ..adaptation.validator import AccuracyLevel, AccuracyMetrics
 from ..core.constants import ModelType
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
@@ -372,7 +376,7 @@ class PerformanceDashboard:
     """
 
     def __init__(
-        self, tracking_manager: TrackingManager, config: DashboardConfig = None
+        self, tracking_manager: "TrackingManager", config: DashboardConfig = None
     ):
         """
         Initialize performance dashboard with tracking manager integration.
@@ -1570,7 +1574,7 @@ class DashboardError(OccupancyPredictionError):
 
 # Example usage and testing functions
 async def create_dashboard_from_tracking_manager(
-    tracking_manager: TrackingManager,
+    tracking_manager: "TrackingManager",
     host: str = "0.0.0.0",
     port: int = 8888,
     debug: bool = False,
@@ -1598,7 +1602,7 @@ async def create_dashboard_from_tracking_manager(
 
 # Integration helper for main system initialization
 def integrate_dashboard_with_tracking_system(
-    tracking_manager: TrackingManager,
+    tracking_manager: "TrackingManager",
     dashboard_config: Optional[DashboardConfig] = None,
 ) -> PerformanceDashboard:
     """
