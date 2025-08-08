@@ -16,11 +16,18 @@ Features:
 import asyncio
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional, Union
+from datetime import datetime
+from datetime import timedelta
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
 
 from ..adaptation.tracking_manager import TrackingManager
-from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
+from ..core.exceptions import ErrorSeverity
+from ..core.exceptions import OccupancyPredictionError
 from ..models.base.predictor import PredictionResult
 from .enhanced_integration_manager import EnhancedIntegrationManager
 

@@ -8,16 +8,25 @@ multi-room occupancy correlations.
 
 import logging
 import statistics
-from collections import defaultdict, deque
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set, Tuple
+from collections import defaultdict
+from collections import deque
+from datetime import datetime
+from datetime import timedelta
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Set
+from typing import Tuple
 
 import numpy as np
 
-from ..core.config import RoomConfig, SystemConfig
+from ..core.config import RoomConfig
+from ..core.config import SystemConfig
 from ..core.constants import SensorType
 from ..core.exceptions import FeatureExtractionError
-from ..data.storage.models import RoomState, SensorEvent
+from ..data.storage.models import RoomState
+from ..data.storage.models import SensorEvent
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,10 @@ providing detailed error context and actionable debugging information.
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 
 
 class ErrorSeverity(Enum):
@@ -811,43 +814,43 @@ class APIServerError(APIError):
 
 class WebSocketAPIError(OccupancyPredictionError):
     """Base exception for WebSocket API errors."""
-    
+
     def __init__(self, message: str, **kwargs):
         super().__init__(
             message=message,
             error_code="WEBSOCKET_API_ERROR",
             severity=kwargs.get("severity", ErrorSeverity.MEDIUM),
-            **kwargs
+            **kwargs,
         )
 
 
 class WebSocketAuthenticationError(WebSocketAPIError):
     """Raised when WebSocket authentication fails."""
-    
+
     def __init__(self, message: str, **kwargs):
         super().__init__(
             message=message,
             error_code="WEBSOCKET_AUTH_ERROR",
             severity=ErrorSeverity.HIGH,
-            **kwargs
+            **kwargs,
         )
 
 
 class WebSocketConnectionError(WebSocketAPIError):
     """Raised when WebSocket connection operations fail."""
-    
+
     def __init__(self, message: str, **kwargs):
         super().__init__(
             message=message,
             error_code="WEBSOCKET_CONNECTION_ERROR",
             severity=ErrorSeverity.MEDIUM,
-            **kwargs
+            **kwargs,
         )
 
 
 class WebSocketRateLimitError(WebSocketAPIError):
     """Raised when WebSocket rate limits are exceeded."""
-    
+
     def __init__(self, client_id: str, limit: int, **kwargs):
         message = f"Rate limit exceeded for client {client_id}: {limit} messages/minute"
         super().__init__(
@@ -855,17 +858,17 @@ class WebSocketRateLimitError(WebSocketAPIError):
             error_code="WEBSOCKET_RATE_LIMIT_ERROR",
             severity=ErrorSeverity.LOW,
             context={"client_id": client_id, "limit": limit},
-            **kwargs
+            **kwargs,
         )
 
 
 class WebSocketValidationError(WebSocketAPIError):
     """Raised when WebSocket message validation fails."""
-    
+
     def __init__(self, message: str, **kwargs):
         super().__init__(
             message=message,
             error_code="WEBSOCKET_VALIDATION_ERROR",
             severity=ErrorSeverity.LOW,
-            **kwargs
+            **kwargs,
         )

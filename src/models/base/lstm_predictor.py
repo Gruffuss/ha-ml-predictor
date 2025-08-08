@@ -7,18 +7,30 @@ MLPRegressor for sequence-based occupancy predictions.
 
 import logging
 import warnings
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
+from datetime import timedelta
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import r2_score
 from sklearn.neural_network import MLPRegressor
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 
-from ...core.constants import DEFAULT_MODEL_PARAMS, ModelType
-from ...core.exceptions import ModelPredictionError, ModelTrainingError
-from .predictor import BasePredictor, PredictionResult, TrainingResult
+from ...core.constants import DEFAULT_MODEL_PARAMS
+from ...core.constants import ModelType
+from ...core.exceptions import ModelPredictionError
+from ...core.exceptions import ModelTrainingError
+from .predictor import BasePredictor
+from .predictor import PredictionResult
+from .predictor import TrainingResult
 
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")

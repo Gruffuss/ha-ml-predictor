@@ -7,24 +7,27 @@ and ensure proper functionality of authentication, subscriptions, and real-time 
 
 import asyncio
 import json
-import pytest
 import uuid
-from datetime import datetime, timedelta
-from typing import Dict, List
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime
+from datetime import timedelta
+from typing import Dict
+from typing import List
+from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
+from unittest.mock import patch
 
+import pytest
 import websockets
 from websockets.server import WebSocketServerProtocol
 
-from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
+from src.adaptation.tracking_manager import TrackingConfig
+from src.adaptation.tracking_manager import TrackingManager
 from src.core.config import get_config
-from src.integration.websocket_api import (
-    ClientConnection,
-    MessageType,
-    WebSocketAPIServer,
-    WebSocketConnectionManager,
-    WebSocketMessage,
-)
+from src.integration.websocket_api import ClientConnection
+from src.integration.websocket_api import MessageType
+from src.integration.websocket_api import WebSocketAPIServer
+from src.integration.websocket_api import WebSocketConnectionManager
+from src.integration.websocket_api import WebSocketMessage
 from src.models.base.predictor import PredictionResult
 
 
@@ -42,7 +45,7 @@ class TestWebSocketAPIIntegration:
             websocket_api_max_connections=10,
             websocket_api_max_messages_per_minute=100,
         )
-        
+
         # Mock dependencies
         tracking_manager = TrackingManager(
             config=config,
@@ -52,7 +55,7 @@ class TestWebSocketAPIIntegration:
             notification_callbacks=[],
             mqtt_integration_manager=MagicMock(),
         )
-        
+
         return tracking_manager
 
     @pytest.fixture
@@ -73,14 +76,13 @@ class TestWebSocketAPIIntegration:
     async def websocket_server(self, tracking_manager, websocket_config):
         """Create WebSocket API server for testing."""
         server = WebSocketAPIServer(
-            tracking_manager=tracking_manager, 
-            config=websocket_config
+            tracking_manager=tracking_manager, config=websocket_config
         )
         await server.initialize()
         await server.start()
-        
+
         yield server
-        
+
         await server.stop()
 
     @pytest.fixture
@@ -92,21 +94,22 @@ class TestWebSocketAPIIntegration:
         return websocket
 
     @pytest.mark.asyncio
-    async def test_websocket_api_initialization(self, tracking_manager, websocket_config):
+    async def test_websocket_api_initialization(
+        self, tracking_manager, websocket_config
+    ):
         """Test WebSocket API server initialization."""
         server = WebSocketAPIServer(
-            tracking_manager=tracking_manager, 
-            config=websocket_config
+            tracking_manager=tracking_manager, config=websocket_config
         )
-        
+
         assert server.tracking_manager is tracking_manager
         assert server.enabled is True
         assert server.host == "127.0.0.1"
         assert server.port == 8767
-        
+
         await server.initialize()
         assert len(server._background_tasks) > 0
-        
+
         await server.stop()
 
     @pytest.mark.asyncio
@@ -114,13 +117,13 @@ class TestWebSocketAPIIntegration:
         """Test basic connection management operations."""
         manager = WebSocketConnectionManager(websocket_config)
         mock_websocket = MagicMock(spec=WebSocketServerProtocol)
-        
+
         # Test connection
         connection_id = await manager.connect(mock_websocket, "/ws/predictions")
         assert connection_id in manager.connections
         assert manager.stats.active_connections == 1
         assert manager.stats.total_connections == 1
-        
+
         # Test disconnection
         await manager.disconnect(connection_id)
         assert connection_id not in manager.connections
@@ -131,30 +134,30 @@ class TestWebSocketAPIIntegration:
         """Test client authentication process."""
         manager = WebSocketConnectionManager(websocket_config)
         mock_websocket = MagicMock(spec=WebSocketServerProtocol)
-        
+
         # Connect client
         connection_id = await manager.connect(mock_websocket, "/ws/predictions")
-        
+
         # Mock authentication request
         from src.integration.websocket_api import ClientAuthRequest
-        
-        with patch('src.core.config.get_config') as mock_get_config:
+
+        with patch("src.core.config.get_config") as mock_get_config:
             mock_config = MagicMock()
             mock_config.api.api_key_enabled = True
             mock_config.api.api_key = "test-api-key"
             mock_get_config.return_value = mock_config
-            
+
             auth_request = ClientAuthRequest(
                 api_key="test-api-key",
                 client_name="TestClient",
                 capabilities=["predictions", "alerts"],
-                room_filters=["living_room"]
+                room_filters=["living_room"],
             )
-            
+
             # Test successful authentication
             success = await manager.authenticate_client(connection_id, auth_request)
             assert success is True
-            
+
             connection = manager.connections[connection_id]
             assert connection.authenticated is True
             assert connection.client_name == "TestClient"
@@ -166,22 +169,20 @@ class TestWebSocketAPIIntegration:
         """Test client subscription management."""
         manager = WebSocketConnectionManager(websocket_config)
         mock_websocket = MagicMock(spec=WebSocketServerProtocol)
-        
+
         # Connect and authenticate client
         connection_id = await manager.connect(mock_websocket, "/ws/predictions")
         connection = manager.connections[connection_id]
         connection.authenticated = True
         connection.room_filters.add("living_room")
-        
+
         # Test subscription
         from src.integration.websocket_api import ClientSubscription
-        
+
         subscription = ClientSubscription(
-            endpoint="/ws/predictions",
-            room_id="living_room",
-            filters={}
+            endpoint="/ws/predictions", room_id="living_room", filters={}
         )
-        
+
         success = await manager.subscribe_client(connection_id, subscription)
         assert success is True
         assert "/ws/predictions" in connection.subscriptions
@@ -191,22 +192,22 @@ class TestWebSocketAPIIntegration:
     async def test_message_broadcasting(self, websocket_config):
         """Test message broadcasting to subscribed clients."""
         manager = WebSocketConnectionManager(websocket_config)
-        
+
         # Create multiple mock clients
         clients = []
         for i in range(3):
             mock_websocket = MagicMock(spec=WebSocketServerProtocol)
             mock_websocket.send = AsyncMock()
             connection_id = await manager.connect(mock_websocket, "/ws/predictions")
-            
+
             # Authenticate and subscribe
             connection = manager.connections[connection_id]
             connection.authenticated = True
             connection.subscriptions.add("/ws/predictions")
             connection.room_subscriptions.add("living_room")
-            
+
             clients.append((connection_id, mock_websocket))
-        
+
         # Create test message
         message = WebSocketMessage(
             message_id=str(uuid.uuid4()),
@@ -214,12 +215,14 @@ class TestWebSocketAPIIntegration:
             timestamp=datetime.utcnow(),
             endpoint="/ws/predictions",
             room_id="living_room",
-            data={"test": "data"}
+            data={"test": "data"},
         )
-        
+
         # Broadcast message
-        sent_count = await manager.broadcast_to_endpoint("/ws/predictions", message, "living_room")
-        
+        sent_count = await manager.broadcast_to_endpoint(
+            "/ws/predictions", message, "living_room"
+        )
+
         # Verify all clients received the message
         assert sent_count == 3
         for _, mock_websocket in clients:
@@ -230,28 +233,28 @@ class TestWebSocketAPIIntegration:
         """Test rate limiting functionality."""
         # Set low rate limit for testing
         websocket_config["max_messages_per_minute"] = 2
-        
+
         manager = WebSocketConnectionManager(websocket_config)
         mock_websocket = MagicMock(spec=WebSocketServerProtocol)
         mock_websocket.send = AsyncMock()
-        
+
         connection_id = await manager.connect(mock_websocket, "/ws/predictions")
         connection = manager.connections[connection_id]
         connection.authenticated = True
-        
+
         # Create test message
         message = WebSocketMessage(
             message_id=str(uuid.uuid4()),
             message_type=MessageType.PREDICTION_UPDATE,
             timestamp=datetime.utcnow(),
             endpoint="/ws/predictions",
-            data={"test": "data"}
+            data={"test": "data"},
         )
-        
+
         # Send messages up to limit
         assert await manager.send_message(connection_id, message) is True
         assert await manager.send_message(connection_id, message) is True
-        
+
         # Next message should be rate limited
         assert await manager.send_message(connection_id, message) is False
         assert connection.is_rate_limited(2) is True
@@ -267,9 +270,9 @@ class TestWebSocketAPIIntegration:
             model_type="ensemble",
             model_version="1.0.0",
             features_used=["time_since_last", "hour_of_day"],
-            prediction_metadata={"room_id": "living_room"}
+            prediction_metadata={"room_id": "living_room"},
         )
-        
+
         # Mock some connected clients
         mock_clients = []
         for i in range(2):
@@ -278,22 +281,22 @@ class TestWebSocketAPIIntegration:
             connection_id = await websocket_server.connection_manager.connect(
                 mock_websocket, "/ws/predictions"
             )
-            
+
             connection = websocket_server.connection_manager.connections[connection_id]
             connection.authenticated = True
             connection.subscriptions.add("/ws/predictions")
-            
+
             mock_clients.append((connection_id, mock_websocket))
-        
+
         # Publish prediction update
         result = await websocket_server.publish_prediction_update(
             prediction_result, "living_room", "vacant"
         )
-        
+
         # Verify successful publishing
         assert result["success"] is True
         assert result["clients_notified"] > 0
-        
+
         # Verify clients received messages
         for _, mock_websocket in mock_clients:
             mock_websocket.send.assert_called()
@@ -307,25 +310,25 @@ class TestWebSocketAPIIntegration:
         connection_id = await websocket_server.connection_manager.connect(
             mock_websocket, "/ws/system-status"
         )
-        
+
         connection = websocket_server.connection_manager.connections[connection_id]
         connection.authenticated = True
         connection.subscriptions.add("/ws/system-status")
-        
+
         # Publish system status
         status_data = {
             "system_health": "healthy",
             "uptime_seconds": 3600,
             "active_connections": 5,
-            "predictions_per_minute": 12
+            "predictions_per_minute": 12,
         }
-        
+
         result = await websocket_server.publish_system_status_update(status_data)
-        
+
         # Verify successful publishing
         assert result["success"] is True
         assert result["clients_notified"] == 1
-        
+
         # Verify client received message
         mock_websocket.send.assert_called_once()
 
@@ -338,11 +341,11 @@ class TestWebSocketAPIIntegration:
         connection_id = await websocket_server.connection_manager.connect(
             mock_websocket, "/ws/alerts"
         )
-        
+
         connection = websocket_server.connection_manager.connections[connection_id]
         connection.authenticated = True
         connection.subscriptions.add("/ws/alerts")
-        
+
         # Publish alert
         alert_data = {
             "alert_type": "accuracy_degradation",
@@ -350,18 +353,20 @@ class TestWebSocketAPIIntegration:
             "message": "Model accuracy below threshold",
             "room_id": "bedroom",
             "current_accuracy": 0.65,
-            "threshold": 0.70
+            "threshold": 0.70,
         }
-        
-        result = await websocket_server.publish_alert_notification(alert_data, "bedroom")
-        
+
+        result = await websocket_server.publish_alert_notification(
+            alert_data, "bedroom"
+        )
+
         # Verify successful publishing
         assert result["success"] is True
         assert result["clients_notified"] == 1
-        
+
         # Verify client received message
         mock_websocket.send.assert_called_once()
-        
+
         # Verify message requires acknowledgment
         sent_args = mock_websocket.send.call_args[0]
         sent_message = json.loads(sent_args[0])
@@ -376,17 +381,19 @@ class TestWebSocketAPIIntegration:
         connection_id = await websocket_server.connection_manager.connect(
             mock_websocket, "/ws/predictions"
         )
-        
+
         connection = websocket_server.connection_manager.connections[connection_id]
         connection.authenticated = True
-        
+
         # Send heartbeat
-        success = await websocket_server.connection_manager.send_heartbeat(connection_id)
-        
+        success = await websocket_server.connection_manager.send_heartbeat(
+            connection_id
+        )
+
         # Verify heartbeat sent
         assert success is True
         mock_websocket.send.assert_called_once()
-        
+
         # Verify heartbeat message format
         sent_args = mock_websocket.send.call_args[0]
         sent_message = json.loads(sent_args[0])
@@ -398,17 +405,19 @@ class TestWebSocketAPIIntegration:
     async def test_tracking_manager_integration(self, tracking_manager):
         """Test WebSocket API integration with TrackingManager."""
         # Initialize tracking manager (which should start WebSocket API)
-        with patch('src.integration.websocket_api.WebSocketAPIServer') as mock_server_class:
+        with patch(
+            "src.integration.websocket_api.WebSocketAPIServer"
+        ) as mock_server_class:
             mock_server = AsyncMock()
             mock_server_class.return_value = mock_server
-            
+
             await tracking_manager.initialize()
-            
+
             # Verify WebSocket API server was created and started
             mock_server_class.assert_called_once()
             mock_server.initialize.assert_called_once()
             mock_server.start.assert_called_once()
-            
+
             # Verify tracking manager has reference to WebSocket server
             assert tracking_manager.websocket_api_server is mock_server
 
@@ -422,7 +431,7 @@ class TestWebSocketAPIIntegration:
         )
         tracking_manager.websocket_api_server = mock_websocket_server
         tracking_manager.config.websocket_api_enabled = True
-        
+
         # Create mock prediction result
         prediction_result = PredictionResult(
             predicted_time=datetime.utcnow() + timedelta(minutes=45),
@@ -431,12 +440,12 @@ class TestWebSocketAPIIntegration:
             model_type="ensemble",
             model_version="1.0.0",
             features_used=["temporal", "sequential"],
-            prediction_metadata={"room_id": "kitchen"}
+            prediction_metadata={"room_id": "kitchen"},
         )
-        
+
         # Record prediction (should trigger WebSocket publishing)
         await tracking_manager.record_prediction(prediction_result)
-        
+
         # Verify WebSocket API was called
         mock_websocket_server.publish_prediction_update.assert_called_once()
         call_args = mock_websocket_server.publish_prediction_update.call_args
@@ -464,15 +473,15 @@ class TestWebSocketAPIIntegration:
                 "rate_limited_clients": 0,
                 "authentication_failures": 2,
             },
-            "tracking_manager_integrated": True
+            "tracking_manager_integrated": True,
         }
-        
+
         tracking_manager.websocket_api_server = mock_websocket_server
         tracking_manager.config.websocket_api_enabled = True
-        
+
         # Get status
         status = tracking_manager.get_websocket_api_status()
-        
+
         # Verify status fields
         assert status["enabled"] is True
         assert status["running"] is True
@@ -487,27 +496,27 @@ class TestWebSocketAPIIntegration:
     async def test_error_handling_and_recovery(self, websocket_config):
         """Test error handling and recovery mechanisms."""
         manager = WebSocketConnectionManager(websocket_config)
-        
+
         # Mock websocket that fails on send
         mock_websocket = MagicMock(spec=WebSocketServerProtocol)
         mock_websocket.send = AsyncMock(side_effect=Exception("Connection lost"))
-        
+
         connection_id = await manager.connect(mock_websocket, "/ws/predictions")
         connection = manager.connections[connection_id]
         connection.authenticated = True
-        
+
         # Create test message
         message = WebSocketMessage(
             message_id=str(uuid.uuid4()),
             message_type=MessageType.PREDICTION_UPDATE,
             timestamp=datetime.utcnow(),
             endpoint="/ws/predictions",
-            data={"test": "data"}
+            data={"test": "data"},
         )
-        
+
         # Attempt to send message (should fail gracefully)
         success = await manager.send_message(connection_id, message)
-        
+
         # Verify failure was handled gracefully
         assert success is False
         assert manager.stats.failed_message_deliveries > 0
@@ -517,23 +526,25 @@ class TestWebSocketAPIIntegration:
         """Test automatic connection cleanup."""
         # Set short timeout for testing
         websocket_config["connection_timeout_seconds"] = 1
-        
+
         manager = WebSocketConnectionManager(websocket_config)
         mock_websocket = MagicMock(spec=WebSocketServerProtocol)
-        
+
         connection_id = await manager.connect(mock_websocket, "/ws/predictions")
         connection = manager.connections[connection_id]
-        
+
         # Simulate old last activity
         connection.last_activity = datetime.utcnow() - timedelta(seconds=2)
-        
+
         # Simulate cleanup process
         current_time = datetime.utcnow()
         stale_connections = [
-            conn_id for conn_id, conn in manager.connections.items()
-            if (current_time - conn.last_activity).total_seconds() > manager.connection_timeout
+            conn_id
+            for conn_id, conn in manager.connections.items()
+            if (current_time - conn.last_activity).total_seconds()
+            > manager.connection_timeout
         ]
-        
+
         # Verify connection identified as stale
         assert connection_id in stale_connections
 
@@ -546,15 +557,15 @@ class TestWebSocketAPIIntegration:
             endpoint="/ws/predictions",
             room_id="living_room",
             data={"room_name": "Living Room", "confidence": 0.85},
-            requires_ack=True
+            requires_ack=True,
         )
-        
+
         # Serialize to JSON
         json_str = original_message.to_json()
-        
+
         # Deserialize from JSON
         deserialized_message = WebSocketMessage.from_json(json_str)
-        
+
         # Verify all fields match
         assert deserialized_message.message_id == original_message.message_id
         assert deserialized_message.message_type == original_message.message_type

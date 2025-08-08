@@ -17,21 +17,31 @@ Features:
 import asyncio
 import json
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional, Union
+from dataclasses import dataclass
+from dataclasses import field
+from datetime import datetime
+from datetime import timedelta
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
 
-from ..core.config import MQTTConfig, RoomConfig, TrackingConfig, get_config
-from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
+from ..core.config import MQTTConfig
+from ..core.config import RoomConfig
+from ..core.config import TrackingConfig
+from ..core.config import get_config
+from ..core.exceptions import ErrorSeverity
+from ..core.exceptions import OccupancyPredictionError
 from ..models.base.predictor import PredictionResult
 from .discovery_publisher import DiscoveryPublisher
-from .ha_entity_definitions import (
-    HAEntityConfig,
-    HAEntityDefinitions,
-    HAServiceDefinition,
-)
+from .ha_entity_definitions import HAEntityConfig
+from .ha_entity_definitions import HAEntityDefinitions
+from .ha_entity_definitions import HAServiceDefinition
 from .mqtt_integration_manager import MQTTIntegrationManager
-from .mqtt_publisher import MQTTPublisher, MQTTPublishResult
+from .mqtt_publisher import MQTTPublisher
+from .mqtt_publisher import MQTTPublishResult
 
 logger = logging.getLogger(__name__)
 

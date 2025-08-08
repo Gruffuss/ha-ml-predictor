@@ -9,28 +9,33 @@ import asyncio
 import logging
 import math
 import statistics
-from collections import defaultdict, deque
+from collections import defaultdict
+from collections import deque
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set, Tuple
+from datetime import datetime
+from datetime import timedelta
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Set
+from typing import Tuple
 
-from ...core.config import RoomConfig, SystemConfig, get_config
-from ...core.constants import (
-    ABSENCE_STATES,
-    CAT_MOVEMENT_PATTERNS,
-    HUMAN_MOVEMENT_PATTERNS,
-    INVALID_STATES,
-    MAX_SEQUENCE_GAP,
-    MIN_EVENT_SEPARATION,
-    PRESENCE_STATES,
-    SensorState,
-    SensorType,
-)
-from ...core.exceptions import (
-    ConfigurationError,
-    DataValidationError,
-    FeatureExtractionError,
-)
+from ...core.config import RoomConfig
+from ...core.config import SystemConfig
+from ...core.config import get_config
+from ...core.constants import ABSENCE_STATES
+from ...core.constants import CAT_MOVEMENT_PATTERNS
+from ...core.constants import HUMAN_MOVEMENT_PATTERNS
+from ...core.constants import INVALID_STATES
+from ...core.constants import MAX_SEQUENCE_GAP
+from ...core.constants import MIN_EVENT_SEPARATION
+from ...core.constants import PRESENCE_STATES
+from ...core.constants import SensorState
+from ...core.constants import SensorType
+from ...core.exceptions import ConfigurationError
+from ...core.exceptions import DataValidationError
+from ...core.exceptions import FeatureExtractionError
 from ..storage.models import SensorEvent
 from .ha_client import HAEvent
 

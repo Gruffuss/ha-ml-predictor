@@ -21,23 +21,36 @@ import logging
 import uuid
 import weakref
 from contextlib import asynccontextmanager
-from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from dataclasses import asdict
+from dataclasses import dataclass
+from datetime import datetime
+from datetime import timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set, Union
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Set
+from typing import Union
 
 import websockets
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
-from starlette.routing import Route, WebSocketRoute
+from starlette.routing import Route
+from starlette.routing import WebSocketRoute
 from websockets.server import WebSocketServerProtocol
 
-from ..core.config import MQTTConfig, RoomConfig, get_config
-from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
+from ..core.config import MQTTConfig
+from ..core.config import RoomConfig
+from ..core.config import get_config
+from ..core.exceptions import ErrorSeverity
+from ..core.exceptions import OccupancyPredictionError
 from ..models.base.predictor import PredictionResult
 from .mqtt_publisher import MQTTPublisher
-from .prediction_publisher import PredictionPayload, PredictionPublisher
+from .prediction_publisher import PredictionPayload
+from .prediction_publisher import PredictionPublisher
 
 logger = logging.getLogger(__name__)
 

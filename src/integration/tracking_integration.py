@@ -17,15 +17,22 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
-
 # Defer imports to prevent circular dependency
 from typing import TYPE_CHECKING
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
 
 if TYPE_CHECKING:
     from ..adaptation.tracking_manager import TrackingConfig, TrackingManager
-from ..core.config import MQTTConfig, RoomConfig, get_config
-from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
+
+from ..core.config import MQTTConfig
+from ..core.config import RoomConfig
+from ..core.config import get_config
+from ..core.exceptions import ErrorSeverity
+from ..core.exceptions import OccupancyPredictionError
 from .enhanced_mqtt_manager import EnhancedMQTTIntegrationManager
 from .realtime_publisher import PublishingChannel
 
@@ -432,7 +439,7 @@ async def create_integrated_tracking_manager(
     try:
         # Lazy import to prevent circular dependency
         from ..adaptation.tracking_manager import TrackingManager
-        
+
         # Create TrackingManager
         tracking_manager = TrackingManager(
             config=tracking_config, **tracking_manager_kwargs

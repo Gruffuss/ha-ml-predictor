@@ -3,12 +3,14 @@
 from .gp_predictor import GaussianProcessPredictor
 from .hmm_predictor import HMMPredictor
 from .lstm_predictor import LSTMPredictor
-from .predictor import BasePredictor, PredictionResult, TrainingResult
+from .predictor import BasePredictor
+from .predictor import PredictionResult
+from .predictor import TrainingResult
 from .xgboost_predictor import XGBoostPredictor
 
 __all__ = [
     "BasePredictor",
-    "PredictionResult", 
+    "PredictionResult",
     "TrainingResult",
     "LSTMPredictor",
     "XGBoostPredictor",

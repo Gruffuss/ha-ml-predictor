@@ -19,31 +19,46 @@ import asyncio
 import logging
 import traceback
 from contextlib import asynccontextmanager
-from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from dataclasses import asdict
+from dataclasses import dataclass
+from datetime import datetime
+from datetime import timedelta
+from typing import TYPE_CHECKING
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
 
 import uvicorn
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
+from fastapi import BackgroundTasks
+from fastapi import Depends
+from fastapi import FastAPI
+from fastapi import HTTPException
+from fastapi import Request
+from fastapi import status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, Field, validator
+from fastapi.security import HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer
+from pydantic import BaseModel
+from pydantic import Field
+from pydantic import validator
 
 if TYPE_CHECKING:
     from ..adaptation.tracking_manager import TrackingManager
-from ..core.config import APIConfig, get_config
-from ..core.exceptions import (
-    APIAuthenticationError,
-    APIError,
-    APIRateLimitError,
-    APIResourceNotFoundError,
-    APIServerError,
-    APIValidationError,
-    ErrorSeverity,
-    OccupancyPredictionError,
-)
+
+from ..core.config import APIConfig
+from ..core.config import get_config
+from ..core.exceptions import APIAuthenticationError
+from ..core.exceptions import APIError
+from ..core.exceptions import APIRateLimitError
+from ..core.exceptions import APIResourceNotFoundError
+from ..core.exceptions import APIServerError
+from ..core.exceptions import APIValidationError
+from ..core.exceptions import ErrorSeverity
+from ..core.exceptions import OccupancyPredictionError
 from ..data.storage.database import get_database_manager
 from ..integration.mqtt_integration_manager import MQTTIntegrationManager
 from ..models.base.predictor import PredictionResult
@@ -171,18 +186,21 @@ async def get_tracking_manager() -> "TrackingManager":
     global _tracking_manager_instance
     if _tracking_manager_instance is None:
         # Lazy import to prevent circular dependency
-        from ..adaptation.tracking_manager import TrackingManager
         from ..adaptation.tracking_manager import TrackingConfig
-        
+        from ..adaptation.tracking_manager import TrackingManager
+
         config = get_config()
         # Create default tracking config if not available
-        tracking_config = getattr(config, 'tracking', None)
+        tracking_config = getattr(config, "tracking", None)
         if tracking_config is None:
             tracking_config = TrackingConfig()
-        
+
         _tracking_manager_instance = TrackingManager(tracking_config)
         # Initialize the tracking manager if it hasn't been initialized
-        if not hasattr(_tracking_manager_instance, '_tracking_active') or not _tracking_manager_instance._tracking_active:
+        if (
+            not hasattr(_tracking_manager_instance, "_tracking_active")
+            or not _tracking_manager_instance._tracking_active
+        ):
             await _tracking_manager_instance.initialize()
     return _tracking_manager_instance
 

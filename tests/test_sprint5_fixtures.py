@@ -9,27 +9,38 @@ factories, and integration test helpers.
 import asyncio
 import json
 import logging
+from dataclasses import dataclass
+from dataclasses import field
+from datetime import datetime
+from datetime import timedelta
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
+from unittest.mock import Mock
+from unittest.mock import patch
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
-from dataclasses import dataclass, field
-
 import websockets
-from aiohttp import web, ClientSession
+from aiohttp import ClientSession
+from aiohttp import web
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
-from src.core.config import APIConfig, MQTTConfig, SystemConfig
-from src.integration.realtime_publisher import (
-    PublishingChannel,
-    PublishingMetrics,
-    RealtimePredictionEvent
-)
+from src.adaptation.tracking_manager import TrackingConfig
+from src.adaptation.tracking_manager import TrackingManager
+from src.core.config import APIConfig
+from src.core.config import MQTTConfig
+from src.core.config import SystemConfig
 from src.integration.enhanced_mqtt_manager import EnhancedIntegrationStats
 from src.integration.mqtt_integration_manager import MQTTIntegrationStats
+from src.integration.realtime_publisher import PublishingChannel
+from src.integration.realtime_publisher import PublishingMetrics
+from src.integration.realtime_publisher import RealtimePredictionEvent
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +48,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MockSystemMetrics:
     """Mock system metrics for testing."""
-    
+
     predictions_generated: int = 0
     mqtt_messages_sent: int = 0
     websocket_connections: int = 0
@@ -46,33 +57,33 @@ class MockSystemMetrics:
     errors_occurred: int = 0
     average_response_time_ms: float = 0.0
     last_update: datetime = field(default_factory=datetime.utcnow)
-    
+
     def increment_predictions(self):
         """Increment prediction counter."""
         self.predictions_generated += 1
         self.last_update = datetime.utcnow()
-    
+
     def increment_mqtt_messages(self):
         """Increment MQTT message counter."""
         self.mqtt_messages_sent += 1
         self.last_update = datetime.utcnow()
-    
+
     def increment_api_requests(self, response_time_ms: float = 0.0):
         """Increment API request counter and update response time."""
         self.api_requests += 1
         if response_time_ms > 0:
             # Simple moving average
             self.average_response_time_ms = (
-                (self.average_response_time_ms * (self.api_requests - 1) + response_time_ms) 
-                / self.api_requests
-            )
+                self.average_response_time_ms * (self.api_requests - 1)
+                + response_time_ms
+            ) / self.api_requests
         self.last_update = datetime.utcnow()
-    
+
     def increment_errors(self):
         """Increment error counter."""
         self.errors_occurred += 1
         self.last_update = datetime.utcnow()
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert metrics to dictionary."""
         return {
@@ -83,65 +94,65 @@ class MockSystemMetrics:
             "api_requests": self.api_requests,
             "errors_occurred": self.errors_occurred,
             "average_response_time_ms": self.average_response_time_ms,
-            "last_update": self.last_update.isoformat()
+            "last_update": self.last_update.isoformat(),
         }
 
 
 class MockRealtimeClients:
     """Mock real-time clients for testing."""
-    
+
     def __init__(self):
         self.websocket_clients = []
         self.sse_clients = []
         self.message_history = []
-    
+
     def add_websocket_client(self, client_id: str):
         """Add a WebSocket client."""
         client = {
             "id": client_id,
             "type": "websocket",
             "connected_at": datetime.utcnow(),
-            "messages_received": 0
+            "messages_received": 0,
         }
         self.websocket_clients.append(client)
         return client
-    
+
     def add_sse_client(self, client_id: str):
         """Add an SSE client."""
         client = {
             "id": client_id,
             "type": "sse",
             "connected_at": datetime.utcnow(),
-            "messages_received": 0
+            "messages_received": 0,
         }
         self.sse_clients.append(client)
         return client
-    
+
     def remove_client(self, client_id: str):
         """Remove a client by ID."""
         self.websocket_clients = [
             c for c in self.websocket_clients if c["id"] != client_id
         ]
-        self.sse_clients = [
-            c for c in self.sse_clients if c["id"] != client_id
-        ]
-    
+        self.sse_clients = [c for c in self.sse_clients if c["id"] != client_id]
+
     def broadcast_message(self, message: Dict[str, Any]):
         """Simulate broadcasting a message to all clients."""
         timestamp = datetime.utcnow()
-        
+
         # Record message
-        self.message_history.append({
-            "message": message,
-            "timestamp": timestamp,
-            "websocket_recipients": len(self.websocket_clients),
-            "sse_recipients": len(self.sse_clients)
-        })
-        
+        self.message_history.append(
+            {
+                "message": message,
+                "timestamp": timestamp,
+                "websocket_recipients": len(self.websocket_clients),
+                "sse_recipients": len(self.sse_clients),
+            }
+        )
+
         # Update client message counts
         for client in self.websocket_clients + self.sse_clients:
             client["messages_received"] += 1
-    
+
     def get_connection_stats(self) -> Dict[str, Any]:
         """Get connection statistics."""
         return {
@@ -151,10 +162,10 @@ class MockRealtimeClients:
                     {
                         "id": c["id"],
                         "connected_at": c["connected_at"].isoformat(),
-                        "messages_received": c["messages_received"]
+                        "messages_received": c["messages_received"],
                     }
                     for c in self.websocket_clients
-                ]
+                ],
             },
             "sse_connections": {
                 "total_active_connections": len(self.sse_clients),
@@ -162,19 +173,20 @@ class MockRealtimeClients:
                     {
                         "id": c["id"],
                         "connected_at": c["connected_at"].isoformat(),
-                        "messages_received": c["messages_received"]
+                        "messages_received": c["messages_received"],
                     }
                     for c in self.sse_clients
-                ]
+                ],
             },
-            "total_active_connections": len(self.websocket_clients) + len(self.sse_clients),
-            "message_history_count": len(self.message_history)
+            "total_active_connections": len(self.websocket_clients)
+            + len(self.sse_clients),
+            "message_history_count": len(self.message_history),
         }
 
 
 class MockMQTTBroker:
     """Mock MQTT broker for testing."""
-    
+
     def __init__(self):
         self.topics = {}
         self.subscribers = {}
@@ -184,21 +196,21 @@ class MockMQTTBroker:
             "messages_published": 0,
             "messages_delivered": 0,
             "active_subscriptions": 0,
-            "connected_clients": 0
+            "connected_clients": 0,
         }
-    
+
     async def connect_client(self, client_id: str):
         """Connect a client to the broker."""
         if client_id not in self.connected_clients:
             self.connected_clients.append(client_id)
             self.broker_stats["connected_clients"] = len(self.connected_clients)
-    
+
     async def disconnect_client(self, client_id: str):
         """Disconnect a client from the broker."""
         if client_id in self.connected_clients:
             self.connected_clients.remove(client_id)
             self.broker_stats["connected_clients"] = len(self.connected_clients)
-    
+
     async def publish_message(self, topic: str, payload: str, client_id: str = None):
         """Publish a message to a topic."""
         message = {
@@ -206,42 +218,42 @@ class MockMQTTBroker:
             "payload": payload,
             "client_id": client_id,
             "timestamp": datetime.utcnow(),
-            "qos": 0
+            "qos": 0,
         }
-        
+
         self.published_messages.append(message)
         self.broker_stats["messages_published"] += 1
-        
+
         # Store message in topic
         if topic not in self.topics:
             self.topics[topic] = []
         self.topics[topic].append(message)
-        
+
         # Deliver to subscribers
         if topic in self.subscribers:
             for subscriber in self.subscribers[topic]:
                 self.broker_stats["messages_delivered"] += 1
-    
+
     async def subscribe(self, topic: str, client_id: str):
         """Subscribe a client to a topic."""
         if topic not in self.subscribers:
             self.subscribers[topic] = []
-        
+
         if client_id not in self.subscribers[topic]:
             self.subscribers[topic].append(client_id)
             self.broker_stats["active_subscriptions"] += 1
-    
+
     def get_topic_messages(self, topic: str) -> List[Dict[str, Any]]:
         """Get all messages for a topic."""
         return self.topics.get(topic, [])
-    
+
     def get_broker_stats(self) -> Dict[str, Any]:
         """Get broker statistics."""
         return {
             **self.broker_stats,
             "total_topics": len(self.topics),
             "total_published_messages": len(self.published_messages),
-            "uptime_seconds": 3600  # Mock uptime
+            "uptime_seconds": 3600,  # Mock uptime
         }
 
 
@@ -267,7 +279,7 @@ def mock_mqtt_broker():
 def comprehensive_prediction_data():
     """Create comprehensive prediction data for testing."""
     base_time = datetime.utcnow()
-    
+
     return {
         "living_room": {
             "room_id": "living_room",
@@ -280,31 +292,31 @@ def comprehensive_prediction_data():
                 {
                     "transition_time": (base_time + timedelta(minutes=30)).isoformat(),
                     "confidence": 0.75,
-                    "scenario": "delayed_departure"
+                    "scenario": "delayed_departure",
                 },
                 {
                     "transition_time": (base_time + timedelta(minutes=20)).isoformat(),
                     "confidence": 0.68,
-                    "scenario": "early_departure"
-                }
+                    "scenario": "early_departure",
+                },
             ],
             "model_info": {
                 "model_type": "ensemble",
                 "version": "1.2.0",
                 "base_models": ["lstm", "xgboost", "hmm"],
                 "training_data_hours": 168,
-                "last_retrain": (base_time - timedelta(hours=6)).isoformat()
+                "last_retrain": (base_time - timedelta(hours=6)).isoformat(),
             },
             "features_used": {
                 "temporal_features": 12,
                 "sequential_features": 8,
-                "contextual_features": 5
+                "contextual_features": 5,
             },
             "validation_metrics": {
                 "recent_accuracy": 0.89,
                 "confidence_calibration": 0.91,
-                "prediction_count_24h": 48
-            }
+                "prediction_count_24h": 48,
+            },
         },
         "bedroom": {
             "room_id": "bedroom",
@@ -315,9 +327,11 @@ def comprehensive_prediction_data():
             "time_until_transition": "8 hours",
             "alternatives": [
                 {
-                    "transition_time": (base_time + timedelta(hours=7, minutes=30)).isoformat(),
+                    "transition_time": (
+                        base_time + timedelta(hours=7, minutes=30)
+                    ).isoformat(),
                     "confidence": 0.71,
-                    "scenario": "early_sleep"
+                    "scenario": "early_sleep",
                 }
             ],
             "model_info": {
@@ -325,8 +339,8 @@ def comprehensive_prediction_data():
                 "version": "1.2.0",
                 "base_models": ["lstm", "xgboost"],
                 "training_data_hours": 168,
-                "last_retrain": (base_time - timedelta(hours=4)).isoformat()
-            }
+                "last_retrain": (base_time - timedelta(hours=4)).isoformat(),
+            },
         },
         "kitchen": {
             "room_id": "kitchen",
@@ -341,9 +355,9 @@ def comprehensive_prediction_data():
                 "version": "1.2.0",
                 "base_models": ["lstm", "xgboost", "hmm"],
                 "training_data_hours": 168,
-                "last_retrain": (base_time - timedelta(hours=2)).isoformat()
-            }
-        }
+                "last_retrain": (base_time - timedelta(hours=2)).isoformat(),
+            },
+        },
     }
 
 
@@ -358,7 +372,7 @@ def mock_integration_stats():
             last_prediction_time=datetime.utcnow(),
             connection_uptime_hours=72.5,
             error_count=2,
-            reconnection_count=1
+            reconnection_count=1,
         ),
         realtime_stats=PublishingMetrics(
             messages_published=150,
@@ -369,30 +383,28 @@ def mock_integration_stats():
             average_latency_ms=25.8,
             active_websocket_connections=8,
             active_sse_connections=3,
-            last_publish_time=datetime.utcnow()
+            last_publish_time=datetime.utcnow(),
         ),
         total_channels_active=3,
         total_clients_connected=11,
         predictions_per_minute=2.5,
         average_publish_latency_ms=25.8,
         publish_success_rate=0.98,
-        last_performance_update=datetime.utcnow()
+        last_performance_update=datetime.utcnow(),
     )
 
 
 class TestDataFactory:
     """Factory for creating test data."""
-    
+
     @staticmethod
     def create_sensor_events(
-        room_id: str = "test_room",
-        count: int = 10,
-        start_time: datetime = None
+        room_id: str = "test_room", count: int = 10, start_time: datetime = None
     ) -> List[Dict[str, Any]]:
         """Create a series of sensor events."""
         if start_time is None:
             start_time = datetime.utcnow() - timedelta(hours=1)
-        
+
         events = []
         for i in range(count):
             event = {
@@ -405,25 +417,23 @@ class TestDataFactory:
                 "attributes": {
                     "device_class": "motion",
                     "friendly_name": f"Test Sensor {i}",
-                    "battery_level": 85 + (i % 15)
+                    "battery_level": 85 + (i % 15),
                 },
                 "is_human_triggered": i % 4 != 0,  # 75% human, 25% cat
-                "confidence_score": 0.7 + (i * 0.03) % 0.3
+                "confidence_score": 0.7 + (i * 0.03) % 0.3,
             }
             events.append(event)
-        
+
         return events
-    
+
     @staticmethod
     def create_room_states(
-        room_id: str = "test_room",
-        count: int = 5,
-        start_time: datetime = None
+        room_id: str = "test_room", count: int = 5, start_time: datetime = None
     ) -> List[Dict[str, Any]]:
         """Create a series of room states."""
         if start_time is None:
             start_time = datetime.utcnow() - timedelta(hours=2)
-        
+
         states = []
         for i in range(count):
             state = {
@@ -433,25 +443,23 @@ class TestDataFactory:
                 "occupancy_confidence": 0.8 + (i * 0.02),
                 "occupant_type": "human" if i % 3 != 0 else "cat",
                 "state_duration": 300 + i * 120,
-                "transition_trigger": f"binary_sensor.{room_id}_sensor_{i % 2}"
+                "transition_trigger": f"binary_sensor.{room_id}_sensor_{i % 2}",
             }
             states.append(state)
-        
+
         return states
-    
+
     @staticmethod
     def create_predictions(
-        room_id: str = "test_room",
-        count: int = 3,
-        start_time: datetime = None
+        room_id: str = "test_room", count: int = 3, start_time: datetime = None
     ) -> List[Dict[str, Any]]:
         """Create a series of predictions."""
         if start_time is None:
             start_time = datetime.utcnow() - timedelta(hours=1)
-        
+
         predictions = []
         transition_types = ["occupied_to_vacant", "vacant_to_occupied"]
-        
+
         for i in range(count):
             prediction = {
                 "room_id": room_id,
@@ -466,11 +474,11 @@ class TestDataFactory:
                 "prediction_metadata": {
                     "features_count": 25 + i * 2,
                     "training_samples": 1000 + i * 100,
-                    "cross_validation_score": 0.85 + (i * 0.02)
-                }
+                    "cross_validation_score": 0.85 + (i * 0.02),
+                },
             }
             predictions.append(prediction)
-        
+
         return predictions
 
 
@@ -482,16 +490,17 @@ def test_data_factory():
 
 class MockWebSocketServer:
     """Mock WebSocket server for testing."""
-    
+
     def __init__(self, port: int = 8765):
         self.port = port
         self.clients = []
         self.messages_sent = []
         self.server = None
         self.is_running = False
-    
+
     async def start(self):
         """Start the mock WebSocket server."""
+
         async def handler(websocket, path):
             self.clients.append(websocket)
             try:
@@ -503,17 +512,17 @@ class MockWebSocketServer:
             finally:
                 if websocket in self.clients:
                     self.clients.remove(websocket)
-        
+
         self.server = await websockets.serve(handler, "localhost", self.port)
         self.is_running = True
-    
+
     async def stop(self):
         """Stop the mock WebSocket server."""
         if self.server:
             self.server.close()
             await self.server.wait_closed()
             self.is_running = False
-    
+
     async def broadcast(self, message: str):
         """Broadcast message to all connected clients."""
         if self.clients:
@@ -521,25 +530,27 @@ class MockWebSocketServer:
             for client in self.clients:
                 try:
                     await client.send(message)
-                    self.messages_sent.append({
-                        "message": message,
-                        "timestamp": datetime.utcnow(),
-                        "client": str(client)
-                    })
+                    self.messages_sent.append(
+                        {
+                            "message": message,
+                            "timestamp": datetime.utcnow(),
+                            "client": str(client),
+                        }
+                    )
                 except Exception:
                     disconnected.append(client)
-            
+
             # Remove disconnected clients
             for client in disconnected:
                 self.clients.remove(client)
-    
+
     def get_stats(self) -> Dict[str, Any]:
         """Get server statistics."""
         return {
             "is_running": self.is_running,
             "connected_clients": len(self.clients),
             "messages_sent": len(self.messages_sent),
-            "port": self.port
+            "port": self.port,
         }
 
 
@@ -554,48 +565,54 @@ async def mock_websocket_server():
 
 class IntegrationTestHelper:
     """Helper class for integration testing."""
-    
+
     @staticmethod
     def assert_prediction_structure(prediction: Dict[str, Any]):
         """Assert that a prediction has the correct structure."""
         required_fields = [
-            "room_id", "prediction_time", "confidence", "transition_type"
+            "room_id",
+            "prediction_time",
+            "confidence",
+            "transition_type",
         ]
-        
+
         for field in required_fields:
             assert field in prediction, f"Missing required field: {field}"
-        
+
         assert isinstance(prediction["confidence"], (int, float))
         assert 0.0 <= prediction["confidence"] <= 1.0
-        assert prediction["transition_type"] in ["occupied_to_vacant", "vacant_to_occupied"]
-    
+        assert prediction["transition_type"] in [
+            "occupied_to_vacant",
+            "vacant_to_occupied",
+        ]
+
     @staticmethod
     def assert_health_response_structure(health: Dict[str, Any]):
         """Assert that a health response has the correct structure."""
         required_fields = ["status", "timestamp", "components"]
-        
+
         for field in required_fields:
             assert field in health, f"Missing required field: {field}"
-        
+
         assert health["status"] in ["healthy", "degraded", "unhealthy"]
         assert "database" in health["components"]
-    
+
     @staticmethod
     def assert_mqtt_message_structure(message: Dict[str, Any]):
         """Assert that an MQTT message has the correct structure."""
         required_fields = ["topic", "payload", "timestamp"]
-        
+
         for field in required_fields:
             assert field in message, f"Missing required field: {field}"
-        
+
         # Validate topic format
-        assert message["topic"].startswith("occupancy/") or message["topic"].startswith("homeassistant/")
-    
+        assert message["topic"].startswith("occupancy/") or message["topic"].startswith(
+            "homeassistant/"
+        )
+
     @staticmethod
     def create_load_test_scenario(
-        num_rooms: int = 5,
-        predictions_per_room: int = 10,
-        concurrent_clients: int = 20
+        num_rooms: int = 5, predictions_per_room: int = 10, concurrent_clients: int = 20
     ) -> Dict[str, Any]:
         """Create a load testing scenario."""
         return {
@@ -603,7 +620,7 @@ class IntegrationTestHelper:
             "predictions_per_room": predictions_per_room,
             "concurrent_clients": concurrent_clients,
             "total_predictions": num_rooms * predictions_per_room,
-            "expected_api_calls": num_rooms * predictions_per_room * concurrent_clients
+            "expected_api_calls": num_rooms * predictions_per_room * concurrent_clients,
         }
 
 
@@ -616,8 +633,12 @@ def integration_test_helper():
 # Custom pytest markers for Sprint 5 tests
 def pytest_configure(config):
     """Configure custom pytest markers."""
-    config.addinivalue_line("markers", "sprint5: mark test as Sprint 5 integration test")
-    config.addinivalue_line("markers", "realtime: mark test as real-time integration test")
+    config.addinivalue_line(
+        "markers", "sprint5: mark test as Sprint 5 integration test"
+    )
+    config.addinivalue_line(
+        "markers", "realtime: mark test as real-time integration test"
+    )
     config.addinivalue_line("markers", "mqtt: mark test as MQTT integration test")
     config.addinivalue_line("markers", "api: mark test as API integration test")
     config.addinivalue_line("markers", "websocket: mark test as WebSocket test")
@@ -629,33 +650,31 @@ def pytest_configure(config):
 
 # Utility functions for test data generation
 def generate_realistic_sensor_pattern(
-    room_id: str,
-    days: int = 7,
-    occupancy_probability: float = 0.3
+    room_id: str, days: int = 7, occupancy_probability: float = 0.3
 ) -> List[Dict[str, Any]]:
     """Generate realistic sensor event patterns."""
     events = []
     start_time = datetime.utcnow() - timedelta(days=days)
-    
+
     for day in range(days):
         day_start = start_time + timedelta(days=day)
-        
+
         # Morning activity (7-9 AM)
         for hour in range(7, 9):
             if hour == 7:  # Higher activity in morning
                 event_probability = 0.8
             else:
                 event_probability = 0.6
-            
+
             if event_probability > occupancy_probability:
                 events.extend(
                     TestDataFactory.create_sensor_events(
                         room_id=room_id,
                         count=3,
-                        start_time=day_start + timedelta(hours=hour)
+                        start_time=day_start + timedelta(hours=hour),
                     )
                 )
-        
+
         # Evening activity (18-22 PM)
         for hour in range(18, 22):
             event_probability = 0.7
@@ -664,10 +683,10 @@ def generate_realistic_sensor_pattern(
                     TestDataFactory.create_sensor_events(
                         room_id=room_id,
                         count=2,
-                        start_time=day_start + timedelta(hours=hour)
+                        start_time=day_start + timedelta(hours=hour),
                     )
                 )
-    
+
     return events
 
 
@@ -684,11 +703,11 @@ def create_test_mqtt_discovery_payload(room_id: str) -> Dict[str, Any]:
             "identifiers": [f"occupancy_predictor_{room_id}"],
             "name": f"Occupancy Predictor {room_id.title()}",
             "model": "ML Predictor v1.0",
-            "manufacturer": "Home Assistant ML"
+            "manufacturer": "Home Assistant ML",
         },
         "availability": {
             "topic": "occupancy/predictions/status",
             "payload_available": "online",
-            "payload_not_available": "offline"
-        }
+            "payload_not_available": "offline",
+        },
     }

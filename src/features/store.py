@@ -10,18 +10,30 @@ import hashlib
 import json
 import logging
 import pickle
-from collections import OrderedDict, defaultdict
-from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple, Union
+from collections import OrderedDict
+from collections import defaultdict
+from dataclasses import asdict
+from dataclasses import dataclass
+from datetime import datetime
+from datetime import timedelta
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 import pandas as pd
 
-from ..core.config import SystemConfig, get_config
-from ..core.exceptions import DatabaseConnectionError, FeatureExtractionError
-from ..data.storage.database import DatabaseManager, get_database_manager
-from ..data.storage.models import RoomState, SensorEvent
+from ..core.config import SystemConfig
+from ..core.config import get_config
+from ..core.exceptions import DatabaseConnectionError
+from ..core.exceptions import FeatureExtractionError
+from ..data.storage.database import DatabaseManager
+from ..data.storage.database import get_database_manager
+from ..data.storage.models import RoomState
+from ..data.storage.models import SensorEvent
 from .engineering import FeatureEngineeringEngine
 
 logger = logging.getLogger(__name__)
@@ -461,7 +473,8 @@ class FeatureStore:
 
             async with self.db_manager.get_session() as session:
                 # Query sensor events
-                from sqlalchemy import and_, select
+                from sqlalchemy import and_
+                from sqlalchemy import select
 
                 events_query = (
                     select(SensorEvent)

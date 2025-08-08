@@ -10,26 +10,34 @@ import json
 import logging
 import pickle
 import traceback
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from dataclasses import dataclass
+from dataclasses import field
+from datetime import datetime
+from datetime import timedelta
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
+from typing import Any
+from typing import AsyncGenerator
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Tuple
 
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...core.config import SystemConfig, get_config
-from ...core.exceptions import (
-    DatabaseError,
-    DataValidationError,
-    HomeAssistantError,
-    InsufficientTrainingDataError,
-)
+from ...core.config import SystemConfig
+from ...core.config import get_config
+from ...core.exceptions import DatabaseError
+from ...core.exceptions import DataValidationError
+from ...core.exceptions import HomeAssistantError
+from ...core.exceptions import InsufficientTrainingDataError
 from ..storage.database import get_db_session
-from ..storage.models import SensorEvent, get_bulk_insert_query
+from ..storage.models import SensorEvent
+from ..storage.models import get_bulk_insert_query
 from .event_processor import EventProcessor
-from .ha_client import HAEvent, HomeAssistantClient
+from .ha_client import HAEvent
+from .ha_client import HomeAssistantClient
 
 logger = logging.getLogger(__name__)
 

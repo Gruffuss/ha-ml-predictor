@@ -10,40 +10,47 @@ import asyncio
 import logging
 import threading
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional, Union
+from datetime import datetime
+from datetime import timedelta
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
 
 from ..core.constants import ModelType
-from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
-from ..data.storage.models import RoomState, SensorEvent
+from ..core.exceptions import ErrorSeverity
+from ..core.exceptions import OccupancyPredictionError
+from ..data.storage.models import RoomState
+from ..data.storage.models import SensorEvent
 from ..integration.enhanced_mqtt_manager import EnhancedMQTTIntegrationManager
-from ..integration.realtime_publisher import PublishingChannel, RealtimePublishingSystem
+from ..integration.realtime_publisher import PublishingChannel
+from ..integration.realtime_publisher import RealtimePublishingSystem
 from ..models.base.predictor import PredictionResult
-from .drift_detector import ConceptDriftDetector, DriftMetrics, DriftSeverity
-from .optimizer import (
-    ModelOptimizer,
-    OptimizationConfig,
-    OptimizationObjective,
-    OptimizationStrategy,
-)
-from .retrainer import (
-    AdaptiveRetrainer,
-    RetrainingRequest,
-    RetrainingStatus,
-    RetrainingTrigger,
-)
-from .tracker import AccuracyAlert, AccuracyTracker, RealTimeMetrics
+from .drift_detector import ConceptDriftDetector
+from .drift_detector import DriftMetrics
+from .drift_detector import DriftSeverity
+from .optimizer import ModelOptimizer
+from .optimizer import OptimizationConfig
+from .optimizer import OptimizationObjective
+from .optimizer import OptimizationStrategy
+from .retrainer import AdaptiveRetrainer
+from .retrainer import RetrainingRequest
+from .retrainer import RetrainingStatus
+from .retrainer import RetrainingTrigger
+from .tracker import AccuracyAlert
+from .tracker import AccuracyTracker
+from .tracker import RealTimeMetrics
 from .validator import PredictionValidator
 
 logger = logging.getLogger(__name__)
 
 # Import dashboard components with graceful fallback
 try:
-    from ..integration.dashboard import (
-        DashboardConfig,
-        DashboardMode,
-        PerformanceDashboard,
-    )
+    from ..integration.dashboard import DashboardConfig
+    from ..integration.dashboard import DashboardMode
+    from ..integration.dashboard import PerformanceDashboard
 
     DASHBOARD_AVAILABLE = True
 except ImportError as e:
@@ -521,9 +528,9 @@ class TrackingManager:
                     websocket_results = await self.websocket_api_server.publish_prediction_update(
                         prediction_result=prediction_result,
                         room_id=room_id,
-                        current_state=None  # Could be determined from room state if available
+                        current_state=None,  # Could be determined from room state if available
                     )
-                    
+
                     if websocket_results.get("success", False):
                         clients_notified = websocket_results.get("clients_notified", 0)
                         logger.debug(
@@ -1427,7 +1434,8 @@ class TrackingManager:
         """
         try:
             # Use late import to avoid circular dependency during module initialization
-            from ..integration.api_server import integrate_with_tracking_manager
+            from ..integration.api_server import \
+                integrate_with_tracking_manager
 
             logger.info("Starting integrated REST API server...")
             api_server = await integrate_with_tracking_manager(self)
@@ -1736,7 +1744,8 @@ class TrackingManager:
 
             # Use adaptive retrainer if available
             if hasattr(self, "adaptive_retrainer") and self.adaptive_retrainer:
-                from .retrainer import RetrainingRequest, RetrainingTrigger
+                from .retrainer import RetrainingRequest
+                from .retrainer import RetrainingTrigger
 
                 # Create retraining request
                 request = RetrainingRequest(
@@ -1934,18 +1943,42 @@ class TrackingManager:
                     "running": server_stats["server_running"],
                     "host": server_stats["host"],
                     "port": server_stats["port"],
-                    "active_connections": server_stats["connection_stats"]["active_connections"],
-                    "authenticated_connections": server_stats["connection_stats"]["authenticated_connections"],
-                    "total_connections_served": server_stats["connection_stats"]["total_connections"],
-                    "predictions_connections": server_stats["connection_stats"]["predictions_connections"],
-                    "system_status_connections": server_stats["connection_stats"]["system_status_connections"],
-                    "alerts_connections": server_stats["connection_stats"]["alerts_connections"],
-                    "room_specific_connections": server_stats["connection_stats"]["room_specific_connections"],
-                    "total_messages_sent": server_stats["connection_stats"]["total_messages_sent"],
-                    "total_messages_received": server_stats["connection_stats"]["total_messages_received"],
-                    "rate_limited_clients": server_stats["connection_stats"]["rate_limited_clients"],
-                    "authentication_failures": server_stats["connection_stats"]["authentication_failures"],
-                    "tracking_manager_integrated": server_stats["tracking_manager_integrated"],
+                    "active_connections": server_stats["connection_stats"][
+                        "active_connections"
+                    ],
+                    "authenticated_connections": server_stats["connection_stats"][
+                        "authenticated_connections"
+                    ],
+                    "total_connections_served": server_stats["connection_stats"][
+                        "total_connections"
+                    ],
+                    "predictions_connections": server_stats["connection_stats"][
+                        "predictions_connections"
+                    ],
+                    "system_status_connections": server_stats["connection_stats"][
+                        "system_status_connections"
+                    ],
+                    "alerts_connections": server_stats["connection_stats"][
+                        "alerts_connections"
+                    ],
+                    "room_specific_connections": server_stats["connection_stats"][
+                        "room_specific_connections"
+                    ],
+                    "total_messages_sent": server_stats["connection_stats"][
+                        "total_messages_sent"
+                    ],
+                    "total_messages_received": server_stats["connection_stats"][
+                        "total_messages_received"
+                    ],
+                    "rate_limited_clients": server_stats["connection_stats"][
+                        "rate_limited_clients"
+                    ],
+                    "authentication_failures": server_stats["connection_stats"][
+                        "authentication_failures"
+                    ],
+                    "tracking_manager_integrated": server_stats[
+                        "tracking_manager_integrated"
+                    ],
                 }
             else:
                 return {
@@ -1970,11 +2003,15 @@ class TrackingManager:
             logger.error(f"Failed to get WebSocket API status: {e}")
             return {"enabled": False, "running": False, "error": str(e)}
 
-    async def publish_system_status_update(self, status_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def publish_system_status_update(
+        self, status_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Publish system status update via WebSocket API."""
         try:
             if self.websocket_api_server and self.config.websocket_api_enabled:
-                return await self.websocket_api_server.publish_system_status_update(status_data)
+                return await self.websocket_api_server.publish_system_status_update(
+                    status_data
+                )
             else:
                 return {"success": False, "error": "WebSocket API not available"}
         except Exception as e:
@@ -1987,7 +2024,9 @@ class TrackingManager:
         """Publish alert notification via WebSocket API."""
         try:
             if self.websocket_api_server and self.config.websocket_api_enabled:
-                return await self.websocket_api_server.publish_alert_notification(alert_data, room_id)
+                return await self.websocket_api_server.publish_alert_notification(
+                    alert_data, room_id
+                )
             else:
                 return {"success": False, "error": "WebSocket API not available"}
         except Exception as e:

@@ -8,22 +8,30 @@ and human vs cat movement classification features.
 
 import logging
 import statistics
-from collections import Counter, defaultdict, deque
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Set, Tuple
+from collections import Counter
+from collections import defaultdict
+from collections import deque
+from datetime import datetime
+from datetime import timedelta
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Set
+from typing import Tuple
 
 import numpy as np
 
-from ..core.config import RoomConfig, SystemConfig
-from ..core.constants import (
-    CAT_MOVEMENT_PATTERNS,
-    HUMAN_MOVEMENT_PATTERNS,
-    MAX_SEQUENCE_GAP,
-    MIN_EVENT_SEPARATION,
-    SensorType,
-)
+from ..core.config import RoomConfig
+from ..core.config import SystemConfig
+from ..core.constants import CAT_MOVEMENT_PATTERNS
+from ..core.constants import HUMAN_MOVEMENT_PATTERNS
+from ..core.constants import MAX_SEQUENCE_GAP
+from ..core.constants import MIN_EVENT_SEPARATION
+from ..core.constants import SensorType
 from ..core.exceptions import FeatureExtractionError
-from ..data.ingestion.event_processor import MovementPatternClassifier, MovementSequence
+from ..data.ingestion.event_processor import MovementPatternClassifier
+from ..data.ingestion.event_processor import MovementSequence
 from ..data.storage.models import SensorEvent
 
 logger = logging.getLogger(__name__)

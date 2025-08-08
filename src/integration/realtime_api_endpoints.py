@@ -18,22 +18,24 @@ import asyncio
 import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    Request,
-    WebSocket,
-    WebSocketDisconnect,
-    status,
-)
+from fastapi import APIRouter
+from fastapi import Depends
+from fastapi import HTTPException
+from fastapi import Request
+from fastapi import WebSocket
+from fastapi import WebSocketDisconnect
+from fastapi import status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.websockets import WebSocketState
 
-from ..core.exceptions import APIAuthenticationError, APIError
+from ..core.exceptions import APIAuthenticationError
+from ..core.exceptions import APIError
 from .realtime_publisher import RealtimePredictionEvent
 from .tracking_integration import TrackingIntegrationManager
 

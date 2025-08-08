@@ -8,29 +8,35 @@ retraining strategies, and automated model updating workflows.
 import asyncio
 import heapq
 import json
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from datetime import datetime
+from datetime import timedelta
+from unittest.mock import AsyncMock
+from unittest.mock import MagicMock
+from unittest.mock import Mock
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from src.adaptation.drift_detector import DriftMetrics, DriftSeverity, DriftType
-from src.adaptation.optimizer import ModelOptimizer, OptimizationResult
-from src.adaptation.retrainer import (
-    AdaptiveRetrainer,
-    RetrainingProgress,
-    RetrainingRequest,
-    RetrainingStatus,
-    RetrainingStrategy,
-    RetrainingTrigger,
-)
+from src.adaptation.drift_detector import DriftMetrics
+from src.adaptation.drift_detector import DriftSeverity
+from src.adaptation.drift_detector import DriftType
+from src.adaptation.optimizer import ModelOptimizer
+from src.adaptation.optimizer import OptimizationResult
+from src.adaptation.retrainer import AdaptiveRetrainer
+from src.adaptation.retrainer import RetrainingProgress
+from src.adaptation.retrainer import RetrainingRequest
+from src.adaptation.retrainer import RetrainingStatus
+from src.adaptation.retrainer import RetrainingStrategy
+from src.adaptation.retrainer import RetrainingTrigger
 from src.adaptation.tracking_manager import TrackingConfig
-from src.adaptation.validator import AccuracyMetrics, PredictionValidator
+from src.adaptation.validator import AccuracyMetrics
+from src.adaptation.validator import PredictionValidator
 from src.models.base.predictor import TrainingResult
 
-
 # Test fixtures and utilities
+
 
 @pytest.fixture
 def tracking_config():
@@ -46,7 +52,7 @@ def tracking_config():
         retraining_cooldown_hours=12,
         auto_feature_refresh=True,
         retraining_validation_split=0.2,
-        retraining_lookback_days=14
+        retraining_lookback_days=14,
     )
 
 
@@ -57,23 +63,25 @@ def mock_model_registry():
         "living_room_lstm": Mock(),
         "living_room_xgboost": Mock(),
         "bedroom_ensemble": Mock(),
-        "kitchen_hmm": Mock()
+        "kitchen_hmm": Mock(),
     }
-    
+
     # Add training methods to models
     for model_name, model in registry.items():
-        model.train = AsyncMock(return_value=TrainingResult(
-            success=True,
-            training_time_seconds=30.0,
-            validation_score=0.85,
-            training_score=0.88,
-            model_metrics={"accuracy": 0.85, "precision": 0.82, "recall": 0.87}
-        ))
+        model.train = AsyncMock(
+            return_value=TrainingResult(
+                success=True,
+                training_time_seconds=30.0,
+                validation_score=0.85,
+                training_score=0.88,
+                model_metrics={"accuracy": 0.85, "precision": 0.82, "recall": 0.87},
+            )
+        )
         model.get_parameters = Mock(return_value={"param1": 0.1, "param2": 100})
         model.set_parameters = Mock()
         model.save_model = AsyncMock(return_value=True)
         model.load_model = AsyncMock(return_value=True)
-    
+
     return registry
 
 
@@ -81,18 +89,20 @@ def mock_model_registry():
 def mock_feature_engineering_engine():
     """Mock feature engineering engine."""
     engine = Mock()
-    
+
     # Generate synthetic feature data
     def generate_features(room_id, start_date, end_date):
         n_samples = min(1000, int((end_date - start_date).days * 24))  # Hourly samples
-        return pd.DataFrame({
-            'temporal_feature_1': np.random.normal(0.5, 0.2, n_samples),
-            'temporal_feature_2': np.random.normal(0.3, 0.1, n_samples),
-            'sequential_feature_1': np.random.uniform(0, 1, n_samples),
-            'contextual_feature_1': np.random.choice([0, 1], n_samples),
-            'target': np.random.choice([0, 1], n_samples)  # Binary occupancy
-        })
-    
+        return pd.DataFrame(
+            {
+                "temporal_feature_1": np.random.normal(0.5, 0.2, n_samples),
+                "temporal_feature_2": np.random.normal(0.3, 0.1, n_samples),
+                "sequential_feature_1": np.random.uniform(0, 1, n_samples),
+                "contextual_feature_1": np.random.choice([0, 1], n_samples),
+                "target": np.random.choice([0, 1], n_samples),  # Binary occupancy
+            }
+        )
+
     engine.generate_training_features = AsyncMock(side_effect=generate_features)
     engine.refresh_features = AsyncMock(return_value=True)
     return engine
@@ -102,7 +112,7 @@ def mock_feature_engineering_engine():
 def mock_model_optimizer():
     """Mock model optimizer."""
     optimizer = Mock(spec=ModelOptimizer)
-    
+
     # Mock optimization result
     optimization_result = OptimizationResult(
         success=True,
@@ -111,9 +121,9 @@ def mock_model_optimizer():
         best_score=0.87,
         improvement_over_default=0.08,
         total_evaluations=25,
-        convergence_achieved=True
+        convergence_achieved=True,
     )
-    
+
     optimizer.optimize_model_parameters = AsyncMock(return_value=optimization_result)
     return optimizer
 
@@ -122,16 +132,16 @@ def mock_model_optimizer():
 def mock_notification_callbacks():
     """Mock notification callbacks for retraining events."""
     callbacks = []
-    
+
     def create_callback(name):
         callback = Mock()
         callback.__name__ = name
         callback.return_value = None
         return callback
-    
+
     callbacks.append(create_callback("email_notifier"))
     callbacks.append(create_callback("slack_notifier"))
-    
+
     return callbacks
 
 
@@ -141,7 +151,7 @@ async def adaptive_retrainer(
     mock_model_registry,
     mock_feature_engineering_engine,
     mock_notification_callbacks,
-    mock_model_optimizer
+    mock_model_optimizer,
 ):
     """Create adaptive retrainer with mocked dependencies."""
     retrainer = AdaptiveRetrainer(
@@ -149,9 +159,9 @@ async def adaptive_retrainer(
         model_registry=mock_model_registry,
         feature_engineering_engine=mock_feature_engineering_engine,
         notification_callbacks=mock_notification_callbacks,
-        model_optimizer=mock_model_optimizer
+        model_optimizer=mock_model_optimizer,
     )
-    
+
     await retrainer.initialize()
     yield retrainer
     await retrainer.shutdown()
@@ -169,7 +179,7 @@ def sample_accuracy_metrics():
         median_error_minutes=25.0,
         confidence_vs_accuracy_correlation=0.68,
         measurement_period_start=datetime.now() - timedelta(hours=24),
-        measurement_period_end=datetime.now()
+        measurement_period_end=datetime.now(),
     )
 
 
@@ -179,18 +189,22 @@ def sample_drift_metrics():
     return DriftMetrics(
         room_id="living_room",
         detection_time=datetime.now(),
-        baseline_period=(datetime.now() - timedelta(days=14), datetime.now() - timedelta(days=3)),
+        baseline_period=(
+            datetime.now() - timedelta(days=14),
+            datetime.now() - timedelta(days=3),
+        ),
         current_period=(datetime.now() - timedelta(days=3), datetime.now()),
         accuracy_degradation=22.5,
         overall_drift_score=0.65,
         drift_severity=DriftSeverity.MAJOR,
         drift_types=[DriftType.FEATURE_DRIFT, DriftType.PREDICTION_DRIFT],
         drifting_features=["temporal_feature_1", "contextual_feature_1"],
-        retraining_recommended=True
+        retraining_recommended=True,
     )
 
 
 # Core retraining tests
+
 
 class TestAdaptiveRetrainerInitialization:
     """Test AdaptiveRetrainer initialization and lifecycle."""
@@ -198,10 +212,9 @@ class TestAdaptiveRetrainerInitialization:
     def test_retrainer_initialization(self, tracking_config, mock_model_registry):
         """Test retrainer initialization."""
         retrainer = AdaptiveRetrainer(
-            tracking_config=tracking_config,
-            model_registry=mock_model_registry
+            tracking_config=tracking_config, model_registry=mock_model_registry
         )
-        
+
         assert retrainer.config == tracking_config
         assert retrainer.model_registry == mock_model_registry
         assert len(retrainer._retraining_queue) == 0
@@ -213,10 +226,10 @@ class TestAdaptiveRetrainerInitialization:
         """Test retrainer initialization and shutdown lifecycle."""
         # Should be initialized
         assert len(adaptive_retrainer._background_tasks) > 0
-        
+
         # Shutdown
         await adaptive_retrainer.shutdown()
-        
+
         # Should be cleaned up
         assert len(adaptive_retrainer._background_tasks) == 0
 
@@ -225,15 +238,14 @@ class TestAdaptiveRetrainerInitialization:
         """Test behavior when adaptive retraining is disabled."""
         disabled_config = TrackingConfig(adaptive_retraining_enabled=False)
         retrainer = AdaptiveRetrainer(
-            tracking_config=disabled_config,
-            model_registry=mock_model_registry
+            tracking_config=disabled_config, model_registry=mock_model_registry
         )
-        
+
         await retrainer.initialize()
-        
+
         # Should not start background tasks when disabled
         assert len(retrainer._background_tasks) == 0
-        
+
         await retrainer.shutdown()
 
 
@@ -241,18 +253,20 @@ class TestRetrainingNeedEvaluation:
     """Test evaluation of retraining needs based on various triggers."""
 
     @pytest.mark.asyncio
-    async def test_accuracy_based_retraining_need(self, adaptive_retrainer, sample_accuracy_metrics):
+    async def test_accuracy_based_retraining_need(
+        self, adaptive_retrainer, sample_accuracy_metrics
+    ):
         """Test retraining need evaluation based on accuracy degradation."""
         room_id = "living_room"
         model_type = "lstm"
-        
+
         # Evaluate retraining need
         request = await adaptive_retrainer.evaluate_retraining_need(
             room_id=room_id,
             model_type=model_type,
-            accuracy_metrics=sample_accuracy_metrics
+            accuracy_metrics=sample_accuracy_metrics,
         )
-        
+
         # Should recommend retraining due to low accuracy
         assert request is not None
         assert request.room_id == room_id
@@ -261,19 +275,21 @@ class TestRetrainingNeedEvaluation:
         assert request.priority > 5.0  # High priority due to poor performance
 
     @pytest.mark.asyncio
-    async def test_drift_based_retraining_need(self, adaptive_retrainer, sample_accuracy_metrics, sample_drift_metrics):
+    async def test_drift_based_retraining_need(
+        self, adaptive_retrainer, sample_accuracy_metrics, sample_drift_metrics
+    ):
         """Test retraining need evaluation based on drift detection."""
         room_id = "bedroom"
         model_type = "xgboost"
-        
+
         # Evaluate with drift metrics
         request = await adaptive_retrainer.evaluate_retraining_need(
             room_id=room_id,
             model_type=model_type,
             accuracy_metrics=sample_accuracy_metrics,
-            drift_metrics=sample_drift_metrics
+            drift_metrics=sample_drift_metrics,
         )
-        
+
         # Should recommend retraining due to drift
         assert request is not None
         assert request.trigger == RetrainingTrigger.CONCEPT_DRIFT
@@ -284,7 +300,7 @@ class TestRetrainingNeedEvaluation:
         """Test when no retraining is needed."""
         room_id = "kitchen"
         model_type = "ensemble"
-        
+
         # Good accuracy metrics
         good_metrics = AccuracyMetrics(
             total_predictions=100,
@@ -292,72 +308,70 @@ class TestRetrainingNeedEvaluation:
             accurate_predictions=88,
             accuracy_rate=92.6,  # Above threshold
             mean_error_minutes=8.5,  # Below threshold
-            confidence_vs_accuracy_correlation=0.85
+            confidence_vs_accuracy_correlation=0.85,
         )
-        
+
         # Evaluate retraining need
         request = await adaptive_retrainer.evaluate_retraining_need(
-            room_id=room_id,
-            model_type=model_type,
-            accuracy_metrics=good_metrics
+            room_id=room_id, model_type=model_type, accuracy_metrics=good_metrics
         )
-        
+
         # Should not recommend retraining
         assert request is None
 
     @pytest.mark.asyncio
-    async def test_cooldown_period_enforcement(self, adaptive_retrainer, sample_accuracy_metrics):
+    async def test_cooldown_period_enforcement(
+        self, adaptive_retrainer, sample_accuracy_metrics
+    ):
         """Test that cooldown periods prevent too frequent retraining."""
         room_id = "bathroom"
         model_type = "lstm"
         model_key = f"{room_id}_{model_type}"
-        
+
         # Set recent retraining time
-        adaptive_retrainer._last_retrain_times[model_key] = datetime.now() - timedelta(hours=6)
-        
+        adaptive_retrainer._last_retrain_times[model_key] = datetime.now() - timedelta(
+            hours=6
+        )
+
         # Try to evaluate retraining need
         request = await adaptive_retrainer.evaluate_retraining_need(
             room_id=room_id,
             model_type=model_type,
-            accuracy_metrics=sample_accuracy_metrics
+            accuracy_metrics=sample_accuracy_metrics,
         )
-        
+
         # Should not recommend due to cooldown
         assert request is None
 
     @pytest.mark.asyncio
-    async def test_retraining_strategy_selection(self, adaptive_retrainer, sample_accuracy_metrics):
+    async def test_retraining_strategy_selection(
+        self, adaptive_retrainer, sample_accuracy_metrics
+    ):
         """Test automatic retraining strategy selection."""
         room_id = "living_room"
         model_type = "xgboost"
-        
+
         # Test with moderate accuracy (should use incremental)
         moderate_metrics = AccuracyMetrics(
-            accuracy_rate=75.0,  # Above incremental threshold
-            mean_error_minutes=18.0
+            accuracy_rate=75.0, mean_error_minutes=18.0  # Above incremental threshold
         )
-        
+
         request = await adaptive_retrainer.evaluate_retraining_need(
-            room_id=room_id,
-            model_type=model_type,
-            accuracy_metrics=moderate_metrics
+            room_id=room_id, model_type=model_type, accuracy_metrics=moderate_metrics
         )
-        
+
         if request:
             assert request.strategy == RetrainingStrategy.INCREMENTAL
-        
+
         # Test with very poor accuracy (should use full retrain)
         poor_metrics = AccuracyMetrics(
-            accuracy_rate=45.0,  # Below incremental threshold
-            mean_error_minutes=35.0
+            accuracy_rate=45.0, mean_error_minutes=35.0  # Below incremental threshold
         )
-        
+
         request = await adaptive_retrainer.evaluate_retraining_need(
-            room_id=room_id,
-            model_type=model_type,
-            accuracy_metrics=poor_metrics
+            room_id=room_id, model_type=model_type, accuracy_metrics=poor_metrics
         )
-        
+
         if request:
             assert request.strategy == RetrainingStrategy.FULL_RETRAIN
 
@@ -370,19 +384,19 @@ class TestRetrainingRequestManagement:
         """Test manual retraining request submission."""
         room_id = "office"
         model_type = "ensemble"
-        
+
         request_id = await adaptive_retrainer.request_retraining(
             room_id=room_id,
             model_type=model_type,
             trigger=RetrainingTrigger.MANUAL_REQUEST,
             strategy=RetrainingStrategy.FULL_RETRAIN,
-            priority=8.0
+            priority=8.0,
         )
-        
+
         # Should return request ID
         assert request_id is not None
         assert isinstance(request_id, str)
-        
+
         # Should be in queue
         assert len(adaptive_retrainer._retraining_queue) > 0
 
@@ -394,32 +408,36 @@ class TestRetrainingRequestManagement:
             ("room_1", "lstm", 5.0),
             ("room_2", "xgboost", 9.0),  # Highest priority
             ("room_3", "ensemble", 3.0),
-            ("room_4", "hmm", 7.0)
+            ("room_4", "hmm", 7.0),
         ]
-        
+
         request_ids = []
         for room_id, model_type, priority in requests:
             req_id = await adaptive_retrainer.request_retraining(
                 room_id=room_id,
                 model_type=model_type,
                 trigger=RetrainingTrigger.MANUAL_REQUEST,
-                priority=priority
+                priority=priority,
             )
             request_ids.append(req_id)
-        
+
         # Queue should be ordered by priority (highest first)
-        queue_priorities = [req.priority for req in adaptive_retrainer._retraining_queue]
+        queue_priorities = [
+            req.priority for req in adaptive_retrainer._retraining_queue
+        ]
         assert queue_priorities == sorted(queue_priorities, reverse=True)
 
     @pytest.mark.asyncio
     async def test_concurrent_retraining_limit(self, adaptive_retrainer):
         """Test that concurrent retraining limit is enforced."""
         # Mock active retrainings at max capacity
-        adaptive_retrainer._active_retraining_count = adaptive_retrainer.config.max_concurrent_retrains
-        
+        adaptive_retrainer._active_retraining_count = (
+            adaptive_retrainer.config.max_concurrent_retrains
+        )
+
         # Try to start another retraining
         can_start = adaptive_retrainer._can_start_retraining()
-        
+
         # Should not be able to start
         assert not can_start
 
@@ -430,15 +448,15 @@ class TestRetrainingRequestManagement:
         request_id = await adaptive_retrainer.request_retraining(
             room_id="cancellation_room",
             model_type="lstm",
-            trigger=RetrainingTrigger.MANUAL_REQUEST
+            trigger=RetrainingTrigger.MANUAL_REQUEST,
         )
-        
+
         # Cancel the request
         success = await adaptive_retrainer.cancel_retraining(request_id)
-        
+
         # Should be successfully cancelled
         assert success
-        
+
         # Should not be in queue anymore
         queue_ids = [req.request_id for req in adaptive_retrainer._retraining_queue]
         assert request_id not in queue_ids
@@ -448,12 +466,14 @@ class TestRetrainingExecution:
     """Test retraining execution workflows."""
 
     @pytest.mark.asyncio
-    async def test_full_retraining_execution(self, adaptive_retrainer, mock_model_registry):
+    async def test_full_retraining_execution(
+        self, adaptive_retrainer, mock_model_registry
+    ):
         """Test full model retraining execution."""
         room_id = "execution_room"
         model_type = "lstm"
         model_key = f"{room_id}_{model_type}"
-        
+
         # Create retraining request
         request = RetrainingRequest(
             request_id="test_retrain_001",
@@ -464,12 +484,12 @@ class TestRetrainingExecution:
             priority=7.0,
             created_time=datetime.now(),
             lookback_days=14,
-            validation_split=0.2
+            validation_split=0.2,
         )
-        
+
         # Execute retraining
         result = await adaptive_retrainer._execute_retraining(request)
-        
+
         # Should complete successfully
         assert result is not None
         assert result.status == RetrainingStatus.COMPLETED
@@ -481,7 +501,7 @@ class TestRetrainingExecution:
         """Test incremental model retraining."""
         room_id = "incremental_room"
         model_type = "xgboost"
-        
+
         request = RetrainingRequest(
             request_id="test_incremental_001",
             room_id=room_id,
@@ -489,12 +509,12 @@ class TestRetrainingExecution:
             trigger=RetrainingTrigger.SCHEDULED_UPDATE,
             strategy=RetrainingStrategy.INCREMENTAL,
             priority=4.0,
-            created_time=datetime.now()
+            created_time=datetime.now(),
         )
-        
+
         # Execute incremental retraining
         result = await adaptive_retrainer._execute_retraining(request)
-        
+
         # Should complete successfully
         assert result is not None
         assert result.status == RetrainingStatus.COMPLETED
@@ -504,7 +524,7 @@ class TestRetrainingExecution:
         """Test feature refresh retraining strategy."""
         room_id = "feature_room"
         model_type = "ensemble"
-        
+
         request = RetrainingRequest(
             request_id="test_feature_001",
             room_id=room_id,
@@ -512,12 +532,12 @@ class TestRetrainingExecution:
             trigger=RetrainingTrigger.CONCEPT_DRIFT,
             strategy=RetrainingStrategy.FEATURE_REFRESH,
             priority=6.0,
-            created_time=datetime.now()
+            created_time=datetime.now(),
         )
-        
+
         # Execute feature refresh
         result = await adaptive_retrainer._execute_retraining(request)
-        
+
         # Should complete successfully
         assert result is not None
         assert result.status == RetrainingStatus.COMPLETED
@@ -527,7 +547,7 @@ class TestRetrainingExecution:
         """Test ensemble rebalancing strategy."""
         room_id = "ensemble_room"
         model_type = "ensemble"
-        
+
         request = RetrainingRequest(
             request_id="test_ensemble_001",
             room_id=room_id,
@@ -535,22 +555,24 @@ class TestRetrainingExecution:
             trigger=RetrainingTrigger.PERFORMANCE_ANOMALY,
             strategy=RetrainingStrategy.ENSEMBLE_REBALANCE,
             priority=5.0,
-            created_time=datetime.now()
+            created_time=datetime.now(),
         )
-        
+
         # Execute ensemble rebalancing
         result = await adaptive_retrainer._execute_retraining(request)
-        
+
         # Should complete successfully
         assert result is not None
         assert result.status == RetrainingStatus.COMPLETED
 
     @pytest.mark.asyncio
-    async def test_retraining_with_optimization(self, adaptive_retrainer, mock_model_optimizer):
+    async def test_retraining_with_optimization(
+        self, adaptive_retrainer, mock_model_optimizer
+    ):
         """Test retraining with hyperparameter optimization."""
         room_id = "optimization_room"
         model_type = "lstm"
-        
+
         request = RetrainingRequest(
             request_id="test_optimization_001",
             room_id=room_id,
@@ -558,16 +580,16 @@ class TestRetrainingExecution:
             trigger=RetrainingTrigger.ACCURACY_DEGRADATION,
             strategy=RetrainingStrategy.FULL_RETRAIN,
             priority=8.0,
-            created_time=datetime.now()
+            created_time=datetime.now(),
         )
-        
+
         # Execute retraining with optimization
         result = await adaptive_retrainer._execute_retraining(request)
-        
+
         # Should complete successfully with optimization
         assert result is not None
         assert result.status == RetrainingStatus.COMPLETED
-        
+
         # Optimizer should have been called
         mock_model_optimizer.optimize_model_parameters.assert_called_once()
 
@@ -581,17 +603,15 @@ class TestRetrainingProgressTracking:
         request_id = "progress_test_001"
         room_id = "progress_room"
         model_type = "lstm"
-        
+
         # Create progress tracker
         progress = RetrainingProgress(
-            request_id=request_id,
-            room_id=room_id,
-            model_type=model_type
+            request_id=request_id, room_id=room_id, model_type=model_type
         )
-        
+
         # Update progress
         progress.update_progress("training", "epoch_10", 45.0)
-        
+
         # Verify progress update
         assert progress.phase == "training"
         assert progress.current_step == "epoch_10"
@@ -607,12 +627,12 @@ class TestRetrainingProgressTracking:
             trigger=RetrainingTrigger.MANUAL_REQUEST,
             strategy=RetrainingStrategy.FULL_RETRAIN,
             priority=5.0,
-            created_time=datetime.now()
+            created_time=datetime.now(),
         )
-        
+
         # Start retraining (should create progress tracker)
         await adaptive_retrainer._start_retraining(request)
-        
+
         # Should have progress tracker
         assert request.request_id in adaptive_retrainer._progress_tracker
 
@@ -620,7 +640,7 @@ class TestRetrainingProgressTracking:
     async def test_progress_reporting(self, adaptive_retrainer):
         """Test retraining progress reporting."""
         request_id = "progress_report_001"
-        
+
         # Create mock progress
         progress = RetrainingProgress(
             request_id=request_id,
@@ -628,14 +648,14 @@ class TestRetrainingProgressTracking:
             model_type="ensemble",
             phase="validation",
             progress_percentage=75.0,
-            current_step="cross_validation_fold_3"
+            current_step="cross_validation_fold_3",
         )
-        
+
         adaptive_retrainer._progress_tracker[request_id] = progress
-        
+
         # Get progress report
         report = await adaptive_retrainer.get_retraining_progress(request_id)
-        
+
         # Should return progress information
         assert report is not None
         assert report["progress_percentage"] == 75.0
@@ -652,12 +672,12 @@ class TestRetrainingStatusAndMetrics:
         request_id = await adaptive_retrainer.request_retraining(
             room_id="status_room",
             model_type="hmm",
-            trigger=RetrainingTrigger.MANUAL_REQUEST
+            trigger=RetrainingTrigger.MANUAL_REQUEST,
         )
-        
+
         # Get status
         status = await adaptive_retrainer.get_retraining_status(request_id)
-        
+
         # Should return status information
         assert status is not None
         assert "request_id" in status
@@ -672,12 +692,12 @@ class TestRetrainingStatusAndMetrics:
             await adaptive_retrainer.request_retraining(
                 room_id=f"status_room_{i}",
                 model_type="lstm",
-                trigger=RetrainingTrigger.MANUAL_REQUEST
+                trigger=RetrainingTrigger.MANUAL_REQUEST,
             )
-        
+
         # Get all statuses
         statuses = await adaptive_retrainer.get_retraining_status()
-        
+
         # Should return list of statuses
         assert isinstance(statuses, list)
         assert len(statuses) >= 3
@@ -687,7 +707,7 @@ class TestRetrainingStatusAndMetrics:
         """Test retrainer statistics collection."""
         # Get retrainer stats
         stats = adaptive_retrainer.get_retrainer_stats()
-        
+
         # Should return statistics
         assert "total_requests" in stats
         assert "completed_retrainings" in stats
@@ -701,10 +721,10 @@ class TestRetrainingStatusAndMetrics:
         # Simulate completed retraining
         adaptive_retrainer._total_retrainings_completed += 1
         adaptive_retrainer._update_average_retraining_time(45.5)
-        
+
         # Get stats
         stats = adaptive_retrainer.get_retrainer_stats()
-        
+
         # Should track performance
         assert stats["completed_retrainings"] == 1
         assert stats["average_retraining_time"] > 0
@@ -721,12 +741,12 @@ class TestBackgroundTasks:
             room_id="background_room",
             model_type="lstm",
             trigger=RetrainingTrigger.ACCURACY_DEGRADATION,
-            priority=9.0
+            priority=9.0,
         )
-        
+
         # Let background processor run briefly
         await asyncio.sleep(0.1)
-        
+
         # Request should be processed or in progress
         stats = adaptive_retrainer.get_retrainer_stats()
         assert stats["total_requests"] > 0
@@ -735,7 +755,9 @@ class TestBackgroundTasks:
     async def test_trigger_checker_loop(self, adaptive_retrainer):
         """Test background trigger checking."""
         # Mock poor performance detection
-        with patch.object(adaptive_retrainer, '_check_automatic_triggers') as mock_check:
+        with patch.object(
+            adaptive_retrainer, "_check_automatic_triggers"
+        ) as mock_check:
             mock_check.return_value = [
                 RetrainingRequest(
                     request_id="auto_trigger_001",
@@ -744,13 +766,13 @@ class TestBackgroundTasks:
                     trigger=RetrainingTrigger.SCHEDULED_UPDATE,
                     strategy=RetrainingStrategy.INCREMENTAL,
                     priority=4.0,
-                    created_time=datetime.now()
+                    created_time=datetime.now(),
                 )
             ]
-            
+
             # Let trigger checker run
             await asyncio.sleep(0.1)
-            
+
             # Should detect and queue automatic triggers
             # (Actual verification depends on timing)
 
@@ -759,24 +781,24 @@ class TestBackgroundTasks:
         """Test error handling in background tasks."""
         # Mock retraining that fails
         original_execute = adaptive_retrainer._execute_retraining
-        
+
         async def failing_execute(request):
             if "fail" in request.room_id:
                 raise Exception("Simulated retraining failure")
             return await original_execute(request)
-        
+
         adaptive_retrainer._execute_retraining = failing_execute
-        
+
         # Submit failing request
         await adaptive_retrainer.request_retraining(
             room_id="fail_room",
             model_type="lstm",
-            trigger=RetrainingTrigger.MANUAL_REQUEST
+            trigger=RetrainingTrigger.MANUAL_REQUEST,
         )
-        
+
         # Should handle error gracefully
         await asyncio.sleep(0.2)
-        
+
         # Failed retraining should be tracked
         stats = adaptive_retrainer.get_retrainer_stats()
         # May or may not show failure depending on timing
@@ -786,16 +808,18 @@ class TestNotificationIntegration:
     """Test notification integration for retraining events."""
 
     @pytest.mark.asyncio
-    async def test_retraining_completion_notifications(self, adaptive_retrainer, mock_notification_callbacks):
+    async def test_retraining_completion_notifications(
+        self, adaptive_retrainer, mock_notification_callbacks
+    ):
         """Test notifications on retraining completion."""
         # Submit and complete a retraining
         request_id = await adaptive_retrainer.request_retraining(
             room_id="notification_room",
             model_type="ensemble",
             trigger=RetrainingTrigger.CONCEPT_DRIFT,
-            priority=6.0
+            priority=6.0,
         )
-        
+
         # Mock successful completion
         completed_request = RetrainingRequest(
             request_id=request_id,
@@ -806,18 +830,20 @@ class TestNotificationIntegration:
             priority=6.0,
             created_time=datetime.now(),
             status=RetrainingStatus.COMPLETED,
-            completed_time=datetime.now()
+            completed_time=datetime.now(),
         )
-        
+
         # Trigger notification
         await adaptive_retrainer._notify_completion(completed_request)
-        
+
         # Callbacks should have been called
         for callback in mock_notification_callbacks:
             callback.assert_called()
 
     @pytest.mark.asyncio
-    async def test_retraining_failure_notifications(self, adaptive_retrainer, mock_notification_callbacks):
+    async def test_retraining_failure_notifications(
+        self, adaptive_retrainer, mock_notification_callbacks
+    ):
         """Test notifications on retraining failure."""
         failed_request = RetrainingRequest(
             request_id="failed_request_001",
@@ -828,12 +854,12 @@ class TestNotificationIntegration:
             priority=8.0,
             created_time=datetime.now(),
             status=RetrainingStatus.FAILED,
-            error_message="Training data insufficient"
+            error_message="Training data insufficient",
         )
-        
+
         # Trigger failure notification
         await adaptive_retrainer._notify_failure(failed_request)
-        
+
         # Callbacks should have been called with failure info
         for callback in mock_notification_callbacks:
             callback.assert_called()
@@ -843,17 +869,19 @@ class TestErrorHandlingAndRecovery:
     """Test error handling and recovery mechanisms."""
 
     @pytest.mark.asyncio
-    async def test_model_training_failure_handling(self, adaptive_retrainer, mock_model_registry):
+    async def test_model_training_failure_handling(
+        self, adaptive_retrainer, mock_model_registry
+    ):
         """Test handling of model training failures."""
         room_id = "failure_room"
         model_type = "lstm"
         model_key = f"{room_id}_{model_type}"
-        
+
         # Mock model that fails training
         failing_model = Mock()
         failing_model.train = AsyncMock(side_effect=Exception("Training failed"))
         mock_model_registry[model_key] = failing_model
-        
+
         request = RetrainingRequest(
             request_id="failure_test_001",
             room_id=room_id,
@@ -861,12 +889,12 @@ class TestErrorHandlingAndRecovery:
             trigger=RetrainingTrigger.MANUAL_REQUEST,
             strategy=RetrainingStrategy.FULL_RETRAIN,
             priority=5.0,
-            created_time=datetime.now()
+            created_time=datetime.now(),
         )
-        
+
         # Execute retraining
         result = await adaptive_retrainer._execute_retraining(request)
-        
+
         # Should handle failure gracefully
         assert result is not None
         assert result.status == RetrainingStatus.FAILED
@@ -882,24 +910,26 @@ class TestErrorHandlingAndRecovery:
             trigger=RetrainingTrigger.MANUAL_REQUEST,
             strategy=RetrainingStrategy.FULL_RETRAIN,
             priority=5.0,
-            created_time=datetime.now()
+            created_time=datetime.now(),
         )
-        
+
         # Execute retraining
         result = await adaptive_retrainer._execute_retraining(request)
-        
+
         # Should handle missing model gracefully
         assert result is not None
         assert result.status == RetrainingStatus.FAILED
 
     @pytest.mark.asyncio
-    async def test_insufficient_data_handling(self, adaptive_retrainer, mock_feature_engineering_engine):
+    async def test_insufficient_data_handling(
+        self, adaptive_retrainer, mock_feature_engineering_engine
+    ):
         """Test handling of insufficient training data."""
         # Mock engine that returns empty data
         mock_feature_engineering_engine.generate_training_features = AsyncMock(
             return_value=pd.DataFrame()  # Empty dataframe
         )
-        
+
         request = RetrainingRequest(
             request_id="insufficient_data_001",
             room_id="empty_room",
@@ -907,12 +937,12 @@ class TestErrorHandlingAndRecovery:
             trigger=RetrainingTrigger.ACCURACY_DEGRADATION,
             strategy=RetrainingStrategy.FULL_RETRAIN,
             priority=7.0,
-            created_time=datetime.now()
+            created_time=datetime.now(),
         )
-        
+
         # Execute retraining
         result = await adaptive_retrainer._execute_retraining(request)
-        
+
         # Should handle insufficient data
         assert result is not None
         assert result.status == RetrainingStatus.FAILED
@@ -922,13 +952,13 @@ class TestErrorHandlingAndRecovery:
         """Test handling of retraining timeouts."""
         # Mock very slow model training
         slow_model = Mock()
-        
+
         async def slow_train(*args, **kwargs):
             await asyncio.sleep(10)  # Very slow
             return TrainingResult(success=True, validation_score=0.8)
-        
+
         slow_model.train = slow_train
-        
+
         # Add timeout to retraining
         request = RetrainingRequest(
             request_id="timeout_test_001",
@@ -937,13 +967,13 @@ class TestErrorHandlingAndRecovery:
             trigger=RetrainingTrigger.MANUAL_REQUEST,
             strategy=RetrainingStrategy.FULL_RETRAIN,
             priority=5.0,
-            created_time=datetime.now()
+            created_time=datetime.now(),
         )
-        
+
         # Mock timeout scenario
-        with patch.object(asyncio, 'wait_for', side_effect=asyncio.TimeoutError):
+        with patch.object(asyncio, "wait_for", side_effect=asyncio.TimeoutError):
             result = await adaptive_retrainer._execute_retraining(request)
-            
+
             # Should handle timeout
             assert result is not None
             assert result.status == RetrainingStatus.FAILED
@@ -953,19 +983,23 @@ class TestDataManagement:
     """Test training data management and preparation."""
 
     @pytest.mark.asyncio
-    async def test_training_data_preparation(self, adaptive_retrainer, mock_feature_engineering_engine):
+    async def test_training_data_preparation(
+        self, adaptive_retrainer, mock_feature_engineering_engine
+    ):
         """Test training data preparation for retraining."""
         room_id = "data_room"
         lookback_days = 14
-        
+
         # Prepare training data
-        X_train, X_val, y_train, y_val = await adaptive_retrainer._prepare_training_data(
-            room_id=room_id,
-            lookback_days=lookback_days,
-            validation_split=0.2,
-            feature_refresh=True
+        X_train, X_val, y_train, y_val = (
+            await adaptive_retrainer._prepare_training_data(
+                room_id=room_id,
+                lookback_days=lookback_days,
+                validation_split=0.2,
+                feature_refresh=True,
+            )
         )
-        
+
         # Should return prepared data
         assert X_train is not None
         assert y_train is not None
@@ -974,39 +1008,43 @@ class TestDataManagement:
         assert len(X_train) > len(X_val)  # Train should be larger than validation
 
     @pytest.mark.asyncio
-    async def test_feature_refreshing(self, adaptive_retrainer, mock_feature_engineering_engine):
+    async def test_feature_refreshing(
+        self, adaptive_retrainer, mock_feature_engineering_engine
+    ):
         """Test feature refreshing during retraining."""
         room_id = "refresh_room"
-        
+
         # Refresh features
         success = await adaptive_retrainer._refresh_features(room_id)
-        
+
         # Should succeed
         assert success
-        
+
         # Feature engine should have been called
-        mock_feature_engineering_engine.refresh_features.assert_called_once_with(room_id)
+        mock_feature_engineering_engine.refresh_features.assert_called_once_with(
+            room_id
+        )
 
     @pytest.mark.asyncio
     async def test_data_validation_before_training(self, adaptive_retrainer):
         """Test data validation before training."""
         # Valid data
-        valid_X = pd.DataFrame({'feature1': [1, 2, 3], 'feature2': [4, 5, 6]})
-        valid_y = pd.DataFrame({'target': [0, 1, 0]})
-        
+        valid_X = pd.DataFrame({"feature1": [1, 2, 3], "feature2": [4, 5, 6]})
+        valid_y = pd.DataFrame({"target": [0, 1, 0]})
+
         is_valid = adaptive_retrainer._validate_training_data(valid_X, valid_y)
         assert is_valid
-        
+
         # Invalid data (empty)
         empty_X = pd.DataFrame()
         empty_y = pd.DataFrame()
-        
+
         is_valid = adaptive_retrainer._validate_training_data(empty_X, empty_y)
         assert not is_valid
-        
+
         # Mismatched sizes
-        mismatched_y = pd.DataFrame({'target': [0, 1]})  # Different size
-        
+        mismatched_y = pd.DataFrame({"target": [0, 1]})  # Different size
+
         is_valid = adaptive_retrainer._validate_training_data(valid_X, mismatched_y)
         assert not is_valid
 
@@ -1024,15 +1062,18 @@ class TestPerformanceAndScalability:
                 room_id=f"concurrent_room_{i}",
                 model_type="lstm",
                 trigger=RetrainingTrigger.MANUAL_REQUEST,
-                priority=5.0 + i
+                priority=5.0 + i,
             )
             request_ids.append(req_id)
-        
+
         # Let retrainer process requests
         await asyncio.sleep(0.5)
-        
+
         # Should respect concurrent limits
-        assert adaptive_retrainer._active_retraining_count <= adaptive_retrainer.config.max_concurrent_retrains
+        assert (
+            adaptive_retrainer._active_retraining_count
+            <= adaptive_retrainer.config.max_concurrent_retrains
+        )
 
     @pytest.mark.asyncio
     async def test_memory_management_in_retraining(self, adaptive_retrainer):
@@ -1043,27 +1084,30 @@ class TestPerformanceAndScalability:
                 room_id=f"memory_room_{i}",
                 model_type="xgboost",
                 trigger=RetrainingTrigger.SCHEDULED_UPDATE,
-                priority=3.0
+                priority=3.0,
             )
-        
+
         # Should manage memory efficiently
         # History should be bounded
-        assert len(adaptive_retrainer._retraining_history) <= adaptive_retrainer._retraining_history.maxlen
+        assert (
+            len(adaptive_retrainer._retraining_history)
+            <= adaptive_retrainer._retraining_history.maxlen
+        )
 
     @pytest.mark.asyncio
     async def test_queue_size_management(self, adaptive_retrainer):
         """Test retraining queue size management."""
         initial_queue_size = len(adaptive_retrainer._retraining_queue)
-        
+
         # Add many requests
         for i in range(100):
             await adaptive_retrainer.request_retraining(
                 room_id=f"queue_room_{i}",
                 model_type="ensemble",
                 trigger=RetrainingTrigger.PERFORMANCE_ANOMALY,
-                priority=float(i % 10)
+                priority=float(i % 10),
             )
-        
+
         # Queue should handle large numbers of requests
         final_queue_size = len(adaptive_retrainer._retraining_queue)
         assert final_queue_size > initial_queue_size
