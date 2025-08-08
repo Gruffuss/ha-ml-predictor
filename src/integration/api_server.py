@@ -16,20 +16,20 @@ Features:
 """
 
 import asyncio
-import logging
-import traceback
 from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
+import logging
+import traceback
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-import uvicorn
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field, validator
+import uvicorn
 
 if TYPE_CHECKING:
     from ..adaptation.tracking_manager import TrackingManager

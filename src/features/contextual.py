@@ -6,13 +6,13 @@ including temperature, humidity, lighting conditions, door states, and
 multi-room occupancy correlations.
 """
 
-import logging
-import statistics
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
+import logging
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
+import statistics
 
 from ..core.config import RoomConfig, SystemConfig
 from ..core.constants import SensorType

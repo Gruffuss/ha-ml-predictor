@@ -5,8 +5,8 @@ This module implements an HMM-based predictor using scikit-learn's GaussianMixtu
 for modeling occupancy state transitions and duration predictions.
 """
 
-import logging
 from datetime import datetime, timedelta
+import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np

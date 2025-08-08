@@ -5,7 +5,6 @@ This module tests the ContextualFeatureExtractor for environmental features,
 door states, multi-room correlations, and seasonal patterns.
 """
 
-import statistics
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
@@ -13,6 +12,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 import pytest
+import statistics
 
 from src.core.config import RoomConfig, SystemConfig
 from src.core.exceptions import FeatureExtractionError

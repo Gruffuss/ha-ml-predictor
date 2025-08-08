@@ -6,13 +6,13 @@ including room transitions, movement velocity, sensor triggering patterns,
 and human vs cat movement classification features.
 """
 
-import logging
-import statistics
 from collections import Counter, defaultdict, deque
 from datetime import datetime, timedelta
+import logging
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
+import statistics
 
 from ..core.config import RoomConfig, SystemConfig
 from ..core.constants import (

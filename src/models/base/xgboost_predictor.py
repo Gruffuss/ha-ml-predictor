@@ -5,15 +5,15 @@ This module implements a gradient boosting predictor using XGBoost for
 tabular feature-based occupancy predictions with excellent interpretability.
 """
 
-import logging
 from datetime import datetime, timedelta
+import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-import xgboost as xgb
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
+import xgboost as xgb
 
 from ...core.constants import DEFAULT_MODEL_PARAMS, ModelType
 from ...core.exceptions import ModelPredictionError, ModelTrainingError

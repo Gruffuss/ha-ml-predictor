@@ -6,17 +6,21 @@ predictions with confidence intervals and uncertainty quantification for occupan
 state transitions.
 """
 
-import logging
-import warnings
 from datetime import datetime, timedelta
+import logging
 from typing import Any, Dict, List, Optional, Tuple
+import warnings
 
 import numpy as np
 import pandas as pd
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF
-from sklearn.gaussian_process.kernels import ConstantKernel as C
-from sklearn.gaussian_process.kernels import Matern, RationalQuadratic, WhiteKernel
+from sklearn.gaussian_process.kernels import (
+    RBF,
+    ConstantKernel as C,
+    Matern,
+    RationalQuadratic,
+    WhiteKernel,
+)
 
 # Try to import PeriodicKernel, fallback to ExpSineSquared if not available
 try:

@@ -9,18 +9,17 @@ and AdaptiveRetrainer to provide comprehensive system visibility without manual 
 """
 
 import asyncio
-import json
-import logging
-import threading
-import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
+import json
+import logging
 from pathlib import Path
+import threading
 from typing import Any, Callable, Dict, List, Optional, Set, Union
+import uuid
 
 try:
-    import uvicorn
     from fastapi import (
         Depends,
         FastAPI,
@@ -33,6 +32,7 @@ try:
     from fastapi.responses import FileResponse, JSONResponse
     from fastapi.staticfiles import StaticFiles
     from pydantic import BaseModel
+    import uvicorn
 
     FASTAPI_AVAILABLE = True
 except ImportError:

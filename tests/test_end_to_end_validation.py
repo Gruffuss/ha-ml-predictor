@@ -18,21 +18,21 @@ Test Coverage:
 """
 
 import asyncio
-import json
-import logging
-import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from datetime import datetime, timedelta
+import json
+import logging
+import time
 from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
 
-import pytest
-import pytest_asyncio
-import websockets
 from aiohttp import ClientSession, web
 from aiohttp.test_utils import AioHTTPTestCase
 from fastapi.testclient import TestClient
+import pytest
+import pytest_asyncio
+import websockets
 
 from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
 from src.core.config import SystemConfig, get_config

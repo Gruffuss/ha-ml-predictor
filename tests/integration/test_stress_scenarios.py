@@ -16,19 +16,19 @@ Test Coverage:
 """
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta
 import gc
 import logging
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
+from fastapi.testclient import TestClient
 import httpx
 import psutil
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
 from sqlalchemy.exc import DisconnectionError
 
 from src.adaptation.tracking_manager import TrackingConfig, TrackingManager

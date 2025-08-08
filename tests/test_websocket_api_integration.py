@@ -6,11 +6,11 @@ and ensure proper functionality of authentication, subscriptions, and real-time 
 """
 
 import asyncio
-import json
-import uuid
 from datetime import datetime, timedelta
+import json
 from typing import Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
+import uuid
 
 import pytest
 import websockets

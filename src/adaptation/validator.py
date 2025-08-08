@@ -6,15 +6,15 @@ and performance analysis capabilities for the occupancy prediction system.
 """
 
 import asyncio
-import csv
-import json
-import logging
-import threading
 from collections import defaultdict, deque
+import csv
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
+import json
+import logging
 from pathlib import Path
+import threading
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from sqlalchemy import and_, desc, func, or_, select, update
@@ -1017,9 +1017,8 @@ class PredictionValidator:
         confidences = [r.confidence_score for r in validated_records]
 
         if errors:
-            import statistics
-
             import numpy as np
+            import statistics
 
             metrics.mean_error_minutes = statistics.mean(errors)
             metrics.median_error_minutes = statistics.median(errors)

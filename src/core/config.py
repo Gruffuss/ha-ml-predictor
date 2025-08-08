@@ -3,8 +3,8 @@ Configuration management for Occupancy Prediction System.
 Loads and validates configuration from YAML files.
 """
 
-import os
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 

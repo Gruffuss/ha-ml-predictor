@@ -5,11 +5,11 @@ This module defines SQLAlchemy models optimized for TimescaleDB to handle
 time-series sensor data, predictions, and model performance tracking.
 """
 
-import json
 from datetime import datetime, timedelta
-from decimal import Decimal
+import json
 from typing import Any, Dict, List, Optional, Tuple
 
+from decimal import Decimal
 from sqlalchemy import (
     JSON,
     BigInteger,

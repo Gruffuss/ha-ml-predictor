@@ -7,10 +7,10 @@ Includes automatic reconnection, rate limiting, and event processing.
 """
 
 import asyncio
-import json
-import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import json
+import logging
 from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
 from urllib.parse import urljoin
 

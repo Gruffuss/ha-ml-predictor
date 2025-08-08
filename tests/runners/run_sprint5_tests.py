@@ -22,9 +22,9 @@ import argparse
 import asyncio
 import logging
 import os
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
 from typing import List, Optional
 
 # Setup logging

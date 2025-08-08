@@ -11,7 +11,6 @@ Tests prediction latency across different scenarios:
 """
 
 import asyncio
-import statistics
 import time
 from typing import Dict, List, Tuple
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -19,6 +18,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
 import pandas as pd
 import pytest
+import statistics
 
 from src.core.config import get_config
 from src.features.store import FeatureStore

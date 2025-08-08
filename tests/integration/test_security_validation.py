@@ -17,21 +17,21 @@ Test Coverage:
 
 import asyncio
 import base64
+from datetime import datetime, timedelta
 import hashlib
 import logging
-import secrets
 import time
-from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from urllib.parse import quote
 
+from fastapi import HTTPException
+from fastapi.testclient import TestClient
 import httpx
 import jwt
 import pytest
 import pytest_asyncio
-from fastapi import HTTPException
-from fastapi.testclient import TestClient
+import secrets
 
 from src.adaptation.tracking_manager import TrackingManager
 from src.core.config import get_config

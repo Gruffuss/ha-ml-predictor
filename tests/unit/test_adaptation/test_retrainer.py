@@ -6,11 +6,11 @@ retraining strategies, and automated model updating workflows.
 """
 
 import asyncio
-import heapq
-import json
 from datetime import datetime, timedelta
+import json
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
+import heapq
 import numpy as np
 import pandas as pd
 import pytest

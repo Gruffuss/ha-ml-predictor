@@ -5,13 +5,13 @@ This module tests the TemporalFeatureExtractor for accuracy, edge cases,
 and performance with realistic occupancy data patterns.
 """
 
-import math
-import statistics
 from datetime import datetime, timedelta
+import math
 from typing import Any, Dict, List
 from unittest.mock import Mock, patch
 
 import pytest
+import statistics
 
 from src.core.exceptions import FeatureExtractionError
 from src.data.storage.models import RoomState, SensorEvent

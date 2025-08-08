@@ -14,17 +14,17 @@ Features:
 """
 
 import asyncio
+from datetime import datetime, timedelta
 import json
-import statistics
+from pathlib import Path
 import time
 import traceback
-from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import pytest
+import statistics
 
 try:
     from .test_feature_computation import benchmark_feature_computation_performance
@@ -126,7 +126,6 @@ class PerformanceBenchmarkRunner:
         """Get system information for benchmark context."""
         try:
             import platform
-
             import psutil
 
             return {

@@ -13,10 +13,8 @@ Tests system performance under various load conditions:
 """
 
 import asyncio
-import resource
-import statistics
-import time
 from datetime import datetime, timedelta
+import time
 from typing import Dict, List, Tuple
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -24,6 +22,8 @@ import numpy as np
 import pandas as pd
 import psutil
 import pytest
+import resource
+import statistics
 
 from src.data.ingestion.event_processor import EventProcessor
 from src.data.storage.database import get_database_manager

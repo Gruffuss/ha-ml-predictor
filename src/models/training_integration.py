@@ -7,8 +7,8 @@ degradation, drift detection, and other system events.
 """
 
 import asyncio
-import logging
 from datetime import datetime, timedelta
+import logging
 from typing import Any, Dict, List, Optional, Set
 
 from ..core.exceptions import ModelTrainingError

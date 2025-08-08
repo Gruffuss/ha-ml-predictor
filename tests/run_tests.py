@@ -7,9 +7,9 @@ with appropriate configuration and reporting.
 """
 
 import argparse
+from pathlib import Path
 import subprocess
 import sys
-from pathlib import Path
 
 
 def run_command(cmd, description):

@@ -5,14 +5,14 @@ This module defines the abstract base class and common interfaces for all
 predictive models in the occupancy prediction system.
 """
 
-import logging
-import pickle
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import logging
 from pathlib import Path
+import pickle
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 

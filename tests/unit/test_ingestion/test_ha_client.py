@@ -6,13 +6,13 @@ rate limiting, and error handling for the HomeAssistantClient class.
 """
 
 import asyncio
-import json
 from datetime import datetime, timedelta
+import json
 from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
 
+from aiohttp import ClientError, ClientTimeout
 import pytest
 import pytest_asyncio
-from aiohttp import ClientError, ClientTimeout
 from websockets.exceptions import ConnectionClosed, InvalidStatusCode
 
 from src.core.config import HomeAssistantConfig, SystemConfig

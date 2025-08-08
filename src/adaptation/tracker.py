@@ -7,16 +7,17 @@ for the occupancy prediction system.
 """
 
 import asyncio
-import json
-import logging
-import statistics
-import threading
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
+import json
+import logging
 from pathlib import Path
+import threading
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+import statistics
 
 from ..core.constants import ModelType
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError

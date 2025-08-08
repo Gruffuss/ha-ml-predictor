@@ -5,9 +5,9 @@ Tests SQLAlchemy models, relationships, class methods, and data validation.
 """
 
 from datetime import datetime, timedelta
-from decimal import Decimal
 from unittest.mock import Mock, patch
 
+from decimal import Decimal
 import pytest
 import pytest_asyncio
 from sqlalchemy import func, select

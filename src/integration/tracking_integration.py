@@ -14,9 +14,9 @@ Features:
 """
 
 import asyncio
-import logging
 from dataclasses import dataclass
 from datetime import datetime
+import logging
 
 # Defer imports to prevent circular dependency
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional

@@ -6,8 +6,8 @@ model components are working correctly before proceeding to Sprint 4.
 """
 
 import asyncio
-import logging
 from datetime import datetime, timedelta
+import logging
 from pathlib import Path
 from typing import Any, Dict, List
 

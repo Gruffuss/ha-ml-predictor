@@ -11,19 +11,19 @@ Tests memory usage patterns across system components:
 """
 
 import asyncio
-import gc
-import statistics
-import time
-import tracemalloc
-import weakref
 from datetime import datetime, timedelta
+import gc
+import time
 from typing import Any, Dict, List, Tuple
 from unittest.mock import AsyncMock, MagicMock, patch
+import weakref
 
 import numpy as np
 import pandas as pd
 import psutil
 import pytest
+import statistics
+import tracemalloc
 
 from src.data.ingestion.event_processor import EventProcessor
 from src.data.storage.models import SensorEvent

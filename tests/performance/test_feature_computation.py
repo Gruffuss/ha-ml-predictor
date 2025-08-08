@@ -12,15 +12,15 @@ Tests feature extraction performance across different scenarios:
 """
 
 import asyncio
-import statistics
-import time
 from datetime import datetime, timedelta
+import time
 from typing import Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
+import statistics
 
 from src.core.config import get_config
 from src.data.storage.models import SensorEvent

@@ -7,7 +7,6 @@ occupancy prediction system's validation framework.
 """
 
 import asyncio
-import statistics
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -17,6 +16,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import numpy as np
 import pandas as pd
 import pytest
+import statistics
 
 from src.adaptation.validator import (
     AccuracyLevel,

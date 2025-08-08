@@ -6,13 +6,14 @@ including detection of human vs cat movement patterns, deduplication, and sequen
 """
 
 import asyncio
-import logging
-import math
-import statistics
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import logging
+import math
 from typing import Any, Dict, List, Optional, Set, Tuple
+
+import statistics
 
 from ...core.config import RoomConfig, SystemConfig, get_config
 from ...core.constants import (

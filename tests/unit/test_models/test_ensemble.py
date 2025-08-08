@@ -7,10 +7,10 @@ performance comparison with base models.
 """
 
 import asyncio
-import tempfile
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
+import tempfile
+import time
 from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 

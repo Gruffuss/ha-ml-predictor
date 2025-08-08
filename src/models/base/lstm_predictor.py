@@ -5,10 +5,10 @@ This module implements an LSTM-style neural network predictor using scikit-learn
 MLPRegressor for sequence-based occupancy predictions.
 """
 
-import logging
-import warnings
 from datetime import datetime, timedelta
+import logging
 from typing import Any, Dict, List, Optional, Tuple
+import warnings
 
 import numpy as np
 import pandas as pd

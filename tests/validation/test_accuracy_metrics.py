@@ -7,7 +7,6 @@ reporting used in the occupancy prediction system validation.
 """
 
 import asyncio
-import statistics
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
@@ -16,6 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import numpy as np
 import pandas as pd
 import pytest
+import statistics
 
 from src.adaptation.validator import (
     AccuracyLevel,
