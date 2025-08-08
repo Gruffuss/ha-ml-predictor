@@ -93,13 +93,13 @@ class TestDatabaseIntegration:
         assert retrieved_event.confidence_score == 0.85
 
         # Update
-        retrieved_event.state = "off"
+        retrieved_event.state = "of"
         retrieved_event.previous_state = "on"
         await test_db_session.commit()
 
         # Verify update
         await test_db_session.refresh(retrieved_event)
-        assert retrieved_event.state == "off"
+        assert retrieved_event.state == "of"
         assert retrieved_event.previous_state == "on"
 
         # Delete
@@ -200,7 +200,8 @@ class TestDatabaseIntegration:
                 confidence_score=0.9,
                 model_type="lstm",
                 model_version="v1.0",
-                actual_transition_time=base_time - timedelta(hours=1, minutes=-5),
+                actual_transition_time=base_time
+                - timedelta(hours=1, minutes=-5),
                 accuracy_minutes=5.0,
                 is_accurate=True,
                 validation_timestamp=base_time - timedelta(minutes=50),
@@ -214,10 +215,12 @@ class TestDatabaseIntegration:
                 confidence_score=0.7,
                 model_type="lstm",
                 model_version="v1.0",
-                actual_transition_time=base_time - timedelta(hours=2, minutes=20),
+                actual_transition_time=base_time
+                - timedelta(hours=2, minutes=20),
                 accuracy_minutes=20.0,
                 is_accurate=False,
-                validation_timestamp=base_time - timedelta(hours=1, minutes=40),
+                validation_timestamp=base_time
+                - timedelta(hours=1, minutes=40),
             ),
             # Pending validation
             Prediction(
@@ -237,7 +240,9 @@ class TestDatabaseIntegration:
         await test_db_session.commit()
 
         # Test pending validations
-        pending = await Prediction.get_pending_validations(test_db_session, room_id)
+        pending = await Prediction.get_pending_validations(
+            test_db_session, room_id
+        )
         assert len(pending) == 1
         assert pending[0].confidence_score == 0.85
 
@@ -263,7 +268,7 @@ class TestDatabaseIntegration:
             sensor_id="binary_sensor.test_motion",
             sensor_type="motion",
             state="on",
-            previous_state="off",
+            previous_state="of",
             timestamp=base_time - timedelta(minutes=30),
         )
         test_db_session.add(sensor_event)
@@ -300,7 +305,10 @@ class TestDatabaseIntegration:
         # Test forward relationships
         assert prediction.triggering_event is not None
         assert prediction.triggering_event.id == sensor_event.id
-        assert prediction.triggering_event.sensor_id == "binary_sensor.test_motion"
+        assert (
+            prediction.triggering_event.sensor_id
+            == "binary_sensor.test_motion"
+        )
 
         assert prediction.room_state is not None
         assert prediction.room_state.id == room_state.id
@@ -438,17 +446,18 @@ class TestDatabaseIntegration:
         for hour in range(24):
             for minute in [0, 15, 30, 45]:  # 4 events per hour
                 timestamp = base_time + timedelta(hours=hour, minutes=minute)
-                state = "on" if (hour + minute // 15) % 2 == 0 else "off"
+                state = "on" if (hour + minute // 15) % 2 == 0 else "of"
 
                 event = SensorEvent(
                     room_id=room_id,
                     sensor_id="binary_sensor.timeseries_test",
                     sensor_type="motion",
                     state=state,
-                    previous_state="off" if state == "on" else "on",
+                    previous_state="of" if state == "on" else "on",
                     timestamp=timestamp,
                     is_human_triggered=True,
-                    confidence_score=0.8 + (hour % 10) * 0.02,  # Varying confidence
+                    confidence_score=0.8
+                    + (hour % 10) * 0.02,  # Varying confidence
                 )
                 events.append(event)
 
@@ -462,9 +471,9 @@ class TestDatabaseIntegration:
                 func.date_trunc("hour", SensorEvent.timestamp).label("hour"),
                 func.count().label("event_count"),
                 func.avg(SensorEvent.confidence_score).label("avg_confidence"),
-                func.sum(func.case((SensorEvent.state == "on", 1), else_=0)).label(
-                    "on_events"
-                ),
+                func.sum(
+                    func.case((SensorEvent.state == "on", 1), else_=0)
+                ).label("on_events"),
             )
             .where(SensorEvent.room_id == room_id)
             .group_by(func.date_trunc("hour", SensorEvent.timestamp))
@@ -478,7 +487,9 @@ class TestDatabaseIntegration:
 
         for stat in hourly_stats:
             assert stat.event_count == 4  # 4 events per hour
-            assert 0.8 <= stat.avg_confidence <= 1.0  # Confidence in expected range
+            assert (
+                0.8 <= stat.avg_confidence <= 1.0
+            )  # Confidence in expected range
             assert 0 <= stat.on_events <= 4  # On events count
 
         # Test recent activity query
@@ -486,7 +497,8 @@ class TestDatabaseIntegration:
             select(SensorEvent)
             .where(
                 SensorEvent.room_id == room_id,
-                SensorEvent.timestamp >= datetime.utcnow() - timedelta(hours=2),
+                SensorEvent.timestamp
+                >= datetime.utcnow() - timedelta(hours=2),
             )
             .order_by(SensorEvent.timestamp.desc())
         )
@@ -575,7 +587,7 @@ class TestDatabaseIntegration:
                         room_id=room_id,
                         sensor_id=f"binary_sensor.concurrent_{session_id}_{i}",
                         sensor_type="motion",
-                        state="on" if i % 2 == 0 else "off",
+                        state="on" if i % 2 == 0 else "of",
                         timestamp=datetime.utcnow() - timedelta(minutes=i),
                         confidence_score=0.8,
                     )
@@ -631,8 +643,8 @@ class TestDatabasePerformance:
                 room_id=room_id,
                 sensor_id=f"binary_sensor.perf_test_{i % 10}",  # 10 different sensors
                 sensor_type="motion",
-                state="on" if i % 2 == 0 else "off",
-                previous_state="off" if i % 2 == 0 else "on",
+                state="on" if i % 2 == 0 else "of",
+                previous_state="of" if i % 2 == 0 else "on",
                 timestamp=base_time + timedelta(seconds=i * 10),
                 attributes={"test_id": i, "batch": "performance"},
                 is_human_triggered=True,
@@ -659,7 +671,9 @@ class TestDatabasePerformance:
         # Performance should be reasonable (less than 5 seconds for 1000 events)
         assert insert_time < 5.0
 
-        print(f"Bulk insert of {event_count} events took {insert_time:.2f} seconds")
+        print(
+            f"Bulk insert of {event_count} events took {insert_time:.2f} seconds"
+        )
         print(f"Rate: {event_count / insert_time:.0f} events/second")
 
     @pytest.mark.asyncio
@@ -684,7 +698,9 @@ class TestDatabasePerformance:
                         room_id=room_id,
                         sensor_id=f"binary_sensor.sensor_{hour % 3}",
                         sensor_type="motion",
-                        state="on" if (hour + minute // 15) % 2 == 0 else "off",
+                        state=(
+                            "on" if (hour + minute // 15) % 2 == 0 else "of"
+                        ),
                         timestamp=timestamp,
                         confidence_score=0.7 + (hour % 10) * 0.03,
                     )
@@ -703,16 +719,20 @@ class TestDatabasePerformance:
                 func.date_trunc("day", SensorEvent.timestamp).label("day"),
                 SensorEvent.sensor_id,
                 func.count().label("total_events"),
-                func.sum(func.case((SensorEvent.state == "on", 1), else_=0)).label(
-                    "on_events"
-                ),
+                func.sum(
+                    func.case((SensorEvent.state == "on", 1), else_=0)
+                ).label("on_events"),
                 func.avg(SensorEvent.confidence_score).label("avg_confidence"),
                 func.min(SensorEvent.timestamp).label("first_event"),
                 func.max(SensorEvent.timestamp).label("last_event"),
             )
-            .where(SensorEvent.room_id == room_id, SensorEvent.timestamp >= base_time)
+            .where(
+                SensorEvent.room_id == room_id,
+                SensorEvent.timestamp >= base_time,
+            )
             .group_by(
-                func.date_trunc("day", SensorEvent.timestamp), SensorEvent.sensor_id
+                func.date_trunc("day", SensorEvent.timestamp),
+                SensorEvent.sensor_id,
             )
             .order_by("day", SensorEvent.sensor_id)
         )

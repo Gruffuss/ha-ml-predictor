@@ -29,7 +29,8 @@ from typing import List, Optional
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -256,7 +257,9 @@ def main():
     )
 
     parser.add_argument(
-        "--integration-only", action="store_true", help="Run only integration tests"
+        "--integration-only",
+        action="store_true",
+        help="Run only integration tests",
     )
 
     parser.add_argument(
@@ -264,11 +267,15 @@ def main():
     )
 
     parser.add_argument(
-        "--performance-only", action="store_true", help="Run only performance tests"
+        "--performance-only",
+        action="store_true",
+        help="Run only performance tests",
     )
 
     parser.add_argument(
-        "--with-coverage", action="store_true", help="Run tests with coverage reporting"
+        "--with-coverage",
+        action="store_true",
+        help="Run tests with coverage reporting",
     )
 
     parser.add_argument(
@@ -288,7 +295,9 @@ def main():
     )
 
     parser.add_argument(
-        "--report", action="store_true", help="Generate comprehensive test report"
+        "--report",
+        action="store_true",
+        help="Generate comprehensive test report",
     )
 
     args = parser.parse_args()

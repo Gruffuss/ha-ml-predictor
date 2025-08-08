@@ -22,7 +22,6 @@ from datetime import datetime, timedelta
 from enum import Enum
 import json
 import logging
-from typing import Any, Callable, Dict, List, Optional, Set, Union
 import uuid
 import weakref
 
@@ -84,7 +83,9 @@ class PublishingMetrics:
 
     def __post_init__(self):
         if self.channel_errors is None:
-            self.channel_errors = {channel.value: 0 for channel in PublishingChannel}
+            self.channel_errors = {
+                channel.value: 0 for channel in PublishingChannel
+            }
 
 
 @dataclass
@@ -169,7 +170,9 @@ class WebSocketConnectionManager:
         if client_id in self.client_metadata:
             self.client_metadata[client_id].room_subscriptions.discard(room_id)
             self.client_metadata[client_id].update_activity()
-            logger.debug(f"Client {client_id} unsubscribed from room {room_id}")
+            logger.debug(
+                f"Client {client_id} unsubscribed from room {room_id}"
+            )
 
     async def broadcast_to_room(
         self, room_id: str, event: RealtimePredictionEvent
@@ -242,11 +245,17 @@ class WebSocketConnectionManager:
                 )
             },
             "oldest_connection": min(
-                (client.connected_at for client in self.client_metadata.values()),
+                (
+                    client.connected_at
+                    for client in self.client_metadata.values()
+                ),
                 default=None,
             ),
             "most_recent_activity": max(
-                (client.last_activity for client in self.client_metadata.values()),
+                (
+                    client.last_activity
+                    for client in self.client_metadata.values()
+                ),
                 default=None,
             ),
         }
@@ -260,7 +269,9 @@ class SSEConnectionManager:
         self.client_metadata: Dict[str, ClientConnection] = {}
         self._lock = asyncio.Lock()
 
-    async def connect(self, client_id: str = None) -> tuple[str, asyncio.Queue]:
+    async def connect(
+        self, client_id: str = None
+    ) -> tuple[str, asyncio.Queue]:
         """Register a new SSE connection."""
         if client_id is None:
             client_id = str(uuid.uuid4())
@@ -296,7 +307,9 @@ class SSEConnectionManager:
         if client_id in self.client_metadata:
             self.client_metadata[client_id].room_subscriptions.add(room_id)
             self.client_metadata[client_id].update_activity()
-            logger.debug(f"SSE client {client_id} subscribed to room {room_id}")
+            logger.debug(
+                f"SSE client {client_id} subscribed to room {room_id}"
+            )
 
     async def broadcast_to_room(
         self, room_id: str, event: RealtimePredictionEvent
@@ -369,11 +382,17 @@ class SSEConnectionManager:
                 )
             },
             "oldest_connection": min(
-                (client.connected_at for client in self.client_metadata.values()),
+                (
+                    client.connected_at
+                    for client in self.client_metadata.values()
+                ),
                 default=None,
             ),
             "most_recent_activity": max(
-                (client.last_activity for client in self.client_metadata.values()),
+                (
+                    client.last_activity
+                    for client in self.client_metadata.values()
+                ),
                 default=None,
             ),
         }
@@ -437,7 +456,7 @@ class RealtimePublishingSystem:
         self._broadcast_callbacks: List[Callable] = []
 
         logger.info(
-            f"Initialized RealtimePublishingSystem with channels: "
+            "Initialized RealtimePublishingSystem with channels: "
             f"{[channel.value for channel in self.enabled_channels]}"
         )
 
@@ -445,7 +464,9 @@ class RealtimePublishingSystem:
         """Initialize the real-time publishing system."""
         try:
             # Start background tasks
-            cleanup_task = asyncio.create_task(self._cleanup_stale_connections())
+            cleanup_task = asyncio.create_task(
+                self._cleanup_stale_connections()
+            )
             self._background_tasks.append(cleanup_task)
 
             metrics_task = asyncio.create_task(self._update_metrics_loop())
@@ -455,8 +476,12 @@ class RealtimePublishingSystem:
             logger.info("Real-time publishing system initialized")
 
         except Exception as e:
-            logger.error(f"Failed to initialize real-time publishing system: {e}")
-            raise RealtimePublishingError("Failed to initialize system", cause=e)
+            logger.error(
+                f"Failed to initialize real-time publishing system: {e}"
+            )
+            raise RealtimePublishingError(
+                "Failed to initialize system", cause=e
+            )
 
     async def shutdown(self) -> None:
         """Shutdown the real-time publishing system."""
@@ -468,7 +493,9 @@ class RealtimePublishingSystem:
             if self._background_tasks:
                 for task in self._background_tasks:
                     task.cancel()
-                await asyncio.gather(*self._background_tasks, return_exceptions=True)
+                await asyncio.gather(
+                    *self._background_tasks, return_exceptions=True
+                )
 
             # Close all connections
             await self._close_all_connections()
@@ -517,8 +544,10 @@ class RealtimePublishingSystem:
                 and self.prediction_publisher is not None
             ):
                 try:
-                    mqtt_result = await self.prediction_publisher.publish_prediction(
-                        prediction_result, room_id, current_state
+                    mqtt_result = (
+                        await self.prediction_publisher.publish_prediction(
+                            prediction_result, room_id, current_state
+                        )
                     )
                     results["mqtt"] = {
                         "success": mqtt_result.success,
@@ -552,8 +581,13 @@ class RealtimePublishingSystem:
             # Publish to SSE if enabled
             if PublishingChannel.SSE in self.enabled_channels:
                 try:
-                    sse_sent = await self.sse_manager.broadcast_to_room(room_id, event)
-                    results["sse"] = {"success": True, "clients_notified": sse_sent}
+                    sse_sent = await self.sse_manager.broadcast_to_room(
+                        room_id, event
+                    )
+                    results["sse"] = {
+                        "success": True,
+                        "clients_notified": sse_sent,
+                    }
                     self.metrics.sse_publishes += sse_sent
                 except Exception as e:
                     logger.error(f"SSE publish failed: {e}")
@@ -610,7 +644,9 @@ class RealtimePublishingSystem:
             # Broadcast to all WebSocket clients
             if PublishingChannel.WEBSOCKET in self.enabled_channels:
                 try:
-                    ws_sent = await self.websocket_manager.broadcast_to_all(event)
+                    ws_sent = await self.websocket_manager.broadcast_to_all(
+                        event
+                    )
                     results["websocket"] = {
                         "success": True,
                         "clients_notified": ws_sent,
@@ -623,12 +659,17 @@ class RealtimePublishingSystem:
             if PublishingChannel.SSE in self.enabled_channels:
                 try:
                     sse_sent = await self.sse_manager.broadcast_to_all(event)
-                    results["sse"] = {"success": True, "clients_notified": sse_sent}
+                    results["sse"] = {
+                        "success": True,
+                        "clients_notified": sse_sent,
+                    }
                 except Exception as e:
                     logger.error(f"SSE status broadcast failed: {e}")
                     results["sse"] = {"success": False, "error": str(e)}
 
-            logger.debug(f"Published system status across {len(results)} channels")
+            logger.debug(
+                f"Published system status across {len(results)} channels"
+            )
 
         except Exception as e:
             logger.error(f"Error publishing system status: {e}")
@@ -666,7 +707,9 @@ class RealtimePublishingSystem:
                     data = json.loads(message)
                     await self._handle_websocket_message(client_id, data)
                 except json.JSONDecodeError:
-                    logger.warning(f"Invalid JSON from WebSocket client {client_id}")
+                    logger.warning(
+                        f"Invalid JSON from WebSocket client {client_id}"
+                    )
                 except Exception as e:
                     logger.error(
                         f"Error handling WebSocket message from {client_id}: {e}"
@@ -692,12 +735,14 @@ class RealtimePublishingSystem:
             try:
                 # Subscribe to room if specified
                 if room_id:
-                    await self.sse_manager.subscribe_to_room(client_id, room_id)
+                    await self.sse_manager.subscribe_to_room(
+                        client_id, room_id
+                    )
 
                 # Send initial connection message
                 yield (
                     f"id: {uuid.uuid4()}\n"
-                    f"event: connection\n"
+                    "event: connection\n"
                     f"data: {json.dumps({'message': 'Connected to real-time predictions', 'client_id': client_id})}\n\n"
                 )
 
@@ -705,7 +750,9 @@ class RealtimePublishingSystem:
                 while True:
                     try:
                         # Wait for event with timeout to allow periodic keepalives
-                        message = await asyncio.wait_for(queue.get(), timeout=30.0)
+                        message = await asyncio.wait_for(
+                            queue.get(), timeout=30.0
+                        )
                         yield message
                     except asyncio.TimeoutError:
                         # Send keepalive
@@ -714,7 +761,9 @@ class RealtimePublishingSystem:
             except asyncio.CancelledError:
                 logger.debug(f"SSE stream cancelled for client {client_id}")
             except Exception as e:
-                logger.error(f"Error in SSE stream for client {client_id}: {e}")
+                logger.error(
+                    f"Error in SSE stream for client {client_id}: {e}"
+                )
             finally:
                 await self.sse_manager.disconnect(client_id)
 
@@ -751,7 +800,9 @@ class RealtimePublishingSystem:
 
         return {
             "system_active": self._publishing_active,
-            "enabled_channels": [channel.value for channel in self.enabled_channels],
+            "enabled_channels": [
+                channel.value for channel in self.enabled_channels
+            ],
             "metrics": asdict(self.metrics),
             "uptime_seconds": (
                 datetime.utcnow() - self.system_start_time
@@ -795,9 +846,9 @@ class RealtimePublishingSystem:
                     "predicted_time": alt_time.isoformat(),
                     "confidence": float(alt_confidence),
                 }
-                for alt_time, alt_confidence in (prediction_result.alternatives or [])[
-                    :3
-                ]
+                for alt_time, alt_confidence in (
+                    prediction_result.alternatives or []
+                )[:3]
             ],
             "features_used": len(prediction_result.features_used or []),
             "prediction_metadata": prediction_result.prediction_metadata,
@@ -814,7 +865,9 @@ class RealtimePublishingSystem:
             if message_type == "subscribe":
                 room_id = message_data.get("room_id")
                 if room_id and room_id in self.rooms:
-                    await self.websocket_manager.subscribe_to_room(client_id, room_id)
+                    await self.websocket_manager.subscribe_to_room(
+                        client_id, room_id
+                    )
 
                     # Send subscription confirmation
                     response = RealtimePredictionEvent(
@@ -828,7 +881,9 @@ class RealtimePublishingSystem:
                         },
                     )
 
-                    websocket = self.websocket_manager.connections.get(client_id)
+                    websocket = self.websocket_manager.connections.get(
+                        client_id
+                    )
                     if websocket:
                         await websocket.send(response.to_websocket_message())
 
@@ -851,7 +906,9 @@ class RealtimePublishingSystem:
                         },
                     )
 
-                    websocket = self.websocket_manager.connections.get(client_id)
+                    websocket = self.websocket_manager.connections.get(
+                        client_id
+                    )
                     if websocket:
                         await websocket.send(response.to_websocket_message())
 
@@ -870,7 +927,9 @@ class RealtimePublishingSystem:
                     await websocket.send(response.to_websocket_message())
 
         except Exception as e:
-            logger.error(f"Error handling WebSocket message from {client_id}: {e}")
+            logger.error(
+                f"Error handling WebSocket message from {client_id}: {e}"
+            )
 
     def _format_time_until(self, seconds: int) -> str:
         """Format seconds into human readable time."""
@@ -909,7 +968,9 @@ class RealtimePublishingSystem:
 
                 for client_id in stale_ws_connections:
                     await self.websocket_manager.disconnect(client_id)
-                    logger.debug(f"Cleaned up stale WebSocket connection: {client_id}")
+                    logger.debug(
+                        f"Cleaned up stale WebSocket connection: {client_id}"
+                    )
 
                 # Clean up stale SSE connections
                 stale_sse_connections = [
@@ -920,7 +981,9 @@ class RealtimePublishingSystem:
 
                 for client_id in stale_sse_connections:
                     await self.sse_manager.disconnect(client_id)
-                    logger.debug(f"Cleaned up stale SSE connection: {client_id}")
+                    logger.debug(
+                        f"Cleaned up stale SSE connection: {client_id}"
+                    )
 
                 # Wait before next cleanup
                 await asyncio.wait_for(
@@ -941,7 +1004,9 @@ class RealtimePublishingSystem:
                 self.metrics.active_websocket_connections = len(
                     self.websocket_manager.connections
                 )
-                self.metrics.active_sse_connections = len(self.sse_manager.connections)
+                self.metrics.active_sse_connections = len(
+                    self.sse_manager.connections
+                )
 
                 # Wait before next update
                 await asyncio.wait_for(

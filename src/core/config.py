@@ -245,7 +245,9 @@ class ConfigLoader:
     def __init__(self, config_dir: str = "config"):
         self.config_dir = Path(config_dir)
         if not self.config_dir.exists():
-            raise FileNotFoundError(f"Configuration directory not found: {config_dir}")
+            raise FileNotFoundError(
+                f"Configuration directory not found: {config_dir}"
+            )
 
     def load_config(self) -> SystemConfig:
         """Load complete system configuration."""
@@ -269,10 +271,15 @@ class ConfigLoader:
         rooms = {}
         for room_id, room_data in rooms_config["rooms"].items():
             # Handle nested room structure (like hallways)
-            if any(isinstance(v, dict) and "name" in v for v in room_data.values()):
+            if any(
+                isinstance(v, dict) and "name" in v for v in room_data.values()
+            ):
                 # This is a nested structure like hallways
                 for sub_room_id, sub_room_data in room_data.items():
-                    if isinstance(sub_room_data, dict) and "name" in sub_room_data:
+                    if (
+                        isinstance(sub_room_data, dict)
+                        and "name" in sub_room_data
+                    ):
                         full_room_id = f"{room_id}_{sub_room_id}"
                         rooms[full_room_id] = RoomConfig(
                             room_id=full_room_id,
@@ -283,7 +290,9 @@ class ConfigLoader:
                 # Regular room structure
                 rooms[room_id] = RoomConfig(
                     room_id=room_id,
-                    name=room_data.get("name", room_id.replace("_", " ").title()),
+                    name=room_data.get(
+                        "name", room_id.replace("_", " ").title()
+                    ),
                     sensors=room_data.get("sensors", {}),
                 )
 
@@ -303,7 +312,9 @@ class ConfigLoader:
         """Load YAML file from config directory."""
         file_path = self.config_dir / filename
         if not file_path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {file_path}")
+            raise FileNotFoundError(
+                f"Configuration file not found: {file_path}"
+            )
 
         with open(file_path, "r", encoding="utf-8") as file:
             return yaml.safe_load(file)

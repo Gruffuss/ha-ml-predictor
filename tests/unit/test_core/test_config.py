@@ -33,7 +33,9 @@ class TestHomeAssistantConfig:
 
     def test_default_values(self):
         """Test default values are set correctly."""
-        config = HomeAssistantConfig(url="http://test:8123", token="test_token")
+        config = HomeAssistantConfig(
+            url="http://test:8123", token="test_token"
+        )
         assert config.url == "http://test:8123"
         assert config.token == "test_token"
         assert config.websocket_timeout == 30
@@ -155,7 +157,9 @@ class TestRoomConfig:
         )
         assert config.room_id == "test_room"
         assert config.name == "Test Room"
-        assert config.sensors["presence"]["main"] == "binary_sensor.test_presence"
+        assert (
+            config.sensors["presence"]["main"] == "binary_sensor.test_presence"
+        )
         assert config.sensors["door"] == "binary_sensor.test_door"
 
     def test_get_all_entity_ids(self):
@@ -236,7 +240,9 @@ class TestSystemConfig:
 
     def test_system_config_creation(self):
         """Test SystemConfig creation with all components."""
-        ha_config = HomeAssistantConfig(url="http://test:8123", token="test_token")
+        ha_config = HomeAssistantConfig(
+            url="http://test:8123", token="test_token"
+        )
         db_config = DatabaseConfig(connection_string="postgresql://test")
         mqtt_config = MQTTConfig(broker="localhost")
         pred_config = PredictionConfig()
@@ -353,7 +359,9 @@ class TestSystemConfig:
             sensors={"presence": {"main": "binary_sensor.room1_presence"}},
         )
         room2 = RoomConfig(
-            room_id="room2", name="Room 2", sensors={"door": "binary_sensor.room2_door"}
+            room_id="room2",
+            name="Room 2",
+            sensors={"door": "binary_sensor.room2_door"},
         )
 
         system_config = SystemConfig(
@@ -372,11 +380,15 @@ class TestSystemConfig:
         )
         assert found_room1 == room1
 
-        found_room2 = system_config.get_room_by_entity_id("binary_sensor.room2_door")
+        found_room2 = system_config.get_room_by_entity_id(
+            "binary_sensor.room2_door"
+        )
         assert found_room2 == room2
 
         # Test non-existent entity
-        not_found = system_config.get_room_by_entity_id("binary_sensor.nonexistent")
+        not_found = system_config.get_room_by_entity_id(
+            "binary_sensor.nonexistent"
+        )
         assert not_found is None
 
 
@@ -411,7 +423,8 @@ class TestConfigLoader:
         assert config.home_assistant.url == "http://test-ha:8123"
         assert config.home_assistant.token == "test_token_12345"
         assert (
-            config.database.connection_string == "postgresql+asyncpg://localhost/testdb"
+            config.database.connection_string
+            == "postgresql+asyncpg://localhost/testdb"
         )
         assert config.mqtt.broker == "test-mqtt"
 
@@ -448,7 +461,9 @@ class TestConfigLoader:
             # Create main config
             main_config = {
                 "home_assistant": {"url": "http://test:8123", "token": "test"},
-                "database": {"connection_string": "postgresql://localhost/testdb"},
+                "database": {
+                    "connection_string": "postgresql://localhost/testdb"
+                },
                 "mqtt": {"broker": "test"},
                 "prediction": {},
                 "features": {},
@@ -461,11 +476,15 @@ class TestConfigLoader:
                     "hallways": {
                         "ground_floor": {
                             "name": "Ground Floor Hallway",
-                            "sensors": {"presence": "binary_sensor.ground_hallway"},
+                            "sensors": {
+                                "presence": "binary_sensor.ground_hallway"
+                            },
                         },
                         "upper": {
                             "name": "Upper Hallway",
-                            "sensors": {"presence": "binary_sensor.upper_hallway"},
+                            "sensors": {
+                                "presence": "binary_sensor.upper_hallway"
+                            },
                         },
                     },
                     "living_room": {
@@ -489,7 +508,10 @@ class TestConfigLoader:
             assert "hallways_upper" in config.rooms
             assert "living_room" in config.rooms
 
-            assert config.rooms["hallways_ground_floor"].name == "Ground Floor Hallway"
+            assert (
+                config.rooms["hallways_ground_floor"].name
+                == "Ground Floor Hallway"
+            )
             assert config.rooms["hallways_upper"].name == "Upper Hallway"
             assert config.rooms["living_room"].name == "Living Room"
 
@@ -613,7 +635,9 @@ class TestConfigValidation:
 
             main_config = {
                 "home_assistant": {"url": "http://test:8123", "token": "test"},
-                "database": {"connection_string": "postgresql://localhost/testdb"},
+                "database": {
+                    "connection_string": "postgresql://localhost/testdb"
+                },
                 "mqtt": {"broker": "test"},
                 "prediction": {},
                 "features": {},
@@ -622,7 +646,11 @@ class TestConfigValidation:
 
             # Room without explicit name should get auto-generated name
             rooms_config = {
-                "rooms": {"test_room": {"sensors": {"presence": "binary_sensor.test"}}}
+                "rooms": {
+                    "test_room": {
+                        "sensors": {"presence": "binary_sensor.test"}
+                    }
+                }
             }
 
             with open(config_dir / "config.yaml", "w") as f:

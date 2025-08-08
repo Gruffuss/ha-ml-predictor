@@ -2,14 +2,13 @@
 Contextual feature extraction for occupancy prediction.
 
 This module extracts environmental and contextual features from sensor data,
-including temperature, humidity, lighting conditions, door states, and 
+including temperature, humidity, lighting conditions, door states, and
 multi-room occupancy correlations.
 """
 
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
 import logging
-from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
 import statistics
@@ -57,7 +56,11 @@ class ContextualFeatureExtractor:
             "humid": 70.0,
         }
 
-        self.light_thresholds = {"dark": 100.0, "dim": 300.0, "bright": 1000.0}  # Lux
+        self.light_thresholds = {
+            "dark": 100.0,
+            "dim": 300.0,
+            "bright": 1000.0,
+        }  # Lux
 
     def extract_features(
         self,
@@ -98,7 +101,9 @@ class ContextualFeatureExtractor:
 
             # Environmental condition features
             features.update(
-                self._extract_environmental_features(recent_events, target_time)
+                self._extract_environmental_features(
+                    recent_events, target_time
+                )
             )
 
             # Door state and transition features
@@ -117,7 +122,9 @@ class ContextualFeatureExtractor:
             features.update(self._extract_seasonal_features(target_time))
 
             # Cross-sensor correlation features
-            features.update(self._extract_sensor_correlation_features(recent_events))
+            features.update(
+                self._extract_sensor_correlation_features(recent_events)
+            )
 
             # External context features (if available)
             if room_configs:
@@ -131,7 +138,9 @@ class ContextualFeatureExtractor:
 
         except Exception as e:
             logger.error(f"Failed to extract contextual features: {e}")
-            raise FeatureExtractionError(f"Contextual feature extraction failed: {e}")
+            raise FeatureExtractionError(
+                f"Contextual feature extraction failed: {e}"
+            )
 
     def _extract_environmental_features(
         self, events: List[SensorEvent], target_time: datetime
@@ -140,7 +149,12 @@ class ContextualFeatureExtractor:
         features = {}
 
         # Group events by sensor type
-        env_events = {"temperature": [], "humidity": [], "light": [], "climate": []}
+        env_events = {
+            "temperature": [],
+            "humidity": [],
+            "light": [],
+            "climate": [],
+        }
 
         for event in events:
             sensor_type = event.sensor_type.lower()
@@ -150,7 +164,10 @@ class ContextualFeatureExtractor:
                 env_events["temperature"].append(event)
             elif "humidity" in event.sensor_id.lower():
                 env_events["humidity"].append(event)
-            elif "light" in event.sensor_id.lower() or "lux" in event.sensor_id.lower():
+            elif (
+                "light" in event.sensor_id.lower()
+                or "lux" in event.sensor_id.lower()
+            ):
                 env_events["light"].append(event)
 
         # Temperature features
@@ -162,7 +179,9 @@ class ContextualFeatureExtractor:
             features["avg_temperature"] = statistics.mean(temp_values)
             features["temperature_trend"] = self._calculate_trend(temp_values)
             features["temperature_variance"] = (
-                statistics.variance(temp_values) if len(temp_values) > 1 else 0.0
+                statistics.variance(temp_values)
+                if len(temp_values) > 1
+                else 0.0
             )
 
             # Temperature comfort zones
@@ -205,11 +224,17 @@ class ContextualFeatureExtractor:
             features["humidity_trend"] = self._calculate_trend(humidity_values)
         else:
             features.update(
-                {"current_humidity": 50.0, "avg_humidity": 50.0, "humidity_trend": 0.0}
+                {
+                    "current_humidity": 50.0,
+                    "avg_humidity": 50.0,
+                    "humidity_trend": 0.0,
+                }
             )
 
         # Light/illuminance features
-        light_values = self._extract_numeric_values(env_events["light"], "illuminance")
+        light_values = self._extract_numeric_values(
+            env_events["light"], "illuminance"
+        )
         if light_values:
             features["current_light"] = light_values[-1]
             features["avg_light"] = statistics.mean(light_values)
@@ -230,7 +255,9 @@ class ContextualFeatureExtractor:
                 else 0.0
             )
             features["is_bright"] = (
-                1.0 if current_light >= self.light_thresholds["bright"] else 0.0
+                1.0
+                if current_light >= self.light_thresholds["bright"]
+                else 0.0
             )
         else:
             features.update(
@@ -274,7 +301,9 @@ class ContextualFeatureExtractor:
         door_transitions = 0
 
         for door_id in set(e.sensor_id for e in door_events):
-            door_specific_events = [e for e in door_events if e.sensor_id == door_id]
+            door_specific_events = [
+                e for e in door_events if e.sensor_id == door_id
+            ]
             door_specific_events.sort(key=lambda x: x.timestamp)
 
             if door_specific_events:
@@ -290,8 +319,14 @@ class ContextualFeatureExtractor:
 
                 for event in door_specific_events:
                     if event.state != previous_state:
-                        if previous_state is not None and state_start_time is not None:
-                            if previous_state == "on" or previous_state == "open":
+                        if (
+                            previous_state is not None
+                            and state_start_time is not None
+                        ):
+                            if (
+                                previous_state == "on"
+                                or previous_state == "open"
+                            ):
                                 duration = (
                                     event.timestamp - state_start_time
                                 ).total_seconds()
@@ -310,12 +345,16 @@ class ContextualFeatureExtractor:
         )
         features["door_transition_count"] = door_transitions
         features["avg_door_open_duration"] = (
-            statistics.mean(door_open_durations) if door_open_durations else 0.0
+            statistics.mean(door_open_durations)
+            if door_open_durations
+            else 0.0
         )
 
         # Recent door activity (last 1 hour)
         recent_cutoff = target_time - timedelta(hours=1)
-        recent_door_events = [e for e in door_events if e.timestamp >= recent_cutoff]
+        recent_door_events = [
+            e for e in door_events if e.timestamp >= recent_cutoff
+        ]
         features["recent_door_activity"] = len(recent_door_events)
 
         return features
@@ -361,7 +400,9 @@ class ContextualFeatureExtractor:
         # Simultaneous occupancy ratio
         occupied_rooms = sum(current_occupancy.values())
         features["simultaneous_occupancy_ratio"] = (
-            occupied_rooms / len(current_occupancy) if current_occupancy else 0.0
+            occupied_rooms / len(current_occupancy)
+            if current_occupancy
+            else 0.0
         )
 
         # Room activity correlation (events happening in multiple rooms within time windows)
@@ -401,7 +442,9 @@ class ContextualFeatureExtractor:
 
         return features
 
-    def _extract_seasonal_features(self, target_time: datetime) -> Dict[str, float]:
+    def _extract_seasonal_features(
+        self, target_time: datetime
+    ) -> Dict[str, float]:
         """Extract seasonal and external context features."""
         features = {}
 
@@ -417,17 +460,25 @@ class ContextualFeatureExtractor:
         # Holiday indicators (simplified)
         day = target_time.day
         features["is_holiday_season"] = (
-            1.0 if (month == 12 and day >= 20) or (month == 1 and day <= 7) else 0.0
+            1.0
+            if (month == 12 and day >= 20) or (month == 1 and day <= 7)
+            else 0.0
         )
 
         # Natural light patterns (approximate)
         hour = target_time.hour
         if month in [6, 7, 8]:  # Summer
-            features["natural_light_available"] = 1.0 if 5 <= hour <= 20 else 0.0
+            features["natural_light_available"] = (
+                1.0 if 5 <= hour <= 20 else 0.0
+            )
         elif month in [12, 1, 2]:  # Winter
-            features["natural_light_available"] = 1.0 if 7 <= hour <= 17 else 0.0
+            features["natural_light_available"] = (
+                1.0 if 7 <= hour <= 17 else 0.0
+            )
         else:  # Spring/Autumn
-            features["natural_light_available"] = 1.0 if 6 <= hour <= 19 else 0.0
+            features["natural_light_available"] = (
+                1.0 if 6 <= hour <= 19 else 0.0
+            )
 
         return features
 
@@ -451,18 +502,24 @@ class ContextualFeatureExtractor:
         for event in events:
             window_start = event.timestamp - timedelta(seconds=window_size)
             window_events = [
-                e for e in events if window_start <= e.timestamp <= event.timestamp
+                e
+                for e in events
+                if window_start <= e.timestamp <= event.timestamp
             ]
 
             unique_sensors = len(set(e.sensor_id for e in window_events))
             correlation_windows.append(unique_sensors)
 
         features["sensor_activation_correlation"] = (
-            statistics.mean(correlation_windows) if correlation_windows else 0.0
+            statistics.mean(correlation_windows)
+            if correlation_windows
+            else 0.0
         )
 
         # Multi-sensor event ratio (events with multiple sensors active simultaneously)
-        multi_sensor_events = sum(1 for count in correlation_windows if count > 1)
+        multi_sensor_events = sum(
+            1 for count in correlation_windows if count > 1
+        )
         features["multi_sensor_event_ratio"] = (
             multi_sensor_events / len(correlation_windows)
             if correlation_windows
@@ -496,7 +553,9 @@ class ContextualFeatureExtractor:
 
         if room_sensor_counts:
             # Estimate room complexity from sensor diversity
-            max_sensor_types = max(len(types) for types in room_sensor_types.values())
+            max_sensor_types = max(
+                len(types) for types in room_sensor_types.values()
+            )
             avg_sensor_types = statistics.mean(
                 [len(types) for types in room_sensor_types.values()]
             )
@@ -566,7 +625,9 @@ class ContextualFeatureExtractor:
         x_mean = statistics.mean(x)
         y_mean = statistics.mean(values)
 
-        numerator = sum((x[i] - x_mean) * (values[i] - y_mean) for i in range(n))
+        numerator = sum(
+            (x[i] - x_mean) * (values[i] - y_mean) for i in range(n)
+        )
         denominator = sum((x[i] - x_mean) ** 2 for i in range(n))
 
         return numerator / denominator if denominator != 0 else 0.0

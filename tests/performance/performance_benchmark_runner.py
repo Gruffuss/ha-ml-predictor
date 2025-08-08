@@ -6,7 +6,7 @@ comprehensive performance validation and reporting.
 
 Features:
 - Centralized benchmark execution
-- Performance regression detection  
+- Performance regression detection
 - Comprehensive reporting with metrics
 - Performance baseline establishment
 - CI/CD integration support
@@ -19,7 +19,6 @@ import json
 from pathlib import Path
 import time
 import traceback
-from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -27,13 +26,17 @@ import pytest
 import statistics
 
 try:
-    from .test_feature_computation import benchmark_feature_computation_performance
+    from .test_feature_computation import (
+        benchmark_feature_computation_performance,
+    )
     from .test_memory_profiling import benchmark_memory_performance
     from .test_prediction_latency import benchmark_prediction_performance
     from .test_throughput import benchmark_system_throughput
 except ImportError:
     # Handle case when running as script
-    from test_feature_computation import benchmark_feature_computation_performance
+    from test_feature_computation import (
+        benchmark_feature_computation_performance,
+    )
     from test_memory_profiling import benchmark_memory_performance
     from test_prediction_latency import benchmark_prediction_performance
     from test_throughput import benchmark_system_throughput
@@ -102,7 +105,9 @@ class PerformanceBenchmarkRunner:
             with open(baseline_file, "r") as f:
                 return json.load(f)
         except FileNotFoundError:
-            print(f"Baseline file {baseline_file} not found. Will create new baseline.")
+            print(
+                f"Baseline file {baseline_file} not found. Will create new baseline."
+            )
             return {}
         except json.JSONDecodeError as e:
             print(f"Error loading baseline file: {e}")
@@ -248,7 +253,9 @@ class PerformanceBenchmarkRunner:
                 "execution_time_ms": execution_time,
                 "status": (
                     "passed"
-                    if self._validate_throughput_requirements(throughput_metrics)
+                    if self._validate_throughput_requirements(
+                        throughput_metrics
+                    )
                     else "failed"
                 ),
                 "timestamp": datetime.now().isoformat(),
@@ -324,7 +331,9 @@ class PerformanceBenchmarkRunner:
         await self.run_throughput_benchmarks()
         await self.run_memory_profiling_benchmarks()
 
-        overall_execution_time = (time.perf_counter() - overall_start_time) * 1000
+        overall_execution_time = (
+            time.perf_counter() - overall_start_time
+        ) * 1000
 
         # Generate comprehensive report
         report = self._generate_comprehensive_report(overall_execution_time)
@@ -332,7 +341,7 @@ class PerformanceBenchmarkRunner:
         # Save detailed report
         report_file = (
             self.report_dir
-            / f"performance_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            / f"performance_report_{datetime.now().strftime('%Y % m%d_ % H%M % S')}.json"
         )
         with open(report_file, "w") as f:
             json.dump(report, f, indent=2, default=str)
@@ -389,7 +398,10 @@ class PerformanceBenchmarkRunner:
     def _perform_regression_analysis(self) -> Dict[str, Any]:
         """Perform regression analysis against baseline metrics."""
         if not self.baseline_metrics:
-            return {"status": "no_baseline", "message": "No baseline metrics available"}
+            return {
+                "status": "no_baseline",
+                "message": "No baseline metrics available",
+            }
 
         regression_analysis = {}
 
@@ -399,8 +411,10 @@ class PerformanceBenchmarkRunner:
                 current_metrics = current_results.get("metrics", {})
                 baseline_metrics = baseline_data.get("metrics", {})
 
-                regression_analysis[category] = self._analyze_category_regression(
-                    current_metrics, baseline_metrics
+                regression_analysis[category] = (
+                    self._analyze_category_regression(
+                        current_metrics, baseline_metrics
+                    )
                 )
 
         return regression_analysis
@@ -428,9 +442,14 @@ class PerformanceBenchmarkRunner:
                         (current_value - baseline_value) / baseline_value
                     ) * 100
 
-                    if abs(change_percent) < 5:  # Within 5% is considered stable
+                    if (
+                        abs(change_percent) < 5
+                    ):  # Within 5% is considered stable
                         analysis["stable_metrics"].append(
-                            {"metric": metric_name, "change_percent": change_percent}
+                            {
+                                "metric": metric_name,
+                                "change_percent": change_percent,
+                            }
                         )
                     elif (
                         change_percent < -5
@@ -466,7 +485,9 @@ class PerformanceBenchmarkRunner:
 
         summary = report["summary"]
         print(f"Overall Status: {summary['overall_status'].upper()}")
-        print(f"Total Execution Time: {summary['total_execution_time_ms']:.2f}ms")
+        print(
+            f"Total Execution Time: {summary['total_execution_time_ms']:.2f}ms"
+        )
         print(f"Benchmarks Run: {summary['benchmarks_run']}")
         print(f"Timestamp: {summary['timestamp']}")
 
@@ -495,9 +516,13 @@ class PerformanceBenchmarkRunner:
                 if isinstance(analysis, dict):
                     status = analysis.get("status", "unknown")
                     if status == "regression_detected":
-                        print(f"⚠️  {category}: Performance regression detected")
+                        print(
+                            f"⚠️  {category}: Performance regression detected"
+                        )
                     elif status == "improvement_detected":
-                        print(f"🎉 {category}: Performance improvement detected")
+                        print(
+                            f"🎉 {category}: Performance improvement detected"
+                        )
                     else:
                         print(f"✅ {category}: Performance stable")
 
@@ -508,21 +533,23 @@ class PerformanceBenchmarkRunner:
         """Validate prediction latency requirements."""
         req = self.performance_requirements["prediction_latency"]
         return (
-            metrics.get("mean_latency_ms", float("inf")) < req["mean_ms"]
-            and metrics.get("p95_latency_ms", float("inf")) < req["p95_ms"]
-            and metrics.get("p99_latency_ms", float("inf")) < req["p99_ms"]
+            metrics.get("mean_latency_ms", float("in")) < req["mean_ms"]
+            and metrics.get("p95_latency_ms", float("in")) < req["p95_ms"]
+            and metrics.get("p99_latency_ms", float("in")) < req["p99_ms"]
         )
 
     def _validate_feature_requirements(self, metrics: Dict[str, Any]) -> bool:
         """Validate feature computation requirements."""
         req = self.performance_requirements["feature_computation"]
         return (
-            metrics.get("mean_computation_ms", float("inf")) < req["mean_ms"]
-            and metrics.get("p95_computation_ms", float("inf")) < req["p95_ms"]
-            and metrics.get("p99_computation_ms", float("inf")) < req["p99_ms"]
+            metrics.get("mean_computation_ms", float("in")) < req["mean_ms"]
+            and metrics.get("p95_computation_ms", float("in")) < req["p95_ms"]
+            and metrics.get("p99_computation_ms", float("in")) < req["p99_ms"]
         )
 
-    def _validate_throughput_requirements(self, metrics: Dict[str, Any]) -> bool:
+    def _validate_throughput_requirements(
+        self, metrics: Dict[str, Any]
+    ) -> bool:
         """Validate system throughput requirements."""
         req = self.performance_requirements["system_throughput"]
         return metrics.get("requests_per_second", 0) >= req["min_req_per_sec"]
@@ -531,9 +558,9 @@ class PerformanceBenchmarkRunner:
         """Validate memory usage requirements."""
         req = self.performance_requirements["memory_usage"]
         return (
-            metrics.get("memory_leak_mb_per_hour", float("inf"))
+            metrics.get("memory_leak_mb_per_hour", float("in"))
             < req["max_leak_mb_per_hour"]
-            and metrics.get("peak_memory_increase_mb", float("inf"))
+            and metrics.get("peak_memory_increase_mb", float("in"))
             < req["max_peak_increase_mb"]
         )
 
@@ -570,7 +597,9 @@ class PerformanceBenchmarkRunner:
 
     async def _simulate_feature_computation_test(self) -> Dict[str, Any]:
         """Simulate feature computation test results."""
-        computation_times = np.random.normal(350, 75, 50)  # Mean 350ms, std 75ms
+        computation_times = np.random.normal(
+            350, 75, 50
+        )  # Mean 350ms, std 75ms
         computation_times = np.clip(computation_times, 200, 600)
 
         return {
@@ -621,7 +650,9 @@ async def main():
         help="Benchmark category to run",
     )
     parser.add_argument(
-        "--report-dir", default="performance_reports", help="Report output directory"
+        "--report-dir",
+        default="performance_reports",
+        help="Report output directory",
     )
 
     args = parser.parse_args()

@@ -15,7 +15,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from src.core.config import (
     DatabaseConfig,
@@ -135,7 +139,9 @@ def test_config_dir():
                             "main": "binary_sensor.living_room_presence",
                             "couch": "binary_sensor.living_room_couch",
                         },
-                        "climate": {"temperature": "sensor.living_room_temperature"},
+                        "climate": {
+                            "temperature": "sensor.living_room_temperature"
+                        },
                     },
                 },
             }
@@ -213,7 +219,9 @@ async def test_db_engine():
             if "postgresql" in TEST_DB_URL:
                 try:
                     await conn.execute(
-                        text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE")
+                        text(
+                            "CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE"
+                        )
                     )
                     await conn.execute(
                         text(
@@ -308,7 +316,9 @@ def sample_sensor_events():
             room_id="test_room",
             sensor_id=f"binary_sensor.test_sensor_{i % 3}",
             sensor_type=SensorType.PRESENCE.value,
-            state=SensorState.ON.value if i % 2 == 0 else SensorState.OFF.value,
+            state=(
+                SensorState.ON.value if i % 2 == 0 else SensorState.OFF.value
+            ),
             previous_state=(
                 SensorState.OFF.value if i % 2 == 0 else SensorState.ON.value
             ),
@@ -332,12 +342,17 @@ def sample_ha_events():
     for i in range(5):
         event = HAEvent(
             entity_id=f"binary_sensor.test_sensor_{i}",
-            state=SensorState.ON.value if i % 2 == 0 else SensorState.OFF.value,
+            state=(
+                SensorState.ON.value if i % 2 == 0 else SensorState.OFF.value
+            ),
             previous_state=(
                 SensorState.OFF.value if i % 2 == 0 else SensorState.ON.value
             ),
             timestamp=base_time + timedelta(minutes=i * 10),
-            attributes={"device_class": "motion", "friendly_name": f"Test Sensor {i}"},
+            attributes={
+                "device_class": "motion",
+                "friendly_name": f"Test Sensor {i}",
+            },
         )
         events.append(event)
 
@@ -405,7 +420,8 @@ async def populated_test_db(test_db_session, sample_sensor_events):
         prediction = Prediction(
             room_id="test_room",
             prediction_time=datetime.utcnow() - timedelta(hours=i),
-            predicted_transition_time=datetime.utcnow() + timedelta(minutes=15 + i * 5),
+            predicted_transition_time=datetime.utcnow()
+            + timedelta(minutes=15 + i * 5),
             transition_type="occupied_to_vacant",
             confidence_score=0.75 + i * 0.05,
             model_type="lstm",
@@ -469,8 +485,12 @@ def test_environment_variables():
 def pytest_configure(config):
     """Configure pytest with custom markers."""
     config.addinivalue_line("markers", "unit: mark test as a unit test")
-    config.addinivalue_line("markers", "integration: mark test as an integration test")
-    config.addinivalue_line("markers", "database: mark test as requiring database")
+    config.addinivalue_line(
+        "markers", "integration: mark test as an integration test"
+    )
+    config.addinivalue_line(
+        "markers", "database: mark test as requiring database"
+    )
     config.addinivalue_line(
         "markers", "ha_client: mark test as requiring Home Assistant client"
     )
@@ -497,7 +517,7 @@ def assert_sensor_event_equal(
 def create_test_ha_event(
     entity_id: str = "binary_sensor.test_sensor",
     state: str = "on",
-    previous_state: Optional[str] = "off",
+    previous_state: Optional[str] = "of",
     timestamp: Optional[datetime] = None,
     attributes: Optional[Dict[str, Any]] = None,
 ) -> HAEvent:

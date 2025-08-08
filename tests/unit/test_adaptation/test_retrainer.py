@@ -7,7 +7,6 @@ retraining strategies, and automated model updating workflows.
 
 import asyncio
 from datetime import datetime, timedelta
-import json
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import heapq
@@ -15,7 +14,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.adaptation.drift_detector import DriftMetrics, DriftSeverity, DriftType
+from src.adaptation.drift_detector import (
+    DriftMetrics,
+    DriftSeverity,
+    DriftType,
+)
 from src.adaptation.optimizer import ModelOptimizer, OptimizationResult
 from src.adaptation.retrainer import (
     AdaptiveRetrainer,
@@ -68,10 +71,16 @@ def mock_model_registry():
                 training_time_seconds=30.0,
                 validation_score=0.85,
                 training_score=0.88,
-                model_metrics={"accuracy": 0.85, "precision": 0.82, "recall": 0.87},
+                model_metrics={
+                    "accuracy": 0.85,
+                    "precision": 0.82,
+                    "recall": 0.87,
+                },
             )
         )
-        model.get_parameters = Mock(return_value={"param1": 0.1, "param2": 100})
+        model.get_parameters = Mock(
+            return_value={"param1": 0.1, "param2": 100}
+        )
         model.set_parameters = Mock()
         model.save_model = AsyncMock(return_value=True)
         model.load_model = AsyncMock(return_value=True)
@@ -86,18 +95,24 @@ def mock_feature_engineering_engine():
 
     # Generate synthetic feature data
     def generate_features(room_id, start_date, end_date):
-        n_samples = min(1000, int((end_date - start_date).days * 24))  # Hourly samples
+        n_samples = min(
+            1000, int((end_date - start_date).days * 24)
+        )  # Hourly samples
         return pd.DataFrame(
             {
                 "temporal_feature_1": np.random.normal(0.5, 0.2, n_samples),
                 "temporal_feature_2": np.random.normal(0.3, 0.1, n_samples),
                 "sequential_feature_1": np.random.uniform(0, 1, n_samples),
                 "contextual_feature_1": np.random.choice([0, 1], n_samples),
-                "target": np.random.choice([0, 1], n_samples),  # Binary occupancy
+                "target": np.random.choice(
+                    [0, 1], n_samples
+                ),  # Binary occupancy
             }
         )
 
-    engine.generate_training_features = AsyncMock(side_effect=generate_features)
+    engine.generate_training_features = AsyncMock(
+        side_effect=generate_features
+    )
     engine.refresh_features = AsyncMock(return_value=True)
     return engine
 
@@ -118,7 +133,9 @@ def mock_model_optimizer():
         convergence_achieved=True,
     )
 
-    optimizer.optimize_model_parameters = AsyncMock(return_value=optimization_result)
+    optimizer.optimize_model_parameters = AsyncMock(
+        return_value=optimization_result
+    )
     return optimizer
 
 
@@ -203,7 +220,9 @@ def sample_drift_metrics():
 class TestAdaptiveRetrainerInitialization:
     """Test AdaptiveRetrainer initialization and lifecycle."""
 
-    def test_retrainer_initialization(self, tracking_config, mock_model_registry):
+    def test_retrainer_initialization(
+        self, tracking_config, mock_model_registry
+    ):
         """Test retrainer initialization."""
         retrainer = AdaptiveRetrainer(
             tracking_config=tracking_config, model_registry=mock_model_registry
@@ -216,7 +235,9 @@ class TestAdaptiveRetrainerInitialization:
         assert retrainer._active_retraining_count == 0
 
     @pytest.mark.asyncio
-    async def test_retrainer_initialization_and_shutdown(self, adaptive_retrainer):
+    async def test_retrainer_initialization_and_shutdown(
+        self, adaptive_retrainer
+    ):
         """Test retrainer initialization and shutdown lifecycle."""
         # Should be initialized
         assert len(adaptive_retrainer._background_tasks) > 0
@@ -307,7 +328,9 @@ class TestRetrainingNeedEvaluation:
 
         # Evaluate retraining need
         request = await adaptive_retrainer.evaluate_retraining_need(
-            room_id=room_id, model_type=model_type, accuracy_metrics=good_metrics
+            room_id=room_id,
+            model_type=model_type,
+            accuracy_metrics=good_metrics,
         )
 
         # Should not recommend retraining
@@ -323,8 +346,8 @@ class TestRetrainingNeedEvaluation:
         model_key = f"{room_id}_{model_type}"
 
         # Set recent retraining time
-        adaptive_retrainer._last_retrain_times[model_key] = datetime.now() - timedelta(
-            hours=6
+        adaptive_retrainer._last_retrain_times[model_key] = (
+            datetime.now() - timedelta(hours=6)
         )
 
         # Try to evaluate retraining need
@@ -347,11 +370,14 @@ class TestRetrainingNeedEvaluation:
 
         # Test with moderate accuracy (should use incremental)
         moderate_metrics = AccuracyMetrics(
-            accuracy_rate=75.0, mean_error_minutes=18.0  # Above incremental threshold
+            accuracy_rate=75.0,
+            mean_error_minutes=18.0,  # Above incremental threshold
         )
 
         request = await adaptive_retrainer.evaluate_retraining_need(
-            room_id=room_id, model_type=model_type, accuracy_metrics=moderate_metrics
+            room_id=room_id,
+            model_type=model_type,
+            accuracy_metrics=moderate_metrics,
         )
 
         if request:
@@ -359,11 +385,14 @@ class TestRetrainingNeedEvaluation:
 
         # Test with very poor accuracy (should use full retrain)
         poor_metrics = AccuracyMetrics(
-            accuracy_rate=45.0, mean_error_minutes=35.0  # Below incremental threshold
+            accuracy_rate=45.0,
+            mean_error_minutes=35.0,  # Below incremental threshold
         )
 
         request = await adaptive_retrainer.evaluate_retraining_need(
-            room_id=room_id, model_type=model_type, accuracy_metrics=poor_metrics
+            room_id=room_id,
+            model_type=model_type,
+            accuracy_metrics=poor_metrics,
         )
 
         if request:
@@ -395,7 +424,9 @@ class TestRetrainingRequestManagement:
         assert len(adaptive_retrainer._retraining_queue) > 0
 
     @pytest.mark.asyncio
-    async def test_retraining_queue_priority_ordering(self, adaptive_retrainer):
+    async def test_retraining_queue_priority_ordering(
+        self, adaptive_retrainer
+    ):
         """Test that retraining queue maintains priority order."""
         # Submit multiple requests with different priorities
         requests = [
@@ -452,7 +483,9 @@ class TestRetrainingRequestManagement:
         assert success
 
         # Should not be in queue anymore
-        queue_ids = [req.request_id for req in adaptive_retrainer._retraining_queue]
+        queue_ids = [
+            req.request_id for req in adaptive_retrainer._retraining_queue
+        ]
         assert request_id not in queue_ids
 
 
@@ -873,7 +906,9 @@ class TestErrorHandlingAndRecovery:
 
         # Mock model that fails training
         failing_model = Mock()
-        failing_model.train = AsyncMock(side_effect=Exception("Training failed"))
+        failing_model.train = AsyncMock(
+            side_effect=Exception("Training failed")
+        )
         mock_model_registry[model_key] = failing_model
 
         request = RetrainingRequest(
@@ -965,7 +1000,9 @@ class TestErrorHandlingAndRecovery:
         )
 
         # Mock timeout scenario
-        with patch.object(asyncio, "wait_for", side_effect=asyncio.TimeoutError):
+        with patch.object(
+            asyncio, "wait_for", side_effect=asyncio.TimeoutError
+        ):
             result = await adaptive_retrainer._execute_retraining(request)
 
             # Should handle timeout
@@ -999,7 +1036,9 @@ class TestDataManagement:
         assert y_train is not None
         assert X_val is not None
         assert y_val is not None
-        assert len(X_train) > len(X_val)  # Train should be larger than validation
+        assert len(X_train) > len(
+            X_val
+        )  # Train should be larger than validation
 
     @pytest.mark.asyncio
     async def test_feature_refreshing(
@@ -1039,7 +1078,9 @@ class TestDataManagement:
         # Mismatched sizes
         mismatched_y = pd.DataFrame({"target": [0, 1]})  # Different size
 
-        is_valid = adaptive_retrainer._validate_training_data(valid_X, mismatched_y)
+        is_valid = adaptive_retrainer._validate_training_data(
+            valid_X, mismatched_y
+        )
         assert not is_valid
 
 

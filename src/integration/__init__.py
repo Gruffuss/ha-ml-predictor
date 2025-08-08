@@ -16,14 +16,14 @@ Usage Examples:
    ```python
    from src.integration import integrate_tracking_with_realtime_publishing
    from src.adaptation.tracking_manager import TrackingManager, TrackingConfig
-   
+
    # Create tracking manager
    tracking_manager = TrackingManager(TrackingConfig())
    await tracking_manager.initialize()
-   
+
    # Add real-time publishing capabilities
    integration_manager = await integrate_tracking_with_realtime_publishing(tracking_manager)
-   
+
    # Now predictions are automatically published to MQTT, WebSocket, and SSE
    ```
 
@@ -31,14 +31,14 @@ Usage Examples:
    ```python
    from src.integration import EnhancedMQTTIntegrationManager
    from src.core.config import get_config
-   
+
    config = get_config()
    enhanced_mqtt = EnhancedMQTTIntegrationManager(
        mqtt_config=config.mqtt,
        rooms=config.rooms
    )
    await enhanced_mqtt.initialize()
-   
+
    # Publish across all channels
    await enhanced_mqtt.publish_prediction(prediction_result, room_id)
    ```
@@ -46,12 +46,12 @@ Usage Examples:
 3. Real-time Publishing Only:
    ```python
    from src.integration import RealtimePublishingSystem, PublishingChannel
-   
+
    realtime_publisher = RealtimePublishingSystem(
        enabled_channels=[PublishingChannel.WEBSOCKET, PublishingChannel.SSE]
    )
    await realtime_publisher.initialize()
-   
+
    # Publish to real-time channels only
    await realtime_publisher.publish_prediction(prediction_result, room_id)
    ```
@@ -60,10 +60,10 @@ Usage Examples:
    ```python
    from src.integration import realtime_api_endpoints
    from fastapi import FastAPI
-   
+
    app = FastAPI()
    app.include_router(realtime_api_endpoints.realtime_router)
-   
+
    # Real-time endpoints now available:
    # - WebSocket: /realtime/predictions
    # - SSE: /realtime/events
@@ -88,10 +88,17 @@ from .enhanced_mqtt_manager import (
     EnhancedMQTTIntegrationError,
     EnhancedMQTTIntegrationManager,
 )
-from .mqtt_integration_manager import MQTTIntegrationManager, MQTTIntegrationStats
+from .mqtt_integration_manager import (
+    MQTTIntegrationManager,
+    MQTTIntegrationStats,
+)
 
 # Import existing components for backward compatibility
-from .mqtt_publisher import MQTTConnectionStatus, MQTTPublisher, MQTTPublishResult
+from .mqtt_publisher import (
+    MQTTConnectionStatus,
+    MQTTPublisher,
+    MQTTPublishResult,
+)
 from .prediction_publisher import (
     PredictionPayload,
     PredictionPublisher,
@@ -193,8 +200,12 @@ async def create_enhanced_system(
         Tuple of (TrackingManager, TrackingIntegrationManager, APIServer)
     """
     # Create integrated tracking manager
-    tracking_manager, integration_manager = await create_integrated_tracking_manager(
-        tracking_config=tracking_config, integration_config=integration_config, **kwargs
+    tracking_manager, integration_manager = (
+        await create_integrated_tracking_manager(
+            tracking_config=tracking_config,
+            integration_config=integration_config,
+            **kwargs,
+        )
     )
 
     # Create API server with real-time endpoints

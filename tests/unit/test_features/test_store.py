@@ -8,7 +8,6 @@ LRU eviction, training data generation, and performance management.
 import asyncio
 from datetime import datetime, timedelta
 import hashlib
-from typing import Any, Dict, List, Tuple
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pandas as pd
@@ -58,9 +57,16 @@ class TestFeatureRecord:
         assert reconstructed_record.room_id == sample_record.room_id
         assert reconstructed_record.target_time == sample_record.target_time
         assert reconstructed_record.features == sample_record.features
-        assert reconstructed_record.extraction_time == sample_record.extraction_time
-        assert reconstructed_record.lookback_hours == sample_record.lookback_hours
-        assert reconstructed_record.feature_types == sample_record.feature_types
+        assert (
+            reconstructed_record.extraction_time
+            == sample_record.extraction_time
+        )
+        assert (
+            reconstructed_record.lookback_hours == sample_record.lookback_hours
+        )
+        assert (
+            reconstructed_record.feature_types == sample_record.feature_types
+        )
         assert reconstructed_record.data_hash == sample_record.data_hash
 
     def test_is_valid_fresh(self, sample_record):
@@ -121,8 +127,12 @@ class TestFeatureCache:
         lookback_hours = 24
         feature_types = ["temporal", "sequential"]
 
-        key1 = cache._make_key(room_id, target_time, lookback_hours, feature_types)
-        key2 = cache._make_key(room_id, target_time, lookback_hours, feature_types)
+        key1 = cache._make_key(
+            room_id, target_time, lookback_hours, feature_types
+        )
+        key2 = cache._make_key(
+            room_id, target_time, lookback_hours, feature_types
+        )
 
         # Keys should be identical for same parameters
         assert key1 == key2
@@ -294,7 +304,12 @@ class TestFeatureCache:
 
         # Add item and test hit/miss
         cache.put(
-            "room_1", datetime.now(), 24, ["temporal"], {"feature": 1.0}, "hash_1"
+            "room_1",
+            datetime.now(),
+            24,
+            ["temporal"],
+            {"feature": 1.0},
+            "hash_1",
         )
 
         # Hit
@@ -333,12 +348,16 @@ class TestFeatureStore:
     @pytest.fixture
     def store(self, mock_config):
         """Create feature store instance."""
-        return FeatureStore(config=mock_config, cache_size=10, enable_persistence=False)
+        return FeatureStore(
+            config=mock_config, cache_size=10, enable_persistence=False
+        )
 
     @pytest.fixture
     def store_with_persistence(self, mock_config):
         """Create feature store with persistence enabled."""
-        return FeatureStore(config=mock_config, cache_size=10, enable_persistence=True)
+        return FeatureStore(
+            config=mock_config, cache_size=10, enable_persistence=True
+        )
 
     @pytest.fixture
     def sample_events(self) -> List[SensorEvent]:
@@ -350,7 +369,7 @@ class TestFeatureStore:
             event = Mock(spec=SensorEvent)
             event.timestamp = base_time + timedelta(minutes=i * 10)
             event.room_id = "living_room"
-            event.state = "on" if i % 2 == 0 else "off"
+            event.state = "on" if i % 2 == 0 else "of"
             event.sensor_type = "motion"
             event.sensor_id = f"sensor.motion_{i}"
             events.append(event)
@@ -382,7 +401,9 @@ class TestFeatureStore:
         assert store.enable_persistence is False
 
     @pytest.mark.asyncio
-    async def test_initialize_with_persistence_success(self, store_with_persistence):
+    async def test_initialize_with_persistence_success(
+        self, store_with_persistence
+    ):
         """Test initialization with successful persistence setup."""
         with patch("src.features.store.get_database_manager") as mock_get_db:
             mock_db_manager = AsyncMock()
@@ -394,7 +415,9 @@ class TestFeatureStore:
             assert store_with_persistence.enable_persistence is True
 
     @pytest.mark.asyncio
-    async def test_initialize_with_persistence_failure(self, store_with_persistence):
+    async def test_initialize_with_persistence_failure(
+        self, store_with_persistence
+    ):
         """Test initialization with persistence setup failure."""
         with patch("src.features.store.get_database_manager") as mock_get_db:
             mock_get_db.side_effect = Exception("Database connection failed")
@@ -466,7 +489,9 @@ class TestFeatureStore:
                 "living_room", target_time, force_recompute=True
             )
 
-            assert features == computed_features  # Should get computed, not cached
+            assert (
+                features == computed_features
+            )  # Should get computed, not cached
             mock_compute.assert_called_once()
 
     @pytest.mark.asyncio
@@ -477,7 +502,10 @@ class TestFeatureStore:
             ("kitchen", datetime(2024, 1, 15, 15, 30, 0)),
         ]
 
-        expected_results = [{"living_room_feature": 1.0}, {"kitchen_feature": 2.0}]
+        expected_results = [
+            {"living_room_feature": 1.0},
+            {"kitchen_feature": 2.0},
+        ]
 
         with patch.object(store, "get_features", side_effect=expected_results):
             results = await store.get_batch_features(requests)
@@ -521,11 +549,14 @@ class TestFeatureStore:
             {"feature_1": 3.0, "feature_2": 4.0},
         ]
 
-        with patch.object(
-            store, "get_batch_features", return_value=mock_features
-        ), patch.object(
-            store.feature_engine, "create_feature_dataframe"
-        ) as mock_create_df:
+        with (
+            patch.object(
+                store, "get_batch_features", return_value=mock_features
+            ),
+            patch.object(
+                store.feature_engine, "create_feature_dataframe"
+            ) as mock_create_df,
+        ):
 
             mock_df = pd.DataFrame(mock_features)
             mock_create_df.return_value = mock_df
@@ -550,18 +581,25 @@ class TestFeatureStore:
                 assert col in targets_df.columns
 
     @pytest.mark.asyncio
-    async def test_compute_features(self, store, sample_events, sample_room_states):
+    async def test_compute_features(
+        self, store, sample_events, sample_room_states
+    ):
         """Test feature computation."""
         target_time = datetime(2024, 1, 15, 15, 0, 0)
         expected_features = {"computed_feature": 1.0}
 
-        with patch.object(
-            store,
-            "_get_data_for_features",
-            return_value=(sample_events, sample_room_states),
-        ) as mock_get_data, patch.object(
-            store.feature_engine, "extract_features", return_value=expected_features
-        ) as mock_extract:
+        with (
+            patch.object(
+                store,
+                "_get_data_for_features",
+                return_value=(sample_events, sample_room_states),
+            ) as mock_get_data,
+            patch.object(
+                store.feature_engine,
+                "extract_features",
+                return_value=expected_features,
+            ) as mock_extract,
+        ):
 
             features = await store._compute_features(
                 "living_room", target_time, 24, ["temporal"]
@@ -569,7 +607,9 @@ class TestFeatureStore:
 
             assert features == expected_features
             assert store.stats["feature_computations"] == 1
-            mock_get_data.assert_called_once_with("living_room", target_time, 24)
+            mock_get_data.assert_called_once_with(
+                "living_room", target_time, 24
+            )
             mock_extract.assert_called_once()
 
     @pytest.mark.asyncio
@@ -593,12 +633,18 @@ class TestFeatureStore:
 
         # Mock database query results
         mock_events_result = Mock()
-        mock_events_result.scalars.return_value.all.return_value = [Mock(), Mock()]
+        mock_events_result.scalars.return_value.all.return_value = [
+            Mock(),
+            Mock(),
+        ]
 
         mock_states_result = Mock()
         mock_states_result.scalars.return_value.all.return_value = [Mock()]
 
-        mock_session.execute.side_effect = [mock_events_result, mock_states_result]
+        mock_session.execute.side_effect = [
+            mock_events_result,
+            mock_states_result,
+        ]
 
         events, room_states = await store._get_data_for_features(
             "living_room", datetime.now(), 24
@@ -623,17 +669,22 @@ class TestFeatureStore:
         assert len(hash1) == 32  # MD5 hash length
 
         # Different parameters should produce different hash
-        hash3 = store._compute_data_hash(room_id, target_time, 12)  # Different lookback
+        hash3 = store._compute_data_hash(
+            room_id, target_time, 12
+        )  # Different lookback
         assert hash1 != hash3
 
     def test_get_stats(self, store):
         """Test statistics retrieval."""
-        with patch.object(
-            store.cache, "get_stats", return_value={"cache_stat": 1}
-        ), patch.object(
-            store.feature_engine,
-            "get_extraction_stats",
-            return_value={"engine_stat": 2},
+        with (
+            patch.object(
+                store.cache, "get_stats", return_value={"cache_stat": 1}
+            ),
+            patch.object(
+                store.feature_engine,
+                "get_extraction_stats",
+                return_value={"engine_stat": 2},
+            ),
         ):
 
             stats = store.get_stats()
@@ -646,9 +697,12 @@ class TestFeatureStore:
 
     def test_clear_cache(self, store):
         """Test cache clearing."""
-        with patch.object(store.cache, "clear") as mock_cache_clear, patch.object(
-            store.feature_engine, "clear_caches"
-        ) as mock_engine_clear:
+        with (
+            patch.object(store.cache, "clear") as mock_cache_clear,
+            patch.object(
+                store.feature_engine, "clear_caches"
+            ) as mock_engine_clear,
+        ):
 
             store.clear_cache()
 
@@ -661,7 +715,9 @@ class TestFeatureStore:
         store.stats["total_requests"] = 10
         store.stats["cache_hits"] = 5
 
-        with patch.object(store.feature_engine, "reset_stats") as mock_engine_reset:
+        with patch.object(
+            store.feature_engine, "reset_stats"
+        ) as mock_engine_reset:
             store.reset_stats()
 
             assert store.stats["total_requests"] == 0
@@ -674,7 +730,11 @@ class TestFeatureStore:
         with patch.object(
             store.feature_engine, "validate_configuration"
         ) as mock_validate:
-            mock_validate.return_value = {"valid": True, "warnings": [], "errors": []}
+            mock_validate.return_value = {
+                "valid": True,
+                "warnings": [],
+                "errors": [],
+            }
 
             health = await store.health_check()
 
@@ -693,7 +753,11 @@ class TestFeatureStore:
         with patch.object(
             store.feature_engine, "validate_configuration"
         ) as mock_validate:
-            mock_validate.return_value = {"valid": True, "warnings": [], "errors": []}
+            mock_validate.return_value = {
+                "valid": True,
+                "warnings": [],
+                "errors": [],
+            }
 
             health = await store.health_check()
 
@@ -717,7 +781,10 @@ class TestFeatureStore:
         base_time = datetime(2024, 1, 15, 10, 0, 0)
         for i in range(100):
             requests.append(
-                (f"room_{i % 5}", base_time + timedelta(minutes=i))  # 5 different rooms
+                (
+                    f"room_{i % 5}",
+                    base_time + timedelta(minutes=i),
+                )  # 5 different rooms
             )
 
         with patch.object(store, "get_features") as mock_get_features:
@@ -811,7 +878,9 @@ class TestFeatureStore:
         target_time = datetime(2024, 1, 15, 15, 0, 0)
 
         with patch.object(store, "_compute_features") as mock_compute:
-            mock_compute.side_effect = FeatureExtractionError("Computation failed")
+            mock_compute.side_effect = FeatureExtractionError(
+                "Computation failed"
+            )
 
             with pytest.raises(FeatureExtractionError):
                 await store.get_features("living_room", target_time)
@@ -833,6 +902,8 @@ class TestFeatureStore:
         assert cache_key1 == cache_key2
 
         # Test subset
-        cache_key3 = store.cache._make_key("room", target_time, 24, ["temporal"])
+        cache_key3 = store.cache._make_key(
+            "room", target_time, 24, ["temporal"]
+        )
 
         assert cache_key1 != cache_key3

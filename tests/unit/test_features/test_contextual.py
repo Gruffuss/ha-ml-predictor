@@ -75,7 +75,10 @@ class TestContextualFeatureExtractor:
             event.state = temp
             event.sensor_type = "temperature"
             event.sensor_id = "sensor.living_room_temperature"
-            event.attributes = {"temperature": float(temp), "unit_of_measurement": "°C"}
+            event.attributes = {
+                "temperature": float(temp),
+                "unit_of_measurement": "°C",
+            }
             events.append(event)
 
         # Humidity events
@@ -87,7 +90,10 @@ class TestContextualFeatureExtractor:
             event.state = humidity
             event.sensor_type = "humidity"
             event.sensor_id = "sensor.living_room_humidity"
-            event.attributes = {"humidity": float(humidity), "unit_of_measurement": "%"}
+            event.attributes = {
+                "humidity": float(humidity),
+                "unit_of_measurement": "%",
+            }
             events.append(event)
 
         # Light events
@@ -138,9 +144,11 @@ class TestContextualFeatureExtractor:
             # Motion events for each room
             for i in range(3):
                 event = Mock(spec=SensorEvent)
-                event.timestamp = base_time + timedelta(minutes=room_idx * 10 + i * 2)
+                event.timestamp = base_time + timedelta(
+                    minutes=room_idx * 10 + i * 2
+                )
                 event.room_id = room_id
-                event.state = "on" if i % 2 == 0 else "off"
+                event.state = "on" if i % 2 == 0 else "of"
                 event.sensor_type = "motion"
                 event.sensor_id = f"sensor.{room_id}_motion"
                 event.attributes = {}
@@ -158,7 +166,9 @@ class TestContextualFeatureExtractor:
         for room_idx, room_id in enumerate(rooms):
             for i in range(4):
                 state = Mock(spec=RoomState)
-                state.timestamp = base_time + timedelta(minutes=room_idx * 15 + i * 5)
+                state.timestamp = base_time + timedelta(
+                    minutes=room_idx * 15 + i * 5
+                )
                 state.room_id = room_id
                 state.is_occupied = (i + room_idx) % 2 == 0
                 state.occupancy_confidence = 0.7 + (i * 0.05)
@@ -172,7 +182,12 @@ class TestContextualFeatureExtractor:
         return datetime(2024, 1, 15, 15, 0, 0)
 
     def test_extract_features_with_environmental_data(
-        self, extractor, environmental_events, room_states, target_time, room_configs
+        self,
+        extractor,
+        environmental_events,
+        room_states,
+        target_time,
+        room_configs,
     ):
         """Test feature extraction with environmental sensor data."""
         features = extractor.extract_features(
@@ -237,7 +252,9 @@ class TestContextualFeatureExtractor:
         assert "is_cold" in features
         assert "is_comfortable_temp" in features
         assert "is_warm" in features
-        assert features["is_comfortable_temp"] == 1.0  # Should be in comfort zone
+        assert (
+            features["is_comfortable_temp"] == 1.0
+        )  # Should be in comfort zone
 
     def test_environmental_features_humidity(
         self, extractor, environmental_events, target_time
@@ -280,7 +297,9 @@ class TestContextualFeatureExtractor:
 
     def test_door_state_features(self, extractor, door_events, target_time):
         """Test door state feature extraction."""
-        features = extractor._extract_door_state_features(door_events, target_time)
+        features = extractor._extract_door_state_features(
+            door_events, target_time
+        )
 
         # Check door features
         assert "doors_currently_open" in features
@@ -290,7 +309,9 @@ class TestContextualFeatureExtractor:
         assert "recent_door_activity" in features
 
         # Values should be reasonable
-        assert features["door_transition_count"] > 0  # Should detect transitions
+        assert (
+            features["door_transition_count"] > 0
+        )  # Should detect transitions
         assert 0.0 <= features["door_open_ratio"] <= 1.0
 
     def test_multi_room_features(
@@ -339,7 +360,9 @@ class TestContextualFeatureExtractor:
 
     def test_sensor_correlation_features(self, extractor, multi_room_events):
         """Test cross-sensor correlation features."""
-        features = extractor._extract_sensor_correlation_features(multi_room_events)
+        features = extractor._extract_sensor_correlation_features(
+            multi_room_events
+        )
 
         # Check correlation features
         assert "sensor_activation_correlation" in features
@@ -483,10 +506,12 @@ class TestContextualFeatureExtractor:
         """Test that threshold values are properly configured."""
         # Check temperature thresholds
         assert (
-            extractor.temp_thresholds["cold"] < extractor.temp_thresholds["comfortable"]
+            extractor.temp_thresholds["cold"]
+            < extractor.temp_thresholds["comfortable"]
         )
         assert (
-            extractor.temp_thresholds["comfortable"] < extractor.temp_thresholds["warm"]
+            extractor.temp_thresholds["comfortable"]
+            < extractor.temp_thresholds["warm"]
         )
 
         # Check humidity thresholds
@@ -500,12 +525,23 @@ class TestContextualFeatureExtractor:
         )
 
         # Check light thresholds
-        assert extractor.light_thresholds["dark"] < extractor.light_thresholds["dim"]
-        assert extractor.light_thresholds["dim"] < extractor.light_thresholds["bright"]
+        assert (
+            extractor.light_thresholds["dark"]
+            < extractor.light_thresholds["dim"]
+        )
+        assert (
+            extractor.light_thresholds["dim"]
+            < extractor.light_thresholds["bright"]
+        )
 
     @pytest.mark.parametrize("lookback_hours", [1, 6, 12, 24, 48])
     def test_different_lookback_windows(
-        self, extractor, environmental_events, room_states, target_time, lookback_hours
+        self,
+        extractor,
+        environmental_events,
+        room_states,
+        target_time,
+        lookback_hours,
     ):
         """Test feature extraction with different lookback windows."""
         features = extractor.extract_features(
@@ -541,7 +577,9 @@ class TestContextualFeatureExtractor:
         extreme_humidity_event.attributes = {"humidity": 95.0}
 
         events = [extreme_temp_event, extreme_humidity_event]
-        features = extractor._extract_environmental_features(events, target_time)
+        features = extractor._extract_environmental_features(
+            events, target_time
+        )
 
         # Should handle extreme values gracefully
         assert features["current_temperature"] == -40.0
@@ -743,7 +781,9 @@ class TestContextualFeatureExtractorEdgeCases:
             event.attributes = attributes
             events.append(event)
 
-        features = extractor._extract_environmental_features(events, target_time)
+        features = extractor._extract_environmental_features(
+            events, target_time
+        )
 
         # Should detect environmental values even with mixed sensor types
         assert "current_temperature" in features

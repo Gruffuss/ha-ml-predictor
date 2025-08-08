@@ -70,7 +70,10 @@ class TestDriftMetrics:
                 datetime.now() - timedelta(days=30),
                 datetime.now() - timedelta(days=7),
             ),
-            current_period=(datetime.now() - timedelta(days=7), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=7),
+                datetime.now(),
+            ),
             ph_drift_detected=True,
         )
         assert drift_metrics.drift_severity == DriftSeverity.CRITICAL
@@ -83,7 +86,10 @@ class TestDriftMetrics:
                 datetime.now() - timedelta(days=30),
                 datetime.now() - timedelta(days=7),
             ),
-            current_period=(datetime.now() - timedelta(days=7), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=7),
+                datetime.now(),
+            ),
             accuracy_degradation=25.0,
         )
         assert drift_metrics.drift_severity == DriftSeverity.MAJOR
@@ -98,7 +104,10 @@ class TestDriftMetrics:
                 datetime.now() - timedelta(days=30),
                 datetime.now() - timedelta(days=7),
             ),
-            current_period=(datetime.now() - timedelta(days=7), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=7),
+                datetime.now(),
+            ),
             accuracy_degradation=30.0,
         )
         assert drift_metrics.immediate_attention_required
@@ -112,7 +121,10 @@ class TestDriftMetrics:
                 datetime.now() - timedelta(days=30),
                 datetime.now() - timedelta(days=7),
             ),
-            current_period=(datetime.now() - timedelta(days=7), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=7),
+                datetime.now(),
+            ),
             accuracy_degradation=5.0,
         )
         assert not drift_metrics.immediate_attention_required
@@ -127,7 +139,10 @@ class TestDriftMetrics:
                 datetime.now() - timedelta(days=30),
                 datetime.now() - timedelta(days=7),
             ),
-            current_period=(datetime.now() - timedelta(days=7), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=7),
+                datetime.now(),
+            ),
             drifting_features=["feature1", "feature2"],
             drift_types=[DriftType.FEATURE_DRIFT, DriftType.CONCEPT_DRIFT],
         )
@@ -210,14 +225,21 @@ class TestConceptDriftDetector:
         return validator
 
     @pytest.mark.asyncio
-    async def test_detect_drift_basic(self, drift_detector, mock_prediction_validator):
+    async def test_detect_drift_basic(
+        self, drift_detector, mock_prediction_validator
+    ):
         """Test basic drift detection functionality."""
         room_id = "test_room"
 
-        with patch.object(
-            drift_detector, "_get_occupancy_patterns", return_value=None
-        ), patch.object(
-            drift_detector, "_get_recent_prediction_errors", return_value=[]
+        with (
+            patch.object(
+                drift_detector, "_get_occupancy_patterns", return_value=None
+            ),
+            patch.object(
+                drift_detector,
+                "_get_recent_prediction_errors",
+                return_value=[],
+            ),
         ):
 
             drift_metrics = await drift_detector.detect_drift(
@@ -226,21 +248,27 @@ class TestConceptDriftDetector:
 
             assert drift_metrics.room_id == room_id
             assert drift_metrics.accuracy_degradation == 10.0  # 20 - 10
-            assert drift_metrics.confidence_calibration_drift == 0.2  # |0.6 - 0.8|
+            assert (
+                drift_metrics.confidence_calibration_drift == 0.2
+            )  # |0.6 - 0.8|
 
     @pytest.mark.asyncio
     async def test_numerical_feature_drift_test(self, drift_detector):
         """Test numerical feature drift detection."""
         # Create test data with different distributions
         baseline_data = pd.Series(np.random.normal(10, 2, 100))
-        current_data = pd.Series(np.random.normal(15, 3, 100))  # Different mean and std
+        current_data = pd.Series(
+            np.random.normal(15, 3, 100)
+        )  # Different mean and std
 
         drift_result = await drift_detector._test_numerical_drift(
             baseline_data, current_data, "test_feature"
         )
 
         assert drift_result.feature_name == "test_feature"
-        assert drift_result.statistical_test == StatisticalTest.KOLMOGOROV_SMIRNOV
+        assert (
+            drift_result.statistical_test == StatisticalTest.KOLMOGOROV_SMIRNOV
+        )
         assert drift_result.p_value < 0.05  # Should detect significant drift
         assert drift_result.drift_detected
         assert "mean" in drift_result.baseline_stats
@@ -271,7 +299,9 @@ class TestConceptDriftDetector:
         baseline_data = pd.Series(np.random.normal(10, 2, 1000))
         current_data = pd.Series(np.random.normal(15, 2, 1000))  # Shifted mean
 
-        psi = drift_detector._calculate_numerical_psi(baseline_data, current_data)
+        psi = drift_detector._calculate_numerical_psi(
+            baseline_data, current_data
+        )
 
         assert psi > 0  # Should detect shift
         assert isinstance(psi, float)
@@ -283,7 +313,9 @@ class TestConceptDriftDetector:
             ["A"] * 40 + ["B"] * 30 + ["C"] * 30
         )  # Different distribution
 
-        psi = drift_detector._calculate_categorical_psi(baseline_data, current_data)
+        psi = drift_detector._calculate_categorical_psi(
+            baseline_data, current_data
+        )
 
         assert psi > 0  # Should detect drift
         assert isinstance(psi, float)
@@ -296,7 +328,12 @@ class TestConceptDriftDetector:
         }
 
         current_patterns = {
-            "hourly_distribution": {8: 5, 12: 10, 18: 10, 22: 25},  # Different pattern
+            "hourly_distribution": {
+                8: 5,
+                12: 10,
+                18: 10,
+                22: 25,
+            },  # Different pattern
             "total_events": 50,
         }
 
@@ -310,7 +347,11 @@ class TestConceptDriftDetector:
     def test_frequency_pattern_comparison(self, drift_detector):
         """Test frequency pattern drift comparison."""
         baseline_patterns = {
-            "daily_frequency": {"2024-01-01": 10, "2024-01-02": 12, "2024-01-03": 8}
+            "daily_frequency": {
+                "2024-01-01": 10,
+                "2024-01-02": 12,
+                "2024-01-03": 8,
+            }
         }
 
         current_patterns = {
@@ -337,7 +378,10 @@ class TestConceptDriftDetector:
                 datetime.now() - timedelta(days=30),
                 datetime.now() - timedelta(days=7),
             ),
-            current_period=(datetime.now() - timedelta(days=7), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=7),
+                datetime.now(),
+            ),
             ks_p_value=0.01,  # Significant
             mw_p_value=0.02,  # Significant
             sample_size_baseline=200,
@@ -371,7 +415,9 @@ class TestFeatureDriftDetector:
         """Test feature drift detection with sample data."""
         # Create test data with drift
         timestamps = pd.date_range(
-            start=datetime.now() - timedelta(hours=72), end=datetime.now(), freq="H"
+            start=datetime.now() - timedelta(hours=72),
+            end=datetime.now(),
+            freq="H",
         )
 
         # Create features with drift in the recent period
@@ -387,7 +433,9 @@ class TestFeatureDriftDetector:
                 "feature2": np.concatenate(
                     [
                         np.random.normal(5, 1, 48),  # Baseline: mean=5
-                        np.random.normal(5, 1, 25),  # Recent: mean=5 (no drift)
+                        np.random.normal(
+                            5, 1, 25
+                        ),  # Recent: mean=5 (no drift)
                     ]
                 ),
             }
@@ -400,8 +448,12 @@ class TestFeatureDriftDetector:
         assert len(drift_results) == 2  # Two features tested
 
         # Find results for each feature
-        feature1_result = next(r for r in drift_results if r.feature_name == "feature1")
-        feature2_result = next(r for r in drift_results if r.feature_name == "feature2")
+        feature1_result = next(
+            r for r in drift_results if r.feature_name == "feature1"
+        )
+        feature2_result = next(
+            r for r in drift_results if r.feature_name == "feature2"
+        )
 
         # Feature1 should show drift, feature2 should not
         assert feature1_result.drift_score > feature2_result.drift_score
@@ -447,7 +499,9 @@ class TestFeatureDriftDetector:
         feature_data = pd.DataFrame(
             {
                 "timestamp": pd.date_range(
-                    start=datetime.now() - timedelta(hours=2), periods=5, freq="H"
+                    start=datetime.now() - timedelta(hours=2),
+                    periods=5,
+                    freq="H",
                 ),
                 "feature1": [1, 2, 3, 4, 5],
             }
@@ -477,7 +531,9 @@ class TestIntegration:
         baseline_metrics.recent_records = []
 
         current_metrics = Mock(spec=AccuracyMetrics)
-        current_metrics.mean_absolute_error_minutes = 25.0  # Degraded performance
+        current_metrics.mean_absolute_error_minutes = (
+            25.0  # Degraded performance
+        )
         current_metrics.confidence_vs_accuracy_correlation = 0.5
         current_metrics.recent_records = []
 
@@ -486,10 +542,15 @@ class TestIntegration:
         )
 
         # Mock other methods to avoid database calls
-        with patch.object(
-            drift_detector, "_get_occupancy_patterns", return_value=None
-        ), patch.object(
-            drift_detector, "_get_recent_prediction_errors", return_value=[]
+        with (
+            patch.object(
+                drift_detector, "_get_occupancy_patterns", return_value=None
+            ),
+            patch.object(
+                drift_detector,
+                "_get_recent_prediction_errors",
+                return_value=[],
+            ),
         ):
 
             drift_metrics = await drift_detector.detect_drift(

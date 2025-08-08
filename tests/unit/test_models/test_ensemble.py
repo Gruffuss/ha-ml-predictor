@@ -86,7 +86,9 @@ def ensemble_training_data():
 
     # Create transition types based on patterns
     occupancy_states = np.where(
-        (hours >= 22) | (hours <= 6), "occupied_to_vacant", "vacant_to_occupied"
+        (hours >= 22) | (hours <= 6),
+        "occupied_to_vacant",
+        "vacant_to_occupied",
     )
 
     features_df = pd.DataFrame(features)
@@ -95,7 +97,8 @@ def ensemble_training_data():
             "time_until_transition_seconds": targets,
             "transition_type": occupancy_states,
             "target_time": [
-                datetime.utcnow() + timedelta(seconds=i * 10) for i in range(n_samples)
+                datetime.utcnow() + timedelta(seconds=i * 10)
+                for i in range(n_samples)
             ],
         }
     )
@@ -216,7 +219,8 @@ class TestEnsembleTraining:
                 mock_model.predict = AsyncMock(
                     return_value=[
                         PredictionResult(
-                            predicted_time=datetime.utcnow() + timedelta(seconds=1800),
+                            predicted_time=datetime.utcnow()
+                            + timedelta(seconds=1800),
                             transition_type="vacant_to_occupied",
                             confidence_score=0.8,
                             model_type=model_name,
@@ -299,19 +303,25 @@ class TestEnsembleTraining:
 
                 # Patch the specific model class
                 if model_name == "lstm":
-                    with patch("src.models.ensemble.LSTMPredictor", mock_model_class):
+                    with patch(
+                        "src.models.ensemble.LSTMPredictor", mock_model_class
+                    ):
                         pass
                 elif model_name == "xgboost":
                     with patch(
-                        "src.models.ensemble.XGBoostPredictor", mock_model_class
+                        "src.models.ensemble.XGBoostPredictor",
+                        mock_model_class,
                     ):
                         pass
                 elif model_name == "hmm":
-                    with patch("src.models.ensemble.HMMPredictor", mock_model_class):
+                    with patch(
+                        "src.models.ensemble.HMMPredictor", mock_model_class
+                    ):
                         pass
                 elif model_name == "gp":
                     with patch(
-                        "src.models.ensemble.GaussianProcessPredictor", mock_model_class
+                        "src.models.ensemble.GaussianProcessPredictor",
+                        mock_model_class,
                     ):
                         pass
 
@@ -323,7 +333,9 @@ class TestEnsembleTraining:
             # Verify meta-features structure
             assert isinstance(meta_features, pd.DataFrame)
             assert len(meta_features) == len(small_features)
-            assert set(meta_features.columns) == set(ensemble.base_models.keys())
+            assert set(meta_features.columns) == set(
+                ensemble.base_models.keys()
+            )
 
             # Check CV scores were recorded
             assert len(ensemble.cross_validation_scores) > 0
@@ -334,7 +346,9 @@ class TestEnsembleTraining:
                     assert all(-1 <= score <= 1 for score in scores)
 
     @pytest.mark.asyncio
-    async def test_ensemble_meta_learner_training(self, ensemble_validation_data):
+    async def test_ensemble_meta_learner_training(
+        self, ensemble_validation_data
+    ):
         """Test meta-learner training with different configurations."""
         train_features, train_targets, _, _ = ensemble_validation_data
 
@@ -363,7 +377,9 @@ class TestEnsembleTraining:
         assert len(ensemble_rf.model_weights) == 4
 
         # Test Linear meta-learner
-        ensemble_linear = OccupancyEnsemble(room_id="test_room", meta_learner="linear")
+        ensemble_linear = OccupancyEnsemble(
+            room_id="test_room", meta_learner="linear"
+        )
 
         await ensemble_linear._train_meta_learner(
             meta_features, train_targets, train_features
@@ -373,7 +389,9 @@ class TestEnsembleTraining:
         assert ensemble_linear.meta_learner is not None
 
     @pytest.mark.asyncio
-    async def test_ensemble_model_weight_calculation(self, ensemble_validation_data):
+    async def test_ensemble_model_weight_calculation(
+        self, ensemble_validation_data
+    ):
         """Test automatic model weight calculation based on performance."""
         train_features, train_targets, _, _ = ensemble_validation_data
         ensemble = OccupancyEnsemble(room_id="test_room")
@@ -382,10 +400,18 @@ class TestEnsembleTraining:
         n_samples = len(train_features)
         meta_features = pd.DataFrame(
             {
-                "lstm": np.random.normal(1800, 100, n_samples),  # Good performance
-                "xgboost": np.random.normal(1800, 80, n_samples),  # Better performance
-                "hmm": np.random.normal(1800, 200, n_samples),  # Worse performance
-                "gp": np.random.normal(1800, 120, n_samples),  # Good performance
+                "lstm": np.random.normal(
+                    1800, 100, n_samples
+                ),  # Good performance
+                "xgboost": np.random.normal(
+                    1800, 80, n_samples
+                ),  # Better performance
+                "hmm": np.random.normal(
+                    1800, 200, n_samples
+                ),  # Worse performance
+                "gp": np.random.normal(
+                    1800, 120, n_samples
+                ),  # Good performance
             }
         )
 
@@ -397,14 +423,20 @@ class TestEnsembleTraining:
         # Verify weights
         assert len(ensemble.model_weights) == 4
         assert all(w >= 0 for w in ensemble.model_weights.values())
-        assert abs(sum(ensemble.model_weights.values()) - 1.0) < 0.001  # Sum to 1
+        assert (
+            abs(sum(ensemble.model_weights.values()) - 1.0) < 0.001
+        )  # Sum to 1
 
         # XGBoost should have highest weight (best performance)
-        max_weight_model = max(ensemble.model_weights, key=ensemble.model_weights.get)
+        max_weight_model = max(
+            ensemble.model_weights, key=ensemble.model_weights.get
+        )
         assert max_weight_model == "xgboost"
 
     @pytest.mark.asyncio
-    async def test_ensemble_training_error_handling(self, ensemble_validation_data):
+    async def test_ensemble_training_error_handling(
+        self, ensemble_validation_data
+    ):
         """Test ensemble training error handling and recovery."""
         train_features, train_targets, _, _ = ensemble_validation_data
         ensemble = OccupancyEnsemble(room_id="test_room")
@@ -437,7 +469,9 @@ class TestEnsemblePrediction:
     """Test ensemble prediction generation and combination."""
 
     @pytest.mark.asyncio
-    async def test_ensemble_prediction_generation(self, ensemble_validation_data):
+    async def test_ensemble_prediction_generation(
+        self, ensemble_validation_data
+    ):
         """Test ensemble prediction generation and format."""
         train_features, train_targets, val_features, val_targets = (
             ensemble_validation_data
@@ -445,7 +479,9 @@ class TestEnsemblePrediction:
         ensemble = OccupancyEnsemble(room_id="test_room")
 
         # Setup trained ensemble
-        await self._setup_trained_ensemble(ensemble, train_features, train_targets)
+        await self._setup_trained_ensemble(
+            ensemble, train_features, train_targets
+        )
 
         # Generate predictions
         prediction_time = datetime.utcnow()
@@ -480,10 +516,14 @@ class TestEnsemblePrediction:
         self, ensemble_validation_data
     ):
         """Test ensemble confidence calculation with GP uncertainty quantification."""
-        train_features, train_targets, val_features, _ = ensemble_validation_data
+        train_features, train_targets, val_features, _ = (
+            ensemble_validation_data
+        )
         ensemble = OccupancyEnsemble(room_id="test_room")
 
-        await self._setup_trained_ensemble(ensemble, train_features, train_targets)
+        await self._setup_trained_ensemble(
+            ensemble, train_features, train_targets
+        )
 
         # Mock GP predictions with uncertainty information
         gp_model = ensemble.base_models["gp"]
@@ -525,7 +565,9 @@ class TestEnsemblePrediction:
         self, ensemble_validation_data
     ):
         """Test different prediction combination methods."""
-        train_features, train_targets, val_features, _ = ensemble_validation_data
+        train_features, train_targets, val_features, _ = (
+            ensemble_validation_data
+        )
 
         # Test weighted combination
         ensemble_weighted = OccupancyEnsemble(
@@ -550,12 +592,18 @@ class TestEnsemblePrediction:
             assert len(metadata["model_weights"]) == 4
 
     @pytest.mark.asyncio
-    async def test_ensemble_alternatives_generation(self, ensemble_validation_data):
+    async def test_ensemble_alternatives_generation(
+        self, ensemble_validation_data
+    ):
         """Test generation of alternative predictions from base models."""
-        train_features, train_targets, val_features, _ = ensemble_validation_data
+        train_features, train_targets, val_features, _ = (
+            ensemble_validation_data
+        )
         ensemble = OccupancyEnsemble(room_id="test_room")
 
-        await self._setup_trained_ensemble(ensemble, train_features, train_targets)
+        await self._setup_trained_ensemble(
+            ensemble, train_features, train_targets
+        )
 
         predictions = await ensemble.predict(
             val_features.head(3), datetime.utcnow(), "occupied"
@@ -574,18 +622,26 @@ class TestEnsemblePrediction:
 
                 # Alternative should be different from main prediction
                 # (allowing for some models to have similar predictions)
-                time_diff = abs((alt_time - prediction.predicted_time).total_seconds())
+                time_diff = abs(
+                    (alt_time - prediction.predicted_time).total_seconds()
+                )
                 # Most alternatives should differ, but some might be similar
 
     @pytest.mark.asyncio
-    async def test_ensemble_prediction_error_handling(self, ensemble_validation_data):
+    async def test_ensemble_prediction_error_handling(
+        self, ensemble_validation_data
+    ):
         """Test prediction error handling and fallback mechanisms."""
-        train_features, train_targets, val_features, _ = ensemble_validation_data
+        train_features, train_targets, val_features, _ = (
+            ensemble_validation_data
+        )
         ensemble = OccupancyEnsemble(room_id="test_room")
 
         # Test prediction on untrained ensemble
         with pytest.raises(ModelPredictionError):
-            await ensemble.predict(val_features.head(5), datetime.utcnow(), "vacant")
+            await ensemble.predict(
+                val_features.head(5), datetime.utcnow(), "vacant"
+            )
 
         # Setup partially trained ensemble (base models trained, meta-learner not)
         ensemble.is_trained = True
@@ -593,10 +649,14 @@ class TestEnsemblePrediction:
         ensemble.meta_learner_trained = False
 
         with pytest.raises(ModelPredictionError):
-            await ensemble.predict(val_features.head(5), datetime.utcnow(), "vacant")
+            await ensemble.predict(
+                val_features.head(5), datetime.utcnow(), "vacant"
+            )
 
         # Test with some base models failing
-        await self._setup_trained_ensemble(ensemble, train_features, train_targets)
+        await self._setup_trained_ensemble(
+            ensemble, train_features, train_targets
+        )
 
         # Mock one base model to fail
         with patch.object(
@@ -617,7 +677,9 @@ class TestEnsemblePrediction:
                 base_preds = pred.prediction_metadata["base_model_predictions"]
                 assert "xgboost" not in base_preds
 
-    async def _setup_trained_ensemble(self, ensemble, train_features, train_targets):
+    async def _setup_trained_ensemble(
+        self, ensemble, train_features, train_targets
+    ):
         """Helper to setup a trained ensemble for testing."""
         # Mock all base models as trained
         for model_name, model in ensemble.base_models.items():
@@ -634,12 +696,16 @@ class TestEnsemblePrediction:
             # Mock predictions with some variation
             base_predictions = []
             for i in range(len(train_features)):
-                pred_time = datetime.utcnow() + timedelta(seconds=1800 + i * 10)
+                pred_time = datetime.utcnow() + timedelta(
+                    seconds=1800 + i * 10
+                )
                 base_predictions.append(
                     PredictionResult(
                         predicted_time=pred_time,
                         transition_type=(
-                            "vacant_to_occupied" if i % 2 == 0 else "occupied_to_vacant"
+                            "vacant_to_occupied"
+                            if i % 2 == 0
+                            else "occupied_to_vacant"
                         ),
                         confidence_score=0.7 + (i % 3) * 0.1,
                         model_type=model_name,
@@ -687,7 +753,9 @@ class TestEnsembleIncrementalUpdate:
         ensemble = OccupancyEnsemble(room_id="test_room")
 
         # Initial training
-        await self._setup_trained_ensemble(ensemble, train_features, train_targets)
+        await self._setup_trained_ensemble(
+            ensemble, train_features, train_targets
+        )
         initial_version = ensemble.model_version
 
         # Setup base models for incremental update
@@ -723,7 +791,9 @@ class TestEnsembleIncrementalUpdate:
         assert "ensemble_weights_updated" in metrics
 
     @pytest.mark.asyncio
-    async def test_incremental_update_error_handling(self, ensemble_validation_data):
+    async def test_incremental_update_error_handling(
+        self, ensemble_validation_data
+    ):
         """Test incremental update error handling."""
         _, _, val_features, val_targets = ensemble_validation_data
         ensemble = OccupancyEnsemble(room_id="test_room")
@@ -743,7 +813,9 @@ class TestEnsembleIncrementalUpdate:
         with pytest.raises(ModelTrainingError):
             await ensemble.incremental_update(tiny_features, tiny_targets)
 
-    async def _setup_trained_ensemble(self, ensemble, train_features, train_targets):
+    async def _setup_trained_ensemble(
+        self, ensemble, train_features, train_targets
+    ):
         """Helper to setup a trained ensemble for testing."""
         # Same as previous helper method
         for model_name, model in ensemble.base_models.items():
@@ -784,7 +856,9 @@ class TestEnsembleFeatureImportance:
         train_features, train_targets, _, _ = ensemble_validation_data
         ensemble = OccupancyEnsemble(room_id="test_room")
 
-        await self._setup_trained_ensemble(ensemble, train_features, train_targets)
+        await self._setup_trained_ensemble(
+            ensemble, train_features, train_targets
+        )
 
         # Mock base model feature importance
         mock_importances = {
@@ -795,7 +869,11 @@ class TestEnsembleFeatureImportance:
                 "prev_state_duration": 0.6,
                 "state_stability": 0.3,
             },
-            "gp": {"smooth_pattern": 0.7, "smooth_trend": 0.2, "hour_sin": 0.1},
+            "gp": {
+                "smooth_pattern": 0.7,
+                "smooth_trend": 0.2,
+                "hour_sin": 0.1,
+            },
         }
 
         for model_name, model in ensemble.base_models.items():
@@ -808,7 +886,9 @@ class TestEnsembleFeatureImportance:
 
         # Verify combination
         assert len(combined_importance) > 0
-        assert all(isinstance(v, (int, float)) for v in combined_importance.values())
+        assert all(
+            isinstance(v, (int, float)) for v in combined_importance.values()
+        )
         assert all(v >= 0 for v in combined_importance.values())
 
         # hour_sin should have high importance (appears in multiple models)
@@ -830,7 +910,9 @@ class TestEnsembleFeatureImportance:
         # Should return empty dict for untrained model
         assert importance == {}
 
-    async def _setup_trained_ensemble(self, ensemble, train_features, train_targets):
+    async def _setup_trained_ensemble(
+        self, ensemble, train_features, train_targets
+    ):
         """Helper to setup a trained ensemble for testing."""
         for model_name, model in ensemble.base_models.items():
             model.is_trained = True
@@ -900,7 +982,9 @@ class TestEnsemblePerformance:
     """Test ensemble performance benchmarks and comparisons."""
 
     @pytest.mark.asyncio
-    async def test_ensemble_training_performance(self, ensemble_validation_data):
+    async def test_ensemble_training_performance(
+        self, ensemble_validation_data
+    ):
         """Test ensemble training performance benchmarks."""
         train_features, train_targets, val_features, val_targets = (
             ensemble_validation_data
@@ -935,7 +1019,8 @@ class TestEnsemblePerformance:
                 mock_model.predict = AsyncMock(
                     return_value=[
                         PredictionResult(
-                            predicted_time=datetime.utcnow() + timedelta(seconds=1800),
+                            predicted_time=datetime.utcnow()
+                            + timedelta(seconds=1800),
                             transition_type="vacant_to_occupied",
                             confidence_score=0.8,
                         )
@@ -948,13 +1033,18 @@ class TestEnsemblePerformance:
             # Measure training time
             start_time = time.time()
             result = await ensemble.train(
-                perf_features, perf_targets, perf_val_features, perf_val_targets
+                perf_features,
+                perf_targets,
+                perf_val_features,
+                perf_val_targets,
             )
             training_time = time.time() - start_time
 
             # Performance assertions
             assert result.success is True
-            assert training_time < 120  # Should complete within 2 minutes for test data
+            assert (
+                training_time < 120
+            )  # Should complete within 2 minutes for test data
 
             print(
                 f"Ensemble training time: {training_time:.2f}s for {len(perf_features)} samples"
@@ -963,28 +1053,40 @@ class TestEnsemblePerformance:
     @pytest.mark.asyncio
     async def test_ensemble_prediction_latency(self, ensemble_validation_data):
         """Test ensemble prediction latency requirements."""
-        train_features, train_targets, val_features, _ = ensemble_validation_data
+        train_features, train_targets, val_features, _ = (
+            ensemble_validation_data
+        )
         ensemble = OccupancyEnsemble(room_id="latency_test")
 
-        await self._setup_trained_ensemble(ensemble, train_features, train_targets)
+        await self._setup_trained_ensemble(
+            ensemble, train_features, train_targets
+        )
 
         # Measure prediction latency
         test_features = val_features.head(20)
 
         start_time = time.time()
-        predictions = await ensemble.predict(test_features, datetime.utcnow(), "vacant")
+        predictions = await ensemble.predict(
+            test_features, datetime.utcnow(), "vacant"
+        )
         prediction_time = time.time() - start_time
 
         # Latency per sample
-        latency_per_sample = (prediction_time / len(test_features)) * 1000  # ms
+        latency_per_sample = (
+            prediction_time / len(test_features)
+        ) * 1000  # ms
 
-        print(f"Ensemble prediction latency: {latency_per_sample:.2f}ms per sample")
+        print(
+            f"Ensemble prediction latency: {latency_per_sample:.2f}ms per sample"
+        )
 
         # Should meet performance requirements (< 100ms per prediction)
         assert latency_per_sample < 100
         assert len(predictions) == len(test_features)
 
-    async def _setup_trained_ensemble(self, ensemble, train_features, train_targets):
+    async def _setup_trained_ensemble(
+        self, ensemble, train_features, train_targets
+    ):
         """Helper to setup trained ensemble for performance testing."""
         for model_name, model in ensemble.base_models.items():
             model.is_trained = True
@@ -1007,7 +1109,9 @@ class TestEnsemblePerformance:
 
         # Fast mock meta-learner
         ensemble.meta_learner = MagicMock()
-        ensemble.meta_learner.predict = MagicMock(return_value=np.array([1800.0]))
+        ensemble.meta_learner.predict = MagicMock(
+            return_value=np.array([1800.0])
+        )
 
         ensemble.meta_scaler = MagicMock()
         ensemble.meta_scaler.transform = MagicMock(

@@ -20,7 +20,6 @@ import logging
 from pathlib import Path
 import sys
 import time
-from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -217,7 +216,9 @@ class AutomatedValidationRunner:
             self.logger.info("Automated Validation Runner started")
 
         except Exception as e:
-            self.logger.error(f"Failed to start Automated Validation Runner: {e}")
+            self.logger.error(
+                f"Failed to start Automated Validation Runner: {e}"
+            )
             raise
 
     async def stop(self) -> None:
@@ -234,7 +235,9 @@ class AutomatedValidationRunner:
                 self.logger.info(
                     f"Waiting for {len(self.active_runs)} active runs to complete..."
                 )
-                await self._wait_for_active_runs_completion(timeout_seconds=300)
+                await self._wait_for_active_runs_completion(
+                    timeout_seconds=300
+                )
 
             # Shutdown framework
             await self.framework.stop()
@@ -245,7 +248,9 @@ class AutomatedValidationRunner:
             self.logger.info("Automated Validation Runner stopped")
 
         except Exception as e:
-            self.logger.error(f"Error stopping Automated Validation Runner: {e}")
+            self.logger.error(
+                f"Error stopping Automated Validation Runner: {e}"
+            )
             raise
 
     async def run_validation(
@@ -379,7 +384,9 @@ class AutomatedValidationRunner:
             time_window_hours=48,
             custom_parameters={
                 "baseline_results_path": (
-                    str(baseline_results_path) if baseline_results_path else None
+                    str(baseline_results_path)
+                    if baseline_results_path
+                    else None
                 ),
                 "regression_tolerance_percentage": 5.0,
             },
@@ -397,11 +404,15 @@ class AutomatedValidationRunner:
         job_id = f"scheduled_{config.run_id}_{int(datetime.now().timestamp())}"
 
         def run_scheduled_validation():
-            asyncio.create_task(self.run_validation(config, wait_for_completion=False))
+            asyncio.create_task(
+                self.run_validation(config, wait_for_completion=False)
+            )
 
         # Parse schedule expression and create job
         if schedule_expression == "daily":
-            schedule.every().day.at("02:00").do(run_scheduled_validation).tag(job_id)
+            schedule.every().day.at("02:00").do(run_scheduled_validation).tag(
+                job_id
+            )
         elif schedule_expression == "hourly":
             schedule.every().hour.do(run_scheduled_validation).tag(job_id)
         elif schedule_expression.startswith("every_"):
@@ -409,9 +420,9 @@ class AutomatedValidationRunner:
             parts = schedule_expression.split("_")
             if len(parts) == 3 and parts[2] == "minutes":
                 interval = int(parts[1])
-                schedule.every(interval).minutes.do(run_scheduled_validation).tag(
-                    job_id
-                )
+                schedule.every(interval).minutes.do(
+                    run_scheduled_validation
+                ).tag(job_id)
 
         self.scheduled_jobs.append(job_id)
         self.logger.info(
@@ -432,7 +443,9 @@ class AutomatedValidationRunner:
             self.logger.error(f"Error cancelling scheduled run {job_id}: {e}")
             return False
 
-    async def get_run_status(self, run_id: str) -> Optional[ValidationRunResult]:
+    async def get_run_status(
+        self, run_id: str
+    ) -> Optional[ValidationRunResult]:
         """Get the status of a validation run."""
         # Check active runs
         if run_id in self.active_runs:
@@ -459,13 +472,19 @@ class AutomatedValidationRunner:
             ]
         )
         failed_runs = len(
-            [r for r in self.completed_runs if r.status == ValidationRunStatus.FAILED]
+            [
+                r
+                for r in self.completed_runs
+                if r.status == ValidationRunStatus.FAILED
+            ]
         )
 
         average_duration = 0.0
         if self.completed_runs:
             durations = [
-                r.duration_seconds for r in self.completed_runs if r.duration_seconds
+                r.duration_seconds
+                for r in self.completed_runs
+                if r.duration_seconds
             ]
             if durations:
                 average_duration = sum(durations) / len(durations)
@@ -479,11 +498,12 @@ class AutomatedValidationRunner:
             "total_completed_runs": total_runs,
             "successful_runs": successful_runs,
             "failed_runs": failed_runs,
-            "success_rate_percentage": (successful_runs / max(1, total_runs)) * 100,
+            "success_rate_percentage": (successful_runs / max(1, total_runs))
+            * 100,
             "average_run_duration_seconds": average_duration,
-            "framework_status": (await self.framework.get_system_health_status())[
-                "framework_status"
-            ],
+            "framework_status": (
+                await self.framework.get_system_health_status()
+            )["framework_status"],
         }
 
     # Private Methods
@@ -499,7 +519,9 @@ class AutomatedValidationRunner:
             if config.run_type == ValidationRunType.BATCH_HISTORICAL:
                 await self._execute_batch_historical_run(config, run_result)
             elif config.run_type == ValidationRunType.PERFORMANCE_BENCHMARK:
-                await self._execute_performance_benchmark_run(config, run_result)
+                await self._execute_performance_benchmark_run(
+                    config, run_result
+                )
             elif config.run_type == ValidationRunType.REGRESSION_TEST:
                 await self._execute_regression_test_run(config, run_result)
             elif config.run_type == ValidationRunType.CALIBRATION_CHECK:
@@ -564,7 +586,9 @@ class AutomatedValidationRunner:
 
         async def process_room(room_id: str):
             async with semaphore:
-                return await self._process_single_room(room_id, config, run_result)
+                return await self._process_single_room(
+                    room_id, config, run_result
+                )
 
         # Create tasks for all rooms
         tasks = [process_room(room_id) for room_id in config.rooms_to_validate]
@@ -591,7 +615,10 @@ class AutomatedValidationRunner:
             run_result.rooms_processed += 1
 
     async def _process_single_room(
-        self, room_id: str, config: ValidationRunConfig, run_result: ValidationRunResult
+        self,
+        room_id: str,
+        config: ValidationRunConfig,
+        run_result: ValidationRunResult,
     ) -> Dict[str, Any]:
         """Process validation for a single room."""
         try:
@@ -621,7 +648,9 @@ class AutomatedValidationRunner:
 
             # Store results
             run_result.room_results[room_id] = room_metrics
-            run_result.total_predictions_validated += room_metrics["total_predictions"]
+            run_result.total_predictions_validated += room_metrics[
+                "total_predictions"
+            ]
 
             return room_metrics
 
@@ -647,10 +676,12 @@ class AutomatedValidationRunner:
                 for r in run_result.room_results.values()
             ]
             calibrations = [
-                r.get("calibration_score", 0) for r in run_result.room_results.values()
+                r.get("calibration_score", 0)
+                for r in run_result.room_results.values()
             ]
             confidences = [
-                r.get("confidence_score", 0) for r in run_result.room_results.values()
+                r.get("confidence_score", 0)
+                for r in run_result.room_results.values()
             ]
 
             run_result.overall_accuracy_percentage = (
@@ -671,7 +702,7 @@ class AutomatedValidationRunner:
     ) -> None:
         """Save validation run results to artifacts."""
         try:
-            results_filename = f"validation_run_{config.run_id}_{run_result.started_at.strftime('%Y%m%d_%H%M%S')}.json"
+            results_filename = f"validation_run_{config.run_id}_{run_result.started_at.strftime('%Y % m%d_ % H%M % S')}.json"
             results_path = self.artifacts_directory / results_filename
 
             with open(results_path, "w") as f:
@@ -728,7 +759,9 @@ def create_cli_parser() -> argparse.ArgumentParser:
         help="Type of validation run",
     )
 
-    parser.add_argument("--rooms", nargs="+", default=[], help="Rooms to validate")
+    parser.add_argument(
+        "--rooms", nargs="+", default=[], help="Rooms to validate"
+    )
 
     parser.add_argument(
         "--time-window", type=int, default=24, help="Time window in hours"
@@ -742,17 +775,23 @@ def create_cli_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "--confidence-threshold", type=float, default=0.8, help="Confidence threshold"
+        "--confidence-threshold",
+        type=float,
+        default=0.8,
+        help="Confidence threshold",
     )
 
-    parser.add_argument("--artifacts-dir", type=Path, help="Artifacts directory")
+    parser.add_argument(
+        "--artifacts-dir", type=Path, help="Artifacts directory"
+    )
 
     parser.add_argument(
         "--parallel", action="store_true", help="Enable parallel processing"
     )
 
     parser.add_argument(
-        "--schedule", help="Schedule expression (daily, hourly, every_X_minutes)"
+        "--schedule",
+        help="Schedule expression (daily, hourly, every_X_minutes)",
     )
 
     parser.add_argument("--run-id", help="Specific run ID to query")
@@ -791,13 +830,19 @@ async def main() -> None:
                 )
 
                 # Run validation
-                result = await runner.run_validation(config, wait_for_completion=True)
+                result = await runner.run_validation(
+                    config, wait_for_completion=True
+                )
 
                 # Print results
                 print(f"Validation run completed: {result.status.value}")
                 print(f"Rooms processed: {result.rooms_processed}")
-                print(f"Overall accuracy: {result.overall_accuracy_percentage:.2f}%")
-                print(f"Overall calibration: {result.overall_calibration_score:.3f}")
+                print(
+                    f"Overall accuracy: {result.overall_accuracy_percentage:.2f}%"
+                )
+                print(
+                    f"Overall calibration: {result.overall_calibration_score:.3f}"
+                )
 
             elif args.command == "schedule":
                 if not args.schedule:
@@ -811,7 +856,9 @@ async def main() -> None:
                     time_window_hours=args.time_window,
                 )
 
-                job_id = await runner.schedule_validation_run(config, args.schedule)
+                job_id = await runner.schedule_validation_run(
+                    config, args.schedule
+                )
                 print(f"Scheduled validation job: {job_id}")
 
             elif args.command == "status":

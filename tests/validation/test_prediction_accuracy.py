@@ -9,7 +9,6 @@ used in the occupancy prediction system.
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import numpy as np
@@ -59,7 +58,9 @@ class TestPredictionAccuracyCalculation:
             confidence_score=0.85,
         )
 
-        is_accurate = record.validate_against_actual(actual_time, threshold_minutes=15)
+        is_accurate = record.validate_against_actual(
+            actual_time, threshold_minutes=15
+        )
 
         assert record.error_minutes == pytest.approx(5.5, abs=0.1)
         assert record.accuracy_level == AccuracyLevel.GOOD
@@ -81,7 +82,9 @@ class TestPredictionAccuracyCalculation:
             confidence_score=0.92,
         )
 
-        is_accurate = record.validate_against_actual(actual_time, threshold_minutes=10)
+        is_accurate = record.validate_against_actual(
+            actual_time, threshold_minutes=10
+        )
 
         assert record.error_minutes == pytest.approx(5.0, abs=0.1)
         assert record.accuracy_level == AccuracyLevel.GOOD
@@ -171,7 +174,9 @@ class TestPredictionAccuracyCalculation:
         )
 
         actual_time = base_time + timedelta(minutes=15)  # Exactly 15 minutes
-        is_accurate = record.validate_against_actual(actual_time, threshold_minutes=15)
+        is_accurate = record.validate_against_actual(
+            actual_time, threshold_minutes=15
+        )
 
         assert record.error_minutes == 15.0
         assert is_accurate is True  # Should be inclusive
@@ -190,7 +195,9 @@ class TestPredictionAccuracyCalculation:
         actual_time = base_time + timedelta(
             minutes=15, seconds=1
         )  # Just over 15 minutes
-        is_accurate = record2.validate_against_actual(actual_time, threshold_minutes=15)
+        is_accurate = record2.validate_against_actual(
+            actual_time, threshold_minutes=15
+        )
 
         assert record2.error_minutes > 15.0
         assert is_accurate is False
@@ -303,7 +310,9 @@ class TestPredictionValidatorAccuracy:
         )
 
     @pytest.mark.asyncio
-    async def test_prediction_recording_workflow(self, validator, sample_prediction):
+    async def test_prediction_recording_workflow(
+        self, validator, sample_prediction
+    ):
         """Test complete prediction recording workflow."""
         with patch("src.adaptation.validator.get_db_session"):
             # Record prediction
@@ -329,11 +338,16 @@ class TestPredictionValidatorAccuracy:
                 assert record.feature_snapshot["temperature"] == 22.5
 
     @pytest.mark.asyncio
-    async def test_prediction_validation_workflow(self, validator, sample_prediction):
+    async def test_prediction_validation_workflow(
+        self, validator, sample_prediction
+    ):
         """Test complete prediction validation workflow."""
-        with patch("src.adaptation.validator.get_db_session"), patch.object(
-            validator, "_update_predictions_in_db"
-        ) as mock_update:
+        with (
+            patch("src.adaptation.validator.get_db_session"),
+            patch.object(
+                validator, "_update_predictions_in_db"
+            ) as mock_update,
+        ):
 
             # Record prediction
             prediction_id = await validator.record_prediction(
@@ -343,7 +357,10 @@ class TestPredictionValidatorAccuracy:
             # Validate with accurate timing
             actual_time = datetime(2024, 1, 15, 14, 33, 0)  # 3 minutes late
             validated_ids = await validator.validate_prediction(
-                "living_room", actual_time, "occupied", max_time_window_minutes=60
+                "living_room",
+                actual_time,
+                "occupied",
+                max_time_window_minutes=60,
             )
 
             assert len(validated_ids) == 1
@@ -363,9 +380,12 @@ class TestPredictionValidatorAccuracy:
     @pytest.mark.asyncio
     async def test_batch_prediction_validation(self, validator):
         """Test batch validation of multiple predictions."""
-        with patch("src.adaptation.validator.get_db_session"), patch.object(
-            validator, "_update_predictions_in_db"
-        ) as mock_update:
+        with (
+            patch("src.adaptation.validator.get_db_session"),
+            patch.object(
+                validator, "_update_predictions_in_db"
+            ) as mock_update,
+        ):
 
             # Create multiple predictions for the same room
             predictions = []
@@ -379,11 +399,15 @@ class TestPredictionValidatorAccuracy:
                     model_version="1.0",
                 )
 
-                prediction_id = await validator.record_prediction(prediction, "bedroom")
+                prediction_id = await validator.record_prediction(
+                    prediction, "bedroom"
+                )
                 predictions.append(prediction_id)
 
             # Validate all predictions at once
-            actual_time = datetime(2024, 1, 15, 14, 32, 30)  # Should match prediction 2
+            actual_time = datetime(
+                2024, 1, 15, 14, 32, 30
+            )  # Should match prediction 2
             validated_ids = await validator.validate_prediction(
                 "bedroom",
                 actual_time,
@@ -411,14 +435,17 @@ class TestPredictionValidatorAccuracy:
             for i, offset_minutes in enumerate([-30, -10, 0, 10, 30]):
                 prediction = PredictionResult(
                     room_id="kitchen",
-                    predicted_time=base_time + timedelta(minutes=offset_minutes),
+                    predicted_time=base_time
+                    + timedelta(minutes=offset_minutes),
                     transition_type="occupied",
                     confidence_score=0.8,
                     model_type=f"Model_{i}",
                     model_version="1.0",
                 )
 
-                prediction_id = await validator.record_prediction(prediction, "kitchen")
+                prediction_id = await validator.record_prediction(
+                    prediction, "kitchen"
+                )
                 predictions.append(prediction_id)
 
             # Validate with narrow time window
@@ -459,7 +486,9 @@ class TestPredictionValidatorAccuracy:
             occupied_id = await validator.record_prediction(
                 occupied_prediction, "office"
             )
-            vacant_id = await validator.record_prediction(vacant_prediction, "office")
+            vacant_id = await validator.record_prediction(
+                vacant_prediction, "office"
+            )
 
             # Validate with "occupied" transition
             actual_time = datetime(2024, 1, 15, 14, 32, 0)
@@ -488,7 +517,9 @@ class TestPredictionValidatorAccuracy:
                 model_version="1.0",
             )
 
-            prediction_id = await validator.record_prediction(prediction, "bathroom")
+            prediction_id = await validator.record_prediction(
+                prediction, "bathroom"
+            )
 
             # Validate with timing that exceeds threshold
             actual_time = datetime(2024, 1, 15, 14, 50, 0)  # 20 minutes late
@@ -527,7 +558,7 @@ class TestAccuracyValidationEdgeCases:
         actual_time = predicted_time  # Exactly same time
 
         record = ValidationRecord(
-            prediction_id="zero_diff",
+            prediction_id="zero_dif",
             room_id="test_room",
             model_type="TestModel",
             model_version="1.0",
@@ -560,10 +591,14 @@ class TestAccuracyValidationEdgeCases:
         is_accurate = record.validate_against_actual(actual_time)
 
         # Should handle microsecond differences correctly
-        expected_diff_seconds = abs((actual_time - predicted_time).total_seconds())
+        expected_diff_seconds = abs(
+            (actual_time - predicted_time).total_seconds()
+        )
         expected_diff_minutes = expected_diff_seconds / 60
 
-        assert record.error_minutes == pytest.approx(expected_diff_minutes, abs=0.0001)
+        assert record.error_minutes == pytest.approx(
+            expected_diff_minutes, abs=0.0001
+        )
         assert record.accuracy_level == AccuracyLevel.EXCELLENT
 
     def test_large_time_difference_handling(self):
@@ -572,7 +607,7 @@ class TestAccuracyValidationEdgeCases:
         actual_time = datetime(2024, 1, 16, 14, 30, 0)  # 24 hours later
 
         record = ValidationRecord(
-            prediction_id="large_diff",
+            prediction_id="large_dif",
             room_id="test_room",
             model_type="TestModel",
             model_version="1.0",
@@ -581,9 +616,13 @@ class TestAccuracyValidationEdgeCases:
             confidence_score=0.6,
         )
 
-        is_accurate = record.validate_against_actual(actual_time, threshold_minutes=10)
+        is_accurate = record.validate_against_actual(
+            actual_time, threshold_minutes=10
+        )
 
-        assert record.error_minutes == pytest.approx(1440.0, abs=0.1)  # 24 * 60 minutes
+        assert record.error_minutes == pytest.approx(
+            1440.0, abs=0.1
+        )  # 24 * 60 minutes
         assert record.accuracy_level == AccuracyLevel.UNACCEPTABLE
         assert is_accurate is False
 
@@ -594,7 +633,10 @@ class TestAccuracyValidationEdgeCases:
             # Try to validate for a room with no predictions
             actual_time = datetime(2024, 1, 15, 14, 30, 0)
             validated_ids = await validator.validate_prediction(
-                "nonexistent_room", actual_time, "occupied", max_time_window_minutes=60
+                "nonexistent_room",
+                actual_time,
+                "occupied",
+                max_time_window_minutes=60,
             )
 
             assert len(validated_ids) == 0
@@ -649,5 +691,6 @@ class TestAccuracyValidationEdgeCases:
             # Verify memory limit was respected
             with validator._lock:
                 assert (
-                    len(validator._validation_records) <= validator.max_memory_records
+                    len(validator._validation_records)
+                    <= validator.max_memory_records
                 )

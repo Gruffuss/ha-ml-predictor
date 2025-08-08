@@ -46,12 +46,14 @@ class TestFeatureComputationLatency:
                 room_id="living_room",
                 sensor_id=f"binary_sensor.living_room_motion_{i % 3}",
                 sensor_type="motion",
-                state="on" if i % 2 == 0 else "off",
-                previous_state="off" if i % 2 == 0 else "on",
+                state="on" if i % 2 == 0 else "of",
+                previous_state="of" if i % 2 == 0 else "on",
                 timestamp=base_time
                 + timedelta(minutes=i * 1.44),  # ~1.44 min intervals
                 attributes={"friendly_name": f"Living Room Motion {i % 3}"},
-                is_human_triggered=True if i % 10 != 0 else False,  # 90% human, 10% cat
+                is_human_triggered=(
+                    True if i % 10 != 0 else False
+                ),  # 90% human, 10% cat
             )
             events.append(event)
 
@@ -71,9 +73,10 @@ class TestFeatureComputationLatency:
                 room_id=room_id,
                 sensor_id=f"binary_sensor.{room_id}_motion",
                 sensor_type="motion",
-                state="on" if i % 2 == 0 else "off",
-                previous_state="off" if i % 2 == 0 else "on",
-                timestamp=base_time + timedelta(minutes=i * 1.008),  # ~1 min intervals
+                state="on" if i % 2 == 0 else "of",
+                previous_state="of" if i % 2 == 0 else "on",
+                timestamp=base_time
+                + timedelta(minutes=i * 1.008),  # ~1 min intervals
                 attributes={"friendly_name": f"{room_id.title()} Motion"},
                 is_human_triggered=True if i % 8 != 0 else False,
             )
@@ -131,14 +134,16 @@ class TestFeatureComputationLatency:
         median_latency = statistics.median(latencies)
         p95_latency = np.percentile(latencies, 95)
 
-        print(f"\nTemporal Feature Extraction Results:")
+        print("\nTemporal Feature Extraction Results:")
         print(f"Mean: {mean_latency:.2f}ms")
         print(f"Median: {median_latency:.2f}ms")
         print(f"P95: {p95_latency:.2f}ms")
         print(f"Features extracted: {len(features)}")
 
         # Temporal extraction should be very fast
-        assert mean_latency < 50, f"Temporal extraction {mean_latency:.2f}ms too slow"
+        assert (
+            mean_latency < 50
+        ), f"Temporal extraction {mean_latency:.2f}ms too slow"
         assert (
             p95_latency < 100
         ), f"P95 temporal extraction {p95_latency:.2f}ms too slow"
@@ -177,7 +182,7 @@ class TestFeatureComputationLatency:
         mean_latency = statistics.mean(latencies)
         p95_latency = np.percentile(latencies, 95)
 
-        print(f"\nSequential Feature Extraction Results:")
+        print("\nSequential Feature Extraction Results:")
         print(f"Mean: {mean_latency:.2f}ms")
         print(f"P95: {p95_latency:.2f}ms")
         print(f"Features extracted: {len(features)}")
@@ -214,7 +219,7 @@ class TestFeatureComputationLatency:
         mean_latency = statistics.mean(latencies)
         p95_latency = np.percentile(latencies, 95)
 
-        print(f"\nContextual Feature Extraction Results:")
+        print("\nContextual Feature Extraction Results:")
         print(f"Mean: {mean_latency:.2f}ms")
         print(f"P95: {p95_latency:.2f}ms")
         print(f"Features extracted: {len(features)}")
@@ -236,9 +241,12 @@ class TestFeatureComputationLatency:
         latencies = []
 
         # Mock the database queries to return our sample events
-        with patch.object(
-            feature_store, "_get_recent_events", return_value=sample_events
-        ), patch.object(feature_store, "_get_room_context", return_value={}):
+        with (
+            patch.object(
+                feature_store, "_get_recent_events", return_value=sample_events
+            ),
+            patch.object(feature_store, "_get_room_context", return_value={}),
+        ):
 
             for _ in range(25):
                 start_time = time.perf_counter()
@@ -253,19 +261,23 @@ class TestFeatureComputationLatency:
                 # Verify complete feature set
                 assert features_df is not None
                 assert len(features_df) > 0
-                assert len(features_df.columns) > 10  # Should have many features
+                assert (
+                    len(features_df.columns) > 10
+                )  # Should have many features
 
         mean_latency = statistics.mean(latencies)
         median_latency = statistics.median(latencies)
         p95_latency = np.percentile(latencies, 95)
         p99_latency = np.percentile(latencies, 99)
 
-        print(f"\nComplete Feature Pipeline Results:")
+        print("\nComplete Feature Pipeline Results:")
         print(f"Mean: {mean_latency:.2f}ms")
         print(f"Median: {median_latency:.2f}ms")
         print(f"P95: {p95_latency:.2f}ms")
         print(f"P99: {p99_latency:.2f}ms")
-        print(f"Features: {len(features_df.columns) if features_df is not None else 0}")
+        print(
+            f"Features: {len(features_df.columns) if features_df is not None else 0}"
+        )
 
         # Complete pipeline must meet 500ms requirement
         assert (
@@ -281,18 +293,25 @@ class TestFeatureComputationLatency:
         room_id = "living_room"
         target_time = datetime.now()
 
-        with patch.object(
-            feature_store, "_get_recent_events", return_value=large_event_dataset
-        ), patch.object(feature_store, "_get_room_context", return_value={}):
+        with (
+            patch.object(
+                feature_store,
+                "_get_recent_events",
+                return_value=large_event_dataset,
+            ),
+            patch.object(feature_store, "_get_room_context", return_value={}),
+        ):
 
             # Test single large computation
             start_time = time.perf_counter()
             features_df = await feature_store.compute_features(
-                room_id=room_id, target_time=target_time, lookback_hours=168  # 7 days
+                room_id=room_id,
+                target_time=target_time,
+                lookback_hours=168,  # 7 days
             )
             large_dataset_latency = (time.perf_counter() - start_time) * 1000
 
-            print(f"\nLarge Dataset Feature Computation:")
+            print("\nLarge Dataset Feature Computation:")
             print(f"Dataset size: {len(large_event_dataset)} events")
             print(f"Computation time: {large_dataset_latency:.2f}ms")
             print(
@@ -306,14 +325,19 @@ class TestFeatureComputationLatency:
             assert features_df is not None
             assert len(features_df) > 0
 
-    async def test_concurrent_feature_computation(self, feature_store, sample_events):
+    async def test_concurrent_feature_computation(
+        self, feature_store, sample_events
+    ):
         """Test feature computation performance under concurrent load."""
         rooms = ["living_room", "bedroom", "kitchen"]
         target_time = datetime.now()
 
-        with patch.object(
-            feature_store, "_get_recent_events", return_value=sample_events
-        ), patch.object(feature_store, "_get_room_context", return_value={}):
+        with (
+            patch.object(
+                feature_store, "_get_recent_events", return_value=sample_events
+            ),
+            patch.object(feature_store, "_get_room_context", return_value={}),
+        ):
 
             async def compute_features_for_room(room_id):
                 start_time = time.perf_counter()
@@ -331,7 +355,7 @@ class TestFeatureComputationLatency:
             mean_concurrent_latency = statistics.mean(latencies)
             max_concurrent_latency = max(latencies)
 
-            print(f"\nConcurrent Feature Computation Results:")
+            print("\nConcurrent Feature Computation Results:")
             print(f"Concurrent rooms: {len(rooms)}")
             print(f"Mean latency: {mean_concurrent_latency:.2f}ms")
             print(f"Max latency: {max_concurrent_latency:.2f}ms")
@@ -344,23 +368,32 @@ class TestFeatureComputationLatency:
                 max_concurrent_latency < 800
             ), f"Max concurrent latency {max_concurrent_latency:.2f}ms too high"
 
-    async def test_feature_caching_performance(self, feature_store, sample_events):
+    async def test_feature_caching_performance(
+        self, feature_store, sample_events
+    ):
         """Test feature caching effectiveness on computation performance."""
         room_id = "living_room"
         target_time = datetime.now()
 
-        with patch.object(
-            feature_store, "_get_recent_events", return_value=sample_events
-        ), patch.object(feature_store, "_get_room_context", return_value={}):
+        with (
+            patch.object(
+                feature_store, "_get_recent_events", return_value=sample_events
+            ),
+            patch.object(feature_store, "_get_room_context", return_value={}),
+        ):
 
             # First computation (cache miss)
             start_time = time.perf_counter()
-            features_1 = await feature_store.compute_features(room_id, target_time, 24)
+            features_1 = await feature_store.compute_features(
+                room_id, target_time, 24
+            )
             cold_latency = (time.perf_counter() - start_time) * 1000
 
             # Second computation (potential cache hit)
             start_time = time.perf_counter()
-            features_2 = await feature_store.compute_features(room_id, target_time, 24)
+            features_2 = await feature_store.compute_features(
+                room_id, target_time, 24
+            )
             warm_latency = (time.perf_counter() - start_time) * 1000
 
             # Subsequent computations
@@ -368,14 +401,16 @@ class TestFeatureComputationLatency:
             for _ in range(10):
                 start_time = time.perf_counter()
                 await feature_store.compute_features(room_id, target_time, 24)
-                warm_latencies.append((time.perf_counter() - start_time) * 1000)
+                warm_latencies.append(
+                    (time.perf_counter() - start_time) * 1000
+                )
 
             mean_warm_latency = statistics.mean(warm_latencies)
             cache_improvement = (
                 (cold_latency - mean_warm_latency) / cold_latency
             ) * 100
 
-            print(f"\nFeature Caching Performance:")
+            print("\nFeature Caching Performance:")
             print(f"Cold computation: {cold_latency:.2f}ms")
             print(f"Warm computation: {mean_warm_latency:.2f}ms")
             print(f"Cache improvement: {cache_improvement:.1f}%")
@@ -406,17 +441,23 @@ class TestFeatureComputationLatency:
                     room_id=room_id,
                     sensor_id="binary_sensor.motion",
                     sensor_type="motion",
-                    state="on" if i % 2 == 0 else "off",
-                    previous_state="off" if i % 2 == 0 else "on",
-                    timestamp=base_time + timedelta(minutes=i * (24 * 60 / size)),
+                    state="on" if i % 2 == 0 else "of",
+                    previous_state="of" if i % 2 == 0 else "on",
+                    timestamp=base_time
+                    + timedelta(minutes=i * (24 * 60 / size)),
                     attributes={},
                     is_human_triggered=True,
                 )
                 events.append(event)
 
-            with patch.object(
-                feature_store, "_get_recent_events", return_value=events
-            ), patch.object(feature_store, "_get_room_context", return_value={}):
+            with (
+                patch.object(
+                    feature_store, "_get_recent_events", return_value=events
+                ),
+                patch.object(
+                    feature_store, "_get_room_context", return_value={}
+                ),
+            ):
 
                 # Measure computation time
                 start_time = time.perf_counter()
@@ -427,10 +468,12 @@ class TestFeatureComputationLatency:
 
                 scalability_results[size] = latency
 
-        print(f"\nFeature Computation Scalability:")
+        print("\nFeature Computation Scalability:")
         for size, latency in scalability_results.items():
             events_per_ms = size / latency if latency > 0 else 0
-            print(f"{size} events: {latency:.2f}ms ({events_per_ms:.2f} events/ms)")
+            print(
+                f"{size} events: {latency:.2f}ms ({events_per_ms:.2f} events/ms)"
+            )
 
         # Verify all sizes meet requirements
         for size, latency in scalability_results.items():

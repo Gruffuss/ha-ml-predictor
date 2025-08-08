@@ -14,9 +14,7 @@ Features:
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-import json
 import logging
-from typing import Any, Dict, List, Optional, Union
 
 from ..core.config import MQTTConfig, RoomConfig
 from ..core.constants import ModelType
@@ -177,13 +175,18 @@ class PredictionPublisher:
 
             # Format alternatives
             alternatives = []
-            for alt_time, alt_confidence in (prediction_result.alternatives or [])[:3]:
+            for alt_time, alt_confidence in (
+                prediction_result.alternatives or []
+            )[:3]:
                 alternatives.append(
                     {
                         "predicted_time": alt_time.isoformat(),
                         "confidence": float(alt_confidence),
                         "time_until_seconds": max(
-                            0, int((alt_time - datetime.utcnow()).total_seconds())
+                            0,
+                            int(
+                                (alt_time - datetime.utcnow()).total_seconds()
+                            ),
                         ),
                     }
                 )
@@ -282,9 +285,15 @@ class PredictionPublisher:
                 if tracking_stats
                 else 0
             )
-            predictions_last_hour = 0  # Would need to be calculated from tracking data
-            avg_accuracy = 0.0  # Would need to be calculated from tracking data
-            avg_confidence = 0.0  # Would need to be calculated from tracking data
+            predictions_last_hour = (
+                0  # Would need to be calculated from tracking data
+            )
+            avg_accuracy = (
+                0.0  # Would need to be calculated from tracking data
+            )
+            avg_confidence = (
+                0.0  # Would need to be calculated from tracking data
+            )
 
             # Extract model statistics
             active_models = []
@@ -352,7 +361,9 @@ class PredictionPublisher:
                 self.status_updates_published += 1
                 logger.debug(f"Published system status: {system_status}")
             else:
-                logger.error(f"Failed to publish system status: {result.error_message}")
+                logger.error(
+                    f"Failed to publish system status: {result.error_message}"
+                )
 
             return result
 
@@ -386,13 +397,17 @@ class PredictionPublisher:
 
         for room_id, prediction in predictions.items():
             current_state = current_states.get(room_id)
-            result = await self.publish_prediction(prediction, room_id, current_state)
+            result = await self.publish_prediction(
+                prediction, room_id, current_state
+            )
             results[room_id] = result
 
         successful = sum(1 for r in results.values() if r.success)
         total = len(results)
 
-        logger.info(f"Published batch predictions: {successful}/{total} successful")
+        logger.info(
+            f"Published batch predictions: {successful}/{total} successful"
+        )
         return results
 
     def get_publisher_stats(self) -> Dict[str, Any]:
@@ -453,7 +468,9 @@ class PredictionPublisher:
             )
 
         except Exception as e:
-            logger.warning(f"Failed to publish some legacy topics for {room_id}: {e}")
+            logger.warning(
+                f"Failed to publish some legacy topics for {room_id}: {e}"
+            )
 
     def _format_time_until(self, seconds: int) -> str:
         """Format seconds into human readable time."""

@@ -7,7 +7,6 @@ all adaptation components, integration workflows, and real-time monitoring.
 
 import asyncio
 from datetime import datetime, timedelta
-import json
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -89,7 +88,10 @@ def mock_mqtt_manager():
     )
     mqtt_manager.get_integration_stats = Mock(
         return_value={
-            "mqtt_integration": {"mqtt_connected": True, "discovery_published": True},
+            "mqtt_integration": {
+                "mqtt_connected": True,
+                "discovery_published": True,
+            },
             "realtime_publishing": {"system_active": True},
             "channels": {
                 "total_active": 3,
@@ -132,12 +134,12 @@ async def tracking_manager(
     )
 
     # Initialize with mocked components
-    with patch("src.adaptation.tracking_manager.PredictionValidator"), patch(
-        "src.adaptation.tracking_manager.AccuracyTracker"
-    ), patch("src.adaptation.tracking_manager.ConceptDriftDetector"), patch(
-        "src.adaptation.tracking_manager.AdaptiveRetrainer"
-    ), patch(
-        "src.adaptation.tracking_manager.ModelOptimizer"
+    with (
+        patch("src.adaptation.tracking_manager.PredictionValidator"),
+        patch("src.adaptation.tracking_manager.AccuracyTracker"),
+        patch("src.adaptation.tracking_manager.ConceptDriftDetector"),
+        patch("src.adaptation.tracking_manager.AdaptiveRetrainer"),
+        patch("src.adaptation.tracking_manager.ModelOptimizer"),
     ):
         await manager.initialize()
 
@@ -170,7 +172,9 @@ class TestTrackingManagerInitialization:
     """Test TrackingManager initialization and lifecycle."""
 
     @pytest.mark.asyncio
-    async def test_manager_initialization(self, tracking_config, mock_database_manager):
+    async def test_manager_initialization(
+        self, tracking_config, mock_database_manager
+    ):
         """Test tracking manager initialization."""
         manager = TrackingManager(
             config=tracking_config,
@@ -190,7 +194,9 @@ class TestTrackingManagerInitialization:
         assert manager.config.drift_detection_enabled
 
     @pytest.mark.asyncio
-    async def test_manager_initialization_with_components(self, tracking_manager):
+    async def test_manager_initialization_with_components(
+        self, tracking_manager
+    ):
         """Test manager initialization with all components."""
         assert tracking_manager._tracking_active
         assert tracking_manager.validator is not None
@@ -213,7 +219,9 @@ class TestTrackingManagerInitialization:
         assert len(tracking_manager._background_tasks) == 0
 
     @pytest.mark.asyncio
-    async def test_disabled_manager_initialization(self, mock_database_manager):
+    async def test_disabled_manager_initialization(
+        self, mock_database_manager
+    ):
         """Test initialization when tracking is disabled."""
         disabled_config = TrackingConfig(enabled=False)
         manager = TrackingManager(
@@ -297,7 +305,9 @@ class TestPredictionRecording:
         await tracking_manager._perform_cleanup()
 
         # Old prediction should be cleaned up
-        room_predictions = tracking_manager._pending_predictions.get("living_room", [])
+        room_predictions = tracking_manager._pending_predictions.get(
+            "living_room", []
+        )
         old_predictions = [
             p
             for p in room_predictions
@@ -329,7 +339,9 @@ class TestRoomStateChangeHandling:
         assert tracking_manager._total_validations_performed > 0
 
     @pytest.mark.asyncio
-    async def test_state_change_triggers_retraining_evaluation(self, tracking_manager):
+    async def test_state_change_triggers_retraining_evaluation(
+        self, tracking_manager
+    ):
         """Test that state changes trigger retraining evaluation."""
         room_id = "bedroom"
 
@@ -368,11 +380,16 @@ class TestRoomStateChangeHandling:
 
         # Handle state change
         await tracking_manager.handle_room_state_change(
-            room_id="test_room", new_state="occupied", change_time=datetime.now()
+            room_id="test_room",
+            new_state="occupied",
+            change_time=datetime.now(),
         )
 
         # Should not perform validation
-        assert tracking_manager._total_validations_performed == initial_validations
+        assert (
+            tracking_manager._total_validations_performed
+            == initial_validations
+        )
 
 
 class TestDriftDetectionIntegration:
@@ -391,7 +408,10 @@ class TestDriftDetectionIntegration:
                 datetime.now() - timedelta(days=14),
                 datetime.now() - timedelta(days=3),
             ),
-            current_period=(datetime.now() - timedelta(days=3), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=3),
+                datetime.now(),
+            ),
             accuracy_degradation=22.5,
             overall_drift_score=0.65,
             drift_severity=DriftSeverity.MAJOR,
@@ -425,7 +445,10 @@ class TestDriftDetectionIntegration:
                 datetime.now() - timedelta(days=14),
                 datetime.now() - timedelta(days=3),
             ),
-            current_period=(datetime.now() - timedelta(days=3), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=3),
+                datetime.now(),
+            ),
             accuracy_degradation=35.0,
             overall_drift_score=0.9,
             drift_severity=DriftSeverity.CRITICAL,
@@ -434,7 +457,9 @@ class TestDriftDetectionIntegration:
         )
 
         with patch.object(
-            tracking_manager.drift_detector, "detect_drift", return_value=critical_drift
+            tracking_manager.drift_detector,
+            "detect_drift",
+            return_value=critical_drift,
         ):
             # Run drift detection
             await tracking_manager.check_drift(room_id)
@@ -513,7 +538,9 @@ class TestRetrainingIntegration:
         request_id = "retrain_req_789"
 
         with patch.object(
-            tracking_manager.adaptive_retrainer, "cancel_retraining", return_value=True
+            tracking_manager.adaptive_retrainer,
+            "cancel_retraining",
+            return_value=True,
         ):
             success = await tracking_manager.cancel_retraining(request_id)
 
@@ -556,7 +583,9 @@ class TestSystemStatusAndMetrics:
             "get_real_time_metrics",
             return_value=Mock(accuracy_rate=85.0, average_error_minutes=12.5),
         ):
-            metrics = await tracking_manager.get_real_time_metrics(room_id=room_id)
+            metrics = await tracking_manager.get_real_time_metrics(
+                room_id=room_id
+            )
 
             # Verify metrics retrieval
             assert metrics is not None
@@ -567,7 +596,9 @@ class TestSystemStatusAndMetrics:
         """Test active alerts retrieval."""
         # Mock active alerts
         mock_alerts = [
-            Mock(alert_id="alert_1", room_id="living_room", severity="warning"),
+            Mock(
+                alert_id="alert_1", room_id="living_room", severity="warning"
+            ),
             Mock(alert_id="alert_2", room_id="bedroom", severity="critical"),
         ]
 
@@ -589,7 +620,9 @@ class TestSystemStatusAndMetrics:
         acknowledged_by = "user_admin"
 
         with patch.object(
-            tracking_manager.accuracy_tracker, "acknowledge_alert", return_value=True
+            tracking_manager.accuracy_tracker,
+            "acknowledge_alert",
+            return_value=True,
         ):
             success = await tracking_manager.acknowledge_alert(
                 alert_id, acknowledged_by
@@ -723,7 +756,9 @@ class TestNotificationCallbacks:
         tracking_manager.add_notification_callback(test_callback)
 
         # Verify tracker received callback
-        mock_tracker.add_notification_callback.assert_called_with(test_callback)
+        mock_tracker.add_notification_callback.assert_called_with(
+            test_callback
+        )
 
 
 class TestErrorHandling:
@@ -786,14 +821,16 @@ class TestPerformanceAndConcurrency:
                 transition_type="occupied",
                 confidence_score=0.8 + i * 0.01,
                 prediction_metadata={
-                    "room_id": f"room_{i%3}",
+                    "room_id": f"room_{i % 3}",
                     "prediction_id": f"pred_{i}",
                 },
             )
             predictions.append(pred)
 
         # Record predictions concurrently
-        tasks = [tracking_manager.record_prediction(pred) for pred in predictions]
+        tasks = [
+            tracking_manager.record_prediction(pred) for pred in predictions
+        ]
         await asyncio.gather(*tasks)
 
         # Verify all were recorded
@@ -831,6 +868,7 @@ class TestPerformanceAndConcurrency:
 
         # Verify cache was cleaned up appropriately
         total_cached = sum(
-            len(preds) for preds in tracking_manager._pending_predictions.values()
+            len(preds)
+            for preds in tracking_manager._pending_predictions.values()
         )
         assert total_cached < 100  # Should have cleaned up old predictions

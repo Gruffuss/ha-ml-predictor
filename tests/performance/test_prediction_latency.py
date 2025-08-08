@@ -5,14 +5,13 @@ Target: Prediction generation < 100ms (requirement from implementation-plan.md)
 
 Tests prediction latency across different scenarios:
 - Single room predictions
-- Multi-room batch predictions  
+- Multi-room batch predictions
 - Cold start vs warm cache scenarios
 - Different feature complexity levels
 """
 
 import asyncio
 import time
-from typing import Dict, List, Tuple
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
@@ -50,7 +49,9 @@ class TestPredictionLatency:
             }
         )
 
-        feature_store.get_prediction_features = AsyncMock(return_value=feature_data)
+        feature_store.get_prediction_features = AsyncMock(
+            return_value=feature_data
+        )
         return feature_store
 
     @pytest.fixture
@@ -84,10 +85,15 @@ class TestPredictionLatency:
     @pytest.fixture
     async def predictor(self, mock_feature_store, mock_ensemble_model):
         """Create occupancy predictor with mocked dependencies."""
-        with patch(
-            "src.models.predictor.FeatureStore", return_value=mock_feature_store
-        ), patch(
-            "src.models.predictor.OccupancyEnsemble", return_value=mock_ensemble_model
+        with (
+            patch(
+                "src.models.predictor.FeatureStore",
+                return_value=mock_feature_store,
+            ),
+            patch(
+                "src.models.predictor.OccupancyEnsemble",
+                return_value=mock_ensemble_model,
+            ),
         ):
 
             predictor = OccupancyPredictor()
@@ -120,7 +126,7 @@ class TestPredictionLatency:
         p95_latency = np.percentile(latencies, 95)
         p99_latency = np.percentile(latencies, 99)
 
-        print(f"\nSingle Prediction Latency Results:")
+        print("\nSingle Prediction Latency Results:")
         print(f"Mean: {mean_latency:.2f}ms")
         print(f"Median: {median_latency:.2f}ms")
         print(f"P95: {p95_latency:.2f}ms")
@@ -154,7 +160,7 @@ class TestPredictionLatency:
         mean_batch_latency = statistics.mean(batch_latencies)
         per_room_latency = mean_batch_latency / len(room_ids)
 
-        print(f"\nBatch Prediction Latency Results:")
+        print("\nBatch Prediction Latency Results:")
         print(f"Mean batch latency: {mean_batch_latency:.2f}ms")
         print(f"Per-room latency: {per_room_latency:.2f}ms")
 
@@ -185,7 +191,7 @@ class TestPredictionLatency:
 
         mean_warm_latency = statistics.mean(warm_latencies)
 
-        print(f"\nCold Start vs Warm Cache Results:")
+        print("\nCold Start vs Warm Cache Results:")
         print(f"Cold start latency: {cold_latency:.2f}ms")
         print(f"Mean warm latency: {mean_warm_latency:.2f}ms")
         print(
@@ -219,7 +225,7 @@ class TestPredictionLatency:
         mean_concurrent_latency = statistics.mean(latencies)
         max_concurrent_latency = max(latencies)
 
-        print(f"\nConcurrent Load Latency Results:")
+        print("\nConcurrent Load Latency Results:")
         print(f"Mean latency under load: {mean_concurrent_latency:.2f}ms")
         print(f"Max latency under load: {max_concurrent_latency:.2f}ms")
 
@@ -242,10 +248,15 @@ class TestPredictionLatency:
         for feature_count in feature_sizes:
             # Mock different feature set sizes
             feature_data = pd.DataFrame(
-                {f"feature_{i}": np.random.random(100) for i in range(feature_count)}
+                {
+                    f"feature_{i}": np.random.random(100)
+                    for i in range(feature_count)
+                }
             )
 
-            predictor.feature_store.get_prediction_features.return_value = feature_data
+            predictor.feature_store.get_prediction_features.return_value = (
+                feature_data
+            )
 
             # Measure latency with this feature set
             latencies = []
@@ -257,7 +268,7 @@ class TestPredictionLatency:
 
             latency_results[feature_count] = statistics.mean(latencies)
 
-        print(f"\nFeature Complexity Impact Results:")
+        print("\nFeature Complexity Impact Results:")
         for feature_count, mean_latency in latency_results.items():
             print(f"{feature_count} features: {mean_latency:.2f}ms")
 
@@ -285,14 +296,20 @@ class TestPredictionLatency:
         for p in percentiles:
             results[f"p{p}"] = np.percentile(latencies, p)
 
-        print(f"\nLatency Percentile Analysis:")
+        print("\nLatency Percentile Analysis:")
         for metric, value in results.items():
             print(f"{metric}: {value:.2f}ms")
 
         # Verify percentile requirements
-        assert results["p50"] < 80, f"P50 latency {results['p50']:.2f}ms too high"
-        assert results["p95"] < 150, f"P95 latency {results['p95']:.2f}ms too high"
-        assert results["p99"] < 200, f"P99 latency {results['p99']:.2f}ms too high"
+        assert (
+            results["p50"] < 80
+        ), f"P50 latency {results['p50']:.2f}ms too high"
+        assert (
+            results["p95"] < 150
+        ), f"P95 latency {results['p95']:.2f}ms too high"
+        assert (
+            results["p99"] < 200
+        ), f"P99 latency {results['p99']:.2f}ms too high"
 
     def benchmark_prediction_latency_summary(self, predictor):
         """Generate comprehensive prediction latency benchmark summary."""

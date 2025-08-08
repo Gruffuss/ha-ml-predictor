@@ -6,7 +6,7 @@ Target: System throughput > 100 req/s (requirement from implementation-plan.md)
 Tests system performance under various load conditions:
 - API endpoint throughput
 - Concurrent prediction requests
-- MQTT publishing throughput  
+- MQTT publishing throughput
 - Database operation throughput
 - Event processing throughput
 - System resource utilization under load
@@ -15,7 +15,6 @@ Tests system performance under various load conditions:
 import asyncio
 from datetime import datetime, timedelta
 import time
-from typing import Dict, List, Tuple
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
@@ -74,7 +73,8 @@ class TestSystemThroughput:
 
         # Mock the predictor in the API app
         with patch(
-            "src.integration.api_server.get_predictor", return_value=mock_predictor
+            "src.integration.api_server.get_predictor",
+            return_value=mock_predictor,
         ):
             client = TestClient(app)
 
@@ -109,7 +109,9 @@ class TestSystemThroughput:
 
             while (time.perf_counter() - start_time) < test_duration:
                 # Create batch of concurrent requests
-                tasks = [make_api_request(i) for i in range(concurrent_requests)]
+                tasks = [
+                    make_api_request(i) for i in range(concurrent_requests)
+                ]
                 results = await asyncio.gather(*tasks, return_exceptions=True)
 
                 for result in results:
@@ -133,7 +135,7 @@ class TestSystemThroughput:
             median_response_time = statistics.median(request_times)
             p95_response_time = np.percentile(request_times, 95)
 
-            print(f"\nAPI Throughput Test Results:")
+            print("\nAPI Throughput Test Results:")
             print(f"Total requests: {request_count}")
             print(f"Successful requests: {successful_requests}")
             print(f"Failed requests: {failed_requests}")
@@ -142,7 +144,9 @@ class TestSystemThroughput:
             print(f"Mean response time: {mean_response_time:.2f}ms")
             print(f"Median response time: {median_response_time:.2f}ms")
             print(f"P95 response time: {p95_response_time:.2f}ms")
-            print(f"Success rate: {(successful_requests/request_count)*100:.1f}%")
+            print(
+                f"Success rate: {(successful_requests/request_count)*100:.1f}%"
+            )
 
             # Verify throughput requirements
             assert (
@@ -150,7 +154,7 @@ class TestSystemThroughput:
             ), f"API throughput {throughput:.2f} req/s below requirement"
             assert (
                 successful_requests / request_count
-            ) >= 0.99, f"Success rate too low"
+            ) >= 0.99, "Success rate too low"
             assert (
                 mean_response_time < 200
             ), f"Mean response time {mean_response_time:.2f}ms too high"
@@ -184,7 +188,9 @@ class TestSystemThroughput:
 
             # Extract timing data
             prediction_times = [result[0] for result in results]
-            successful_predictions = len([r for r in results if r[1] is not None])
+            successful_predictions = len(
+                [r for r in results if r[1] is not None]
+            )
 
             throughput = successful_predictions / total_time
             mean_prediction_time = statistics.mean(prediction_times)
@@ -198,7 +204,9 @@ class TestSystemThroughput:
             print(f"\nConcurrent Predictions ({concurrent_count} concurrent):")
             print(f"Throughput: {throughput:.2f} predictions/s")
             print(f"Mean prediction time: {mean_prediction_time:.2f}ms")
-            print(f"Success rate: {(successful_predictions/concurrent_count)*100:.1f}%")
+            print(
+                f"Success rate: {(successful_predictions/concurrent_count)*100:.1f}%"
+            )
 
         # Verify throughput scales appropriately
         for concurrent_count, metrics in throughput_results.items():
@@ -237,7 +245,9 @@ class TestSystemThroughput:
         for batch_start in range(0, message_count, batch_size):
             batch_tasks = []
 
-            for i in range(batch_start, min(batch_start + batch_size, message_count)):
+            for i in range(
+                batch_start, min(batch_start + batch_size, message_count)
+            ):
                 room_id = rooms[i % len(rooms)]
 
                 async def publish_message(room, prediction):
@@ -265,7 +275,7 @@ class TestSystemThroughput:
         median_publish_time = statistics.median(publish_times)
         p95_publish_time = np.percentile(publish_times, 95)
 
-        print(f"\nMQTT Publishing Throughput Results:")
+        print("\nMQTT Publishing Throughput Results:")
         print(f"Messages published: {successful_publishes}/{message_count}")
         print(f"Publishing throughput: {throughput:.2f} msg/s")
         print(f"Mean publish time: {mean_publish_time:.2f}ms")
@@ -273,7 +283,9 @@ class TestSystemThroughput:
         print(f"P95 publish time: {p95_publish_time:.2f}ms")
 
         # MQTT should handle high-frequency publishing
-        assert throughput >= 200, f"MQTT throughput {throughput:.2f} msg/s too low"
+        assert (
+            throughput >= 200
+        ), f"MQTT throughput {throughput:.2f} msg/s too low"
         assert (
             successful_publishes / message_count
         ) >= 0.99, "MQTT publish success rate too low"
@@ -296,8 +308,8 @@ class TestSystemThroughput:
         for i in range(event_count):
             event_data = {
                 "entity_id": f"binary_sensor.motion_{i % 10}",
-                "state": "on" if i % 2 == 0 else "off",
-                "old_state": {"state": "off" if i % 2 == 0 else "on"},
+                "state": "on" if i % 2 == 0 else "of",
+                "old_state": {"state": "of" if i % 2 == 0 else "on"},
                 "time_fired": (base_time + timedelta(seconds=i)).isoformat(),
                 "attributes": {"friendly_name": f"Motion Sensor {i % 10}"},
             }
@@ -343,7 +355,7 @@ class TestSystemThroughput:
         mean_batch_time = statistics.mean(processing_times)
         events_per_batch = event_count / len(processing_times)
 
-        print(f"\nEvent Processing Throughput Results:")
+        print("\nEvent Processing Throughput Results:")
         print(f"Events processed: {processed_events}/{event_count}")
         print(f"Processing throughput: {throughput:.2f} events/s")
         print(f"Mean batch time: {mean_batch_time:.2f}ms")
@@ -405,14 +417,20 @@ class TestSystemThroughput:
         # Calculate resource usage statistics
         max_memory = max(memory_samples) if memory_samples else initial_memory
         mean_memory = (
-            statistics.mean(memory_samples) if memory_samples else initial_memory
+            statistics.mean(memory_samples)
+            if memory_samples
+            else initial_memory
         )
         memory_increase = max_memory - initial_memory
 
         max_cpu = max(cpu_samples) if cpu_samples else initial_cpu_percent
-        mean_cpu = statistics.mean(cpu_samples) if cpu_samples else initial_cpu_percent
+        mean_cpu = (
+            statistics.mean(cpu_samples)
+            if cpu_samples
+            else initial_cpu_percent
+        )
 
-        print(f"\nSystem Resource Utilization Results:")
+        print("\nSystem Resource Utilization Results:")
         print(f"Initial memory: {initial_memory:.1f} MB")
         print(f"Max memory: {max_memory:.1f} MB")
         print(f"Mean memory: {mean_memory:.1f} MB")
@@ -429,7 +447,9 @@ class TestSystemThroughput:
 
     async def test_database_operation_throughput(self):
         """Test database operation throughput under concurrent load."""
-        with patch("src.data.storage.database.get_database_manager") as mock_db:
+        with patch(
+            "src.data.storage.database.get_database_manager"
+        ) as mock_db:
             mock_manager = AsyncMock()
             mock_db.return_value = mock_manager
 
@@ -476,7 +496,7 @@ class TestSystemThroughput:
             mean_op_time = statistics.mean(operation_times)
             p95_op_time = np.percentile(operation_times, 95)
 
-            print(f"\nDatabase Operation Throughput Results:")
+            print("\nDatabase Operation Throughput Results:")
             print(f"Operations completed: {len(operation_times)}")
             print(f"Database throughput: {throughput:.2f} ops/s")
             print(f"Mean operation time: {mean_op_time:.2f}ms")

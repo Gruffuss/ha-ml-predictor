@@ -6,7 +6,6 @@ time-series sensor data, predictions, and model performance tracking.
 """
 
 from datetime import datetime, timedelta
-import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from decimal import Decimal
@@ -51,7 +50,7 @@ SENSOR_TYPES = [
     "air_quality",
 ]
 
-SENSOR_STATES = ["on", "off", "open", "closed", "detected", "clear", "unknown"]
+SENSOR_STATES = ["on", "of", "open", "closed", "detected", "clear", "unknown"]
 
 TRANSITION_TYPES = ["occupied_to_vacant", "vacant_to_occupied", "state_change"]
 
@@ -75,20 +74,29 @@ class SensorEvent(Base):
     # Application-level referential integrity replaces foreign key constraints
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     timestamp = Column(
-        DateTime(timezone=True), primary_key=True, nullable=False, default=func.now()
+        DateTime(timezone=True),
+        primary_key=True,
+        nullable=False,
+        default=func.now(),
     )
 
     # Core event data
     room_id = Column(String(50), nullable=False, index=True)
     sensor_id = Column(String(100), nullable=False, index=True)
-    sensor_type = Column(ENUM(*SENSOR_TYPES, name="sensor_type_enum"), nullable=False)
-    state = Column(ENUM(*SENSOR_STATES, name="sensor_state_enum"), nullable=False)
+    sensor_type = Column(
+        ENUM(*SENSOR_TYPES, name="sensor_type_enum"), nullable=False
+    )
+    state = Column(
+        ENUM(*SENSOR_STATES, name="sensor_state_enum"), nullable=False
+    )
     previous_state = Column(ENUM(*SENSOR_STATES, name="sensor_state_enum"))
 
     # Metadata and context
     attributes = Column(JSONB, default=dict)  # Additional sensor attributes
     is_human_triggered = Column(Boolean, default=True, nullable=False)
-    confidence_score = Column(Float)  # Confidence in human vs automation classification
+    confidence_score = Column(
+        Float
+    )  # Confidence in human vs automation classification
 
     # Performance tracking
     created_at = Column(DateTime(timezone=True), default=func.now())
@@ -111,7 +119,11 @@ class SensorEvent(Base):
         Index("idx_human_triggered", "is_human_triggered", "timestamp"),
         # Composite indexes for common query patterns
         Index(
-            "idx_room_sensor_state_time", "room_id", "sensor_id", "state", "timestamp"
+            "idx_room_sensor_state_time",
+            "room_id",
+            "sensor_id",
+            "state",
+            "timestamp",
         ),
         Index(
             "idx_motion_events",
@@ -121,7 +133,8 @@ class SensorEvent(Base):
         ),
         # Constraints
         CheckConstraint(
-            "confidence_score >= 0 AND confidence_score <= 1", name="valid_confidence"
+            "confidence_score >= 0 AND confidence_score <= 1",
+            name="valid_confidence",
         ),
     )
 
@@ -139,7 +152,8 @@ class SensorEvent(Base):
             .where(
                 and_(
                     cls.room_id == room_id,
-                    cls.timestamp >= datetime.utcnow() - timedelta(hours=hours),
+                    cls.timestamp
+                    >= datetime.utcnow() - timedelta(hours=hours),
                 )
             )
             .order_by(desc(cls.timestamp))
@@ -189,7 +203,9 @@ class SensorEvent(Base):
     ) -> List[List["SensorEvent"]]:
         """Get sequences of sensor transitions for pattern analysis."""
         events = await cls.get_state_changes(
-            session, room_id, datetime.utcnow() - timedelta(hours=lookback_hours)
+            session,
+            room_id,
+            datetime.utcnow() - timedelta(hours=lookback_hours),
         )
 
         # Group events into sequences based on time gaps
@@ -200,7 +216,9 @@ class SensorEvent(Base):
         for event in events:
             if (
                 current_sequence
-                and (event.timestamp - current_sequence[-1].timestamp).total_seconds()
+                and (
+                    event.timestamp - current_sequence[-1].timestamp
+                ).total_seconds()
                 > max_gap_minutes * 60
             ):
                 if len(current_sequence) >= min_sequence_length:
@@ -214,9 +232,13 @@ class SensorEvent(Base):
 
         return sequences
 
-    async def get_predictions(self, session: AsyncSession) -> List["Prediction"]:
+    async def get_predictions(
+        self, session: AsyncSession
+    ) -> List["Prediction"]:
         """Get predictions that were triggered by this sensor event using application-level join."""
-        query = select(Prediction).where(Prediction.triggering_event_id == self.id)
+        query = select(Prediction).where(
+            Prediction.triggering_event_id == self.id
+        )
         result = await session.execute(query)
         return result.scalars().all()
 
@@ -241,7 +263,9 @@ class RoomState(Base):
 
     # State metadata
     state_duration = Column(Integer)  # Duration in current state (seconds)
-    transition_trigger = Column(String(100))  # Sensor that triggered transition
+    transition_trigger = Column(
+        String(100)
+    )  # Sensor that triggered transition
     certainty_factors = Column(JSONB, default=dict)  # Contributing factors
 
     # Tracking
@@ -259,7 +283,9 @@ class RoomState(Base):
             postgresql_where=text("transition_trigger IS NOT NULL"),
         ),
         Index("idx_recent_states", "room_id", desc("timestamp")),
-        CheckConstraint("occupancy_confidence >= 0 AND occupancy_confidence <= 1"),
+        CheckConstraint(
+            "occupancy_confidence >= 0 AND occupancy_confidence <= 1"
+        ),
         CheckConstraint("occupant_count >= 0"),
     )
 
@@ -287,7 +313,8 @@ class RoomState(Base):
             .where(
                 and_(
                     cls.room_id == room_id,
-                    cls.timestamp >= datetime.utcnow() - timedelta(hours=hours),
+                    cls.timestamp
+                    >= datetime.utcnow() - timedelta(hours=hours),
                 )
             )
             .order_by(cls.timestamp)
@@ -296,7 +323,9 @@ class RoomState(Base):
         result = await session.execute(query)
         return result.scalars().all()
 
-    async def get_predictions(self, session: AsyncSession) -> List["Prediction"]:
+    async def get_predictions(
+        self, session: AsyncSession
+    ) -> List["Prediction"]:
         """Get predictions associated with this room state using application-level join."""
         query = select(Prediction).where(Prediction.room_state_id == self.id)
         result = await session.execute(query)
@@ -313,7 +342,9 @@ class Prediction(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     room_id = Column(String(50), nullable=False, index=True)
-    prediction_time = Column(DateTime(timezone=True), nullable=False, index=True)
+    prediction_time = Column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
 
     # Prediction details
     predicted_transition_time = Column(DateTime(timezone=True), nullable=False)
@@ -325,7 +356,9 @@ class Prediction(Base):
     prediction_interval_upper = Column(DateTime(timezone=True))
 
     # Model information
-    model_type = Column(ENUM(*MODEL_TYPES, name="model_type_enum"), nullable=False)
+    model_type = Column(
+        ENUM(*MODEL_TYPES, name="model_type_enum"), nullable=False
+    )
     model_version = Column(String(50), nullable=False)
     feature_importance = Column(JSONB, default=dict)
 
@@ -358,7 +391,10 @@ class Prediction(Base):
         Index("idx_room_prediction_time", "room_id", "prediction_time"),
         Index("idx_model_type_time", "model_type", "prediction_time"),
         Index(
-            "idx_accuracy_validation", "room_id", "is_accurate", "validation_timestamp"
+            "idx_accuracy_validation",
+            "room_id",
+            "is_accurate",
+            "validation_timestamp",
         ),
         Index(
             "idx_pending_validation",
@@ -369,14 +405,21 @@ class Prediction(Base):
         Index(
             "idx_triggering_event", "triggering_event_id"
         ),  # For application-level joins
-        Index("idx_room_state_ref", "room_state_id"),  # For application-level joins
+        Index(
+            "idx_room_state_re", "room_state_id"
+        ),  # For application-level joins
         CheckConstraint("confidence_score >= 0 AND confidence_score <= 1"),
-        CheckConstraint("prediction_interval_lower <= prediction_interval_upper"),
+        CheckConstraint(
+            "prediction_interval_lower <= prediction_interval_upper"
+        ),
     )
 
     @classmethod
     async def get_pending_validations(
-        cls, session: AsyncSession, room_id: Optional[str] = None, cutoff_hours: int = 2
+        cls,
+        session: AsyncSession,
+        room_id: Optional[str] = None,
+        cutoff_hours: int = 2,
     ) -> List["Prediction"]:
         """Get predictions that need validation (past their predicted time)."""
         cutoff_time = datetime.utcnow() - timedelta(hours=cutoff_hours)
@@ -424,7 +467,9 @@ class Prediction(Base):
             return {}
 
         accuracies = [
-            p.accuracy_minutes for p in predictions if p.accuracy_minutes is not None
+            p.accuracy_minutes
+            for p in predictions
+            if p.accuracy_minutes is not None
         ]
         accurate_count = sum(1 for p in predictions if p.is_accurate)
 
@@ -433,7 +478,9 @@ class Prediction(Base):
             "accurate_predictions": accurate_count,
             "accuracy_rate": accurate_count / len(predictions),
             "mean_error_minutes": (
-                sum(abs(a) for a in accuracies) / len(accuracies) if accuracies else 0
+                sum(abs(a) for a in accuracies) / len(accuracies)
+                if accuracies
+                else 0
             ),
             "median_error_minutes": (
                 sorted(accuracies)[len(accuracies) // 2] if accuracies else 0
@@ -452,11 +499,15 @@ class Prediction(Base):
         if not self.triggering_event_id:
             return None
 
-        query = select(SensorEvent).where(SensorEvent.id == self.triggering_event_id)
+        query = select(SensorEvent).where(
+            SensorEvent.id == self.triggering_event_id
+        )
         result = await session.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_room_state(self, session: AsyncSession) -> Optional["RoomState"]:
+    async def get_room_state(
+        self, session: AsyncSession
+    ) -> Optional["RoomState"]:
         """Get the associated room state using application-level join."""
         if not self.room_state_id:
             return None
@@ -476,7 +527,11 @@ class Prediction(Base):
         # Get predictions
         prediction_query = (
             select(cls)
-            .where(and_(cls.room_id == room_id, cls.prediction_time >= cutoff_time))
+            .where(
+                and_(
+                    cls.room_id == room_id, cls.prediction_time >= cutoff_time
+                )
+            )
             .order_by(desc(cls.prediction_time))
         )
 
@@ -490,12 +545,18 @@ class Prediction(Base):
         events_dict = {}
 
         if event_ids:
-            event_query = select(SensorEvent).where(SensorEvent.id.in_(event_ids))
+            event_query = select(SensorEvent).where(
+                SensorEvent.id.in_(event_ids)
+            )
             event_result = await session.execute(event_query)
-            events_dict = {event.id: event for event in event_result.scalars().all()}
+            events_dict = {
+                event.id: event for event in event_result.scalars().all()
+            }
 
         # Combine results
-        return [(p, events_dict.get(p.triggering_event_id)) for p in predictions]
+        return [
+            (p, events_dict.get(p.triggering_event_id)) for p in predictions
+        ]
 
 
 class ModelAccuracy(Base):
@@ -508,7 +569,9 @@ class ModelAccuracy(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     room_id = Column(String(50), nullable=False, index=True)
-    model_type = Column(ENUM(*MODEL_TYPES, name="model_type_enum"), nullable=False)
+    model_type = Column(
+        ENUM(*MODEL_TYPES, name="model_type_enum"), nullable=False
+    )
     model_version = Column(String(50), nullable=False)
 
     # Time window for metrics
@@ -527,7 +590,9 @@ class ModelAccuracy(Base):
     confidence_correlation = Column(
         Float
     )  # Correlation between confidence and accuracy
-    overconfidence_rate = Column(Float)  # Rate of high confidence but wrong predictions
+    overconfidence_rate = Column(
+        Float
+    )  # Rate of high confidence but wrong predictions
 
     # Drift indicators
     feature_drift_score = Column(Float)
@@ -539,7 +604,9 @@ class ModelAccuracy(Base):
     baseline_comparison = Column(JSONB, default=dict)
 
     __table_args__ = (
-        Index("idx_room_model_time", "room_id", "model_type", "measurement_end"),
+        Index(
+            "idx_room_model_time", "room_id", "model_type", "measurement_end"
+        ),
         Index(
             "idx_accuracy_trend",
             "room_id",
@@ -548,7 +615,10 @@ class ModelAccuracy(Base):
             "measurement_end",
         ),
         Index(
-            "idx_drift_detection", "room_id", "concept_drift_score", "measurement_end"
+            "idx_drift_detection",
+            "room_id",
+            "concept_drift_score",
+            "measurement_end",
         ),
         UniqueConstraint(
             "room_id", "model_type", "measurement_start", "measurement_end"
@@ -568,7 +638,9 @@ class FeatureStore(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     room_id = Column(String(50), nullable=False, index=True)
-    feature_timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
+    feature_timestamp = Column(
+        DateTime(timezone=True), nullable=False, index=True
+    )
 
     # Feature categories
     temporal_features = Column(JSONB, nullable=False, default=dict)
@@ -595,7 +667,10 @@ class FeatureStore(Base):
         Index("idx_feature_version", "feature_version", "created_at"),
         Index("idx_expiration", "expires_at"),
         Index(
-            "idx_feature_quality", "room_id", "completeness_score", "freshness_score"
+            "idx_feature_quality",
+            "room_id",
+            "completeness_score",
+            "freshness_score",
         ),
         UniqueConstraint(
             "room_id", "feature_timestamp", "lookback_hours", "feature_version"
@@ -618,7 +693,10 @@ class FeatureStore(Base):
                 and_(
                     cls.room_id == room_id,
                     cls.feature_timestamp >= cutoff_time,
-                    or_(cls.expires_at.is_(None), cls.expires_at > datetime.utcnow()),
+                    or_(
+                        cls.expires_at.is_(None),
+                        cls.expires_at > datetime.utcnow(),
+                    ),
                 )
             )
             .order_by(desc(cls.feature_timestamp))
@@ -663,7 +741,7 @@ async def create_timescale_hypertables(session: AsyncSession):
             """
         CREATE MATERIALIZED VIEW IF NOT EXISTS sensor_events_hourly
         WITH (timescaledb.continuous) AS
-        SELECT 
+        SELECT
             time_bucket(INTERVAL '1 hour', timestamp) AS bucket,
             room_id,
             sensor_type,
@@ -723,8 +801,8 @@ async def optimize_database_performance(session: AsyncSession):
     await session.execute(
         text(
             """
-        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_recent_motion_events 
-        ON sensor_events (room_id, timestamp DESC) 
+        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_recent_motion_events
+        ON sensor_events (room_id, timestamp DESC)
         WHERE sensor_type = 'motion' AND timestamp > NOW() - INTERVAL '24 hours'
     """
         )
@@ -747,7 +825,7 @@ def get_bulk_insert_query() -> str:
     """Generate optimized bulk insert query for sensor events."""
     return """
         INSERT INTO sensor_events (
-            timestamp, room_id, sensor_id, sensor_type, state, 
+            timestamp, room_id, sensor_id, sensor_type, state,
             previous_state, attributes, is_human_triggered, confidence_score
         ) VALUES %s
         ON CONFLICT (id, timestamp) DO UPDATE SET

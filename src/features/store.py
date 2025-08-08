@@ -10,10 +10,8 @@ from collections import OrderedDict, defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 import hashlib
-import json
 import logging
 import pickle
-from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -50,7 +48,9 @@ class FeatureRecord:
     def from_dict(cls, data: Dict[str, Any]) -> "FeatureRecord":
         """Create from dictionary."""
         data["target_time"] = datetime.fromisoformat(data["target_time"])
-        data["extraction_time"] = datetime.fromisoformat(data["extraction_time"])
+        data["extraction_time"] = datetime.fromisoformat(
+            data["extraction_time"]
+        )
         return cls(**data)
 
     def is_valid(self, max_age_hours: int = 24) -> bool:
@@ -106,7 +106,9 @@ class FeatureCache:
         Returns:
             Features if available and valid, None otherwise
         """
-        key = self._make_key(room_id, target_time, lookback_hours, feature_types)
+        key = self._make_key(
+            room_id, target_time, lookback_hours, feature_types
+        )
 
         if key in self.cache:
             record = self.cache[key]
@@ -142,7 +144,9 @@ class FeatureCache:
             features: Computed features
             data_hash: Hash of input data
         """
-        key = self._make_key(room_id, target_time, lookback_hours, feature_types)
+        key = self._make_key(
+            room_id, target_time, lookback_hours, feature_types
+        )
 
         record = FeatureRecord(
             room_id=room_id,
@@ -169,7 +173,9 @@ class FeatureCache:
     def get_stats(self) -> Dict[str, Any]:
         """Get cache statistics."""
         total_requests = self.hit_count + self.miss_count
-        hit_rate = self.hit_count / total_requests if total_requests > 0 else 0.0
+        hit_rate = (
+            self.hit_count / total_requests if total_requests > 0 else 0.0
+        )
 
         return {
             "size": len(self.cache),
@@ -230,9 +236,13 @@ class FeatureStore:
         if self.enable_persistence:
             try:
                 self.db_manager = await get_database_manager()
-                logger.info("Feature store initialized with database persistence")
+                logger.info(
+                    "Feature store initialized with database persistence"
+                )
             except Exception as e:
-                logger.warning(f"Failed to initialize database persistence: {e}")
+                logger.warning(
+                    f"Failed to initialize database persistence: {e}"
+                )
                 self.enable_persistence = False
 
     async def get_features(
@@ -266,7 +276,11 @@ class FeatureStore:
         # Try cache first (unless forced recompute)
         if not force_recompute:
             cached_features = self.cache.get(
-                room_id, target_time, lookback_hours, feature_types, cache_max_age_hours
+                room_id,
+                target_time,
+                lookback_hours,
+                feature_types,
+                cache_max_age_hours,
             )
             if cached_features is not None:
                 self.stats["cache_hits"] += 1
@@ -300,14 +314,26 @@ class FeatureStore:
         )
 
         # Cache and persist the result
-        data_hash = self._compute_data_hash(room_id, target_time, lookback_hours)
+        data_hash = self._compute_data_hash(
+            room_id, target_time, lookback_hours
+        )
         self.cache.put(
-            room_id, target_time, lookback_hours, feature_types, features, data_hash
+            room_id,
+            target_time,
+            lookback_hours,
+            feature_types,
+            features,
+            data_hash,
         )
 
         if self.enable_persistence:
             await self._persist_features_to_db(
-                room_id, target_time, lookback_hours, feature_types, features, data_hash
+                room_id,
+                target_time,
+                lookback_hours,
+                feature_types,
+                features,
+                data_hash,
             )
 
         return features
@@ -340,7 +366,11 @@ class FeatureStore:
         tasks = []
         for room_id, target_time in requests:
             task = self.get_features(
-                room_id, target_time, lookback_hours, feature_types, force_recompute
+                room_id,
+                target_time,
+                lookback_hours,
+                feature_types,
+                force_recompute,
             )
             tasks.append(task)
 
@@ -354,7 +384,9 @@ class FeatureStore:
                 logger.error(
                     f"Failed to get features for {room_id} at {target_time}: {result}"
                 )
-                processed_results.append(self.feature_engine._get_default_features())
+                processed_results.append(
+                    self.feature_engine._get_default_features()
+                )
             else:
                 processed_results.append(result)
 
@@ -444,7 +476,12 @@ class FeatureStore:
 
         # Extract features
         features = await self.feature_engine.extract_features(
-            room_id, target_time, events, room_states, lookback_hours, feature_types
+            room_id,
+            target_time,
+            events,
+            room_states,
+            lookback_hours,
+            feature_types,
         )
 
         return features
@@ -568,12 +605,17 @@ class FeatureStore:
 
         # Check feature engine
         try:
-            engine_validation = await self.feature_engine.validate_configuration()
+            engine_validation = (
+                await self.feature_engine.validate_configuration()
+            )
             health["components"]["feature_engine"] = engine_validation
             if not engine_validation["valid"]:
                 health["status"] = "degraded"
         except Exception as e:
-            health["components"]["feature_engine"] = {"valid": False, "error": str(e)}
+            health["components"]["feature_engine"] = {
+                "valid": False,
+                "error": str(e),
+            }
             health["status"] = "degraded"
 
         # Check database connection
@@ -584,7 +626,10 @@ class FeatureStore:
                 if db_health["status"] != "healthy":
                     health["warnings"].append("Database persistence degraded")
             except Exception as e:
-                health["components"]["database"] = {"status": "error", "error": str(e)}
+                health["components"]["database"] = {
+                    "status": "error",
+                    "error": str(e),
+                }
                 health["warnings"].append("Database persistence unavailable")
 
         # Check cache

@@ -5,7 +5,7 @@ This module provides security testing scenarios to validate authentication, auth
 input validation, rate limiting, and protection against common security vulnerabilities.
 
 Test Coverage:
-- Authentication bypass and token validation testing  
+- Authentication bypass and token validation testing
 - Authorization and access control testing
 - Input validation and SQL injection protection
 - Rate limiting and abuse prevention
@@ -21,7 +21,6 @@ from datetime import datetime, timedelta
 import hashlib
 import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from urllib.parse import quote
 
@@ -110,7 +109,9 @@ async def mock_authentication_system():
                 raise APIAuthenticationError("Token has been revoked")
 
             try:
-                payload = jwt.decode(token, self.jwt_secret, algorithms=["HS256"])
+                payload = jwt.decode(
+                    token, self.jwt_secret, algorithms=["HS256"]
+                )
                 return payload
             except jwt.ExpiredSignatureError:
                 raise APIAuthenticationError("Token has expired")
@@ -133,10 +134,14 @@ class TestAuthenticationSecurity:
         self, security_test_config, mock_authentication_system
     ):
         """Test various authentication bypass attempts."""
-        auth_system = mock_authentication_system(security_test_config["jwt_secret"])
+        auth_system = mock_authentication_system(
+            security_test_config["jwt_secret"]
+        )
 
         # Create test app with authentication
-        with patch("src.integration.api_server.get_tracking_manager") as mock_tm:
+        with patch(
+            "src.integration.api_server.get_tracking_manager"
+        ) as mock_tm:
             mock_tracking_manager = AsyncMock(spec=TrackingManager)
             mock_tracking_manager.get_all_rooms.return_value = [
                 "living_room",
@@ -171,7 +176,9 @@ class TestAuthenticationSecurity:
                 },
                 # SQL injection in token
                 {
-                    "headers": {"Authorization": "Bearer '; DROP TABLE users; --"},
+                    "headers": {
+                        "Authorization": "Bearer '; DROP TABLE users; --"
+                    },
                     "expected_status": 401,
                 },
                 # XSS in authorization header
@@ -191,14 +198,22 @@ class TestAuthenticationSecurity:
                         "/api/rooms", headers=attempt["headers"], timeout=5.0
                     )
 
-                    assert response.status_code == attempt["expected_status"], (
+                    assert (
+                        response.status_code == attempt["expected_status"]
+                    ), (
                         f"Bypass attempt {i} failed: expected {attempt['expected_status']}, "
                         f"got {response.status_code}"
                     )
 
                     # Ensure no sensitive data in error response
                     response_text = response.text.lower()
-                    sensitive_data = ["password", "secret", "key", "token", "jwt"]
+                    sensitive_data = [
+                        "password",
+                        "secret",
+                        "key",
+                        "token",
+                        "jwt",
+                    ]
                     for sensitive in sensitive_data:
                         assert (
                             sensitive not in response_text
@@ -213,9 +228,13 @@ class TestAuthenticationSecurity:
         self, security_test_config, mock_authentication_system
     ):
         """Test proper token validation and expiration handling."""
-        auth_system = mock_authentication_system(security_test_config["jwt_secret"])
+        auth_system = mock_authentication_system(
+            security_test_config["jwt_secret"]
+        )
 
-        with patch("src.integration.api_server.get_tracking_manager") as mock_tm:
+        with patch(
+            "src.integration.api_server.get_tracking_manager"
+        ) as mock_tm:
             mock_tracking_manager = AsyncMock(spec=TrackingManager)
             mock_tracking_manager.get_all_rooms.return_value = ["living_room"]
             mock_tm.return_value = mock_tracking_manager
@@ -223,7 +242,9 @@ class TestAuthenticationSecurity:
             app = create_app()
 
             # Create valid token
-            valid_token = auth_system.create_valid_token("test_user", ["read", "write"])
+            valid_token = auth_system.create_valid_token(
+                "test_user", ["read", "write"]
+            )
 
             async with httpx.AsyncClient(
                 app=app, base_url="http://testserver"
@@ -234,7 +255,9 @@ class TestAuthenticationSecurity:
                     headers={"Authorization": f"Bearer {valid_token}"},
                     timeout=5.0,
                 )
-                assert response.status_code == 200, "Valid token should allow access"
+                assert (
+                    response.status_code == 200
+                ), "Valid token should allow access"
 
                 # Test token revocation
                 auth_system.revoke_token(valid_token)
@@ -255,14 +278,18 @@ class TestAuthenticationSecurity:
                 except APIAuthenticationError as e:
                     assert "expired" in str(e).lower()
 
-            logger.info("Token validation and expiration test completed successfully")
+            logger.info(
+                "Token validation and expiration test completed successfully"
+            )
 
     @pytest_asyncio.async_test
     async def test_rate_limiting_security(self, security_test_config):
         """Test rate limiting to prevent abuse and DoS attacks."""
         rate_limit = security_test_config["rate_limit_per_minute"]
 
-        with patch("src.integration.api_server.get_tracking_manager") as mock_tm:
+        with patch(
+            "src.integration.api_server.get_tracking_manager"
+        ) as mock_tm:
             mock_tracking_manager = AsyncMock(spec=TrackingManager)
             mock_tracking_manager.get_all_rooms.return_value = ["living_room"]
             mock_tm.return_value = mock_tracking_manager
@@ -305,10 +332,14 @@ class TestAuthenticationSecurity:
 
                 # Analyze rate limiting effectiveness
                 total_requests = successful_requests + rate_limited_count
-                rate_limit_effectiveness = rate_limited_count / max(total_requests, 1)
+                rate_limit_effectiveness = rate_limited_count / max(
+                    total_requests, 1
+                )
 
                 # Validate rate limiting
-                assert rate_limited_count > 0, "Rate limiting should have triggered"
+                assert (
+                    rate_limited_count > 0
+                ), "Rate limiting should have triggered"
                 assert (
                     rate_limit_effectiveness > 0.1
                 ), f"Rate limiting not effective enough: {rate_limit_effectiveness}"
@@ -330,9 +361,13 @@ class TestInputValidationSecurity:
         """Test protection against SQL injection attacks."""
         sql_payloads = security_test_config["sql_injection_payloads"]
 
-        with patch("src.integration.api_server.get_tracking_manager") as mock_tm:
+        with patch(
+            "src.integration.api_server.get_tracking_manager"
+        ) as mock_tm:
             mock_tracking_manager = AsyncMock(spec=TrackingManager)
-            mock_tracking_manager.get_room_metrics.return_value = {"accuracy": 0.85}
+            mock_tracking_manager.get_room_metrics.return_value = {
+                "accuracy": 0.85
+            }
             mock_tm.return_value = mock_tracking_manager
 
             app = create_app()
@@ -349,7 +384,8 @@ class TestInputValidationSecurity:
                         encoded_payload = quote(payload, safe="")
 
                         response = await client.get(
-                            f"/api/rooms/{encoded_payload}/metrics", timeout=5.0
+                            f"/api/rooms/{encoded_payload}/metrics",
+                            timeout=5.0,
                         )
 
                         # Check response for security
@@ -383,7 +419,9 @@ class TestInputValidationSecurity:
                         logger.warning(f"SQL injection test {i} failed: {e}")
 
                 # Test SQL injection in JSON body
-                for payload in sql_payloads[:3]:  # Test subset for body injection
+                for payload in sql_payloads[
+                    :3
+                ]:  # Test subset for body injection
                     try:
                         malicious_data = {
                             "room_id": payload,
@@ -401,7 +439,7 @@ class TestInputValidationSecurity:
                             400,
                             422,
                             404,
-                        ], f"JSON SQL injection not properly rejected"
+                        ], "JSON SQL injection not properly rejected"
 
                         sql_injection_blocked += 1
 
@@ -422,7 +460,9 @@ class TestInputValidationSecurity:
         """Test protection against cross-site scripting (XSS) attacks."""
         xss_payloads = security_test_config["xss_payloads"]
 
-        with patch("src.integration.api_server.get_tracking_manager") as mock_tm:
+        with patch(
+            "src.integration.api_server.get_tracking_manager"
+        ) as mock_tm:
             mock_tracking_manager = AsyncMock(spec=TrackingManager)
             mock_tracking_manager.get_all_rooms.return_value = ["living_room"]
             mock_tm.return_value = mock_tracking_manager
@@ -479,7 +519,9 @@ class TestInputValidationSecurity:
                             "/api/rooms", json=malicious_data, timeout=5.0
                         )
 
-                        if response.status_code < 500:  # Don't count server errors
+                        if (
+                            response.status_code < 500
+                        ):  # Don't count server errors
                             response_text = response.text
 
                             # Verify XSS content is sanitized
@@ -496,13 +538,19 @@ class TestInputValidationSecurity:
                     xss_payloads
                 ), f"Only {xss_attacks_blocked}/{len(xss_payloads)} XSS attacks blocked"
 
-            logger.info(f"XSS prevention test: {xss_attacks_blocked} attacks blocked")
+            logger.info(
+                f"XSS prevention test: {xss_attacks_blocked} attacks blocked"
+            )
 
     @pytest_asyncio.async_test
-    async def test_input_size_and_format_validation(self, security_test_config):
+    async def test_input_size_and_format_validation(
+        self, security_test_config
+    ):
         """Test input size limits and format validation."""
 
-        with patch("src.integration.api_server.get_tracking_manager") as mock_tm:
+        with patch(
+            "src.integration.api_server.get_tracking_manager"
+        ) as mock_tm:
             mock_tracking_manager = AsyncMock(spec=TrackingManager)
             mock_tracking_manager.get_all_rooms.return_value = ["living_room"]
             mock_tm.return_value = mock_tracking_manager
@@ -534,7 +582,10 @@ class TestInputValidationSecurity:
                     validation_tests_passed += 1
 
                 except Exception as e:
-                    if "413" in str(e) or "request entity too large" in str(e).lower():
+                    if (
+                        "413" in str(e)
+                        or "request entity too large" in str(e).lower()
+                    ):
                         validation_tests_passed += 1
                     else:
                         logger.warning(f"Oversized input test failed: {e}")
@@ -583,7 +634,9 @@ class TestInputValidationSecurity:
                         validation_tests_passed += 1
 
                     except Exception as e:
-                        logger.warning(f"Data type validation test failed: {e}")
+                        logger.warning(
+                            f"Data type validation test failed: {e}"
+                        )
 
                 # Validate input validation effectiveness
                 expected_tests = (
@@ -606,9 +659,13 @@ class TestAPISecurityBoundaries:
         self, security_test_config, mock_authentication_system
     ):
         """Test access controls on protected endpoints."""
-        auth_system = mock_authentication_system(security_test_config["jwt_secret"])
+        auth_system = mock_authentication_system(
+            security_test_config["jwt_secret"]
+        )
 
-        with patch("src.integration.api_server.get_tracking_manager") as mock_tm:
+        with patch(
+            "src.integration.api_server.get_tracking_manager"
+        ) as mock_tm:
             mock_tracking_manager = AsyncMock(spec=TrackingManager)
             mock_tracking_manager.get_all_rooms.return_value = ["living_room"]
             mock_tm.return_value = mock_tracking_manager
@@ -622,7 +679,11 @@ class TestAPISecurityBoundaries:
                     "path": "/api/admin/status",
                     "required_perm": "admin",
                 },
-                {"method": "POST", "path": "/api/rooms", "required_perm": "write"},
+                {
+                    "method": "POST",
+                    "path": "/api/rooms",
+                    "required_perm": "write",
+                },
                 {
                     "method": "DELETE",
                     "path": "/api/rooms/living_room",
@@ -649,7 +710,9 @@ class TestAPISecurityBoundaries:
                     # Test unauthorized access (no token)
                     try:
                         if endpoint["method"] == "GET":
-                            response = await client.get(endpoint["path"], timeout=5.0)
+                            response = await client.get(
+                                endpoint["path"], timeout=5.0
+                            )
                         elif endpoint["method"] == "POST":
                             response = await client.post(
                                 endpoint["path"], json={}, timeout=5.0
@@ -675,16 +738,22 @@ class TestAPISecurityBoundaries:
                         )
 
                 # Test insufficient permissions
-                read_only_token = auth_system.create_valid_token("read_user", ["read"])
+                read_only_token = auth_system.create_valid_token(
+                    "read_user", ["read"]
+                )
 
                 for endpoint in protected_endpoints:
                     if endpoint["required_perm"] in ["write", "admin"]:
                         try:
-                            headers = {"Authorization": f"Bearer {read_only_token}"}
+                            headers = {
+                                "Authorization": f"Bearer {read_only_token}"
+                            }
 
                             if endpoint["method"] == "GET":
                                 response = await client.get(
-                                    endpoint["path"], headers=headers, timeout=5.0
+                                    endpoint["path"],
+                                    headers=headers,
+                                    timeout=5.0,
                                 )
                             elif endpoint["method"] == "POST":
                                 response = await client.post(
@@ -702,7 +771,9 @@ class TestAPISecurityBoundaries:
                                 )
                             elif endpoint["method"] == "DELETE":
                                 response = await client.delete(
-                                    endpoint["path"], headers=headers, timeout=5.0
+                                    endpoint["path"],
+                                    headers=headers,
+                                    timeout=5.0,
                                 )
 
                             assert response.status_code in [
@@ -730,10 +801,14 @@ class TestAPISecurityBoundaries:
             )
 
     @pytest_asyncio.async_test
-    async def test_sensitive_data_exposure_prevention(self, security_test_config):
+    async def test_sensitive_data_exposure_prevention(
+        self, security_test_config
+    ):
         """Test prevention of sensitive data exposure in API responses."""
 
-        with patch("src.integration.api_server.get_tracking_manager") as mock_tm:
+        with patch(
+            "src.integration.api_server.get_tracking_manager"
+        ) as mock_tm:
             mock_tracking_manager = AsyncMock(spec=TrackingManager)
             mock_tracking_manager.get_system_status.return_value = {
                 "status": "healthy",
@@ -802,7 +877,9 @@ class TestAPISecurityBoundaries:
 
                 # Test error responses don't expose sensitive info
                 try:
-                    response = await client.get("/api/nonexistent", timeout=5.0)
+                    response = await client.get(
+                        "/api/nonexistent", timeout=5.0
+                    )
 
                     if response.status_code >= 400:
                         error_text = response.text.lower()
@@ -844,7 +921,9 @@ class TestSecurityHeadersAndHTTPS:
     async def test_security_headers_validation(self, security_test_config):
         """Test presence and configuration of security headers."""
 
-        with patch("src.integration.api_server.get_tracking_manager") as mock_tm:
+        with patch(
+            "src.integration.api_server.get_tracking_manager"
+        ) as mock_tm:
             mock_tracking_manager = AsyncMock(spec=TrackingManager)
             mock_tracking_manager.get_all_rooms.return_value = ["living_room"]
             mock_tm.return_value = mock_tracking_manager
@@ -853,7 +932,7 @@ class TestSecurityHeadersAndHTTPS:
 
             # Expected security headers
             required_headers = {
-                "X-Content-Type-Options": "nosniff",
+                "X-Content-Type-Options": "nosnif",
                 "X-Frame-Options": ["DENY", "SAMEORIGIN"],
                 "X-XSS-Protection": "1; mode=block",
                 "Content-Security-Policy": "default-src",  # Should contain CSP

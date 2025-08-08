@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 import logging
 import math
-from typing import Any, Dict, List, Optional, Set, Tuple
 
 import statistics
 
@@ -55,15 +54,21 @@ class MovementSequence:
         if len(self.events) < 2:
             return 0.0
 
-        total_distance = len(self.sensors_triggered)  # Simplified distance metric
+        total_distance = len(
+            self.sensors_triggered
+        )  # Simplified distance metric
         return (
-            total_distance / self.duration_seconds if self.duration_seconds > 0 else 0.0
+            total_distance / self.duration_seconds
+            if self.duration_seconds > 0
+            else 0.0
         )
 
     @property
     def trigger_pattern(self) -> str:
         """Get string representation of sensor trigger pattern."""
-        return " -> ".join([event.sensor_id.split(".")[-1] for event in self.events])
+        return " -> ".join(
+            [event.sensor_id.split(".")[-1] for event in self.events]
+        )
 
 
 @dataclass
@@ -235,8 +240,12 @@ class MovementPatternClassifier:
         metrics["revisit_count"] = self._count_sensor_revisits(sequence)
 
         # Timing metrics
-        metrics["avg_sensor_dwell_time"] = self._calculate_avg_dwell_time(sequence)
-        metrics["inter_event_variance"] = self._calculate_timing_variance(sequence)
+        metrics["avg_sensor_dwell_time"] = self._calculate_avg_dwell_time(
+            sequence
+        )
+        metrics["inter_event_variance"] = self._calculate_timing_variance(
+            sequence
+        )
 
         return metrics
 
@@ -279,9 +288,13 @@ class MovementPatternClassifier:
         presence_entity_ids = set(presence_sensors.values())
 
         presence_events = sum(
-            1 for event in sequence.events if event.sensor_id in presence_entity_ids
+            1
+            for event in sequence.events
+            if event.sensor_id in presence_entity_ids
         )
-        return presence_events / len(sequence.events) if sequence.events else 0.0
+        return (
+            presence_events / len(sequence.events) if sequence.events else 0.0
+        )
 
     def _count_sensor_revisits(self, sequence: MovementSequence) -> int:
         """Count how many sensors were triggered multiple times."""
@@ -304,11 +317,15 @@ class MovementPatternClassifier:
         for sensor_id, timestamps in sensor_times.items():
             if len(timestamps) >= 2:
                 # Calculate time between first and last activation
-                dwell_time = (max(timestamps) - min(timestamps)).total_seconds()
+                dwell_time = (
+                    max(timestamps) - min(timestamps)
+                ).total_seconds()
                 dwell_times.append(dwell_time)
 
         return (
-            statistics.mean(dwell_times) if dwell_times else sequence.duration_seconds
+            statistics.mean(dwell_times)
+            if dwell_times
+            else sequence.duration_seconds
         )
 
     def _calculate_timing_variance(self, sequence: MovementSequence) -> float:
@@ -330,7 +347,10 @@ class MovementPatternClassifier:
         score = 0.0
 
         # Duration scoring (humans typically move slower)
-        if metrics["duration_seconds"] >= self.human_patterns["min_duration_seconds"]:
+        if (
+            metrics["duration_seconds"]
+            >= self.human_patterns["min_duration_seconds"]
+        ):
             score += 0.3
 
         # Velocity scoring (humans move at moderate speeds)
@@ -338,8 +358,13 @@ class MovementPatternClassifier:
             score += 0.2
 
         # Door interaction scoring (humans typically open doors)
-        door_ratio = metrics["door_interactions"] / max(metrics["event_count"], 1)
-        if door_ratio >= self.human_patterns["door_interaction_probability"] * 0.5:
+        door_ratio = metrics["door_interactions"] / max(
+            metrics["event_count"], 1
+        )
+        if (
+            door_ratio
+            >= self.human_patterns["door_interaction_probability"] * 0.5
+        ):
             score += 0.2
 
         # Sequence length scoring (humans have purposeful paths)
@@ -350,7 +375,9 @@ class MovementPatternClassifier:
             score += 0.15
 
         # Revisit penalty (humans typically don't backtrack as much)
-        revisit_ratio = metrics["revisit_count"] / max(metrics["sensors_triggered"], 1)
+        revisit_ratio = metrics["revisit_count"] / max(
+            metrics["sensors_triggered"], 1
+        )
         if revisit_ratio < 0.3:
             score += 0.15
 
@@ -361,7 +388,10 @@ class MovementPatternClassifier:
         score = 0.0
 
         # Duration scoring (cats can move very quickly)
-        if metrics["duration_seconds"] >= self.cat_patterns["min_duration_seconds"]:
+        if (
+            metrics["duration_seconds"]
+            >= self.cat_patterns["min_duration_seconds"]
+        ):
             score += 0.2
 
         # Velocity scoring (cats can move very fast)
@@ -369,7 +399,9 @@ class MovementPatternClassifier:
             score += 0.25
 
         # Door interaction scoring (cats rarely interact with doors)
-        door_ratio = metrics["door_interactions"] / max(metrics["event_count"], 1)
+        door_ratio = metrics["door_interactions"] / max(
+            metrics["event_count"], 1
+        )
         if door_ratio <= self.cat_patterns["door_interaction_probability"]:
             score += 0.25
 
@@ -381,7 +413,9 @@ class MovementPatternClassifier:
             score += 0.1
 
         # Revisit scoring (cats often backtrack and explore)
-        revisit_ratio = metrics["revisit_count"] / max(metrics["sensors_triggered"], 1)
+        revisit_ratio = metrics["revisit_count"] / max(
+            metrics["sensors_triggered"], 1
+        )
         if revisit_ratio >= 0.2:
             score += 0.2
 
@@ -408,7 +442,10 @@ class MovementPatternClassifier:
             if metrics["revisit_count"] == 0:
                 reasons.append("direct movement pattern")
         else:
-            if metrics["max_velocity"] > self.human_patterns["max_velocity_ms"]:
+            if (
+                metrics["max_velocity"]
+                > self.human_patterns["max_velocity_ms"]
+            ):
                 reasons.append("high movement velocity")
             if metrics["door_interactions"] == 0:
                 reasons.append("no door interactions")
@@ -433,13 +470,17 @@ class EventProcessor:
     - Bulk processing for historical imports
     """
 
-    def __init__(self, config: Optional[SystemConfig] = None, tracking_manager=None):
+    def __init__(
+        self, config: Optional[SystemConfig] = None, tracking_manager=None
+    ):
         self.config = config or get_config()
         self.validator = EventValidator(self.config)
         self.classifier = MovementPatternClassifier(self.config)
 
         # Event tracking for sequence detection
-        self._recent_events: Dict[str, deque] = defaultdict(lambda: deque(maxlen=100))
+        self._recent_events: Dict[str, deque] = defaultdict(
+            lambda: deque(maxlen=100)
+        )
         self._last_processed_times: Dict[str, datetime] = {}
 
         # Processing statistics
@@ -476,7 +517,9 @@ class EventProcessor:
             return None
 
         # Determine sensor type
-        sensor_type = self._determine_sensor_type(ha_event.entity_id, room_config)
+        sensor_type = self._determine_sensor_type(
+            ha_event.entity_id, room_config
+        )
 
         # Convert to SensorEvent
         sensor_event = SensorEvent(
@@ -493,7 +536,9 @@ class EventProcessor:
         # Validate event
         validation_result = self.validator.validate_event(sensor_event)
         if not validation_result.is_valid:
-            logger.warning(f"Invalid event filtered out: {validation_result.errors}")
+            logger.warning(
+                f"Invalid event filtered out: {validation_result.errors}"
+            )
             self.stats["invalid_events"] += 1
             return None
 
@@ -549,7 +594,9 @@ class EventProcessor:
 
         return processed_events
 
-    def _determine_sensor_type(self, entity_id: str, room_config: RoomConfig) -> str:
+    def _determine_sensor_type(
+        self, entity_id: str, room_config: RoomConfig
+    ) -> str:
         """Determine sensor type from entity ID and room configuration."""
         # Check each sensor type in room config
         for sensor_type, sensors in room_config.sensors.items():
@@ -584,7 +631,10 @@ class EventProcessor:
         return False
 
     async def _enrich_event(
-        self, event: SensorEvent, room_config: RoomConfig, base_confidence: float
+        self,
+        event: SensorEvent,
+        room_config: RoomConfig,
+        base_confidence: float,
     ):
         """Enrich event with additional metadata and classification."""
         # Get recent events for sequence analysis
@@ -677,10 +727,10 @@ class EventProcessor:
             if event.sensor_id in presence_sensors.values():
                 if event.state in ["on", "detected", "occupied"]:
                     new_state = "occupied"
-                    if event.previous_state in ["off", "clear", "vacant"]:
+                    if event.previous_state in ["of", "clear", "vacant"]:
                         previous_state = "vacant"
                         state_change_detected = True
-                elif event.state in ["off", "clear", "vacant"]:
+                elif event.state in ["of", "clear", "vacant"]:
                     new_state = "vacant"
                     if event.previous_state in ["on", "detected", "occupied"]:
                         previous_state = "occupied"
@@ -694,12 +744,12 @@ class EventProcessor:
                 recent_events = list(self._recent_events[event.room_id])
                 if len(recent_events) >= 2:
                     # Look for motion start/stop patterns
-                    if event.state == "on" and event.previous_state == "off":
+                    if event.state == "on" and event.previous_state == "of":
                         # Motion detected - potential room entry
                         new_state = "occupied"
                         previous_state = "vacant"
                         state_change_detected = True
-                    elif event.state == "off" and event.previous_state == "on":
+                    elif event.state == "of" and event.previous_state == "on":
                         # Motion stopped - check if room might be vacant
                         # Only trigger if no recent motion in last few minutes
                         cutoff_time = event.timestamp - timedelta(minutes=5)
@@ -755,7 +805,9 @@ class EventProcessor:
             "duplicates_filtered": 0,
         }
 
-    async def validate_room_configuration(self, room_id: str) -> Dict[str, Any]:
+    async def validate_room_configuration(
+        self, room_id: str
+    ) -> Dict[str, Any]:
         """
         Validate room configuration for event processing.
 

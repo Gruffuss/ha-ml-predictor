@@ -1,7 +1,7 @@
 """
 Sprint 1 Validation Tests
 
-This module contains comprehensive validation tests to ensure all Sprint 1 
+This module contains comprehensive validation tests to ensure all Sprint 1
 components are working correctly before proceeding to Sprint 2.
 """
 
@@ -20,7 +20,10 @@ def test_sprint1_imports():
     # Core components
     from src.core.config import ConfigLoader, SystemConfig, get_config
     from src.core.constants import EventType, SensorState, SensorType
-    from src.core.exceptions import DatabaseConnectionError, OccupancyPredictionError
+    from src.core.exceptions import (
+        DatabaseConnectionError,
+        OccupancyPredictionError,
+    )
     from src.data.ingestion.bulk_importer import BulkImporter, ImportProgress
     from src.data.ingestion.event_processor import (
         EventProcessor,
@@ -48,7 +51,9 @@ def test_sprint1_config_system(test_config_dir):
 
     # Verify configuration structure
     assert config.home_assistant.url == "http://test-ha:8123"
-    assert config.database.connection_string  # Just verify it exists and is not empty
+    assert (
+        config.database.connection_string
+    )  # Just verify it exists and is not empty
     assert len(config.rooms) >= 2
 
     # Verify room configuration
@@ -112,7 +117,11 @@ def test_sprint1_database_system():
 
 def test_sprint1_ha_client_structure(test_system_config):
     """Test that HA client components are properly structured."""
-    from src.data.ingestion.ha_client import HAEvent, HomeAssistantClient, RateLimiter
+    from src.data.ingestion.ha_client import (
+        HAEvent,
+        HomeAssistantClient,
+        RateLimiter,
+    )
 
     # Test client initialization
     client = HomeAssistantClient(test_system_config)
@@ -131,14 +140,19 @@ def test_sprint1_ha_client_structure(test_system_config):
     assert event.is_valid()
 
     # Test conversion to SensorEvent
-    sensor_event = client.convert_ha_event_to_sensor_event(event, "test_room", "motion")
+    sensor_event = client.convert_ha_event_to_sensor_event(
+        event, "test_room", "motion"
+    )
     assert sensor_event.room_id == "test_room"
     assert sensor_event.sensor_type == "motion"
 
 
 def test_sprint1_event_processing():
     """Test that event processing components work correctly."""
-    from src.data.ingestion.event_processor import EventProcessor, EventValidator
+    from src.data.ingestion.event_processor import (
+        EventProcessor,
+        EventValidator,
+    )
     from src.data.ingestion.ha_client import HAEvent
 
     # Create processor with test config
@@ -320,8 +334,12 @@ def test_sprint1_file_structure():
 
     # Data ingestion files
     assert (base_path / "src" / "data" / "ingestion" / "ha_client.py").exists()
-    assert (base_path / "src" / "data" / "ingestion" / "event_processor.py").exists()
-    assert (base_path / "src" / "data" / "ingestion" / "bulk_importer.py").exists()
+    assert (
+        base_path / "src" / "data" / "ingestion" / "event_processor.py"
+    ).exists()
+    assert (
+        base_path / "src" / "data" / "ingestion" / "bulk_importer.py"
+    ).exists()
 
     # Configuration files
     assert (base_path / "config" / "config.yaml").exists()
@@ -359,7 +377,7 @@ def test_sprint1_end_to_end_workflow():
     assert ha_event.is_valid()
     assert ha_event.entity_id == "binary_sensor.e2e_test"
     assert ha_event.state == "on"
-    assert ha_event.previous_state == "off"
+    assert ha_event.previous_state == "of"
 
     # 2. Model instantiation validation
     sensor_event = SensorEvent(

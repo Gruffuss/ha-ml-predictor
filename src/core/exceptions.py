@@ -54,11 +54,15 @@ class OccupancyPredictionError(Exception):
             parts.append(f"Error Code: {self.error_code}")
 
         if self.context:
-            context_str = ", ".join(f"{k}={v}" for k, v in self.context.items())
+            context_str = ", ".join(
+                f"{k}={v}" for k, v in self.context.items()
+            )
             parts.append(f"Context: {context_str}")
 
         if self.cause:
-            parts.append(f"Caused by: {type(self.cause).__name__}: {self.cause}")
+            parts.append(
+                f"Caused by: {type(self.cause).__name__}: {self.cause}"
+            )
 
         return " | ".join(parts)
 
@@ -69,7 +73,9 @@ class OccupancyPredictionError(Exception):
 class ConfigurationError(OccupancyPredictionError):
     """Base class for configuration-related errors."""
 
-    def __init__(self, message: str, config_file: Optional[str] = None, **kwargs):
+    def __init__(
+        self, message: str, config_file: Optional[str] = None, **kwargs
+    ):
         context = kwargs.get("context", {})
         if config_file:
             context["config_file"] = config_file
@@ -81,9 +87,7 @@ class ConfigFileNotFoundError(ConfigurationError):
     """Raised when a required configuration file is missing."""
 
     def __init__(self, config_file: str, config_dir: str):
-        message = (
-            f"Configuration file '{config_file}' not found in directory '{config_dir}'"
-        )
+        message = f"Configuration file '{config_file}' not found in directory '{config_dir}'"
         super().__init__(
             message=message,
             error_code="CONFIG_FILE_NOT_FOUND",
@@ -97,11 +101,13 @@ class ConfigValidationError(ConfigurationError):
     """Raised when configuration values are invalid or missing."""
 
     def __init__(
-        self, field: str, value: Any, expected: str, config_file: Optional[str] = None
+        self,
+        field: str,
+        value: Any,
+        expected: str,
+        config_file: Optional[str] = None,
     ):
-        message = (
-            f"Invalid configuration for '{field}': got '{value}', expected {expected}"
-        )
+        message = f"Invalid configuration for '{field}': got '{value}', expected {expected}"
         super().__init__(
             message=message,
             error_code="CONFIG_VALIDATION_ERROR",
@@ -169,11 +175,13 @@ class HomeAssistantAPIError(HomeAssistantError):
     """Raised when Home Assistant API returns an error."""
 
     def __init__(
-        self, endpoint: str, status_code: int, response_text: str, method: str = "GET"
+        self,
+        endpoint: str,
+        status_code: int,
+        response_text: str,
+        method: str = "GET",
     ):
-        message = (
-            f"Home Assistant API error: {method} {endpoint} returned {status_code}"
-        )
+        message = f"Home Assistant API error: {method} {endpoint} returned {status_code}"
         super().__init__(
             message=message,
             error_code="HA_API_ERROR",
@@ -230,7 +238,9 @@ class DatabaseError(OccupancyPredictionError):
 class DatabaseConnectionError(DatabaseError):
     """Raised when database connection fails."""
 
-    def __init__(self, connection_string: str, cause: Optional[Exception] = None):
+    def __init__(
+        self, connection_string: str, cause: Optional[Exception] = None
+    ):
         # Mask password in connection string for logging
         masked_conn = self._mask_password(connection_string)
         message = f"Failed to connect to database: {masked_conn}"
@@ -290,15 +300,20 @@ class DatabaseIntegrityError(DatabaseError):
     """Raised when database integrity constraint is violated."""
 
     def __init__(
-        self, constraint: str, table: str, values: Optional[Dict[str, Any]] = None
+        self,
+        constraint: str,
+        table: str,
+        values: Optional[Dict[str, Any]] = None,
     ):
-        message = (
-            f"Database integrity constraint violated: {constraint} on table {table}"
-        )
+        message = f"Database integrity constraint violated: {constraint} on table {table}"
         super().__init__(
             message=message,
             error_code="DB_INTEGRITY_ERROR",
-            context={"constraint": constraint, "table": table, "values": values},
+            context={
+                "constraint": constraint,
+                "table": table,
+                "values": values,
+            },
             severity=ErrorSeverity.MEDIUM,
         )
 
@@ -322,7 +337,9 @@ class ModelTrainingError(ModelError):
         cause: Optional[Exception] = None,
         training_data_size: Optional[int] = None,
     ):
-        message = f"Model training failed for {model_type} model in room '{room_id}'"
+        message = (
+            f"Model training failed for {model_type} model in room '{room_id}'"
+        )
         context = {"model_type": model_type, "room_id": room_id}
         if training_data_size is not None:
             context["training_data_size"] = training_data_size
@@ -363,7 +380,9 @@ class ModelPredictionError(ModelError):
 class ModelNotFoundError(ModelError):
     """Raised when a required model is not found."""
 
-    def __init__(self, model_type: str, room_id: str, model_path: Optional[str] = None):
+    def __init__(
+        self, model_type: str, room_id: str, model_path: Optional[str] = None
+    ):
         message = f"Model not found: {model_type} for room '{room_id}'"
         context = {"model_type": model_type, "room_id": room_id}
         if model_path:
@@ -411,7 +430,11 @@ class ModelVersionMismatchError(ModelError):
     """Raised when loaded model version doesn't match expected version."""
 
     def __init__(
-        self, model_type: str, room_id: str, loaded_version: str, expected_version: str
+        self,
+        model_type: str,
+        room_id: str,
+        loaded_version: str,
+        expected_version: str,
     ):
         message = (
             f"Model version mismatch for {model_type} in room '{room_id}': "
@@ -449,9 +472,7 @@ class FeatureExtractionError(FeatureEngineeringError):
         time_range: Optional[str] = None,
         cause: Optional[Exception] = None,
     ):
-        message = (
-            f"Feature extraction failed for {feature_type} features in room '{room_id}'"
-        )
+        message = f"Feature extraction failed for {feature_type} features in room '{room_id}'"
         context = {"feature_type": feature_type, "room_id": room_id}
         if time_range:
             context["time_range"] = time_range
@@ -518,11 +539,12 @@ class FeatureStoreError(FeatureEngineeringError):
     """Raised when feature store operations fail."""
 
     def __init__(
-        self, operation: str, feature_group: str, cause: Optional[Exception] = None
+        self,
+        operation: str,
+        feature_group: str,
+        cause: Optional[Exception] = None,
     ):
-        message = (
-            f"Feature store operation '{operation}' failed for group '{feature_group}'"
-        )
+        message = f"Feature store operation '{operation}' failed for group '{feature_group}'"
         super().__init__(
             message=message,
             error_code="FEATURE_STORE_ERROR",
@@ -614,10 +636,11 @@ class DataValidationError(IntegrationError):
         validation_errors: List[str],
         sample_data: Optional[Dict[str, Any]] = None,
     ):
-        message = (
-            f"Data validation failed from {data_source}: {'; '.join(validation_errors)}"
-        )
-        context = {"data_source": data_source, "validation_errors": validation_errors}
+        message = f"Data validation failed from {data_source}: {'; '.join(validation_errors)}"
+        context = {
+            "data_source": data_source,
+            "validation_errors": validation_errors,
+        }
         if sample_data:
             context["sample_data"] = sample_data
 
@@ -639,10 +662,12 @@ class RateLimitExceededError(IntegrationError):
         window_seconds: int,
         reset_time: Optional[int] = None,
     ):
-        message = (
-            f"Rate limit exceeded for {service}: {limit} requests per {window_seconds}s"
-        )
-        context = {"service": service, "limit": limit, "window_seconds": window_seconds}
+        message = f"Rate limit exceeded for {service}: {limit} requests per {window_seconds}s"
+        context = {
+            "service": service,
+            "limit": limit,
+            "window_seconds": window_seconds,
+        }
         if reset_time:
             context["reset_time"] = reset_time
 
@@ -667,7 +692,11 @@ class ResourceExhaustionError(SystemError):
     """Raised when system resources are exhausted."""
 
     def __init__(
-        self, resource_type: str, current_usage: float, limit: float, unit: str = "MB"
+        self,
+        resource_type: str,
+        current_usage: float,
+        limit: float,
+        unit: str = "MB",
     ):
         message = f"Resource exhaustion: {resource_type} usage {current_usage}{unit} exceeds limit {limit}{unit}"
         super().__init__(
@@ -751,9 +780,7 @@ class APIRateLimitError(APIError):
     """Raised when API rate limit is exceeded."""
 
     def __init__(self, client_ip: str, limit: int, window: str):
-        message = (
-            f"Rate limit exceeded for client {client_ip}: {limit} requests per {window}"
-        )
+        message = f"Rate limit exceeded for client {client_ip}: {limit} requests per {window}"
         super().__init__(
             message=message,
             error_code="API_RATE_LIMIT_ERROR",
@@ -787,7 +814,10 @@ class APIResourceNotFoundError(APIError):
         super().__init__(
             message=message,
             error_code="API_RESOURCE_NOT_FOUND",
-            context={"resource_type": resource_type, "resource_id": resource_id},
+            context={
+                "resource_type": resource_type,
+                "resource_id": resource_id,
+            },
             severity=ErrorSeverity.LOW,
         )
 

@@ -25,7 +25,6 @@ from datetime import datetime, timedelta
 from enum import Enum
 import json
 import logging
-from typing import Any, Callable, Dict, List, Optional, Set, Union
 import uuid
 import weakref
 
@@ -139,7 +138,8 @@ class ClientSubscription(BaseModel):
     """Client subscription request model."""
 
     endpoint: str = Field(
-        ..., pattern=r"^/ws/(predictions|system-status|alerts|room/[a-zA-Z0-9_]+)$"
+        ...,
+        pattern=r"^/ws/(predictions|system-status|alerts|room/[a-zA-Z0-9_]+)$",
     )
     room_id: Optional[str] = None
     filters: Dict[str, Any] = Field(default_factory=dict)
@@ -210,7 +210,10 @@ class ClientConnection:
 
     def is_rate_limited(self, max_messages_per_minute: int = 60) -> bool:
         """Check if client is currently rate limited."""
-        if self.rate_limited_until and datetime.utcnow() < self.rate_limited_until:
+        if (
+            self.rate_limited_until
+            and datetime.utcnow() < self.rate_limited_until
+        ):
             return True
 
         now = datetime.utcnow()
@@ -289,9 +292,15 @@ class WebSocketConnectionManager:
 
         # Configuration
         self.max_connections = self.config.get("max_connections", 1000)
-        self.max_messages_per_minute = self.config.get("max_messages_per_minute", 60)
-        self.heartbeat_interval = self.config.get("heartbeat_interval_seconds", 30)
-        self.connection_timeout = self.config.get("connection_timeout_seconds", 300)
+        self.max_messages_per_minute = self.config.get(
+            "max_messages_per_minute", 60
+        )
+        self.heartbeat_interval = self.config.get(
+            "heartbeat_interval_seconds", 30
+        )
+        self.connection_timeout = self.config.get(
+            "connection_timeout_seconds", 300
+        )
         self.message_acknowledgment_timeout = self.config.get(
             "acknowledgment_timeout_seconds", 30
         )
@@ -311,7 +320,9 @@ class WebSocketConnectionManager:
                 raise WebSocketConnectionError("Maximum connections exceeded")
 
             connection = ClientConnection(
-                connection_id=connection_id, websocket=websocket, endpoint=endpoint
+                connection_id=connection_id,
+                websocket=websocket,
+                endpoint=endpoint,
             )
 
             self.connections[connection_id] = connection
@@ -321,7 +332,9 @@ class WebSocketConnectionManager:
             # Update endpoint-specific statistics
             self._update_endpoint_stats(endpoint, 1)
 
-        logger.info(f"WebSocket client connected: {connection_id} to {endpoint}")
+        logger.info(
+            f"WebSocket client connected: {connection_id} to {endpoint}"
+        )
         return connection_id
 
     async def disconnect(self, connection_id: str):
@@ -403,7 +416,9 @@ class WebSocketConnectionManager:
 
         connection.update_activity()
 
-        logger.debug(f"Client subscribed: {connection_id} to {subscription.endpoint}")
+        logger.debug(
+            f"Client subscribed: {connection_id} to {subscription.endpoint}"
+        )
         return True
 
     async def unsubscribe_client(
@@ -424,7 +439,9 @@ class WebSocketConnectionManager:
         logger.debug(f"Client unsubscribed: {connection_id} from {endpoint}")
         return True
 
-    async def send_message(self, connection_id: str, message: WebSocketMessage) -> bool:
+    async def send_message(
+        self, connection_id: str, message: WebSocketMessage
+    ) -> bool:
         """Send message to specific client."""
         if connection_id not in self.connections:
             return False
@@ -443,7 +460,9 @@ class WebSocketConnectionManager:
 
             # Handle message acknowledgment if required
             if message.requires_ack:
-                connection.unacknowledged_messages[message.message_id] = message
+                connection.unacknowledged_messages[message.message_id] = (
+                    message
+                )
 
             self.stats.total_messages_sent += 1
             return True
@@ -470,13 +489,18 @@ class WebSocketConnectionManager:
                 if (
                     endpoint in conn.subscriptions
                     and conn.authenticated
-                    and (not room_filter or room_filter in conn.room_subscriptions)
+                    and (
+                        not room_filter
+                        or room_filter in conn.room_subscriptions
+                    )
                 )
             ]
 
         for connection in target_connections:
             try:
-                success = await self.send_message(connection.connection_id, message)
+                success = await self.send_message(
+                    connection.connection_id, message
+                )
                 if success:
                     successful_sends += 1
                 else:
@@ -493,7 +517,9 @@ class WebSocketConnectionManager:
 
         return successful_sends
 
-    async def process_acknowledgment(self, connection_id: str, message_id: str) -> bool:
+    async def process_acknowledgment(
+        self, connection_id: str, message_id: str
+    ) -> bool:
         """Process message acknowledgment from client."""
         if connection_id not in self.connections:
             return False
@@ -542,7 +568,8 @@ class WebSocketConnectionManager:
         self.stats.rate_limited_clients = sum(
             1
             for conn in self.connections.values()
-            if conn.rate_limited_until and datetime.utcnow() < conn.rate_limited_until
+            if conn.rate_limited_until
+            and datetime.utcnow() < conn.rate_limited_until
         )
         self.stats.message_queue_size = sum(
             len(conn.pending_messages) + len(conn.unacknowledged_messages)
@@ -591,7 +618,9 @@ class WebSocketAPIServer:
     and seamless integration with the existing TrackingManager system.
     """
 
-    def __init__(self, tracking_manager=None, config: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self, tracking_manager=None, config: Optional[Dict[str, Any]] = None
+    ):
         """Initialize WebSocket API server."""
         self.tracking_manager = tracking_manager
         self.config = config or {}
@@ -610,7 +639,9 @@ class WebSocketAPIServer:
         # WebSocket server
         self._websocket_server = None
 
-        logger.info(f"WebSocket API Server initialized on {self.host}:{self.port}")
+        logger.info(
+            f"WebSocket API Server initialized on {self.host}:{self.port}"
+        )
 
     async def initialize(self) -> None:
         """Initialize the WebSocket API server."""
@@ -656,7 +687,9 @@ class WebSocketAPIServer:
             )
 
             self._server_running = True
-            logger.info(f"WebSocket API server started on ws://{self.host}:{self.port}")
+            logger.info(
+                f"WebSocket API server started on ws://{self.host}:{self.port}"
+            )
 
             # Register with tracking manager if available
             if self.tracking_manager:
@@ -664,7 +697,9 @@ class WebSocketAPIServer:
 
         except Exception as e:
             logger.error(f"Failed to start WebSocket API server: {e}")
-            raise WebSocketConnectionError("Failed to start WebSocket server", cause=e)
+            raise WebSocketConnectionError(
+                "Failed to start WebSocket server", cause=e
+            )
 
     async def stop(self) -> None:
         """Stop the WebSocket API server."""
@@ -685,7 +720,9 @@ class WebSocketAPIServer:
                 task.cancel()
 
             if self._background_tasks:
-                await asyncio.gather(*self._background_tasks, return_exceptions=True)
+                await asyncio.gather(
+                    *self._background_tasks, return_exceptions=True
+                )
 
             # Close all connections
             await self._close_all_connections()
@@ -716,8 +753,10 @@ class WebSocketAPIServer:
             )
 
             # Broadcast to all prediction subscribers
-            predictions_sent = await self.connection_manager.broadcast_to_endpoint(
-                "/ws/predictions", message
+            predictions_sent = (
+                await self.connection_manager.broadcast_to_endpoint(
+                    "/ws/predictions", message
+                )
             )
 
             # Broadcast to room-specific subscribers
@@ -827,7 +866,9 @@ class WebSocketAPIServer:
             endpoint = self._normalize_endpoint(path)
 
             # Register connection
-            connection_id = await self.connection_manager.connect(websocket, endpoint)
+            connection_id = await self.connection_manager.connect(
+                websocket, endpoint
+            )
 
             # Send welcome message
             welcome_message = WebSocketMessage(
@@ -840,7 +881,9 @@ class WebSocketAPIServer:
                     "connection_id": connection_id,
                     "server_time": datetime.utcnow().isoformat(),
                     "authentication_required": True,
-                    "supported_message_types": [mt.value for mt in MessageType],
+                    "supported_message_types": [
+                        mt.value for mt in MessageType
+                    ],
                 },
             )
 
@@ -849,13 +892,19 @@ class WebSocketAPIServer:
             # Handle incoming messages
             async for raw_message in websocket:
                 try:
-                    await self._process_client_message(connection_id, raw_message)
+                    await self._process_client_message(
+                        connection_id, raw_message
+                    )
                 except json.JSONDecodeError:
                     await self._send_error_message(
-                        connection_id, "Invalid JSON format", "JSON_DECODE_ERROR"
+                        connection_id,
+                        "Invalid JSON format",
+                        "JSON_DECODE_ERROR",
                     )
                 except Exception as e:
-                    logger.error(f"Error processing message from {connection_id}: {e}")
+                    logger.error(
+                        f"Error processing message from {connection_id}: {e}"
+                    )
                     await self._send_error_message(
                         connection_id,
                         f"Message processing error: {str(e)}",
@@ -870,20 +919,30 @@ class WebSocketAPIServer:
             if connection_id:
                 await self.connection_manager.disconnect(connection_id)
 
-    async def _process_client_message(self, connection_id: str, raw_message: str):
+    async def _process_client_message(
+        self, connection_id: str, raw_message: str
+    ):
         """Process incoming message from client."""
         try:
             message_data = json.loads(raw_message)
             message_type = MessageType(message_data.get("type"))
 
             if message_type == MessageType.AUTHENTICATION:
-                await self._handle_authentication(connection_id, message_data["data"])
+                await self._handle_authentication(
+                    connection_id, message_data["data"]
+                )
             elif message_type == MessageType.SUBSCRIBE:
-                await self._handle_subscription(connection_id, message_data["data"])
+                await self._handle_subscription(
+                    connection_id, message_data["data"]
+                )
             elif message_type == MessageType.UNSUBSCRIBE:
-                await self._handle_unsubscription(connection_id, message_data["data"])
+                await self._handle_unsubscription(
+                    connection_id, message_data["data"]
+                )
             elif message_type == MessageType.HEARTBEAT:
-                await self._handle_heartbeat_response(connection_id, message_data)
+                await self._handle_heartbeat_response(
+                    connection_id, message_data
+                )
             elif message_type == MessageType.ACKNOWLEDGE:
                 await self._handle_acknowledgment(connection_id, message_data)
             else:
@@ -895,7 +954,9 @@ class WebSocketAPIServer:
 
         except ValueError as e:
             await self._send_error_message(
-                connection_id, f"Invalid message type: {str(e)}", "INVALID_MESSAGE_TYPE"
+                connection_id,
+                f"Invalid message type: {str(e)}",
+                "INVALID_MESSAGE_TYPE",
             )
 
     async def _handle_authentication(
@@ -912,7 +973,9 @@ class WebSocketAPIServer:
                 message_id=str(uuid.uuid4()),
                 message_type=MessageType.AUTHENTICATION,
                 timestamp=datetime.utcnow(),
-                endpoint=self.connection_manager.connections[connection_id].endpoint,
+                endpoint=self.connection_manager.connections[
+                    connection_id
+                ].endpoint,
                 data={
                     "success": success,
                     "message": (
@@ -925,7 +988,9 @@ class WebSocketAPIServer:
                 },
             )
 
-            await self.connection_manager.send_message(connection_id, response_message)
+            await self.connection_manager.send_message(
+                connection_id, response_message
+            )
 
         except WebSocketAuthenticationError as e:
             await self._send_error_message(
@@ -968,10 +1033,14 @@ class WebSocketAPIServer:
                 },
             )
 
-            await self.connection_manager.send_message(connection_id, response_message)
+            await self.connection_manager.send_message(
+                connection_id, response_message
+            )
 
         except (WebSocketAuthenticationError, WebSocketValidationError) as e:
-            await self._send_error_message(connection_id, str(e), "SUBSCRIPTION_ERROR")
+            await self._send_error_message(
+                connection_id, str(e), "SUBSCRIPTION_ERROR"
+            )
         except Exception as e:
             logger.error(f"Subscription error for {connection_id}: {e}")
             await self._send_error_message(
@@ -1011,7 +1080,9 @@ class WebSocketAPIServer:
                 },
             )
 
-            await self.connection_manager.send_message(connection_id, response_message)
+            await self.connection_manager.send_message(
+                connection_id, response_message
+            )
 
         except Exception as e:
             logger.error(f"Unsubscription error for {connection_id}: {e}")
@@ -1026,7 +1097,9 @@ class WebSocketAPIServer:
     ):
         """Handle heartbeat response from client."""
         if connection_id in self.connection_manager.connections:
-            self.connection_manager.connections[connection_id].update_heartbeat()
+            self.connection_manager.connections[
+                connection_id
+            ].update_heartbeat()
 
     async def _handle_acknowledgment(
         self, connection_id: str, ack_data: Dict[str, Any]
@@ -1046,7 +1119,9 @@ class WebSocketAPIServer:
             message_id=str(uuid.uuid4()),
             message_type=MessageType.ERROR,
             timestamp=datetime.utcnow(),
-            endpoint=self.connection_manager.connections.get(connection_id, {}).endpoint
+            endpoint=self.connection_manager.connections.get(
+                connection_id, {}
+            ).endpoint
             or "unknown",
             data={
                 "error": error_message,
@@ -1097,9 +1172,9 @@ class WebSocketAPIServer:
                     "predicted_time": alt_time.isoformat(),
                     "confidence": float(alt_confidence),
                 }
-                for alt_time, alt_confidence in (prediction_result.alternatives or [])[
-                    :3
-                ]
+                for alt_time, alt_confidence in (
+                    prediction_result.alternatives or []
+                )[:3]
             ],
             "features_used": len(prediction_result.features_used or []),
             "prediction_metadata": prediction_result.prediction_metadata,
@@ -1138,7 +1213,9 @@ class WebSocketAPIServer:
                 ):
                     if connection.authenticated:
                         try:
-                            await self.connection_manager.send_heartbeat(connection_id)
+                            await self.connection_manager.send_heartbeat(
+                                connection_id
+                            )
                         except Exception as e:
                             logger.warning(
                                 f"Failed to send heartbeat to {connection_id}: {e}"
@@ -1183,7 +1260,9 @@ class WebSocketAPIServer:
                 # Clean up stale connections
                 for connection_id in stale_connections:
                     await self.connection_manager.disconnect(connection_id)
-                    logger.info(f"Cleaned up stale connection: {connection_id}")
+                    logger.info(
+                        f"Cleaned up stale connection: {connection_id}"
+                    )
 
                 await asyncio.wait_for(
                     self._shutdown_event.wait(), timeout=60
@@ -1204,7 +1283,10 @@ class WebSocketAPIServer:
                 for connection in self.connection_manager.connections.values():
                     expired_messages = []
 
-                    for msg_id, message in connection.unacknowledged_messages.items():
+                    for (
+                        msg_id,
+                        message,
+                    ) in connection.unacknowledged_messages.items():
                         # Check if message has expired
                         if (
                             current_time - message.timestamp
@@ -1259,7 +1341,9 @@ class WebSocketAPIServer:
         try:
             # This would be called when the tracking manager has updates
             # Implementation depends on the specific callback data format
-            logger.debug(f"Received TrackingManager callback: {type(callback_data)}")
+            logger.debug(
+                f"Received TrackingManager callback: {type(callback_data)}"
+            )
 
         except Exception as e:
             logger.error(f"Error handling TrackingManager callback: {e}")

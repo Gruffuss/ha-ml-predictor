@@ -215,7 +215,9 @@ class BasePredictor(ABC):
         """
         # Convert dict to DataFrame
         feature_df = pd.DataFrame([features])
-        predictions = await self.predict(feature_df, prediction_time, current_state)
+        predictions = await self.predict(
+            feature_df, prediction_time, current_state
+        )
 
         if not predictions:
             raise ModelPredictionError("No predictions generated")
@@ -381,7 +383,9 @@ class BasePredictor(ABC):
 
         return True
 
-    def _record_prediction(self, prediction_time: datetime, result: PredictionResult):
+    def _record_prediction(
+        self, prediction_time: datetime, result: PredictionResult
+    ):
         """Record a prediction for accuracy tracking."""
         self.prediction_history.append((prediction_time, result))
 

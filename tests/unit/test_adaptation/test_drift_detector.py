@@ -7,7 +7,6 @@ statistical test validation, and comprehensive accuracy monitoring.
 
 import asyncio
 from datetime import datetime, timedelta
-import json
 import logging
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
@@ -63,7 +62,9 @@ def mock_prediction_validator():
         else:
             return current_metrics
 
-    validator.get_accuracy_metrics = AsyncMock(side_effect=get_accuracy_metrics)
+    validator.get_accuracy_metrics = AsyncMock(
+        side_effect=get_accuracy_metrics
+    )
     return validator
 
 
@@ -113,7 +114,9 @@ def synthetic_feature_data():
             "timestamp": pd.date_range("2024-01-05", periods=100, freq="1H"),
             "feature_1": np.random.normal(70, 15, 100),  # Mean shift
             "feature_2": np.random.normal(25, 12, 100),  # Variance increase
-            "feature_3": np.random.choice(["A", "D", "E"], 100),  # Category change
+            "feature_3": np.random.choice(
+                ["A", "D", "E"], 100
+            ),  # Category change
             "room_id": "living_room",
         }
     )
@@ -126,7 +129,9 @@ def synthetic_prediction_errors():
     """Generate synthetic prediction error sequences."""
     # Baseline errors (good performance)
     baseline_errors = np.random.normal(8, 3, 50).tolist()
-    baseline_errors = [max(0, e) for e in baseline_errors]  # No negative errors
+    baseline_errors = [
+        max(0, e) for e in baseline_errors
+    ]  # No negative errors
 
     # Current errors (degraded performance)
     current_errors = np.random.normal(18, 6, 30).tolist()
@@ -277,7 +282,10 @@ class TestConceptDriftDetector:
                     datetime.now() - timedelta(days=14),
                     datetime.now() - timedelta(days=3),
                 ),
-                current_period=(datetime.now() - timedelta(days=3), datetime.now()),
+                current_period=(
+                    datetime.now() - timedelta(days=3),
+                    datetime.now(),
+                ),
             )
 
             # Run Page-Hinkley test
@@ -298,7 +306,10 @@ class TestConceptDriftDetector:
                 datetime.now() - timedelta(days=14),
                 datetime.now() - timedelta(days=3),
             ),
-            current_period=(datetime.now() - timedelta(days=3), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=3),
+                datetime.now(),
+            ),
             sample_size_baseline=100,
             sample_size_current=50,
             ks_p_value=0.02,  # Significant
@@ -324,7 +335,10 @@ class TestConceptDriftDetector:
                 datetime.now() - timedelta(days=14),
                 datetime.now() - timedelta(days=3),
             ),
-            current_period=(datetime.now() - timedelta(days=3), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=3),
+                datetime.now(),
+            ),
             ks_statistic=0.35,
             ks_p_value=0.02,
             accuracy_degradation=18.5,
@@ -347,12 +361,19 @@ class TestConceptDriftDetector:
         # Verify serialization values
         assert metrics_dict["room_id"] == "test_room"
         assert (
-            metrics_dict["statistical_tests"]["kolmogorov_smirnov"]["statistic"] == 0.35
+            metrics_dict["statistical_tests"]["kolmogorov_smirnov"][
+                "statistic"
+            ]
+            == 0.35
         )
         assert (
-            metrics_dict["prediction_analysis"]["accuracy_degradation_minutes"] == 18.5
+            metrics_dict["prediction_analysis"]["accuracy_degradation_minutes"]
+            == 18.5
         )
-        assert "feature_1" in metrics_dict["feature_analysis"]["drifting_features"]
+        assert (
+            "feature_1"
+            in metrics_dict["feature_analysis"]["drifting_features"]
+        )
 
     @pytest.mark.asyncio
     async def test_error_handling_in_drift_detection(self, drift_detector):
@@ -379,7 +400,9 @@ class TestFeatureDriftDetector:
     """Test FeatureDriftDetector functionality."""
 
     @pytest.mark.asyncio
-    async def test_feature_detector_initialization(self, feature_drift_detector):
+    async def test_feature_detector_initialization(
+        self, feature_drift_detector
+    ):
         """Test feature drift detector initialization."""
         assert feature_drift_detector.monitor_window_hours == 24
         assert feature_drift_detector.comparison_window_hours == 48
@@ -394,7 +417,9 @@ class TestFeatureDriftDetector:
         stable_data, drifted_data = synthetic_feature_data
 
         # Combine data with temporal separation
-        combined_data = pd.concat([stable_data, drifted_data], ignore_index=True)
+        combined_data = pd.concat(
+            [stable_data, drifted_data], ignore_index=True
+        )
 
         # Test feature drift detection
         drift_results = await feature_drift_detector.detect_feature_drift(
@@ -409,8 +434,13 @@ class TestFeatureDriftDetector:
             (r for r in drift_results if r.feature_name == "feature_1"), None
         )
         assert feature_1_result is not None
-        assert feature_1_result.statistical_test == StatisticalTest.KOLMOGOROV_SMIRNOV
-        assert feature_1_result.drift_score > 0.1  # Should detect the mean shift
+        assert (
+            feature_1_result.statistical_test
+            == StatisticalTest.KOLMOGOROV_SMIRNOV
+        )
+        assert (
+            feature_1_result.drift_score > 0.1
+        )  # Should detect the mean shift
 
     @pytest.mark.asyncio
     async def test_categorical_feature_drift_detection(
@@ -420,7 +450,9 @@ class TestFeatureDriftDetector:
         stable_data, drifted_data = synthetic_feature_data
 
         # Focus on categorical feature (feature_3: A,B,C -> A,D,E)
-        combined_data = pd.concat([stable_data, drifted_data], ignore_index=True)
+        combined_data = pd.concat(
+            [stable_data, drifted_data], ignore_index=True
+        )
 
         drift_results = await feature_drift_detector.detect_feature_drift(
             room_id="living_room", feature_data=combined_data
@@ -435,12 +467,16 @@ class TestFeatureDriftDetector:
         assert feature_3_result.drift_detected  # Should detect category change
 
     @pytest.mark.asyncio
-    async def test_feature_drift_with_insufficient_data(self, feature_drift_detector):
+    async def test_feature_drift_with_insufficient_data(
+        self, feature_drift_detector
+    ):
         """Test feature drift detection with insufficient data."""
         # Create small dataset (below minimum threshold)
         small_data = pd.DataFrame(
             {
-                "timestamp": pd.date_range("2024-01-01", periods=10, freq="1H"),
+                "timestamp": pd.date_range(
+                    "2024-01-01", periods=10, freq="1H"
+                ),
                 "feature_1": np.random.normal(50, 10, 10),
                 "room_id": "test_room",
             }
@@ -454,7 +490,9 @@ class TestFeatureDriftDetector:
         assert len(drift_results) == 0
 
     @pytest.mark.asyncio
-    async def test_feature_drift_monitoring_lifecycle(self, feature_drift_detector):
+    async def test_feature_drift_monitoring_lifecycle(
+        self, feature_drift_detector
+    ):
         """Test feature drift monitoring start/stop lifecycle."""
         room_ids = ["room_1", "room_2"]
 
@@ -495,7 +533,9 @@ class TestFeatureDriftDetector:
         )
 
         # Notify callbacks
-        await feature_drift_detector._notify_drift_callbacks("test_room", drift_result)
+        await feature_drift_detector._notify_drift_callbacks(
+            "test_room", drift_result
+        )
 
         # Verify callback was called
         assert callback_called
@@ -529,7 +569,9 @@ class TestDriftDetectionIntegration:
                 "feature_1": np.random.normal(
                     15, 3, 50
                 ),  # Mean shift + variance increase
-                "feature_2": np.random.choice(["C", "D"], 50),  # Category change
+                "feature_2": np.random.choice(
+                    ["C", "D"], 50
+                ),  # Category change
             }
         )
 
@@ -539,7 +581,9 @@ class TestDriftDetectionIntegration:
             return current_features
 
         with patch.object(
-            drift_detector, "_get_feature_data", side_effect=mock_get_feature_data
+            drift_detector,
+            "_get_feature_data",
+            side_effect=mock_get_feature_data,
         ):
             # Run comprehensive drift detection
             drift_metrics = await drift_detector.detect_drift(
@@ -564,7 +608,10 @@ class TestDriftDetectionIntegration:
                 datetime.now() - timedelta(days=14),
                 datetime.now() - timedelta(days=3),
             ),
-            current_period=(datetime.now() - timedelta(days=3), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=3),
+                datetime.now(),
+            ),
             accuracy_degradation=5.0,
             overall_drift_score=0.2,
         )
@@ -578,7 +625,10 @@ class TestDriftDetectionIntegration:
                 datetime.now() - timedelta(days=14),
                 datetime.now() - timedelta(days=3),
             ),
-            current_period=(datetime.now() - timedelta(days=3), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=3),
+                datetime.now(),
+            ),
             accuracy_degradation=25.0,
             overall_drift_score=0.7,
         )
@@ -592,7 +642,10 @@ class TestDriftDetectionIntegration:
                 datetime.now() - timedelta(days=14),
                 datetime.now() - timedelta(days=3),
             ),
-            current_period=(datetime.now() - timedelta(days=3), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=3),
+                datetime.now(),
+            ),
             accuracy_degradation=40.0,
             overall_drift_score=0.9,
             ph_drift_detected=True,
@@ -610,7 +663,10 @@ class TestDriftDetectionIntegration:
                 datetime.now() - timedelta(days=14),
                 datetime.now() - timedelta(days=3),
             ),
-            current_period=(datetime.now() - timedelta(days=3), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=3),
+                datetime.now(),
+            ),
             accuracy_degradation=18.0,
             overall_drift_score=0.5,
         )
@@ -626,7 +682,10 @@ class TestDriftDetectionIntegration:
                 datetime.now() - timedelta(days=14),
                 datetime.now() - timedelta(days=3),
             ),
-            current_period=(datetime.now() - timedelta(days=3), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=3),
+                datetime.now(),
+            ),
             accuracy_degradation=35.0,
             overall_drift_score=0.9,
             ph_drift_detected=True,
@@ -735,11 +794,15 @@ class TestDriftDetectionEdgeCases:
     """Test edge cases and error conditions in drift detection."""
 
     @pytest.mark.asyncio
-    async def test_empty_data_handling(self, drift_detector, mock_prediction_validator):
+    async def test_empty_data_handling(
+        self, drift_detector, mock_prediction_validator
+    ):
         """Test handling of empty or insufficient data."""
         # Mock empty accuracy metrics
         empty_metrics = AccuracyMetrics(
-            total_predictions=0, validated_predictions=0, accurate_predictions=0
+            total_predictions=0,
+            validated_predictions=0,
+            accurate_predictions=0,
         )
 
         mock_prediction_validator.get_accuracy_metrics = AsyncMock(
@@ -767,7 +830,10 @@ class TestDriftDetectionEdgeCases:
                 datetime.now() - timedelta(days=14),
                 datetime.now() - timedelta(days=3),
             ),
-            current_period=(datetime.now() - timedelta(days=3), datetime.now()),
+            current_period=(
+                datetime.now() - timedelta(days=3),
+                datetime.now(),
+            ),
             accuracy_degradation=60.0,  # Extreme degradation
             overall_drift_score=1.0,  # Maximum drift score
             ph_drift_detected=True,
@@ -803,12 +869,16 @@ class TestDriftDetectionEdgeCases:
             assert isinstance(result, DriftMetrics)
 
     @pytest.mark.asyncio
-    async def test_feature_drift_with_mixed_data_types(self, feature_drift_detector):
+    async def test_feature_drift_with_mixed_data_types(
+        self, feature_drift_detector
+    ):
         """Test feature drift detection with mixed data types."""
         # Create data with various types
         mixed_data = pd.DataFrame(
             {
-                "timestamp": pd.date_range("2024-01-01", periods=200, freq="1H"),
+                "timestamp": pd.date_range(
+                    "2024-01-01", periods=200, freq="1H"
+                ),
                 "numeric_int": np.random.randint(1, 100, 200),
                 "numeric_float": np.random.normal(50, 10, 200),
                 "categorical": np.random.choice(["X", "Y", "Z"], 200),
@@ -826,6 +896,12 @@ class TestDriftDetectionEdgeCases:
         assert len(drift_results) > 0
 
         # Verify different statistical tests were used
-        statistical_tests = {result.statistical_test for result in drift_results}
-        assert StatisticalTest.KOLMOGOROV_SMIRNOV in statistical_tests  # For numeric
-        assert StatisticalTest.CHI_SQUARE in statistical_tests  # For categorical
+        statistical_tests = {
+            result.statistical_test for result in drift_results
+        }
+        assert (
+            StatisticalTest.KOLMOGOROV_SMIRNOV in statistical_tests
+        )  # For numeric
+        assert (
+            StatisticalTest.CHI_SQUARE in statistical_tests
+        )  # For categorical

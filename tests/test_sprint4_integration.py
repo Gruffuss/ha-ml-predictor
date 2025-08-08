@@ -142,7 +142,10 @@ async def prediction_validator():
 
 @pytest.fixture
 async def integrated_tracking_system(
-    tracking_config, mock_database_manager, mock_model_registry, mock_feature_engine
+    tracking_config,
+    mock_database_manager,
+    mock_model_registry,
+    mock_feature_engine,
 ):
     """Fully integrated tracking system for testing."""
     # Create notification callback for testing
@@ -190,7 +193,9 @@ class TestSprintFourIntegrationComplete:
     """Complete integration tests for Sprint 4 self-adaptation system."""
 
     @pytest.mark.asyncio
-    async def test_complete_prediction_lifecycle(self, integrated_tracking_system):
+    async def test_complete_prediction_lifecycle(
+        self, integrated_tracking_system
+    ):
         """
         Test Scenario 1: Complete prediction lifecycle
 
@@ -216,7 +221,9 @@ class TestSprintFourIntegrationComplete:
         await integrated_tracking_system.record_prediction(prediction)
 
         # Simulate actual room state change for validation
-        actual_time = prediction.predicted_time + timedelta(minutes=2)  # 2 min error
+        actual_time = prediction.predicted_time + timedelta(
+            minutes=2
+        )  # 2 min error
         await integrated_tracking_system.validate_prediction_with_actual(
             prediction_id=prediction.prediction_id,
             actual_time=actual_time,
@@ -299,9 +306,9 @@ class TestSprintFourIntegrationComplete:
             # Mock model registry to simulate successful retraining
             mock_model = AsyncMock()
             mock_model.retrain.return_value = {"accuracy": 0.82, "loss": 0.15}
-            integrated_tracking_system.model_registry["living_room_ensemble"] = (
-                mock_model
-            )
+            integrated_tracking_system.model_registry[
+                "living_room_ensemble"
+            ] = mock_model
 
             # Trigger drift detection manually
             await integrated_tracking_system._drift_detection_loop_iteration()
@@ -322,7 +329,9 @@ class TestSprintFourIntegrationComplete:
                     found_retraining = True
                     break
 
-            assert found_retraining, "Drift detection should trigger retraining"
+            assert (
+                found_retraining
+            ), "Drift detection should trigger retraining"
 
         logger.info("✅ Drift detection → retraining integration test passed")
 
@@ -364,13 +373,17 @@ class TestSprintFourIntegrationComplete:
         # Test REST API endpoints
         if performance_dashboard.app:
             # Test metrics endpoint
-            metrics_response = await performance_dashboard._get_system_metrics()
+            metrics_response = (
+                await performance_dashboard._get_system_metrics()
+            )
             assert metrics_response is not None
             assert "accuracy_metrics" in metrics_response
             assert "performance_metrics" in metrics_response
 
             # Test room-specific metrics
-            room_metrics = await performance_dashboard._get_room_metrics("kitchen")
+            room_metrics = await performance_dashboard._get_room_metrics(
+                "kitchen"
+            )
             assert room_metrics is not None
             assert room_metrics["room_id"] == "kitchen"
 
@@ -379,7 +392,9 @@ class TestSprintFourIntegrationComplete:
             assert alerts_response is not None
             assert "alerts" in alerts_response
 
-        logger.info("✅ Performance dashboard real-time data integration test passed")
+        logger.info(
+            "✅ Performance dashboard real-time data integration test passed"
+        )
 
     @pytest.mark.asyncio
     async def test_model_optimization_during_retraining(
@@ -403,7 +418,8 @@ class TestSprintFourIntegrationComplete:
 
         # Mock accuracy degradation to trigger retraining
         with patch.object(
-            integrated_tracking_system.accuracy_tracker, "get_real_time_metrics"
+            integrated_tracking_system.accuracy_tracker,
+            "get_real_time_metrics",
         ) as mock_metrics:
             mock_metrics.return_value = RealTimeMetrics(
                 room_id="bedroom",
@@ -417,13 +433,20 @@ class TestSprintFourIntegrationComplete:
 
             # Mock model for optimization
             mock_model = AsyncMock()
-            mock_model.get_params.return_value = {"learning_rate": 0.1, "max_depth": 6}
+            mock_model.get_params.return_value = {
+                "learning_rate": 0.1,
+                "max_depth": 6,
+            }
             mock_model.set_params.return_value = None
             mock_model.retrain.return_value = {"accuracy": 0.85}
-            integrated_tracking_system.model_registry["bedroom_ensemble"] = mock_model
+            integrated_tracking_system.model_registry["bedroom_ensemble"] = (
+                mock_model
+            )
 
             # Mock optimization to return improved parameters
-            with patch.object(optimizer, "optimize_model_parameters") as mock_optimize:
+            with patch.object(
+                optimizer, "optimize_model_parameters"
+            ) as mock_optimize:
                 mock_optimize.return_value = {
                     "optimization_successful": True,
                     "best_params": {"learning_rate": 0.05, "max_depth": 8},
@@ -454,7 +477,9 @@ class TestSprintFourIntegrationComplete:
                     learning_rate=0.05, max_depth=8
                 )
 
-        logger.info("✅ Model optimization during retraining integration test passed")
+        logger.info(
+            "✅ Model optimization during retraining integration test passed"
+        )
 
     @pytest.mark.asyncio
     async def test_alert_system_integration(self, integrated_tracking_system):
@@ -476,7 +501,9 @@ class TestSprintFourIntegrationComplete:
         tracker = integrated_tracking_system.accuracy_tracker
 
         # Mock metrics that trigger critical alert
-        with patch.object(tracker, "_calculate_real_time_metrics") as mock_calc:
+        with patch.object(
+            tracker, "_calculate_real_time_metrics"
+        ) as mock_calc:
             mock_calc.return_value = RealTimeMetrics(
                 room_id="living_room",
                 model_type=ModelType.ENSEMBLE.value,
@@ -524,7 +551,9 @@ class TestSprintFourIntegrationComplete:
         logger.info("✅ Alert system integration test passed")
 
     @pytest.mark.asyncio
-    async def test_tracking_manager_coordination(self, integrated_tracking_system):
+    async def test_tracking_manager_coordination(
+        self, integrated_tracking_system
+    ):
         """
         Test Scenario 6: TrackingManager coordination of all components
 
@@ -616,9 +645,14 @@ class TestSprintFourIntegrationComplete:
 
         try:
             # Verify configuration is applied to components
-            assert tracking_manager.config.alert_thresholds["accuracy_warning"] == 80.0
+            assert (
+                tracking_manager.config.alert_thresholds["accuracy_warning"]
+                == 80.0
+            )
             assert tracking_manager.config.drift_psi_threshold == 0.15
-            assert tracking_manager.config.retraining_accuracy_threshold == 65.0
+            assert (
+                tracking_manager.config.retraining_accuracy_threshold == 65.0
+            )
 
             # Verify accuracy tracker uses custom thresholds
             tracker = tracking_manager.accuracy_tracker
@@ -658,7 +692,9 @@ class TestSprintFourIntegrationComplete:
 
         # Recording should handle gracefully without crashing
         try:
-            await integrated_tracking_system.record_prediction(invalid_prediction)
+            await integrated_tracking_system.record_prediction(
+                invalid_prediction
+            )
         except Exception as e:
             logger.info(f"Expected error handled: {e}")
 
@@ -681,7 +717,10 @@ class TestSprintFourIntegrationComplete:
 
         # System should detect and handle missing component
         stats = integrated_tracking_system.get_system_stats()
-        assert "error" in stats or stats["components_status"]["validator"] == "error"
+        assert (
+            "error" in stats
+            or stats["components_status"]["validator"] == "error"
+        )
 
         # Restore validator
         integrated_tracking_system.validator = original_validator
@@ -733,7 +772,9 @@ class TestSprintFourPerformanceValidation:
     """Performance validation tests for Sprint 4 integration."""
 
     @pytest.mark.asyncio
-    async def test_system_performance_under_load(self, integrated_tracking_system):
+    async def test_system_performance_under_load(
+        self, integrated_tracking_system
+    ):
         """Test system performance under prediction load."""
         logger.info("Testing system performance under load")
 
@@ -758,7 +799,9 @@ class TestSprintFourPerformanceValidation:
         processing_time = (datetime.utcnow() - start_time).total_seconds()
 
         # Should process 50 predictions quickly (< 5 seconds)
-        assert processing_time < 5.0, f"Processing too slow: {processing_time}s"
+        assert (
+            processing_time < 5.0
+        ), f"Processing too slow: {processing_time}s"
 
         # System should remain responsive
         stats = integrated_tracking_system.get_system_stats()
@@ -843,16 +886,21 @@ async def wait_for_background_processing(seconds: float = 2.0):
     await asyncio.sleep(seconds)
 
 
-def verify_component_integration(tracking_manager: TrackingManager) -> Dict[str, bool]:
+def verify_component_integration(
+    tracking_manager: TrackingManager,
+) -> Dict[str, bool]:
     """Verify all components are properly integrated."""
     return {
         "validator_initialized": tracking_manager.validator is not None,
         "tracker_initialized": tracking_manager.accuracy_tracker is not None,
-        "drift_detector_initialized": tracking_manager.drift_detector is not None,
-        "retrainer_initialized": tracking_manager.adaptive_retrainer is not None,
+        "drift_detector_initialized": tracking_manager.drift_detector
+        is not None,
+        "retrainer_initialized": tracking_manager.adaptive_retrainer
+        is not None,
         "optimizer_initialized": tracking_manager.model_optimizer is not None,
         "tracking_active": tracking_manager._tracking_active,
-        "background_tasks_running": len(tracking_manager._background_tasks) > 0,
+        "background_tasks_running": len(tracking_manager._background_tasks)
+        > 0,
     }
 
 

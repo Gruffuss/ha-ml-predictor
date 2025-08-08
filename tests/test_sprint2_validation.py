@@ -1,7 +1,7 @@
 """
 Sprint 2 Validation Tests - Feature Engineering Pipeline
 
-This module contains comprehensive validation tests to ensure all Sprint 2 
+This module contains comprehensive validation tests to ensure all Sprint 2
 feature engineering components are working correctly before proceeding to Sprint 3.
 """
 
@@ -152,9 +152,15 @@ def test_sprint2_feature_engineering_engine():
     assert len(all_feature_names) > 0
 
     # Check that features have proper prefixes
-    temporal_features = [f for f in all_feature_names if f.startswith("temporal_")]
-    sequential_features = [f for f in all_feature_names if f.startswith("sequential_")]
-    contextual_features = [f for f in all_feature_names if f.startswith("contextual_")]
+    temporal_features = [
+        f for f in all_feature_names if f.startswith("temporal_")
+    ]
+    sequential_features = [
+        f for f in all_feature_names if f.startswith("sequential_")
+    ]
+    contextual_features = [
+        f for f in all_feature_names if f.startswith("contextual_")
+    ]
     meta_features = [f for f in all_feature_names if f.startswith("meta_")]
 
     assert len(temporal_features) > 0
@@ -186,8 +192,8 @@ async def test_sprint2_feature_extraction_basic():
             room_id="test_room",
             sensor_id=f"binary_sensor.test_{i % 3}",
             sensor_type="presence",
-            state="on" if i % 2 == 0 else "off",
-            previous_state="off" if i % 2 == 0 else "on",
+            state="on" if i % 2 == 0 else "of",
+            previous_state="of" if i % 2 == 0 else "on",
             timestamp=base_time + timedelta(minutes=i * 10),
             attributes={"test": True},
             is_human_triggered=True,
@@ -433,14 +439,18 @@ def test_sprint2_feature_validation():
     # Test sequential extractor with empty events
     sequential_extractor = SequentialFeatureExtractor()
 
-    empty_sequential = sequential_extractor.extract_features([], datetime.utcnow())
+    empty_sequential = sequential_extractor.extract_features(
+        [], datetime.utcnow()
+    )
     assert isinstance(empty_sequential, dict)
     assert len(empty_sequential) > 0
 
     # Test contextual extractor with empty events
     contextual_extractor = ContextualFeatureExtractor()
 
-    empty_contextual = contextual_extractor.extract_features([], [], datetime.utcnow())
+    empty_contextual = contextual_extractor.extract_features(
+        [], [], datetime.utcnow()
+    )
     assert isinstance(empty_contextual, dict)
     assert len(empty_contextual) > 0
 
@@ -475,7 +485,10 @@ def test_sprint2_feature_consistency():
     assert features1 == features2
 
     # Check specific feature consistency
-    assert features1["time_since_last_event"] == features2["time_since_last_event"]
+    assert (
+        features1["time_since_last_event"]
+        == features2["time_since_last_event"]
+    )
 
 
 def test_sprint2_feature_ranges():
@@ -555,10 +568,12 @@ async def test_sprint2_end_to_end_feature_pipeline():
                 room_id="living_room",
                 sensor_id=f"sensor.living_room_{sensor_types[i % len(sensor_types)]}",
                 sensor_type=sensor_types[i % len(sensor_types)],
-                state="on" if i % 2 == 0 else "off",
-                previous_state="off" if i % 2 == 0 else "on",
+                state="on" if i % 2 == 0 else "of",
+                previous_state="of" if i % 2 == 0 else "on",
                 timestamp=base_time + timedelta(minutes=i * 10),
-                attributes={"device_class": sensor_types[i % len(sensor_types)]},
+                attributes={
+                    "device_class": sensor_types[i % len(sensor_types)]
+                },
                 is_human_triggered=True,
                 confidence_score=0.8 + (i * 0.01),
                 created_at=datetime.utcnow(),
@@ -598,7 +613,9 @@ async def test_sprint2_end_to_end_feature_pipeline():
         assert len(features) > 50  # Should have many features
 
         # Verify all feature categories are present
-        temporal_features = [k for k in features.keys() if k.startswith("temporal_")]
+        temporal_features = [
+            k for k in features.keys() if k.startswith("temporal_")
+        ]
         sequential_features = [
             k for k in features.keys() if k.startswith("sequential_")
         ]

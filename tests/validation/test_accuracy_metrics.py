@@ -9,7 +9,6 @@ reporting used in the occupancy prediction system validation.
 import asyncio
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import numpy as np
@@ -110,7 +109,9 @@ class TestAccuracyMetricsCalculation:
             statistics.mean(expected_errors), rel=0.01
         )
 
-    def test_error_distribution_metrics(self, validator, sample_validation_records):
+    def test_error_distribution_metrics(
+        self, validator, sample_validation_records
+    ):
         """Test error distribution and percentile calculations."""
         metrics = validator._calculate_metrics_from_records(
             sample_validation_records, 24
@@ -132,7 +133,9 @@ class TestAccuracyMetricsCalculation:
         expected_rmse = (sum(e**2 for e in errors) / len(errors)) ** 0.5
         assert metrics.rmse_minutes == pytest.approx(expected_rmse, rel=0.01)
 
-    def test_accuracy_level_distribution(self, validator, sample_validation_records):
+    def test_accuracy_level_distribution(
+        self, validator, sample_validation_records
+    ):
         """Test accuracy level distribution counting."""
         metrics = validator._calculate_metrics_from_records(
             sample_validation_records, 24
@@ -154,7 +157,9 @@ class TestAccuracyMetricsCalculation:
         assert "poor" in metrics.accuracy_by_level
         assert "unacceptable" in metrics.accuracy_by_level
 
-    def test_bias_analysis_calculation(self, validator, sample_validation_records):
+    def test_bias_analysis_calculation(
+        self, validator, sample_validation_records
+    ):
         """Test bias analysis calculation (early vs late predictions)."""
         metrics = validator._calculate_metrics_from_records(
             sample_validation_records, 24
@@ -171,10 +176,16 @@ class TestAccuracyMetricsCalculation:
                 biases.append(bias_minutes)
 
         expected_mean_bias = statistics.mean(biases)
-        expected_bias_std = statistics.stdev(biases) if len(biases) > 1 else 0.0
+        expected_bias_std = (
+            statistics.stdev(biases) if len(biases) > 1 else 0.0
+        )
 
-        assert metrics.mean_bias_minutes == pytest.approx(expected_mean_bias, rel=0.01)
-        assert metrics.bias_std_minutes == pytest.approx(expected_bias_std, rel=0.01)
+        assert metrics.mean_bias_minutes == pytest.approx(
+            expected_mean_bias, rel=0.01
+        )
+        assert metrics.bias_std_minutes == pytest.approx(
+            expected_bias_std, rel=0.01
+        )
 
         # Test bias direction classification
         if abs(expected_mean_bias) < 1:
@@ -202,11 +213,15 @@ class TestAccuracyMetricsCalculation:
 
         # Verify confidence-accuracy correlation calculation
         errors = [r.error_minutes for r in sample_validation_records]
-        accuracies = [1 / (1 + e) for e in errors]  # Transform error to accuracy score
+        accuracies = [
+            1 / (1 + e) for e in errors
+        ]  # Transform error to accuracy score
 
         correlation_matrix = np.corrcoef(confidences, accuracies)
         expected_correlation = (
-            correlation_matrix[0, 1] if not np.isnan(correlation_matrix[0, 1]) else 0.0
+            correlation_matrix[0, 1]
+            if not np.isnan(correlation_matrix[0, 1])
+            else 0.0
         )
 
         assert metrics.confidence_accuracy_correlation == pytest.approx(
@@ -242,7 +257,9 @@ class TestAccuracyMetricsCalculation:
 
             if confidence > high_conf_threshold and error > threshold_minutes:
                 high_conf_wrong += 1
-            elif confidence < low_conf_threshold and error <= threshold_minutes:
+            elif (
+                confidence < low_conf_threshold and error <= threshold_minutes
+            ):
                 low_conf_right += 1
 
         expected_overconfidence = (high_conf_wrong / total_predictions) * 100
@@ -255,14 +272,18 @@ class TestAccuracyMetricsCalculation:
             expected_underconfidence, rel=0.01
         )
 
-    def test_time_based_analysis_metrics(self, validator, sample_validation_records):
+    def test_time_based_analysis_metrics(
+        self, validator, sample_validation_records
+    ):
         """Test time-based analysis metrics calculation."""
         metrics = validator._calculate_metrics_from_records(
             sample_validation_records, 24
         )
 
         # Verify measurement period calculation
-        prediction_times = [r.prediction_time for r in sample_validation_records]
+        prediction_times = [
+            r.prediction_time for r in sample_validation_records
+        ]
         expected_start = min(prediction_times)
         expected_end = max(prediction_times)
 
@@ -353,13 +374,17 @@ class TestAccuracyMetricsAggregation:
         record_id = 0
         for room in rooms:
             for model in models:
-                for hour_offset in range(4):  # 4 records per room-model combination
+                for hour_offset in range(
+                    4
+                ):  # 4 records per room-model combination
                     predicted_time = base_time + timedelta(hours=hour_offset)
                     # Create varying error patterns
                     error_minutes = (
                         5.0 + (record_id % 8) * 3
                     )  # Errors from 5 to 26 minutes
-                    actual_time = predicted_time + timedelta(minutes=error_minutes)
+                    actual_time = predicted_time + timedelta(
+                        minutes=error_minutes
+                    )
 
                     record = ValidationRecord(
                         prediction_id=f"multi_{record_id:03d}",
@@ -367,11 +392,15 @@ class TestAccuracyMetricsAggregation:
                         model_type=model,
                         model_version="1.0",
                         predicted_time=predicted_time,
-                        transition_type="occupied" if record_id % 2 == 0 else "vacant",
+                        transition_type=(
+                            "occupied" if record_id % 2 == 0 else "vacant"
+                        ),
                         confidence_score=0.7 + (record_id % 5) * 0.05,
                     )
 
-                    record.validate_against_actual(actual_time, threshold_minutes=12)
+                    record.validate_against_actual(
+                        actual_time, threshold_minutes=12
+                    )
                     records.append(record)
                     record_id += 1
 
@@ -386,7 +415,9 @@ class TestAccuracyMetricsAggregation:
         with validator._lock:
             for record in multi_room_records:
                 validator._validation_records[record.prediction_id] = record
-                validator._records_by_room[record.room_id].append(record.prediction_id)
+                validator._records_by_room[record.room_id].append(
+                    record.prediction_id
+                )
 
         # Calculate metrics for specific room
         living_room_metrics = await validator.get_room_accuracy(
@@ -397,8 +428,13 @@ class TestAccuracyMetricsAggregation:
         expected_living_room_count = sum(
             1 for r in multi_room_records if r.room_id == "living_room"
         )
-        assert living_room_metrics.total_predictions == expected_living_room_count
-        assert living_room_metrics.validated_predictions == expected_living_room_count
+        assert (
+            living_room_metrics.total_predictions == expected_living_room_count
+        )
+        assert (
+            living_room_metrics.validated_predictions
+            == expected_living_room_count
+        )
 
         # Verify metrics calculation for room subset
         living_room_records = [
@@ -423,7 +459,9 @@ class TestAccuracyMetricsAggregation:
                 )
 
         # Calculate metrics for specific model
-        lstm_metrics = await validator.get_model_accuracy("LSTM", hours_back=24)
+        lstm_metrics = await validator.get_model_accuracy(
+            "LSTM", hours_back=24
+        )
 
         # Verify only LSTM records are included
         expected_lstm_count = sum(
@@ -433,8 +471,12 @@ class TestAccuracyMetricsAggregation:
         assert lstm_metrics.validated_predictions == expected_lstm_count
 
         # Verify accuracy calculation for model subset
-        lstm_records = [r for r in multi_room_records if r.model_type == "LSTM"]
-        expected_accurate = sum(1 for r in lstm_records if r.error_minutes <= 12)
+        lstm_records = [
+            r for r in multi_room_records if r.model_type == "LSTM"
+        ]
+        expected_accurate = sum(
+            1 for r in lstm_records if r.error_minutes <= 12
+        )
         expected_accuracy_rate = (expected_accurate / len(lstm_records)) * 100
 
         assert lstm_metrics.accuracy_rate == pytest.approx(
@@ -454,7 +496,9 @@ class TestAccuracyMetricsAggregation:
         all_metrics = await validator.get_accuracy_metrics(hours_back=24)
 
         # Recent metrics should have fewer records
-        assert recent_metrics.total_predictions <= all_metrics.total_predictions
+        assert (
+            recent_metrics.total_predictions <= all_metrics.total_predictions
+        )
 
         # Verify time filtering logic
         cutoff_time = datetime.utcnow() - timedelta(hours=2)
@@ -465,13 +509,17 @@ class TestAccuracyMetricsAggregation:
         assert recent_metrics.total_predictions == expected_recent_count
 
     @pytest.mark.asyncio
-    async def test_combined_filtering_metrics(self, validator, multi_room_records):
+    async def test_combined_filtering_metrics(
+        self, validator, multi_room_records
+    ):
         """Test combined room and model filtering for metrics."""
         # Store records in validator
         with validator._lock:
             for record in multi_room_records:
                 validator._validation_records[record.prediction_id] = record
-                validator._records_by_room[record.room_id].append(record.prediction_id)
+                validator._records_by_room[record.room_id].append(
+                    record.prediction_id
+                )
                 validator._records_by_model[record.model_type].append(
                     record.prediction_id
                 )
@@ -541,7 +589,9 @@ class TestAccuracyMetricsEdgeCases:
 
         record.validate_against_actual(actual_time, threshold_minutes=10)
 
-        metrics = validator._calculate_metrics_from_records([record], hours_back=24)
+        metrics = validator._calculate_metrics_from_records(
+            [record], hours_back=24
+        )
 
         # Verify single record metrics
         assert metrics.total_predictions == 1
@@ -550,7 +600,9 @@ class TestAccuracyMetricsEdgeCases:
         assert metrics.accuracy_rate == 100.0
         assert metrics.mean_error_minutes == 7.5
         assert metrics.median_error_minutes == 7.5
-        assert metrics.std_error_minutes == 0.0  # Single value has no deviation
+        assert (
+            metrics.std_error_minutes == 0.0
+        )  # Single value has no deviation
 
     def test_all_invalid_records_metrics(self, validator):
         """Test metrics calculation with all invalid/expired records."""
@@ -576,7 +628,9 @@ class TestAccuracyMetricsEdgeCases:
 
             records.append(record)
 
-        metrics = validator._calculate_metrics_from_records(records, hours_back=24)
+        metrics = validator._calculate_metrics_from_records(
+            records, hours_back=24
+        )
 
         # Should handle invalid records correctly
         assert metrics.total_predictions == 5
@@ -593,7 +647,12 @@ class TestAccuracyMetricsEdgeCases:
         records = []
 
         # Create records with extreme error values
-        extreme_errors = [0.0, 0.01, 1440.0, 10080.0]  # 0 min, 0.01 min, 1 day, 1 week
+        extreme_errors = [
+            0.0,
+            0.01,
+            1440.0,
+            10080.0,
+        ]  # 0 min, 0.01 min, 1 day, 1 week
 
         for i, error_minutes in enumerate(extreme_errors):
             predicted_time = base_time + timedelta(minutes=i * 10)
@@ -612,7 +671,9 @@ class TestAccuracyMetricsEdgeCases:
             record.validate_against_actual(actual_time, threshold_minutes=10)
             records.append(record)
 
-        metrics = validator._calculate_metrics_from_records(records, hours_back=24)
+        metrics = validator._calculate_metrics_from_records(
+            records, hours_back=24
+        )
 
         # Verify extreme values are handled correctly
         assert metrics.total_predictions == 4
@@ -642,10 +703,17 @@ class TestAccuracyMetricsEdgeCases:
         actual_time = base_time + timedelta(minutes=5)
         record.validate_against_actual(actual_time, threshold_minutes=10)
 
-        metrics = validator._calculate_metrics_from_records([record], hours_back=24)
+        metrics = validator._calculate_metrics_from_records(
+            [record], hours_back=24
+        )
 
         # Should handle NaN confidence gracefully
         assert metrics.total_predictions == 1
-        assert not np.isnan(metrics.mean_error_minutes)  # Error should be valid
+        assert not np.isnan(
+            metrics.mean_error_minutes
+        )  # Error should be valid
         # Confidence-related metrics may be NaN or 0, but shouldn't crash
-        assert not np.isinf(metrics.mean_confidence) or metrics.mean_confidence == 0.0
+        assert (
+            not np.isinf(metrics.mean_confidence)
+            or metrics.mean_confidence == 0.0
+        )

@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 import json
 import logging
-from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 from aiohttp import ClientSession, web
@@ -122,7 +121,9 @@ class MockRealtimeClients:
         self.websocket_clients = [
             c for c in self.websocket_clients if c["id"] != client_id
         ]
-        self.sse_clients = [c for c in self.sse_clients if c["id"] != client_id]
+        self.sse_clients = [
+            c for c in self.sse_clients if c["id"] != client_id
+        ]
 
     def broadcast_message(self, message: Dict[str, Any]):
         """Simulate broadcasting a message to all clients."""
@@ -192,15 +193,21 @@ class MockMQTTBroker:
         """Connect a client to the broker."""
         if client_id not in self.connected_clients:
             self.connected_clients.append(client_id)
-            self.broker_stats["connected_clients"] = len(self.connected_clients)
+            self.broker_stats["connected_clients"] = len(
+                self.connected_clients
+            )
 
     async def disconnect_client(self, client_id: str):
         """Disconnect a client from the broker."""
         if client_id in self.connected_clients:
             self.connected_clients.remove(client_id)
-            self.broker_stats["connected_clients"] = len(self.connected_clients)
+            self.broker_stats["connected_clients"] = len(
+                self.connected_clients
+            )
 
-    async def publish_message(self, topic: str, payload: str, client_id: str = None):
+    async def publish_message(
+        self, topic: str, payload: str, client_id: str = None
+    ):
         """Publish a message to a topic."""
         message = {
             "topic": topic,
@@ -273,18 +280,24 @@ def comprehensive_prediction_data():
         "living_room": {
             "room_id": "living_room",
             "prediction_time": base_time.isoformat(),
-            "next_transition_time": (base_time + timedelta(minutes=25)).isoformat(),
+            "next_transition_time": (
+                base_time + timedelta(minutes=25)
+            ).isoformat(),
             "transition_type": "occupied_to_vacant",
             "confidence": 0.87,
             "time_until_transition": "25 minutes",
             "alternatives": [
                 {
-                    "transition_time": (base_time + timedelta(minutes=30)).isoformat(),
+                    "transition_time": (
+                        base_time + timedelta(minutes=30)
+                    ).isoformat(),
                     "confidence": 0.75,
                     "scenario": "delayed_departure",
                 },
                 {
-                    "transition_time": (base_time + timedelta(minutes=20)).isoformat(),
+                    "transition_time": (
+                        base_time + timedelta(minutes=20)
+                    ).isoformat(),
                     "confidence": 0.68,
                     "scenario": "early_departure",
                 },
@@ -310,7 +323,9 @@ def comprehensive_prediction_data():
         "bedroom": {
             "room_id": "bedroom",
             "prediction_time": base_time.isoformat(),
-            "next_transition_time": (base_time + timedelta(hours=8)).isoformat(),
+            "next_transition_time": (
+                base_time + timedelta(hours=8)
+            ).isoformat(),
             "transition_type": "vacant_to_occupied",
             "confidence": 0.82,
             "time_until_transition": "8 hours",
@@ -334,7 +349,9 @@ def comprehensive_prediction_data():
         "kitchen": {
             "room_id": "kitchen",
             "prediction_time": base_time.isoformat(),
-            "next_transition_time": (base_time + timedelta(minutes=45)).isoformat(),
+            "next_transition_time": (
+                base_time + timedelta(minutes=45)
+            ).isoformat(),
             "transition_type": "vacant_to_occupied",
             "confidence": 0.93,
             "time_until_transition": "45 minutes",
@@ -388,7 +405,9 @@ class TestDataFactory:
 
     @staticmethod
     def create_sensor_events(
-        room_id: str = "test_room", count: int = 10, start_time: datetime = None
+        room_id: str = "test_room",
+        count: int = 10,
+        start_time: datetime = None,
     ) -> List[Dict[str, Any]]:
         """Create a series of sensor events."""
         if start_time is None:
@@ -400,9 +419,11 @@ class TestDataFactory:
                 "room_id": room_id,
                 "sensor_id": f"binary_sensor.{room_id}_sensor_{i % 3}",
                 "sensor_type": "presence",
-                "state": "on" if i % 2 == 0 else "off",
-                "previous_state": "off" if i % 2 == 0 else "on",
-                "timestamp": (start_time + timedelta(minutes=i * 5)).isoformat(),
+                "state": "on" if i % 2 == 0 else "of",
+                "previous_state": "of" if i % 2 == 0 else "on",
+                "timestamp": (
+                    start_time + timedelta(minutes=i * 5)
+                ).isoformat(),
                 "attributes": {
                     "device_class": "motion",
                     "friendly_name": f"Test Sensor {i}",
@@ -427,7 +448,9 @@ class TestDataFactory:
         for i in range(count):
             state = {
                 "room_id": room_id,
-                "timestamp": (start_time + timedelta(minutes=i * 20)).isoformat(),
+                "timestamp": (
+                    start_time + timedelta(minutes=i * 20)
+                ).isoformat(),
                 "is_occupied": i % 2 == 0,
                 "occupancy_confidence": 0.8 + (i * 0.02),
                 "occupant_type": "human" if i % 3 != 0 else "cat",
@@ -452,7 +475,9 @@ class TestDataFactory:
         for i in range(count):
             prediction = {
                 "room_id": room_id,
-                "prediction_time": (start_time + timedelta(minutes=i * 15)).isoformat(),
+                "prediction_time": (
+                    start_time + timedelta(minutes=i * 15)
+                ).isoformat(),
                 "predicted_transition_time": (
                     start_time + timedelta(minutes=i * 15 + 30)
                 ).isoformat(),
@@ -595,13 +620,15 @@ class IntegrationTestHelper:
             assert field in message, f"Missing required field: {field}"
 
         # Validate topic format
-        assert message["topic"].startswith("occupancy/") or message["topic"].startswith(
-            "homeassistant/"
-        )
+        assert message["topic"].startswith("occupancy/") or message[
+            "topic"
+        ].startswith("homeassistant/")
 
     @staticmethod
     def create_load_test_scenario(
-        num_rooms: int = 5, predictions_per_room: int = 10, concurrent_clients: int = 20
+        num_rooms: int = 5,
+        predictions_per_room: int = 10,
+        concurrent_clients: int = 20,
     ) -> Dict[str, Any]:
         """Create a load testing scenario."""
         return {
@@ -609,7 +636,9 @@ class IntegrationTestHelper:
             "predictions_per_room": predictions_per_room,
             "concurrent_clients": concurrent_clients,
             "total_predictions": num_rooms * predictions_per_room,
-            "expected_api_calls": num_rooms * predictions_per_room * concurrent_clients,
+            "expected_api_calls": num_rooms
+            * predictions_per_room
+            * concurrent_clients,
         }
 
 
@@ -628,11 +657,21 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "realtime: mark test as real-time integration test"
     )
-    config.addinivalue_line("markers", "mqtt: mark test as MQTT integration test")
-    config.addinivalue_line("markers", "api: mark test as API integration test")
-    config.addinivalue_line("markers", "websocket: mark test as WebSocket test")
-    config.addinivalue_line("markers", "sse: mark test as Server-Sent Events test")
-    config.addinivalue_line("markers", "performance: mark test as performance test")
+    config.addinivalue_line(
+        "markers", "mqtt: mark test as MQTT integration test"
+    )
+    config.addinivalue_line(
+        "markers", "api: mark test as API integration test"
+    )
+    config.addinivalue_line(
+        "markers", "websocket: mark test as WebSocket test"
+    )
+    config.addinivalue_line(
+        "markers", "sse: mark test as Server-Sent Events test"
+    )
+    config.addinivalue_line(
+        "markers", "performance: mark test as performance test"
+    )
     config.addinivalue_line("markers", "load: mark test as load test")
     config.addinivalue_line("markers", "e2e: mark test as end-to-end test")
 

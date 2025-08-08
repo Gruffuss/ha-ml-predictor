@@ -7,7 +7,6 @@ validation workflows, and comprehensive prediction performance analysis.
 
 import asyncio
 from datetime import datetime, timedelta
-import json
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import numpy as np
@@ -122,7 +121,8 @@ def prediction_history():
             model_type="lstm",
             predicted_time=base_time + timedelta(minutes=30 + i * 10),
             actual_time=(
-                base_time + timedelta(minutes=30 + i * 10 + np.random.randint(-10, 20))
+                base_time
+                + timedelta(minutes=30 + i * 10 + np.random.randint(-10, 20))
                 if np.random.random() > 0.1  # 90% get actual times
                 else None
             ),
@@ -176,9 +176,11 @@ class TestValidationRecord:
         )
 
         # Validate with 15-minute threshold
-        is_accurate = record.validate_against_actual(actual_time, threshold_minutes=15)
+        is_accurate = record.validate_against_actual(
+            actual_time, threshold_minutes=15
+        )
 
-        assert is_accurate == True  # 12 minutes < 15 minute threshold
+        assert is_accurate is True  # 12 minutes < 15 minute threshold
         assert record.status == ValidationStatus.VALIDATED
         assert record.actual_time == actual_time
         assert record.error_minutes == 12.0
@@ -328,7 +330,7 @@ class TestPredictionValidatorInitialization:
         assert validator.accuracy_threshold_minutes == 20
         assert validator.max_pending_predictions == 2000
         assert validator.history_retention_days == 14
-        assert validator.auto_cleanup_enabled == False
+        assert validator.auto_cleanup_enabled is False
 
 
 class TestPredictionRecording:
@@ -362,7 +364,9 @@ class TestPredictionRecording:
             mock_store.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_prediction_recording_with_metadata(self, prediction_validator):
+    async def test_prediction_recording_with_metadata(
+        self, prediction_validator
+    ):
         """Test prediction recording with comprehensive metadata."""
         room_id = "metadata_room"
         predicted_time = datetime.now() + timedelta(minutes=45)
@@ -389,7 +393,9 @@ class TestPredictionRecording:
             )
 
             # Verify metadata was stored
-            pending_predictions = prediction_validator._pending_predictions[room_id]
+            pending_predictions = prediction_validator._pending_predictions[
+                room_id
+            ]
             recorded_prediction = pending_predictions[0]
             assert recorded_prediction.prediction_metadata == metadata
 
@@ -418,7 +424,9 @@ class TestPredictionRecording:
             )
 
             # Should handle duplicates appropriately
-            pending_count = len(prediction_validator._pending_predictions[room_id])
+            pending_count = len(
+                prediction_validator._pending_predictions[room_id]
+            )
             # Behavior depends on duplicate handling strategy
 
     @pytest.mark.asyncio
@@ -443,9 +451,9 @@ class TestPredictionRecording:
 
             # Old prediction should be marked as expired or removed
             if room_id in prediction_validator._pending_predictions:
-                remaining_predictions = prediction_validator._pending_predictions[
-                    room_id
-                ]
+                remaining_predictions = (
+                    prediction_validator._pending_predictions[room_id]
+                )
                 for pred in remaining_predictions:
                     assert pred.status in [
                         ValidationStatus.EXPIRED,
@@ -457,7 +465,9 @@ class TestPredictionValidation:
     """Test prediction validation against actual outcomes."""
 
     @pytest.mark.asyncio
-    async def test_successful_prediction_validation(self, prediction_validator):
+    async def test_successful_prediction_validation(
+        self, prediction_validator
+    ):
         """Test successful prediction validation."""
         room_id = "validation_room"
         predicted_time = datetime.now() + timedelta(minutes=30)
@@ -474,11 +484,15 @@ class TestPredictionValidation:
             )
 
             # Validate prediction
-            with patch.object(prediction_validator, "_update_validation_in_db"):
-                validation_result = await prediction_validator.validate_prediction(
-                    room_id=room_id,
-                    actual_time=actual_time,
-                    transition_type="vacant_to_occupied",
+            with patch.object(
+                prediction_validator, "_update_validation_in_db"
+            ):
+                validation_result = (
+                    await prediction_validator.validate_prediction(
+                        room_id=room_id,
+                        actual_time=actual_time,
+                        transition_type="vacant_to_occupied",
+                    )
                 )
 
                 assert validation_result is not None
@@ -510,19 +524,27 @@ class TestPredictionValidation:
                 minutes=35
             )  # Closest to second prediction
 
-            with patch.object(prediction_validator, "_update_validation_in_db"):
-                validation_result = await prediction_validator.validate_prediction(
-                    room_id=room_id,
-                    actual_time=actual_time,
-                    transition_type="vacant_to_occupied",
+            with patch.object(
+                prediction_validator, "_update_validation_in_db"
+            ):
+                validation_result = (
+                    await prediction_validator.validate_prediction(
+                        room_id=room_id,
+                        actual_time=actual_time,
+                        transition_type="vacant_to_occupied",
+                    )
                 )
 
                 # Should find and validate the closest prediction
                 assert validation_result is not None
-                assert validation_result.error_minutes <= 15  # Should be reasonable
+                assert (
+                    validation_result.error_minutes <= 15
+                )  # Should be reasonable
 
     @pytest.mark.asyncio
-    async def test_validation_with_no_pending_predictions(self, prediction_validator):
+    async def test_validation_with_no_pending_predictions(
+        self, prediction_validator
+    ):
         """Test validation when no pending predictions exist."""
         room_id = "empty_room"
         actual_time = datetime.now()
@@ -538,7 +560,9 @@ class TestPredictionValidation:
             assert validation_result is None
 
     @pytest.mark.asyncio
-    async def test_validation_time_window_enforcement(self, prediction_validator):
+    async def test_validation_time_window_enforcement(
+        self, prediction_validator
+    ):
         """Test validation time window enforcement."""
         room_id = "window_room"
         predicted_time = datetime.now() + timedelta(minutes=30)
@@ -555,11 +579,15 @@ class TestPredictionValidation:
             # Try to validate with time too far in the future
             far_future_time = predicted_time + timedelta(hours=6)
 
-            with patch.object(prediction_validator, "_update_validation_in_db"):
-                validation_result = await prediction_validator.validate_prediction(
-                    room_id=room_id,
-                    actual_time=far_future_time,
-                    transition_type="occupied_to_vacant",
+            with patch.object(
+                prediction_validator, "_update_validation_in_db"
+            ):
+                validation_result = (
+                    await prediction_validator.validate_prediction(
+                        room_id=room_id,
+                        actual_time=far_future_time,
+                        transition_type="occupied_to_vacant",
+                    )
                 )
 
                 # Should either reject or mark as expired
@@ -570,7 +598,9 @@ class TestPredictionValidation:
 class TestAccuracyMetricsCalculation:
     """Test accuracy metrics calculation and analysis."""
 
-    def test_basic_accuracy_metrics_calculation(self, sample_validation_records):
+    def test_basic_accuracy_metrics_calculation(
+        self, sample_validation_records
+    ):
         """Test basic accuracy metrics calculation."""
         # Calculate metrics from sample records
         metrics = AccuracyMetrics()
@@ -585,7 +615,9 @@ class TestAccuracyMetricsCalculation:
         metrics.validated_predictions = len(validated_records)
 
         # Calculate accuracy rate
-        accurate_records = [r for r in validated_records if r.error_minutes <= 15]
+        accurate_records = [
+            r for r in validated_records if r.error_minutes <= 15
+        ]
         metrics.accurate_predictions = len(accurate_records)
         metrics.accuracy_rate = (
             metrics.accurate_predictions / metrics.validated_predictions
@@ -633,7 +665,9 @@ class TestAccuracyMetricsCalculation:
         # Verify distribution analysis
         assert metrics.error_percentiles[25] <= metrics.error_percentiles[50]
         assert metrics.error_percentiles[50] <= metrics.error_percentiles[75]
-        assert sum(metrics.accuracy_by_level.values()) == len(validated_records)
+        assert sum(metrics.accuracy_by_level.values()) == len(
+            validated_records
+        )
 
     def test_bias_analysis(self, sample_validation_records):
         """Test prediction bias analysis."""
@@ -675,7 +709,9 @@ class TestAccuracyMetricsCalculation:
         ]
 
         confidences = [r.confidence_score for r in validated_records]
-        accuracies = [1 if r.error_minutes <= 15 else 0 for r in validated_records]
+        accuracies = [
+            1 if r.error_minutes <= 15 else 0 for r in validated_records
+        ]
 
         metrics = AccuracyMetrics()
         metrics.mean_confidence = np.mean(confidences)
@@ -696,7 +732,9 @@ class TestAccuracyMetricsCalculation:
         )
 
         metrics.overconfidence_rate = (
-            high_conf_wrong / len(validated_records) if validated_records else 0
+            high_conf_wrong / len(validated_records)
+            if validated_records
+            else 0
         )
         metrics.underconfidence_rate = (
             low_conf_right / len(validated_records) if validated_records else 0
@@ -717,7 +755,13 @@ class TestAccuracyMetricsCalculation:
             accuracy_rate=80.0,
             mean_error_minutes=12.5,
             confidence_vs_accuracy_correlation=0.72,
-            error_percentiles={25: 8.0, 50: 12.0, 75: 18.0, 90: 25.0, 95: 30.0},
+            error_percentiles={
+                25: 8.0,
+                50: 12.0,
+                75: 18.0,
+                90: 25.0,
+                95: 30.0,
+            },
             accuracy_by_level={
                 "excellent": 15,
                 "good": 25,
@@ -773,7 +817,9 @@ class TestAccuracyMetricsRetrieval:
             "_get_predictions_from_db",
             return_value=prediction_history,
         ):
-            metrics = await prediction_validator.get_overall_accuracy(hours_back=48)
+            metrics = await prediction_validator.get_overall_accuracy(
+                hours_back=48
+            )
 
             assert isinstance(metrics, AccuracyMetrics)
             # Overall metrics should aggregate across all rooms
@@ -920,9 +966,10 @@ class TestValidationStatistics:
         initial_rate = await prediction_validator.get_validation_rate()
 
         # Add some predictions and validations
-        with patch.object(
-            prediction_validator, "_store_prediction_to_db"
-        ), patch.object(prediction_validator, "_update_validation_in_db"):
+        with (
+            patch.object(prediction_validator, "_store_prediction_to_db"),
+            patch.object(prediction_validator, "_update_validation_in_db"),
+        ):
 
             # Record predictions
             for i in range(10):
@@ -959,7 +1006,8 @@ class TestDatabaseIntegration:
         predicted_time = datetime.now() + timedelta(minutes=30)
 
         with patch(
-            "src.adaptation.validator.get_db_session", return_value=mock_db_session
+            "src.adaptation.validator.get_db_session",
+            return_value=mock_db_session,
         ):
             await prediction_validator._store_prediction_to_db(
                 room_id=room_id,
@@ -991,7 +1039,8 @@ class TestDatabaseIntegration:
         mock_db_session.execute.return_value = mock_result
 
         with patch(
-            "src.adaptation.validator.get_db_session", return_value=mock_db_session
+            "src.adaptation.validator.get_db_session",
+            return_value=mock_db_session,
         ):
             await prediction_validator._update_validation_in_db(
                 prediction_id=prediction_id,
@@ -1018,7 +1067,8 @@ class TestDatabaseIntegration:
         mock_db_session.execute.return_value = mock_result
 
         with patch(
-            "src.adaptation.validator.get_db_session", return_value=mock_db_session
+            "src.adaptation.validator.get_db_session",
+            return_value=mock_db_session,
         ):
             predictions = await prediction_validator._get_predictions_from_db(
                 room_id=room_id, hours_back=hours_back
@@ -1029,13 +1079,18 @@ class TestDatabaseIntegration:
             mock_db_session.execute.assert_called()
 
     @pytest.mark.asyncio
-    async def test_database_error_handling(self, prediction_validator, mock_db_session):
+    async def test_database_error_handling(
+        self, prediction_validator, mock_db_session
+    ):
         """Test database error handling."""
         # Mock database error
-        mock_db_session.commit.side_effect = Exception("Database connection error")
+        mock_db_session.commit.side_effect = Exception(
+            "Database connection error"
+        )
 
         with patch(
-            "src.adaptation.validator.get_db_session", return_value=mock_db_session
+            "src.adaptation.validator.get_db_session",
+            return_value=mock_db_session,
         ):
             # Should handle database errors gracefully
             try:
@@ -1059,7 +1114,9 @@ class TestCleanupAndMaintenance:
     async def test_expired_predictions_cleanup(self, prediction_validator):
         """Test cleanup of expired predictions."""
         # Add some old predictions
-        old_time = datetime.now() - timedelta(hours=25)  # Older than 24h default
+        old_time = datetime.now() - timedelta(
+            hours=25
+        )  # Older than 24h default
 
         with patch.object(prediction_validator, "_store_prediction_to_db"):
             await prediction_validator.record_prediction(
@@ -1117,7 +1174,9 @@ class TestCleanupAndMaintenance:
     @pytest.mark.asyncio
     async def test_pending_predictions_size_limit(self, prediction_validator):
         """Test pending predictions size limit enforcement."""
-        prediction_validator.max_pending_predictions = 5  # Small limit for testing
+        prediction_validator.max_pending_predictions = (
+            5  # Small limit for testing
+        )
 
         with patch.object(prediction_validator, "_store_prediction_to_db"):
             # Add more predictions than the limit
@@ -1132,7 +1191,8 @@ class TestCleanupAndMaintenance:
 
         # Should enforce size limit
         total_pending = sum(
-            len(preds) for preds in prediction_validator._pending_predictions.values()
+            len(preds)
+            for preds in prediction_validator._pending_predictions.values()
         )
         # May be limited or use different strategy
 
@@ -1141,10 +1201,14 @@ class TestCleanupAndMaintenance:
         """Test automatic cleanup scheduling."""
         # Enable auto cleanup
         prediction_validator.auto_cleanup_enabled = True
-        prediction_validator.cleanup_interval_hours = 0.001  # Very frequent for testing
+        prediction_validator.cleanup_interval_hours = (
+            0.001  # Very frequent for testing
+        )
 
         # Start cleanup task
-        cleanup_task = asyncio.create_task(prediction_validator._cleanup_loop())
+        cleanup_task = asyncio.create_task(
+            prediction_validator._cleanup_loop()
+        )
 
         # Let it run briefly
         await asyncio.sleep(0.1)
@@ -1162,7 +1226,9 @@ class TestErrorHandlingAndEdgeCases:
     """Test error handling and edge cases."""
 
     @pytest.mark.asyncio
-    async def test_invalid_prediction_data_handling(self, prediction_validator):
+    async def test_invalid_prediction_data_handling(
+        self, prediction_validator
+    ):
         """Test handling of invalid prediction data."""
         # Test with None values
         try:
@@ -1178,7 +1244,9 @@ class TestErrorHandlingAndEdgeCases:
             assert isinstance(e, (ValueError, OccupancyPredictionError))
 
     @pytest.mark.asyncio
-    async def test_validation_with_invalid_actual_time(self, prediction_validator):
+    async def test_validation_with_invalid_actual_time(
+        self, prediction_validator
+    ):
         """Test validation with invalid actual time."""
         room_id = "invalid_room"
 
@@ -1202,13 +1270,16 @@ class TestErrorHandlingAndEdgeCases:
             assert isinstance(e, (ValueError, OccupancyPredictionError))
 
     @pytest.mark.asyncio
-    async def test_concurrent_validation_operations(self, prediction_validator):
+    async def test_concurrent_validation_operations(
+        self, prediction_validator
+    ):
         """Test concurrent validation operations."""
         room_id = "concurrent_room"
 
-        with patch.object(
-            prediction_validator, "_store_prediction_to_db"
-        ), patch.object(prediction_validator, "_update_validation_in_db"):
+        with (
+            patch.object(prediction_validator, "_store_prediction_to_db"),
+            patch.object(prediction_validator, "_update_validation_in_db"),
+        ):
 
             # Record predictions concurrently
             prediction_tasks = []
@@ -1236,7 +1307,9 @@ class TestErrorHandlingAndEdgeCases:
                 validation_tasks.append(task)
 
             # Wait for all validations
-            results = await asyncio.gather(*validation_tasks, return_exceptions=True)
+            results = await asyncio.gather(
+                *validation_tasks, return_exceptions=True
+            )
 
             # Should handle concurrent operations
             for result in results:
@@ -1245,7 +1318,9 @@ class TestErrorHandlingAndEdgeCases:
                 )
 
     @pytest.mark.asyncio
-    async def test_memory_usage_with_large_datasets(self, prediction_validator):
+    async def test_memory_usage_with_large_datasets(
+        self, prediction_validator
+    ):
         """Test memory usage with large validation datasets."""
         # Simulate large dataset
         large_records = []

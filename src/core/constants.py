@@ -20,7 +20,7 @@ class SensorState(Enum):
     """Possible sensor states."""
 
     ON = "on"
-    OFF = "off"
+    OFF = "of"
     OPEN = "open"
     CLOSED = "closed"
     UNKNOWN = "unknown"
@@ -149,9 +149,13 @@ DEFAULT_MODEL_PARAMS = {
         "learning_rate": 0.1,
         "subsample": 0.8,
     },
-    ModelType.HMM: {"n_components": 4, "covariance_type": "full", "n_iter": 100},
+    ModelType.HMM: {
+        "n_components": 4,
+        "covariance_type": "full",
+        "n_iter": 100,
+    },
     ModelType.GAUSSIAN_PROCESS: {
-        "kernel": "rbf",
+        "kernel": "rb",
         "alpha": 1e-6,
         "n_restarts_optimizer": 0,
     },

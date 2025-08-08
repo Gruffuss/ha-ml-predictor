@@ -7,7 +7,6 @@ all model types.
 """
 
 from datetime import datetime, timedelta
-import json
 from pathlib import Path
 import pickle
 import tempfile
@@ -24,7 +23,11 @@ from src.core.exceptions import ModelTrainingError
 from src.models.base.gp_predictor import GaussianProcessPredictor
 from src.models.base.hmm_predictor import HMMPredictor
 from src.models.base.lstm_predictor import LSTMPredictor
-from src.models.base.predictor import BasePredictor, PredictionResult, TrainingResult
+from src.models.base.predictor import (
+    BasePredictor,
+    PredictionResult,
+    TrainingResult,
+)
 from src.models.base.xgboost_predictor import XGBoostPredictor
 from src.models.ensemble import OccupancyEnsemble
 
@@ -44,7 +47,9 @@ def sample_training_data():
 
     targets = pd.DataFrame(
         {
-            "time_until_transition_seconds": np.random.exponential(1800, n_samples),
+            "time_until_transition_seconds": np.random.exponential(
+                1800, n_samples
+            ),
             "transition_type": np.random.choice(
                 ["occupied_to_vacant", "vacant_to_occupied"], n_samples
             ),
@@ -111,7 +116,9 @@ class TestBasicModelSerialization:
         """Test save/load cycle with untrained model."""
         model = XGBoostPredictor(room_id="test_room")
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -127,7 +134,9 @@ class TestBasicModelSerialization:
             # Verify model state
             assert new_model.is_trained is False
             assert new_model.model_type == model.model_type
-            assert new_model.room_id == model.room_id  # Should be loaded from file
+            assert (
+                new_model.room_id == model.room_id
+            )  # Should be loaded from file
             assert new_model.model_version == model.model_version
             assert new_model.feature_names == model.feature_names
             assert len(new_model.training_history) == 0
@@ -142,7 +151,9 @@ class TestBasicModelSerialization:
         features, targets = sample_training_data
         original_model = trained_xgboost_model
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -206,7 +217,9 @@ class TestBasicModelSerialization:
         """Test save/load cycle with trained HMM model."""
         original_model = trained_hmm_model
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -231,7 +244,9 @@ class TestBasicModelSerialization:
         finally:
             Path(temp_path).unlink(missing_ok=True)
 
-    def test_model_serialization_with_training_history(self, sample_training_data):
+    def test_model_serialization_with_training_history(
+        self, sample_training_data
+    ):
         """Test serialization preserves complete training history."""
         features, targets = sample_training_data
         model = XGBoostPredictor(room_id="test_room")
@@ -256,7 +271,9 @@ class TestBasicModelSerialization:
 
         assert len(model.training_history) >= 2
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -267,13 +284,17 @@ class TestBasicModelSerialization:
             new_model.load_model(temp_path)
 
             # Verify training history preservation
-            assert len(new_model.training_history) == len(model.training_history)
+            assert len(new_model.training_history) == len(
+                model.training_history
+            )
 
             for orig_result, new_result in zip(
                 model.training_history, new_model.training_history
             ):
                 assert orig_result.success == new_result.success
-                assert orig_result.training_samples == new_result.training_samples
+                assert (
+                    orig_result.training_samples == new_result.training_samples
+                )
                 assert orig_result.model_version == new_result.model_version
 
         finally:
@@ -288,7 +309,9 @@ class TestModelVersioning:
         model = trained_xgboost_model
         original_version = model.model_version
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -341,7 +364,9 @@ class TestModelVersioning:
         """Test that version information is correctly stored in serialized data."""
         model = trained_xgboost_model
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -375,7 +400,9 @@ class TestEnsembleModelSerialization:
             mock_model = MagicMock()
             mock_model.is_trained = True
             mock_model.model_type = (
-                ModelType.XGBOOST if model_name == "xgboost" else ModelType.LSTM
+                ModelType.XGBOOST
+                if model_name == "xgboost"
+                else ModelType.LSTM
             )
             mock_model.feature_names = list(features.columns)
             mock_model.model_version = "v1.0"
@@ -387,9 +414,16 @@ class TestEnsembleModelSerialization:
         ensemble.base_models_trained = True
         ensemble.meta_learner_trained = True
         ensemble.feature_names = list(features.columns)
-        ensemble.model_weights = {"xgboost": 0.4, "lstm": 0.3, "hmm": 0.2, "gp": 0.1}
+        ensemble.model_weights = {
+            "xgboost": 0.4,
+            "lstm": 0.3,
+            "hmm": 0.2,
+            "gp": 0.1,
+        }
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -426,7 +460,9 @@ class TestEnsembleModelSerialization:
         assert "gp" in ensemble.base_models
 
         # Test serialization of untrained ensemble
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -442,7 +478,10 @@ class TestEnsembleModelSerialization:
             for model_name in ["lstm", "xgboost", "hmm", "gp"]:
                 assert model_name in new_ensemble.base_models
                 # Base models should have same room_id as ensemble
-                assert new_ensemble.base_models[model_name].room_id == ensemble.room_id
+                assert (
+                    new_ensemble.base_models[model_name].room_id
+                    == ensemble.room_id
+                )
 
         finally:
             Path(temp_path).unlink(missing_ok=True)
@@ -480,7 +519,9 @@ class TestSerializationErrorHandling:
         """Test loading from corrupted model file."""
         model = XGBoostPredictor(room_id="test_room")
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
             # Write corrupted data to file
@@ -502,7 +543,9 @@ class TestSerializationErrorHandling:
         # Save XGBoost model
         xgb_model = trained_xgboost_model
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -515,7 +558,9 @@ class TestSerializationErrorHandling:
             # Should succeed - the base class handles cross-model loading
             # The model_type will be updated from the loaded data
             assert load_success is True
-            assert hmm_model.model_type == xgb_model.model_type  # Should be updated
+            assert (
+                hmm_model.model_type == xgb_model.model_type
+            )  # Should be updated
 
         finally:
             Path(temp_path).unlink(missing_ok=True)
@@ -532,7 +577,9 @@ class TestSerializationErrorHandling:
             # Missing model_version, training_date, etc.
         }
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -560,7 +607,9 @@ class TestSerializationPerformance:
         """Test that serialization completes within reasonable time."""
         model = trained_xgboost_model
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -592,7 +641,9 @@ class TestSerializationPerformance:
         """Test that serialized files are reasonably sized."""
         model = trained_xgboost_model
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -717,7 +768,9 @@ class TestMultipleModelSerialization:
         )
         assert training_result.success is True
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -733,7 +786,9 @@ class TestMultipleModelSerialization:
                     features.head(3), datetime.utcnow(), "vacant"
                 )
 
-            loaded_predictions = loop.run_until_complete(get_loaded_predictions())
+            loaded_predictions = loop.run_until_complete(
+                get_loaded_predictions()
+            )
 
             # Compare predictions (should be very similar)
             assert len(loaded_predictions) == len(original_predictions)
@@ -741,13 +796,17 @@ class TestMultipleModelSerialization:
             for orig, loaded in zip(original_predictions, loaded_predictions):
                 # Time predictions should be close
                 time_diff = abs(
-                    (orig.predicted_time - loaded.predicted_time).total_seconds()
+                    (
+                        orig.predicted_time - loaded.predicted_time
+                    ).total_seconds()
                 )
                 assert time_diff < 120  # Allow 2 minutes difference
 
                 # Other attributes should match
                 assert orig.transition_type == loaded.transition_type
-                assert abs(orig.confidence_score - loaded.confidence_score) < 0.1
+                assert (
+                    abs(orig.confidence_score - loaded.confidence_score) < 0.1
+                )
 
         finally:
             Path(temp_path).unlink(missing_ok=True)
@@ -777,7 +836,9 @@ class TestSerializationMetadata:
 
         original_feature_names = model.feature_names.copy()
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -796,11 +857,17 @@ class TestSerializationMetadata:
     def test_model_parameters_serialization(self):
         """Test that model parameters are properly serialized."""
         # Create model with custom parameters
-        custom_params = {"n_estimators": 200, "max_depth": 8, "learning_rate": 0.05}
+        custom_params = {
+            "n_estimators": 200,
+            "max_depth": 8,
+            "learning_rate": 0.05,
+        }
 
         model = XGBoostPredictor(room_id="test_room", **custom_params)
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -838,7 +905,9 @@ class TestSerializationMetadata:
 
         original_training_date = model.training_date
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -852,7 +921,9 @@ class TestSerializationMetadata:
             assert new_model.is_trained is True
 
             # Training history should be preserved
-            assert len(new_model.training_history) == len(model.training_history)
+            assert len(new_model.training_history) == len(
+                model.training_history
+            )
 
             if model.training_history:
                 original_history = model.training_history[0]
@@ -860,9 +931,13 @@ class TestSerializationMetadata:
 
                 assert loaded_history.success == original_history.success
                 assert (
-                    loaded_history.training_samples == original_history.training_samples
+                    loaded_history.training_samples
+                    == original_history.training_samples
                 )
-                assert loaded_history.model_version == original_history.model_version
+                assert (
+                    loaded_history.model_version
+                    == original_history.model_version
+                )
 
         finally:
             Path(temp_path).unlink(missing_ok=True)
@@ -885,7 +960,9 @@ class TestBackwardsCompatibility:
             # Missing some newer fields like training_history
         }
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -912,7 +989,9 @@ class TestBackwardsCompatibility:
         # Add extra fields that might be added in future versions
         model.future_field = "future_value"
 
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:

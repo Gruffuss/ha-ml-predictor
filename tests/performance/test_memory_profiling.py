@@ -3,7 +3,7 @@ Performance tests for memory usage profiling and leak detection.
 
 Tests memory usage patterns across system components:
 - Memory usage baselines and growth patterns
-- Memory leak detection in long-running processes  
+- Memory leak detection in long-running processes
 - Memory efficiency of data structures
 - Garbage collection effectiveness
 - Peak memory usage under load
@@ -14,7 +14,6 @@ import asyncio
 from datetime import datetime, timedelta
 import gc
 import time
-from typing import Any, Dict, List, Tuple
 from unittest.mock import AsyncMock, MagicMock, patch
 import weakref
 
@@ -97,7 +96,9 @@ class MemoryProfiler:
 
         return False
 
-    def get_top_memory_allocations(self, count: int = 10) -> List[Dict[str, Any]]:
+    def get_top_memory_allocations(
+        self, count: int = 10
+    ) -> List[Dict[str, Any]]:
         """Get top memory allocations from latest snapshot."""
         if not self.snapshots:
             return []
@@ -112,7 +113,9 @@ class MemoryProfiler:
                     "size_mb": stat.size / 1024 / 1024,
                     "count": stat.count,
                     "filename": (
-                        stat.traceback.format()[-1] if stat.traceback else "Unknown"
+                        stat.traceback.format()[-1]
+                        if stat.traceback
+                        else "Unknown"
                     ),
                 }
             )
@@ -143,8 +146,8 @@ class TestMemoryProfiling:
                 room_id=f"room_{i % 5}",
                 sensor_id=f"sensor_{i % 10}",
                 sensor_type="motion",
-                state="on" if i % 2 == 0 else "off",
-                previous_state="off" if i % 2 == 0 else "on",
+                state="on" if i % 2 == 0 else "of",
+                previous_state="of" if i % 2 == 0 else "on",
                 timestamp=base_time + timedelta(seconds=i * 3.6),
                 attributes={"test_data": f"data_{i}"},
                 is_human_triggered=True,
@@ -155,8 +158,9 @@ class TestMemoryProfiling:
 
     async def test_predictor_memory_usage(self, memory_profiler):
         """Test memory usage of prediction operations."""
-        with patch("src.models.predictor.FeatureStore"), patch(
-            "src.models.predictor.OccupancyEnsemble"
+        with (
+            patch("src.models.predictor.FeatureStore"),
+            patch("src.models.predictor.OccupancyEnsemble"),
         ):
 
             predictor = OccupancyPredictor()
@@ -192,7 +196,7 @@ class TestMemoryProfiling:
             final_memory = memory_profiler.get_current_memory()
             memory_increase = final_memory - initial_memory
 
-            print(f"\nPredictor Memory Usage:")
+            print("\nPredictor Memory Usage:")
             print(f"Initial memory: {initial_memory:.2f} MB")
             print(f"Final memory: {final_memory:.2f} MB")
             print(f"Memory increase: {memory_increase:.2f} MB")
@@ -237,7 +241,9 @@ class TestMemoryProfiling:
             feature_sets = []
             for i in range(20):
                 features = await feature_store.compute_features(
-                    room_id="living_room", target_time=datetime.now(), lookback_hours=24
+                    room_id="living_room",
+                    target_time=datetime.now(),
+                    lookback_hours=24,
                 )
                 feature_sets.append(features)
 
@@ -247,7 +253,7 @@ class TestMemoryProfiling:
             peak_memory = memory_profiler.get_current_memory()
             memory_increase = peak_memory - initial_memory
 
-            print(f"\nFeature Store Memory Usage:")
+            print("\nFeature Store Memory Usage:")
             print(f"Initial memory: {initial_memory:.2f} MB")
             print(f"Peak memory: {peak_memory:.2f} MB")
             print(f"Memory increase: {memory_increase:.2f} MB")
@@ -292,9 +298,11 @@ class TestMemoryProfiling:
                 for i in range(batch_size):
                     event_data = {
                         "entity_id": f"binary_sensor.motion_{i}",
-                        "state": "on" if i % 2 == 0 else "off",
-                        "old_state": {"state": "off" if i % 2 == 0 else "on"},
-                        "time_fired": (base_time + timedelta(seconds=i)).isoformat(),
+                        "state": "on" if i % 2 == 0 else "of",
+                        "old_state": {"state": "of" if i % 2 == 0 else "on"},
+                        "time_fired": (
+                            base_time + timedelta(seconds=i)
+                        ).isoformat(),
                         "attributes": {
                             "friendly_name": f"Motion Sensor {i}",
                             "data": f"test_data_{i}",
@@ -307,7 +315,9 @@ class TestMemoryProfiling:
 
                 processing_tasks = []
                 for event_data in events:
-                    processing_tasks.append(processor.process_event(event_data))
+                    processing_tasks.append(
+                        processor.process_event(event_data)
+                    )
 
                 await asyncio.gather(*processing_tasks)
 
@@ -325,7 +335,7 @@ class TestMemoryProfiling:
                 processing_tasks.clear()
                 gc.collect()
 
-            print(f"\nEvent Processing Memory Scaling:")
+            print("\nEvent Processing Memory Scaling:")
             for batch_size, metrics in memory_by_batch.items():
                 memory_per_event = (
                     metrics["increase"] / batch_size * 1024
@@ -338,7 +348,9 @@ class TestMemoryProfiling:
             largest_batch = memory_by_batch[max(batch_sizes)]
             smallest_batch = memory_by_batch[min(batch_sizes)]
 
-            scaling_ratio = largest_batch["increase"] / smallest_batch["increase"]
+            scaling_ratio = (
+                largest_batch["increase"] / smallest_batch["increase"]
+            )
             batch_size_ratio = max(batch_sizes) / min(batch_sizes)
 
             # Memory scaling should be reasonable (not more than 2x the batch size ratio)
@@ -348,8 +360,9 @@ class TestMemoryProfiling:
 
     async def test_long_running_memory_stability(self, memory_profiler):
         """Test memory stability over extended operation."""
-        with patch("src.models.predictor.FeatureStore"), patch(
-            "src.models.predictor.OccupancyEnsemble"
+        with (
+            patch("src.models.predictor.FeatureStore"),
+            patch("src.models.predictor.OccupancyEnsemble"),
         ):
 
             predictor = OccupancyPredictor()
@@ -399,7 +412,7 @@ class TestMemoryProfiling:
                 memory_growth = final_memory - initial_memory
                 memory_variance = max_memory - min_memory
 
-                print(f"\nLong-Running Memory Stability:")
+                print("\nLong-Running Memory Stability:")
                 print(f"Initial memory: {initial_memory:.2f} MB")
                 print(f"Final memory: {final_memory:.2f} MB")
                 print(f"Memory growth: {memory_growth:.2f} MB")
@@ -418,7 +431,9 @@ class TestMemoryProfiling:
 
                 # Check for consistent leak pattern
                 has_leak = memory_profiler.detect_memory_leak(threshold_mb=3.0)
-                assert not has_leak, "Memory leak pattern detected in long-running test"
+                assert (
+                    not has_leak
+                ), "Memory leak pattern detected in long-running test"
 
     async def test_garbage_collection_effectiveness(self, memory_profiler):
         """Test effectiveness of garbage collection in releasing memory."""
@@ -432,7 +447,9 @@ class TestMemoryProfiling:
         for i in range(100):
             # Create large DataFrame that should be collectible
             large_df = pd.DataFrame(np.random.random((1000, 50)))
-            large_dict = {f"key_{j}": np.random.random(100) for j in range(100)}
+            large_dict = {
+                f"key_{j}": np.random.random(100) for j in range(100)
+            }
 
             large_objects.append(
                 {
@@ -461,10 +478,12 @@ class TestMemoryProfiling:
         memory_created = after_creation_memory - initial_memory
         memory_recovered = before_gc_memory - after_gc_memory
         recovery_rate = (
-            (memory_recovered / memory_created) * 100 if memory_created > 0 else 0
+            (memory_recovered / memory_created) * 100
+            if memory_created > 0
+            else 0
         )
 
-        print(f"\nGarbage Collection Effectiveness:")
+        print("\nGarbage Collection Effectiveness:")
         print(f"Initial memory: {initial_memory:.2f} MB")
         print(f"After creation: {after_creation_memory:.2f} MB")
         print(f"Memory created: {memory_created:.2f} MB")
@@ -475,8 +494,12 @@ class TestMemoryProfiling:
         print(f"Objects collected: {collected}")
 
         # Garbage collection should be effective
-        assert memory_recovered > 0, "Garbage collection should recover some memory"
-        assert recovery_rate > 50, f"GC recovery rate {recovery_rate:.1f}% too low"
+        assert (
+            memory_recovered > 0
+        ), "Garbage collection should recover some memory"
+        assert (
+            recovery_rate > 50
+        ), f"GC recovery rate {recovery_rate:.1f}% too low"
 
     def test_object_lifecycle_memory_tracking(self):
         """Test memory tracking for object lifecycles."""
@@ -492,7 +515,8 @@ class TestMemoryProfiling:
 
                 # Use weak reference to track destruction
                 weakref.finalize(
-                    self, lambda obj_id=self.id: destroyed_objects.append(obj_id)
+                    self,
+                    lambda obj_id=self.id: destroyed_objects.append(obj_id),
                 )
 
         # Create and destroy objects in batches
@@ -514,7 +538,7 @@ class TestMemoryProfiling:
         # Final garbage collection
         gc.collect()
 
-        print(f"\nObject Lifecycle Tracking:")
+        print("\nObject Lifecycle Tracking:")
         print(f"Objects created: {len(created_objects)}")
         print(f"Objects destroyed: {len(destroyed_objects)}")
         print(f"Expected objects: {batch_size * total_batches}")

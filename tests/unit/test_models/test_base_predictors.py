@@ -23,7 +23,11 @@ from src.core.exceptions import ModelPredictionError, ModelTrainingError
 from src.models.base.gp_predictor import GaussianProcessPredictor
 from src.models.base.hmm_predictor import HMMPredictor
 from src.models.base.lstm_predictor import LSTMPredictor
-from src.models.base.predictor import BasePredictor, PredictionResult, TrainingResult
+from src.models.base.predictor import (
+    BasePredictor,
+    PredictionResult,
+    TrainingResult,
+)
 from src.models.base.xgboost_predictor import XGBoostPredictor
 
 
@@ -49,7 +53,9 @@ def synthetic_training_data():
     features["day_cos"] = np.cos(2 * np.pi * days / 7)
 
     # Occupancy-related features
-    features["time_since_last_occupied"] = np.random.exponential(3600, n_samples)
+    features["time_since_last_occupied"] = np.random.exponential(
+        3600, n_samples
+    )
     features["time_since_last_vacant"] = np.random.exponential(7200, n_samples)
     features["current_state_duration"] = np.random.exponential(1800, n_samples)
 
@@ -69,7 +75,9 @@ def synthetic_training_data():
     # Create realistic targets (time until next transition in seconds)
     # Pattern: shorter transitions during day, longer at night
     base_time = 1800  # 30 minutes
-    day_factor = np.where((hours >= 6) & (hours <= 22), 0.7, 2.0)  # Shorter during day
+    day_factor = np.where(
+        (hours >= 6) & (hours <= 22), 0.7, 2.0
+    )  # Shorter during day
 
     # Add occupancy state influence
     occupancy_state = np.random.choice(["occupied", "vacant"], n_samples)
@@ -88,11 +96,16 @@ def synthetic_training_data():
         {
             "time_until_transition_seconds": targets,
             "transition_type": [
-                "occupied_to_vacant" if s == "occupied" else "vacant_to_occupied"
+                (
+                    "occupied_to_vacant"
+                    if s == "occupied"
+                    else "vacant_to_occupied"
+                )
                 for s in occupancy_state
             ],
             "target_time": [
-                datetime.utcnow() + timedelta(seconds=i) for i in range(n_samples)
+                datetime.utcnow() + timedelta(seconds=i)
+                for i in range(n_samples)
             ],
         }
     )
@@ -128,8 +141,12 @@ def prediction_features():
         "hour_cos": np.cos(
             2 * np.pi * np.array([14, 15, 16, 9, 10, 20, 21, 22, 7, 8]) / 24
         ),
-        "day_sin": np.sin(2 * np.pi * np.array([1, 1, 1, 2, 2, 5, 5, 5, 6, 6]) / 7),
-        "day_cos": np.cos(2 * np.pi * np.array([1, 1, 1, 2, 2, 5, 5, 5, 6, 6]) / 7),
+        "day_sin": np.sin(
+            2 * np.pi * np.array([1, 1, 1, 2, 2, 5, 5, 5, 6, 6]) / 7
+        ),
+        "day_cos": np.cos(
+            2 * np.pi * np.array([1, 1, 1, 2, 2, 5, 5, 5, 6, 6]) / 7
+        ),
         "time_since_last_occupied": [
             3600,
             7200,
@@ -166,7 +183,18 @@ def prediction_features():
             900,
             1800,
         ],
-        "temperature": [20.5, 21.0, 19.8, 22.1, 20.2, 18.9, 19.5, 20.8, 21.2, 19.9],
+        "temperature": [
+            20.5,
+            21.0,
+            19.8,
+            22.1,
+            20.2,
+            18.9,
+            19.5,
+            20.8,
+            21.2,
+            19.9,
+        ],
         "humidity": [45, 48, 42, 50, 46, 44, 47, 49, 43, 45],
         "light_level": [250, 300, 180, 400, 350, 50, 80, 60, 300, 280],
         "motion_events_last_hour": [5, 8, 3, 12, 7, 1, 2, 0, 6, 9],
@@ -323,7 +351,9 @@ class TestLSTMPredictor:
     @pytest.mark.asyncio
     async def test_lstm_training_convergence(self, validation_data):
         """Test LSTM training and convergence."""
-        train_features, train_targets, val_features, val_targets = validation_data
+        train_features, train_targets, val_features, val_targets = (
+            validation_data
+        )
         predictor = LSTMPredictor(room_id="test_room")
 
         # Mock the underlying model to avoid actual neural network training
@@ -331,7 +361,9 @@ class TestLSTMPredictor:
             mock_model = MagicMock()
             mock_model.fit.return_value = mock_model
             mock_model.score.return_value = 0.85
-            mock_model.predict.return_value = np.array([1800.0] * len(val_features))
+            mock_model.predict.return_value = np.array(
+                [1800.0] * len(val_features)
+            )
             mock_mlp.return_value = mock_model
 
             # Train model
@@ -348,7 +380,9 @@ class TestLSTMPredictor:
             assert predictor.feature_names == list(train_features.columns)
 
     @pytest.mark.asyncio
-    async def test_lstm_prediction_format(self, validation_data, prediction_features):
+    async def test_lstm_prediction_format(
+        self, validation_data, prediction_features
+    ):
         """Test LSTM prediction format and consistency."""
         train_features, train_targets, _, _ = validation_data
         predictor = LSTMPredictor(room_id="test_room")
@@ -387,13 +421,19 @@ class TestLSTMPredictor:
                 assert result.model_version is not None
 
                 # Verify prediction time is reasonable (not too far in past/future)
-                time_delta = (result.predicted_time - prediction_time).total_seconds()
-                assert 60 <= time_delta <= 14400  # Between 1 minute and 4 hours
+                time_delta = (
+                    result.predicted_time - prediction_time
+                ).total_seconds()
+                assert (
+                    60 <= time_delta <= 14400
+                )  # Between 1 minute and 4 hours
 
     @pytest.mark.asyncio
     async def test_lstm_confidence_calibration(self, validation_data):
         """Test LSTM confidence score calibration."""
-        train_features, train_targets, val_features, val_targets = validation_data
+        train_features, train_targets, val_features, val_targets = (
+            validation_data
+        )
         predictor = LSTMPredictor(room_id="test_room")
 
         with patch("src.models.base.lstm_predictor.MLPRegressor") as mock_mlp:
@@ -405,7 +445,9 @@ class TestLSTMPredictor:
             mock_predictions = []
             for i in range(len(val_features)):
                 # Vary predictions to test confidence calculation
-                mock_predictions.append(1800 + (i * 100))  # Varying predictions
+                mock_predictions.append(
+                    1800 + (i * 100)
+                )  # Varying predictions
 
             mock_model.predict.return_value = np.array(mock_predictions)
             mock_mlp.return_value = mock_model
@@ -447,9 +489,13 @@ class TestXGBoostPredictor:
         assert "objective" in predictor.model_params
 
     @pytest.mark.asyncio
-    async def test_xgboost_training_and_feature_importance(self, validation_data):
+    async def test_xgboost_training_and_feature_importance(
+        self, validation_data
+    ):
         """Test XGBoost training and feature importance calculation."""
-        train_features, train_targets, val_features, val_targets = validation_data
+        train_features, train_targets, val_features, val_targets = (
+            validation_data
+        )
         predictor = XGBoostPredictor(room_id="test_room")
 
         # Train model
@@ -469,7 +515,11 @@ class TestXGBoostPredictor:
         assert all(v >= 0 for v in importance.values())
 
         # Should have importance for temporal features
-        temporal_features = ["hour_sin", "hour_cos", "time_since_last_occupied"]
+        temporal_features = [
+            "hour_sin",
+            "hour_cos",
+            "time_since_last_occupied",
+        ]
         found_temporal = [f for f in temporal_features if f in importance]
         assert len(found_temporal) > 0
 
@@ -503,13 +553,16 @@ class TestXGBoostPredictor:
         # Test transition type logic
         transition_types = [p.transition_type for p in predictions]
         assert all(
-            t in ["vacant_to_occupied", "occupied_to_vacant"] for t in transition_types
+            t in ["vacant_to_occupied", "occupied_to_vacant"]
+            for t in transition_types
         )
 
     @pytest.mark.asyncio
     async def test_xgboost_incremental_update(self, validation_data):
         """Test XGBoost incremental learning capability."""
-        train_features, train_targets, val_features, val_targets = validation_data
+        train_features, train_targets, val_features, val_targets = (
+            validation_data
+        )
         predictor = XGBoostPredictor(room_id="test_room")
 
         # Initial training
@@ -525,7 +578,9 @@ class TestXGBoostPredictor:
         assert update_result.success is True
         assert update_result.training_samples == len(val_features)
         assert predictor.model_version != initial_version
-        assert "incremental" in update_result.training_metrics.get("update_type", "")
+        assert "incremental" in update_result.training_metrics.get(
+            "update_type", ""
+        )
 
         # Should still be able to make predictions
         test_predictions = await predictor.predict(
@@ -554,7 +609,9 @@ class TestHMMPredictor:
     @pytest.mark.asyncio
     async def test_hmm_state_transition_modeling(self, validation_data):
         """Test HMM's ability to model state transitions."""
-        train_features, train_targets, val_features, val_targets = validation_data
+        train_features, train_targets, val_features, val_targets = (
+            validation_data
+        )
         predictor = HMMPredictor(room_id="test_room")
 
         # Train model
@@ -573,7 +630,8 @@ class TestHMMPredictor:
 
         # Check for reasonable prediction diversity
         prediction_times = [
-            (p.predicted_time - datetime.utcnow()).total_seconds() for p in predictions
+            (p.predicted_time - datetime.utcnow()).total_seconds()
+            for p in predictions
         ]
         assert len(set(prediction_times)) > 1  # Should have some variation
 
@@ -617,7 +675,9 @@ class TestGaussianProcessPredictor:
     @pytest.mark.asyncio
     async def test_gp_uncertainty_quantification(self, validation_data):
         """Test GP's uncertainty quantification capabilities."""
-        train_features, train_targets, val_features, val_targets = validation_data
+        train_features, train_targets, val_features, val_targets = (
+            validation_data
+        )
         predictor = GaussianProcessPredictor(room_id="test_room")
 
         # Use smaller dataset for GP training (GP is computationally expensive)
@@ -644,7 +704,10 @@ class TestGaussianProcessPredictor:
 
             # Should have uncertainty quantification in metadata
             if prediction.prediction_metadata:
-                assert "uncertainty_quantification" in prediction.prediction_metadata
+                assert (
+                    "uncertainty_quantification"
+                    in prediction.prediction_metadata
+                )
                 uncertainty = prediction.prediction_metadata[
                     "uncertainty_quantification"
                 ]
@@ -671,7 +734,9 @@ class TestGaussianProcessPredictor:
                 interval_width = (upper - lower).total_seconds()
 
                 # Interval should be reasonable (not too narrow or too wide)
-                assert 60 <= interval_width <= 7200  # Between 1 minute and 2 hours
+                assert (
+                    60 <= interval_width <= 7200
+                )  # Between 1 minute and 2 hours
 
                 # Predicted time should be within interval
                 pred_time = pred.predicted_time
@@ -685,7 +750,9 @@ class TestGaussianProcessPredictor:
 
         # GP should handle or warn about large datasets
         # This test ensures GP doesn't crash with larger data
-        large_features = train_features.head(200)  # Still reasonable for testing
+        large_features = train_features.head(
+            200
+        )  # Still reasonable for testing
         large_targets = train_targets.head(200)
 
         result = await predictor.train(large_features, large_targets)
@@ -716,7 +783,9 @@ class TestPredictorSerialization:
 
             # Train model
             if model_name == "LSTMPredictor":
-                with patch("src.models.base.lstm_predictor.MLPRegressor") as mock_mlp:
+                with patch(
+                    "src.models.base.lstm_predictor.MLPRegressor"
+                ) as mock_mlp:
                     mock_model = MagicMock()
                     mock_model.fit.return_value = mock_model
                     mock_model.score.return_value = 0.85
@@ -729,7 +798,9 @@ class TestPredictorSerialization:
                         train_features.head(100), train_targets.head(100)
                     )
             else:
-                await predictor.train(train_features.head(100), train_targets.head(100))
+                await predictor.train(
+                    train_features.head(100), train_targets.head(100)
+                )
 
             # Get predictions before saving
             original_predictions = await predictor.predict(
@@ -737,7 +808,9 @@ class TestPredictorSerialization:
             )
 
             # Save model
-            with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+            with tempfile.NamedTemporaryFile(
+                suffix=".pkl", delete=False
+            ) as tmp_file:
                 temp_path = tmp_file.name
 
             try:
@@ -756,7 +829,9 @@ class TestPredictorSerialization:
                 assert new_predictor.feature_names == predictor.feature_names
 
                 # Test predictions are similar (allowing for small numerical differences)
-                if model_name != "LSTMPredictor":  # Skip LSTM due to mocking complexity
+                if (
+                    model_name != "LSTMPredictor"
+                ):  # Skip LSTM due to mocking complexity
                     loaded_predictions = await new_predictor.predict(
                         val_features.head(3), datetime.utcnow(), "vacant"
                     )
@@ -764,7 +839,9 @@ class TestPredictorSerialization:
                     assert len(loaded_predictions) == len(original_predictions)
 
                     # Check prediction consistency
-                    for orig, loaded in zip(original_predictions, loaded_predictions):
+                    for orig, loaded in zip(
+                        original_predictions, loaded_predictions
+                    ):
                         time_diff = abs(
                             (
                                 orig.predicted_time - loaded.predicted_time
@@ -782,7 +859,9 @@ class TestPredictorSerialization:
         predictor = XGBoostPredictor(room_id="test_room")
 
         # Test saving untrained model
-        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            suffix=".pkl", delete=False
+        ) as tmp_file:
             temp_path = tmp_file.name
 
         try:
@@ -832,7 +911,10 @@ class TestPredictorErrorHandling:
         small_targets = pd.DataFrame(
             {
                 "time_until_transition_seconds": [1800, 3600],
-                "transition_type": ["vacant_to_occupied", "occupied_to_vacant"],
+                "transition_type": [
+                    "vacant_to_occupied",
+                    "occupied_to_vacant",
+                ],
             }
         )
 
@@ -852,7 +934,9 @@ class TestPredictorErrorHandling:
         predictor = XGBoostPredictor(room_id="test_room")
 
         # Train with good data
-        await predictor.train(train_features.head(100), train_targets.head(100))
+        await predictor.train(
+            train_features.head(100), train_targets.head(100)
+        )
 
         # Test with NaN values
         nan_features = train_features.head(5).copy()
@@ -867,7 +951,9 @@ class TestPredictorErrorHandling:
         )
 
         with pytest.raises(ModelPredictionError):
-            await predictor.predict(wrong_features, datetime.utcnow(), "vacant")
+            await predictor.predict(
+                wrong_features, datetime.utcnow(), "vacant"
+            )
 
 
 class TestPredictorPerformanceBenchmarks:
@@ -891,7 +977,9 @@ class TestPredictorPerformanceBenchmarks:
 
         for name, predictor in predictors:
             start_time = time.time()
-            result = await predictor.train(benchmark_features, benchmark_targets)
+            result = await predictor.train(
+                benchmark_features, benchmark_targets
+            )
             elapsed_time = time.time() - start_time
 
             training_times[name] = elapsed_time
@@ -919,7 +1007,9 @@ class TestPredictorPerformanceBenchmarks:
 
         for name, predictor in predictors:
             # Train model
-            await predictor.train(train_features.head(200), train_targets.head(200))
+            await predictor.train(
+                train_features.head(200), train_targets.head(200)
+            )
 
             # Benchmark prediction time
             prediction_features = val_features.head(10)
@@ -931,9 +1021,13 @@ class TestPredictorPerformanceBenchmarks:
             elapsed_time = time.time() - start_time
 
             # Should generate predictions quickly (< 100ms per sample as per requirements)
-            latency_per_sample = elapsed_time / len(prediction_features) * 1000  # ms
+            latency_per_sample = (
+                elapsed_time / len(prediction_features) * 1000
+            )  # ms
 
-            print(f"{name} prediction latency: {latency_per_sample:.2f}ms per sample")
+            print(
+                f"{name} prediction latency: {latency_per_sample:.2f}ms per sample"
+            )
             assert latency_per_sample < 100  # Less than 100ms per prediction
             assert len(predictions) == len(prediction_features)
 
@@ -952,7 +1046,9 @@ class TestPredictorPerformanceBenchmarks:
         # Train multiple models
         for i in range(3):
             predictor = XGBoostPredictor(room_id=f"room_{i}")
-            await predictor.train(train_features.head(300), train_targets.head(300))
+            await predictor.train(
+                train_features.head(300), train_targets.head(300)
+            )
 
         final_memory = process.memory_info().rss / 1024 / 1024  # MB
         memory_increase = final_memory - initial_memory

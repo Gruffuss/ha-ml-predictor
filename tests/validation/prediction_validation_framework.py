@@ -18,7 +18,6 @@ from enum import Enum
 import json
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -155,13 +154,17 @@ class PredictionValidationFramework:
         self.accuracy_threshold_minutes = accuracy_threshold_minutes
         self.confidence_threshold = confidence_threshold
         self.monitoring_interval_seconds = monitoring_interval_seconds
-        self.report_generation_interval_hours = report_generation_interval_hours
+        self.report_generation_interval_hours = (
+            report_generation_interval_hours
+        )
         self.enable_real_time_monitoring = enable_real_time_monitoring
         self.enable_automated_reports = enable_automated_reports
         self.validation_history_days = validation_history_days
 
         # Artifacts directory
-        self.artifacts_directory = artifacts_directory or Path("validation_artifacts")
+        self.artifacts_directory = artifacts_directory or Path(
+            "validation_artifacts"
+        )
         self.artifacts_directory.mkdir(parents=True, exist_ok=True)
 
         # Core components
@@ -175,7 +178,9 @@ class PredictionValidationFramework:
         # Framework state
         self.status = ValidationFrameworkStatus.INITIALIZING
         self.active_rooms: set[str] = set()
-        self.validation_tasks: Dict[str, List[ValidationTask]] = defaultdict(list)
+        self.validation_tasks: Dict[str, List[ValidationTask]] = defaultdict(
+            list
+        )
         self.pending_tasks: List[ValidationTask] = []
         self.completed_tasks: List[ValidationTask] = []
         self.failed_tasks: List[ValidationTask] = []
@@ -209,11 +214,15 @@ class PredictionValidationFramework:
 
             # Start background tasks
             if self.enable_real_time_monitoring:
-                self._monitoring_task = asyncio.create_task(self._monitoring_loop())
+                self._monitoring_task = asyncio.create_task(
+                    self._monitoring_loop()
+                )
                 self.logger.info("Started real-time monitoring task")
 
             if self.enable_automated_reports:
-                self._report_task = asyncio.create_task(self._report_generation_loop())
+                self._report_task = asyncio.create_task(
+                    self._report_generation_loop()
+                )
                 self.logger.info("Started automated report generation task")
 
             self._cleanup_task = asyncio.create_task(self._cleanup_loop())
@@ -238,7 +247,11 @@ class PredictionValidationFramework:
             self.status = ValidationFrameworkStatus.SUSPENDED
 
             # Cancel background tasks
-            for task in [self._monitoring_task, self._report_task, self._cleanup_task]:
+            for task in [
+                self._monitoring_task,
+                self._report_task,
+                self._cleanup_task,
+            ]:
                 if task and not task.done():
                     task.cancel()
                     try:
@@ -256,7 +269,9 @@ class PredictionValidationFramework:
         """Register a room for validation monitoring."""
         if room_id not in self.active_rooms:
             self.active_rooms.add(room_id)
-            self.logger.info(f"Registered room {room_id} for validation monitoring")
+            self.logger.info(
+                f"Registered room {room_id} for validation monitoring"
+            )
 
             # Initialize validation task queue for room
             if room_id not in self.validation_tasks:
@@ -269,7 +284,9 @@ class PredictionValidationFramework:
         """Unregister a room from validation monitoring."""
         if room_id in self.active_rooms:
             self.active_rooms.remove(room_id)
-            self.logger.info(f"Unregistered room {room_id} from validation monitoring")
+            self.logger.info(
+                f"Unregistered room {room_id} from validation monitoring"
+            )
 
             # Cancel pending tasks for room
             await self._cancel_room_tasks(room_id)
@@ -291,8 +308,12 @@ class PredictionValidationFramework:
                     prediction_result, "prediction_interval", None
                 ),
                 timestamp=prediction_timestamp,
-                model_type=getattr(prediction_result, "model_type", ModelType.ENSEMBLE),
-                model_version=getattr(prediction_result, "model_version", "unknown"),
+                model_type=getattr(
+                    prediction_result, "model_type", ModelType.ENSEMBLE
+                ),
+                model_version=getattr(
+                    prediction_result, "model_version", "unknown"
+                ),
                 feature_importance=getattr(
                     prediction_result, "feature_importance", None
                 ),
@@ -307,7 +328,9 @@ class PredictionValidationFramework:
             return record
 
         except Exception as e:
-            self.logger.error(f"Error validating prediction for room {room_id}: {e}")
+            self.logger.error(
+                f"Error validating prediction for room {room_id}: {e}"
+            )
             raise ValidationError(f"Prediction validation failed: {e}")
 
     async def validate_actual_outcome(
@@ -377,7 +400,10 @@ class PredictionValidationFramework:
             action_items = []
             if include_recommendations:
                 recommendations = await self._generate_recommendations(
-                    room_id, accuracy_metrics, calibration_metrics, performance_metrics
+                    room_id,
+                    accuracy_metrics,
+                    calibration_metrics,
+                    performance_metrics,
                 )
                 action_items = await self._generate_action_items(
                     room_id, recommendations, trend_analysis
@@ -441,7 +467,11 @@ class PredictionValidationFramework:
 
             # Calculate system-wide metrics
             total_predictions = sum(
-                len(self.validator.get_validation_history(room_id, window_hours=24))
+                len(
+                    self.validator.get_validation_history(
+                        room_id, window_hours=24
+                    )
+                )
                 for room_id in self.active_rooms
             )
 
@@ -469,7 +499,8 @@ class PredictionValidationFramework:
                     [
                         t
                         for t in self.failed_tasks
-                        if (current_time - t.created_at).total_seconds() < 86400
+                        if (current_time - t.created_at).total_seconds()
+                        < 86400
                     ]
                 ),
                 "last_monitoring_check": self.last_monitoring_check.isoformat(),
@@ -559,7 +590,8 @@ class PredictionValidationFramework:
             room_id=room_id,
             task_type="validation_check",
             priority=ValidationPriority.HIGH,
-            scheduled_time=validation_record.predicted_time + timedelta(minutes=30),
+            scheduled_time=validation_record.predicted_time
+            + timedelta(minutes=30),
             parameters={
                 "validation_record_id": validation_record.timestamp.isoformat()
             },
@@ -571,7 +603,9 @@ class PredictionValidationFramework:
         """Schedule a validation task."""
         self.validation_tasks[task.room_id].append(task)
         self.pending_tasks.append(task)
-        self.logger.debug(f"Scheduled task {task.task_id} for room {task.room_id}")
+        self.logger.debug(
+            f"Scheduled task {task.task_id} for room {task.room_id}"
+        )
 
     # Helper Methods
 
@@ -592,12 +626,16 @@ class PredictionValidationFramework:
                     "total_predictions": metrics.total_predictions,
                     "accurate_predictions": metrics.accurate_predictions,
                     "accuracy_level": (
-                        metrics.accuracy_level.value if metrics.accuracy_level else None
+                        metrics.accuracy_level.value
+                        if metrics.accuracy_level
+                        else None
                     ),
                 }
             return {}
         except Exception as e:
-            self.logger.error(f"Error getting accuracy metrics for room {room_id}: {e}")
+            self.logger.error(
+                f"Error getting accuracy metrics for room {room_id}: {e}"
+            )
             return {}
 
     def _get_calibration_metrics_dict(
@@ -716,7 +754,9 @@ class PredictionValidationFramework:
                         "action": "schedule_model_retraining",
                         "room_id": room_id,
                         "priority": rec["priority"],
-                        "due_date": (datetime.now() + timedelta(days=1)).isoformat(),
+                        "due_date": (
+                            datetime.now() + timedelta(days=1)
+                        ).isoformat(),
                         "description": "Schedule model retraining for improved accuracy",
                     }
                 )
@@ -743,7 +783,9 @@ class PredictionValidationFramework:
             return 0.0
 
     def _calculate_report_confidence_score(
-        self, accuracy_metrics: Dict[str, Any], calibration_metrics: Dict[str, Any]
+        self,
+        accuracy_metrics: Dict[str, Any],
+        calibration_metrics: Dict[str, Any],
     ) -> float:
         """Calculate confidence score for the report."""
         accuracy_score = accuracy_metrics.get("accuracy_percentage", 0) / 100.0
@@ -767,7 +809,7 @@ class PredictionValidationFramework:
         try:
             report_filename = (
                 f"validation_report_{report.room_id}_"
-                f"{report.generated_at.strftime('%Y%m%d_%H%M%S')}.json"
+                f"{report.generated_at.strftime('%Y % m%d_ % H%M % S')}.json"
             )
             report_path = self.artifacts_directory / report_filename
 
@@ -782,7 +824,9 @@ class PredictionValidationFramework:
         self, room_id: str, alert_data: Dict[str, Any]
     ) -> None:
         """Handle calibration alert from validator."""
-        self.logger.warning(f"Calibration alert for room {room_id}: {alert_data}")
+        self.logger.warning(
+            f"Calibration alert for room {room_id}: {alert_data}"
+        )
 
         # Notify alert handlers
         for handler in self.alert_handlers:
@@ -831,7 +875,9 @@ async def run_validation_framework_demo() -> None:
 
         # Generate reports
         report = await framework.generate_validation_report("living_room")
-        print(f"Generated report with {report.report_completeness:.2f} completeness")
+        print(
+            f"Generated report with {report.report_completeness:.2f} completeness"
+        )
 
         # Get system health
         health = await framework.get_system_health_status()

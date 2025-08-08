@@ -52,7 +52,9 @@ class TrainingIntegrationManager:
         self.config_manager = config_manager or get_training_config_manager()
 
         # Integration state
-        self._active_training_requests: Dict[str, str] = {}  # room_id -> pipeline_id
+        self._active_training_requests: Dict[str, str] = (
+            {}
+        )  # room_id -> pipeline_id
         self._training_queue: List[Dict[str, Any]] = []
         self._integration_active = False
 
@@ -87,7 +89,9 @@ class TrainingIntegrationManager:
             logger.info("TrainingIntegrationManager initialized successfully")
 
         except Exception as e:
-            logger.error(f"Failed to initialize TrainingIntegrationManager: {e}")
+            logger.error(
+                f"Failed to initialize TrainingIntegrationManager: {e}"
+            )
             raise
 
     async def shutdown(self):
@@ -98,13 +102,17 @@ class TrainingIntegrationManager:
 
             # Wait for background tasks to complete
             if self._background_tasks:
-                await asyncio.gather(*self._background_tasks, return_exceptions=True)
+                await asyncio.gather(
+                    *self._background_tasks, return_exceptions=True
+                )
                 self._background_tasks.clear()
 
             logger.info("TrainingIntegrationManager shutdown complete")
 
         except Exception as e:
-            logger.error(f"Error during TrainingIntegrationManager shutdown: {e}")
+            logger.error(
+                f"Error during TrainingIntegrationManager shutdown: {e}"
+            )
 
     async def _start_background_tasks(self):
         """Start background monitoring and processing tasks."""
@@ -114,7 +122,9 @@ class TrainingIntegrationManager:
             self._background_tasks.append(queue_task)
 
             # Periodic maintenance task
-            maintenance_task = asyncio.create_task(self._periodic_maintenance())
+            maintenance_task = asyncio.create_task(
+                self._periodic_maintenance()
+            )
             self._background_tasks.append(maintenance_task)
 
             # Resource monitoring task
@@ -138,7 +148,9 @@ class TrainingIntegrationManager:
 
             # Register for drift detection notifications
             if hasattr(self.tracking_manager, "add_drift_callback"):
-                self.tracking_manager.add_drift_callback(self._on_drift_detected)
+                self.tracking_manager.add_drift_callback(
+                    self._on_drift_detected
+                )
 
             # Register for model performance notifications
             if hasattr(self.tracking_manager, "add_performance_callback"):
@@ -169,10 +181,13 @@ class TrainingIntegrationManager:
             accuracy_threshold = (
                 env_config.quality_thresholds.min_accuracy_threshold * 100
             )  # Convert to percentage
-            error_threshold = env_config.quality_thresholds.max_error_threshold_minutes
+            error_threshold = (
+                env_config.quality_thresholds.max_error_threshold_minutes
+            )
 
             should_retrain = (
-                current_accuracy < accuracy_threshold or error_minutes > error_threshold
+                current_accuracy < accuracy_threshold
+                or error_minutes > error_threshold
             )
 
             if should_retrain:
@@ -195,16 +210,24 @@ class TrainingIntegrationManager:
                 )
 
         except Exception as e:
-            logger.error(f"Error handling accuracy degradation for room {room_id}: {e}")
+            logger.error(
+                f"Error handling accuracy degradation for room {room_id}: {e}"
+            )
 
-    async def _on_drift_detected(self, room_id: str, drift_metrics: Dict[str, Any]):
+    async def _on_drift_detected(
+        self, room_id: str, drift_metrics: Dict[str, Any]
+    ):
         """Handle concept drift notification from tracking manager."""
         try:
-            logger.info(f"Concept drift detected for room {room_id}: {drift_metrics}")
+            logger.info(
+                f"Concept drift detected for room {room_id}: {drift_metrics}"
+            )
 
             drift_severity = drift_metrics.get("drift_severity", "NONE")
             drift_score = drift_metrics.get("overall_drift_score", 0.0)
-            retraining_recommended = drift_metrics.get("retraining_recommended", False)
+            retraining_recommended = drift_metrics.get(
+                "retraining_recommended", False
+            )
 
             if retraining_recommended:
                 # Determine retraining strategy based on drift severity
@@ -235,7 +258,9 @@ class TrainingIntegrationManager:
                 )
 
         except Exception as e:
-            logger.error(f"Error handling drift detection for room {room_id}: {e}")
+            logger.error(
+                f"Error handling drift detection for room {room_id}: {e}"
+            )
 
     async def _on_performance_change(
         self, room_id: str, performance_metrics: Dict[str, Any]
@@ -252,10 +277,14 @@ class TrainingIntegrationManager:
             # - Performance trending analysis
 
             # For now, just log the performance change
-            logger.debug(f"Room {room_id} performance update: {performance_metrics}")
+            logger.debug(
+                f"Room {room_id} performance update: {performance_metrics}"
+            )
 
         except Exception as e:
-            logger.error(f"Error handling performance change for room {room_id}: {e}")
+            logger.error(
+                f"Error handling performance change for room {room_id}: {e}"
+            )
 
     async def _queue_retraining_request(
         self,
@@ -294,16 +323,22 @@ class TrainingIntegrationManager:
 
             # Add to queue (maintain priority order)
             self._training_queue.append(request)
-            self._training_queue.sort(key=lambda x: (x["priority"], x["requested_at"]))
+            self._training_queue.sort(
+                key=lambda x: (x["priority"], x["requested_at"])
+            )
 
             logger.info(
                 f"Queued retraining request for room {room_id}: {trigger_reason}"
             )
 
         except Exception as e:
-            logger.error(f"Failed to queue retraining request for room {room_id}: {e}")
+            logger.error(
+                f"Failed to queue retraining request for room {room_id}: {e}"
+            )
 
-    def _calculate_priority(self, current_value: float, threshold: float) -> int:
+    def _calculate_priority(
+        self, current_value: float, threshold: float
+    ) -> int:
         """Calculate priority based on how far current value is from threshold."""
         if current_value <= 0:
             return 1  # Critical
@@ -395,7 +430,10 @@ class TrainingIntegrationManager:
                     continue
 
                 # Check if we have capacity for more training
-                if len(self._active_training_requests) >= self._max_concurrent_training:
+                if (
+                    len(self._active_training_requests)
+                    >= self._max_concurrent_training
+                ):
                     break
 
                 # Process this request
@@ -442,7 +480,9 @@ class TrainingIntegrationManager:
                 force_full = False
 
             # Get appropriate training configuration
-            training_profile = self._select_training_profile_for_strategy(strategy)
+            training_profile = self._select_training_profile_for_strategy(
+                strategy
+            )
             self.config_manager.set_current_profile(training_profile)
 
             # Start training pipeline
@@ -456,7 +496,9 @@ class TrainingIntegrationManager:
             )
 
             # Track active training
-            pipeline_id = f"integration_{room_id}_{int(datetime.utcnow().timestamp())}"
+            pipeline_id = (
+                f"integration_{room_id}_{int(datetime.utcnow().timestamp())}"
+            )
             self._active_training_requests[room_id] = pipeline_id
 
             # Wait for training completion
@@ -466,13 +508,17 @@ class TrainingIntegrationManager:
             await self._handle_training_completion(room_id, progress, request)
 
         except Exception as e:
-            logger.error(f"Training request execution failed for room {room_id}: {e}")
+            logger.error(
+                f"Training request execution failed for room {room_id}: {e}"
+            )
             # Clean up active training tracking
             if room_id in self._active_training_requests:
                 del self._active_training_requests[room_id]
             raise
 
-    def _select_training_profile_for_strategy(self, strategy: str) -> TrainingProfile:
+    def _select_training_profile_for_strategy(
+        self, strategy: str
+    ) -> TrainingProfile:
         """Select appropriate training profile based on retraining strategy."""
         if strategy == "full_retrain":
             return TrainingProfile.COMPREHENSIVE
@@ -496,12 +542,19 @@ class TrainingIntegrationManager:
             self._last_training_times[room_id] = datetime.utcnow()
 
             # Check training success
-            if hasattr(progress, "stage") and progress.stage.value == "completed":
-                logger.info(f"Training completed successfully for room {room_id}")
+            if (
+                hasattr(progress, "stage")
+                and progress.stage.value == "completed"
+            ):
+                logger.info(
+                    f"Training completed successfully for room {room_id}"
+                )
 
                 # Notify tracking manager of successful training
                 if hasattr(self.tracking_manager, "on_model_retrained"):
-                    await self.tracking_manager.on_model_retrained(room_id, progress)
+                    await self.tracking_manager.on_model_retrained(
+                        room_id, progress
+                    )
 
                 # Update model registration if needed
                 if hasattr(progress, "best_model") and progress.best_model:
@@ -516,7 +569,9 @@ class TrainingIntegrationManager:
                 await self._handle_training_failure(room_id, progress, request)
 
         except Exception as e:
-            logger.error(f"Error handling training completion for room {room_id}: {e}")
+            logger.error(
+                f"Error handling training completion for room {room_id}: {e}"
+            )
 
     async def _update_model_registration(self, room_id: str, progress):
         """Update model registration with tracking manager."""
@@ -543,7 +598,9 @@ class TrainingIntegrationManager:
                 )
 
         except Exception as e:
-            logger.error(f"Failed to update model registration for room {room_id}: {e}")
+            logger.error(
+                f"Failed to update model registration for room {room_id}: {e}"
+            )
 
     async def _handle_training_failure(
         self, room_id: str, progress, request: Dict[str, Any]
@@ -562,7 +619,9 @@ class TrainingIntegrationManager:
                 # Modify request for retry
                 retry_request = request.copy()
                 retry_request["failure_count"] = failure_count
-                retry_request["strategy"] = "quick"  # Use quick strategy for retry
+                retry_request["strategy"] = (
+                    "quick"  # Use quick strategy for retry
+                )
                 retry_request["priority"] = min(
                     1, request["priority"]
                 )  # Increase priority
@@ -577,10 +636,14 @@ class TrainingIntegrationManager:
 
                 # Notify tracking manager of permanent failure
                 if hasattr(self.tracking_manager, "on_training_failure"):
-                    await self.tracking_manager.on_training_failure(room_id, progress)
+                    await self.tracking_manager.on_training_failure(
+                        room_id, progress
+                    )
 
         except Exception as e:
-            logger.error(f"Error handling training failure for room {room_id}: {e}")
+            logger.error(
+                f"Error handling training failure for room {room_id}: {e}"
+            )
 
     async def _periodic_maintenance(self):
         """Periodic maintenance tasks for training integration."""
@@ -593,7 +656,9 @@ class TrainingIntegrationManager:
                     await self._update_performance_baselines()
 
                     # Wait for next maintenance cycle (1 hour)
-                    await asyncio.wait_for(self._shutdown_event.wait(), timeout=3600)
+                    await asyncio.wait_for(
+                        self._shutdown_event.wait(), timeout=3600
+                    )
 
                 except asyncio.TimeoutError:
                     # Expected timeout for maintenance interval
@@ -620,7 +685,9 @@ class TrainingIntegrationManager:
                     await self._adjust_training_capacity()
 
                     # Wait for next monitoring cycle (5 minutes)
-                    await asyncio.wait_for(self._shutdown_event.wait(), timeout=300)
+                    await asyncio.wait_for(
+                        self._shutdown_event.wait(), timeout=300
+                    )
 
                 except asyncio.TimeoutError:
                     # Expected timeout for monitoring interval
@@ -643,12 +710,16 @@ class TrainingIntegrationManager:
 
             initial_count = len(self._training_queue)
             self._training_queue = [
-                req for req in self._training_queue if req["requested_at"] > cutoff_time
+                req
+                for req in self._training_queue
+                if req["requested_at"] > cutoff_time
             ]
 
             cleaned_count = initial_count - len(self._training_queue)
             if cleaned_count > 0:
-                logger.debug(f"Cleaned up {cleaned_count} old training requests")
+                logger.debug(
+                    f"Cleaned up {cleaned_count} old training requests"
+                )
 
         except Exception as e:
             logger.error(f"Error in cleanup_old_data: {e}")
@@ -725,7 +796,9 @@ class TrainingIntegrationManager:
             return True
 
         except Exception as e:
-            logger.error(f"Failed to request manual training for room {room_id}: {e}")
+            logger.error(
+                f"Failed to request manual training for room {room_id}: {e}"
+            )
             return False
 
     def get_integration_status(self) -> Dict[str, Any]:
@@ -733,7 +806,9 @@ class TrainingIntegrationManager:
         try:
             return {
                 "integration_active": self._integration_active,
-                "active_training_requests": len(self._active_training_requests),
+                "active_training_requests": len(
+                    self._active_training_requests
+                ),
                 "queued_training_requests": len(self._training_queue),
                 "max_concurrent_training": self._max_concurrent_training,
                 "training_cooldown_hours": self._training_cooldown_hours,
@@ -821,9 +896,13 @@ async def integrate_training_with_tracking_manager(
 
         await integration_manager.initialize()
 
-        logger.info("Successfully integrated training pipeline with tracking manager")
+        logger.info(
+            "Successfully integrated training pipeline with tracking manager"
+        )
         return integration_manager
 
     except Exception as e:
-        logger.error(f"Failed to integrate training with tracking manager: {e}")
+        logger.error(
+            f"Failed to integrate training with tracking manager: {e}"
+        )
         raise ModelTrainingError(f"Training integration failed: {str(e)}")

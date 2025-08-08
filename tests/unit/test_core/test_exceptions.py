@@ -288,7 +288,9 @@ class TestDatabaseErrors:
 
     def test_database_connection_error_password_masking(self):
         """Test password masking in connection strings."""
-        error = DatabaseConnectionError("postgresql://user:secret123@host:5432/db")
+        error = DatabaseConnectionError(
+            "postgresql://user:secret123@host:5432/db"
+        )
 
         # Check that password is masked
         masked_string = error.context["connection_string"]
@@ -364,7 +366,9 @@ class TestModelErrors:
 
     def test_model_prediction_error(self):
         """Test ModelPredictionError."""
-        error = ModelPredictionError("xgboost", "bedroom", feature_shape=(10, 5))
+        error = ModelPredictionError(
+            "xgboost", "bedroom", feature_shape=(10, 5)
+        )
 
         assert isinstance(error, ModelError)
         assert "xgboost" in error.message
@@ -426,7 +430,10 @@ class TestFeatureEngineeringErrors:
         """Test FeatureExtractionError."""
         cause = ValueError("Invalid data format")
         error = FeatureExtractionError(
-            "temporal", "bedroom", time_range="2024-01-01 to 2024-01-07", cause=cause
+            "temporal",
+            "bedroom",
+            time_range="2024-01-01 to 2024-01-07",
+            cause=cause,
         )
 
         assert isinstance(error, FeatureEngineeringError)
@@ -458,7 +465,9 @@ class TestFeatureEngineeringErrors:
         available_features = ["motion", "door_state"]
 
         error = MissingFeatureError(
-            missing_features, "living_room", available_features=available_features
+            missing_features,
+            "living_room",
+            available_features=available_features,
         )
 
         assert isinstance(error, FeatureEngineeringError)
@@ -472,7 +481,9 @@ class TestFeatureEngineeringErrors:
     def test_feature_store_error(self):
         """Test FeatureStoreError."""
         cause = ConnectionError("Redis unavailable")
-        error = FeatureStoreError("get_features", "temporal_features", cause=cause)
+        error = FeatureStoreError(
+            "get_features", "temporal_features", cause=cause
+        )
 
         assert isinstance(error, FeatureEngineeringError)
         assert "get_features" in error.message
@@ -600,7 +611,9 @@ class TestSystemErrors:
     def test_service_unavailable_error(self):
         """Test ServiceUnavailableError."""
         error = ServiceUnavailableError(
-            "Database", endpoint="postgresql://localhost:5432/db", retry_after=300
+            "Database",
+            endpoint="postgresql://localhost:5432/db",
+            retry_after=300,
         )
 
         assert isinstance(error, SystemError)
@@ -707,7 +720,7 @@ class TestExceptionIntegration:
         }
 
         error = DatabaseQueryError(
-            "DELETE FROM users WHERE id = :user_id",
+            "DELETE FROM users WHERE id =:user_id",
             parameters={"user_id": 123},
             cause=Exception("Foreign key constraint"),
         )
@@ -763,7 +776,9 @@ class TestExceptionIntegration:
             ResourceExhaustionError("memory", 100, 80),
         ]
 
-        error_codes = [error.error_code for error in errors if error.error_code]
+        error_codes = [
+            error.error_code for error in errors if error.error_code
+        ]
         assert len(error_codes) == len(set(error_codes))  # All unique
 
         # Check that error codes follow naming convention
@@ -776,7 +791,9 @@ class TestExceptionIntegration:
         """Test that exception context can be serialized (for logging)."""
         import json
 
-        error = ModelTrainingError("lstm", "living_room", training_data_size=1000)
+        error = ModelTrainingError(
+            "lstm", "living_room", training_data_size=1000
+        )
 
         # Should be able to serialize context for logging
         try:

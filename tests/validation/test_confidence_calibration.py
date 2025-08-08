@@ -108,7 +108,11 @@ class TestConfidenceCalibrationMetrics:
     ):
         """Test calibration score calculation with well-calibrated predictions."""
         # Add validation records
-        for predicted_time, confidence, actual_time in well_calibrated_predictions:
+        for (
+            predicted_time,
+            confidence,
+            actual_time,
+        ) in well_calibrated_predictions:
             record = ValidationRecord(
                 room_id="living_room",
                 predicted_time=predicted_time,
@@ -121,7 +125,9 @@ class TestConfidenceCalibrationMetrics:
             validator.validate_prediction("living_room", actual_time)
 
         # Calculate calibration metrics
-        metrics = validator.get_calibration_metrics("living_room", window_hours=24)
+        metrics = validator.get_calibration_metrics(
+            "living_room", window_hours=24
+        )
 
         assert metrics is not None
         assert "calibration_score" in metrics
@@ -137,7 +143,11 @@ class TestConfidenceCalibrationMetrics:
     ):
         """Test calibration score calculation with poorly-calibrated predictions."""
         # Add validation records
-        for predicted_time, confidence, actual_time in poorly_calibrated_predictions:
+        for (
+            predicted_time,
+            confidence,
+            actual_time,
+        ) in poorly_calibrated_predictions:
             record = ValidationRecord(
                 room_id="kitchen",
                 predicted_time=predicted_time,
@@ -205,7 +215,9 @@ class TestConfidenceCalibrationMetrics:
         confidences = [0.3, 0.6, 0.8, 0.9, 0.95]
         for i, conf in enumerate(confidences):
             predicted = base_time + timedelta(minutes=i * 30)
-            actual = predicted + timedelta(minutes=5)  # All reasonably accurate
+            actual = predicted + timedelta(
+                minutes=5
+            )  # All reasonably accurate
 
             record = ValidationRecord(
                 room_id="office",
@@ -217,7 +229,9 @@ class TestConfidenceCalibrationMetrics:
             validator.validate_prediction("office", actual)
 
         # Test filtering with different thresholds
-        all_records = validator.get_validation_history("office", window_hours=24)
+        all_records = validator.get_validation_history(
+            "office", window_hours=24
+        )
         high_conf_records = validator.get_high_confidence_predictions(
             "office", confidence_threshold=0.8, window_hours=24
         )
@@ -248,7 +262,9 @@ class TestConfidenceIntervalValidation:
             track_prediction_intervals=True,
         )
 
-    def test_prediction_interval_coverage_90_percent(self, validator_with_intervals):
+    def test_prediction_interval_coverage_90_percent(
+        self, validator_with_intervals
+    ):
         """Test 90% prediction interval coverage calculation."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
 
@@ -271,12 +287,16 @@ class TestConfidenceIntervalValidation:
                 prediction_interval=(lower_bound, upper_bound),
                 timestamp=predicted - timedelta(minutes=2),
             )
-            validator_with_intervals._pending_validations["living_room"].append(record)
+            validator_with_intervals._pending_validations[
+                "living_room"
+            ].append(record)
             validator_with_intervals.validate_prediction("living_room", actual)
 
         # Check interval coverage
-        coverage_metrics = validator_with_intervals.get_interval_coverage_metrics(
-            "living_room", window_hours=24
+        coverage_metrics = (
+            validator_with_intervals.get_interval_coverage_metrics(
+                "living_room", window_hours=24
+            )
         )
 
         assert coverage_metrics is not None
@@ -288,7 +308,9 @@ class TestConfidenceIntervalValidation:
         assert abs(coverage_metrics["coverage_percentage"] - 90.0) <= 5.0
         assert coverage_metrics["expected_coverage"] == 90.0
 
-    def test_prediction_interval_width_analysis(self, validator_with_intervals):
+    def test_prediction_interval_width_analysis(
+        self, validator_with_intervals
+    ):
         """Test prediction interval width analysis and optimization."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
 
@@ -299,7 +321,9 @@ class TestConfidenceIntervalValidation:
                 predicted = base_time + timedelta(minutes=(i * 10 + j) * 15)
                 lower_bound = predicted - timedelta(minutes=width // 2)
                 upper_bound = predicted + timedelta(minutes=width // 2)
-                actual = predicted + timedelta(minutes=2)  # Accurate prediction
+                actual = predicted + timedelta(
+                    minutes=2
+                )  # Accurate prediction
 
                 record = ValidationRecord(
                     room_id="kitchen",
@@ -308,7 +332,9 @@ class TestConfidenceIntervalValidation:
                     prediction_interval=(lower_bound, upper_bound),
                     timestamp=predicted - timedelta(minutes=2),
                 )
-                validator_with_intervals._pending_validations["kitchen"].append(record)
+                validator_with_intervals._pending_validations[
+                    "kitchen"
+                ].append(record)
                 validator_with_intervals.validate_prediction("kitchen", actual)
 
         # Analyze interval widths
@@ -344,7 +370,9 @@ class TestConfidenceIntervalValidation:
                 confidence=confidence,
                 timestamp=predicted - timedelta(minutes=5),
             )
-            validator_with_intervals._pending_validations["bedroom"].append(record)
+            validator_with_intervals._pending_validations["bedroom"].append(
+                record
+            )
             validator_with_intervals.validate_prediction("bedroom", actual)
 
         # Get calibration recommendations
@@ -356,12 +384,19 @@ class TestConfidenceIntervalValidation:
 
         assert calibration_recommendation is not None
         assert "current_calibration_score" in calibration_recommendation
-        assert "recommended_confidence_adjustment" in calibration_recommendation
+        assert (
+            "recommended_confidence_adjustment" in calibration_recommendation
+        )
         assert "calibration_status" in calibration_recommendation
 
         # Should recommend lowering confidence due to poor calibration
-        assert calibration_recommendation["recommended_confidence_adjustment"] < 0
-        assert calibration_recommendation["calibration_status"] == "poorly_calibrated"
+        assert (
+            calibration_recommendation["recommended_confidence_adjustment"] < 0
+        )
+        assert (
+            calibration_recommendation["calibration_status"]
+            == "poorly_calibrated"
+        )
 
 
 class TestConfidenceBasedDecisionMaking:
@@ -375,7 +410,9 @@ class TestConfidenceBasedDecisionMaking:
         )
         return validator
 
-    def test_confidence_based_prediction_acceptance(self, multi_confidence_validator):
+    def test_confidence_based_prediction_acceptance(
+        self, multi_confidence_validator
+    ):
         """Test prediction acceptance based on confidence levels."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
 
@@ -388,7 +425,9 @@ class TestConfidenceBasedDecisionMaking:
             (0.5, False, "low_confidence_should_reject"),
         ]
 
-        for i, (confidence, should_accept, description) in enumerate(test_cases):
+        for i, (confidence, should_accept, description) in enumerate(
+            test_cases
+        ):
             predicted = base_time + timedelta(minutes=i * 30)
 
             # Test acceptance decision
@@ -398,9 +437,13 @@ class TestConfidenceBasedDecisionMaking:
                 )
             )
 
-            assert should_accept_prediction == should_accept, f"Failed {description}"
+            assert (
+                should_accept_prediction == should_accept
+            ), f"Failed {description}"
 
-    def test_confidence_weighted_accuracy_metrics(self, multi_confidence_validator):
+    def test_confidence_weighted_accuracy_metrics(
+        self, multi_confidence_validator
+    ):
         """Test confidence-weighted accuracy metric calculations."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
 
@@ -424,14 +467,18 @@ class TestConfidenceBasedDecisionMaking:
                 confidence=confidence,
                 timestamp=predicted - timedelta(minutes=2),
             )
-            multi_confidence_validator._pending_validations["weighted_test"].append(
-                record
+            multi_confidence_validator._pending_validations[
+                "weighted_test"
+            ].append(record)
+            multi_confidence_validator.validate_prediction(
+                "weighted_test", actual
             )
-            multi_confidence_validator.validate_prediction("weighted_test", actual)
 
         # Calculate weighted metrics
-        weighted_metrics = multi_confidence_validator.get_confidence_weighted_metrics(
-            "weighted_test", window_hours=24
+        weighted_metrics = (
+            multi_confidence_validator.get_confidence_weighted_metrics(
+                "weighted_test", window_hours=24
+            )
         )
 
         assert weighted_metrics is not None
@@ -455,8 +502,12 @@ class TestConfidenceBasedDecisionMaking:
         # Simulate decreasing model confidence over time (model degradation)
         for i in range(24):  # 24 hours of predictions
             predicted = base_time + timedelta(hours=i)
-            confidence = max(0.5, 0.95 - (i * 0.02))  # Gradually decreasing confidence
-            actual = predicted + timedelta(minutes=10)  # Consistent moderate accuracy
+            confidence = max(
+                0.5, 0.95 - (i * 0.02)
+            )  # Gradually decreasing confidence
+            actual = predicted + timedelta(
+                minutes=10
+            )  # Consistent moderate accuracy
 
             record = ValidationRecord(
                 room_id="trend_test",
@@ -464,12 +515,18 @@ class TestConfidenceBasedDecisionMaking:
                 confidence=confidence,
                 timestamp=predicted - timedelta(minutes=5),
             )
-            multi_confidence_validator._pending_validations["trend_test"].append(record)
-            multi_confidence_validator.validate_prediction("trend_test", actual)
+            multi_confidence_validator._pending_validations[
+                "trend_test"
+            ].append(record)
+            multi_confidence_validator.validate_prediction(
+                "trend_test", actual
+            )
 
         # Analyze confidence trends
-        trend_analysis = multi_confidence_validator.get_confidence_trend_analysis(
-            "trend_test", window_hours=24
+        trend_analysis = (
+            multi_confidence_validator.get_confidence_trend_analysis(
+                "trend_test", window_hours=24
+            )
         )
 
         assert trend_analysis is not None
@@ -515,8 +572,12 @@ class TestConfidenceCalibrationIntegration:
                 confidence=confidence,
                 timestamp=predicted - timedelta(minutes=5),
             )
-            integrated_validator._pending_validations["integration_test"].append(record)
-            integrated_validator.validate_prediction("integration_test", actual)
+            integrated_validator._pending_validations[
+                "integration_test"
+            ].append(record)
+            integrated_validator.validate_prediction(
+                "integration_test", actual
+            )
 
         # Check initial calibration
         initial_calibration = integrated_validator.get_calibration_metrics(
@@ -533,7 +594,9 @@ class TestConfidenceCalibrationIntegration:
             )
         )
 
-        adjustment_factor = calibration_adjustment["recommended_confidence_adjustment"]
+        adjustment_factor = calibration_adjustment[
+            "recommended_confidence_adjustment"
+        ]
 
         # Add new predictions with adjusted confidence
         for i in range(20):
@@ -550,8 +613,12 @@ class TestConfidenceCalibrationIntegration:
                 confidence=adjusted_confidence,
                 timestamp=predicted - timedelta(minutes=5),
             )
-            integrated_validator._pending_validations["integration_test"].append(record)
-            integrated_validator.validate_prediction("integration_test", actual)
+            integrated_validator._pending_validations[
+                "integration_test"
+            ].append(record)
+            integrated_validator.validate_prediction(
+                "integration_test", actual
+            )
 
         # Check improved calibration
         final_calibration = integrated_validator.get_calibration_metrics(
@@ -563,14 +630,18 @@ class TestConfidenceCalibrationIntegration:
         )
 
     @pytest.mark.asyncio
-    async def test_real_time_calibration_monitoring(self, integrated_validator):
+    async def test_real_time_calibration_monitoring(
+        self, integrated_validator
+    ):
         """Test real-time confidence calibration monitoring."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
 
         # Simulate real-time prediction stream with monitoring
         calibration_alerts = []
 
-        async def calibration_alert_handler(room_id: str, alert_data: Dict[str, Any]):
+        async def calibration_alert_handler(
+            room_id: str, alert_data: Dict[str, Any]
+        ):
             calibration_alerts.append((room_id, alert_data))
 
         # Register alert handler
@@ -595,7 +666,9 @@ class TestConfidenceCalibrationIntegration:
                 confidence=confidence,
                 timestamp=predicted - timedelta(minutes=2),
             )
-            integrated_validator._pending_validations["real_time_test"].append(record)
+            integrated_validator._pending_validations["real_time_test"].append(
+                record
+            )
 
             # Simulate real-time validation
             await integrated_validator.validate_prediction_async(
@@ -662,11 +735,18 @@ class TestConfidenceCalibrationIntegration:
         assert room_comparison is not None
         assert len(room_comparison) == 2
 
-        room_1_data = next(r for r in room_comparison if r["room_id"] == "room_1")
-        room_2_data = next(r for r in room_comparison if r["room_id"] == "room_2")
+        room_1_data = next(
+            r for r in room_comparison if r["room_id"] == "room_1"
+        )
+        room_2_data = next(
+            r for r in room_comparison if r["room_id"] == "room_2"
+        )
 
         # Room 1 should have better calibration
-        assert room_1_data["calibration_score"] > room_2_data["calibration_score"]
         assert (
-            room_1_data["calibration_ranking"] < room_2_data["calibration_ranking"]
+            room_1_data["calibration_score"] > room_2_data["calibration_score"]
+        )
+        assert (
+            room_1_data["calibration_ranking"]
+            < room_2_data["calibration_ranking"]
         )  # Lower rank = better

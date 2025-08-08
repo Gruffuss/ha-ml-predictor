@@ -15,7 +15,6 @@ import logging
 from pathlib import Path
 import pickle
 import shutil
-from typing import Any, Dict, List, Optional, Tuple, Union
 import uuid
 
 import numpy as np
@@ -89,7 +88,9 @@ class TrainingConfig:
     max_training_time_minutes: int = 60
     enable_hyperparameter_optimization: bool = True
     cv_folds: int = 5
-    validation_strategy: ValidationStrategy = ValidationStrategy.TIME_SERIES_SPLIT
+    validation_strategy: ValidationStrategy = (
+        ValidationStrategy.TIME_SERIES_SPLIT
+    )
     early_stopping_patience: int = 10
 
     # Model configuration
@@ -152,7 +153,9 @@ class TrainingProgress:
     errors: List[str] = field(default_factory=list)
 
     def update_stage(
-        self, new_stage: TrainingStage, details: Optional[Dict[str, Any]] = None
+        self,
+        new_stage: TrainingStage,
+        details: Optional[Dict[str, Any]] = None,
     ):
         """Update current stage and progress."""
         self.stage = new_stage
@@ -322,7 +325,9 @@ class ModelTrainingPipeline:
 
             # Execute training tasks
             training_tasks = [train_room(room_id) for room_id in room_ids]
-            results = await asyncio.gather(*training_tasks, return_exceptions=True)
+            results = await asyncio.gather(
+                *training_tasks, return_exceptions=True
+            )
 
             # Process results
             for result in results:
@@ -334,7 +339,9 @@ class ModelTrainingPipeline:
                 training_results[room_id] = progress
 
                 if progress.stage == TrainingStage.COMPLETED:
-                    logger.info(f"Initial training completed for room {room_id}")
+                    logger.info(
+                        f"Initial training completed for room {room_id}"
+                    )
                 else:
                     logger.error(
                         f"Initial training failed for room {room_id}: {progress.stage}"
@@ -420,7 +427,10 @@ class ModelTrainingPipeline:
                 room_id=room_id,
                 training_type=training_type,
                 lookback_days=self.config.lookback_days,
-                metadata={"trigger_reason": trigger_reason, "strategy": strategy},
+                metadata={
+                    "trigger_reason": trigger_reason,
+                    "strategy": strategy,
+                },
             )
 
         except Exception as e:
@@ -470,14 +480,23 @@ class ModelTrainingPipeline:
                 },
             )
 
-            logger.info(f"Starting training pipeline {pipeline_id} for room {room_id}")
+            logger.info(
+                f"Starting training pipeline {pipeline_id} for room {room_id}"
+            )
 
             # Stage 2: Data preparation
             progress.update_stage(TrainingStage.DATA_PREPARATION)
-            raw_data = await self._prepare_training_data(room_id, lookback_days)
-            progress.total_samples = len(raw_data) if raw_data is not None else 0
+            raw_data = await self._prepare_training_data(
+                room_id, lookback_days
+            )
+            progress.total_samples = (
+                len(raw_data) if raw_data is not None else 0
+            )
 
-            if raw_data is None or len(raw_data) < self.config.min_samples_per_room:
+            if (
+                raw_data is None
+                or len(raw_data) < self.config.min_samples_per_room
+            ):
                 raise ModelTrainingError(
                     f"Insufficient data for room {room_id}: {len(raw_data) if raw_data else 0} samples "
                     f"(minimum required: {self.config.min_samples_per_room})"
@@ -485,7 +504,9 @@ class ModelTrainingPipeline:
 
             # Stage 3: Data quality validation
             progress.update_stage(TrainingStage.DATA_VALIDATION)
-            quality_report = await self._validate_data_quality(raw_data, room_id)
+            quality_report = await self._validate_data_quality(
+                raw_data, room_id
+            )
 
             if not quality_report.passed:
                 progress.warnings.extend(quality_report.recommendations)
@@ -507,8 +528,10 @@ class ModelTrainingPipeline:
 
             # Stage 5: Data splitting
             progress.update_stage(TrainingStage.DATA_SPLITTING)
-            train_split, val_split, test_split = await self._split_training_data(
-                features_df, targets_df, progress
+            train_split, val_split, test_split = (
+                await self._split_training_data(
+                    features_df, targets_df, progress
+                )
             )
 
             # Stage 6: Model training
@@ -551,7 +574,7 @@ class ModelTrainingPipeline:
             # Quality assurance check
             if not self._meets_quality_thresholds(evaluation_metrics):
                 quality_warning = (
-                    f"Model quality below thresholds: "
+                    "Model quality below thresholds: "
                     f"R²={evaluation_metrics.get('r2', 0):.3f} "
                     f"(min: {self.config.min_accuracy_threshold}), "
                     f"MAE={evaluation_metrics.get('mae', float('inf')):.1f}min "
@@ -646,7 +669,9 @@ class ModelTrainingPipeline:
             # 3. Process state changes
             # 4. Return structured DataFrame with event data
 
-            raw_data = await self._query_room_events(room_id, start_date, end_date)
+            raw_data = await self._query_room_events(
+                room_id, start_date, end_date
+            )
 
             logger.debug(
                 f"Prepared {len(raw_data) if raw_data is not None else 0} raw data samples for room {room_id}"
@@ -654,7 +679,9 @@ class ModelTrainingPipeline:
             return raw_data
 
         except Exception as e:
-            logger.error(f"Failed to prepare training data for room {room_id}: {e}")
+            logger.error(
+                f"Failed to prepare training data for room {room_id}: {e}"
+            )
             return None
 
     async def _query_room_events(
@@ -672,16 +699,22 @@ class ModelTrainingPipeline:
             # Mock data structure that would come from database
             mock_data = pd.DataFrame(
                 {
-                    "timestamp": pd.date_range(start_date, end_date, freq="5min"),
+                    "timestamp": pd.date_range(
+                        start_date, end_date, freq="5min"
+                    ),
                     "room_id": room_id,
                     "sensor_type": "motion",
                     "state": np.random.choice(
-                        ["on", "off"],
-                        size=len(pd.date_range(start_date, end_date, freq="5min")),
+                        ["on", "of"],
+                        size=len(
+                            pd.date_range(start_date, end_date, freq="5min")
+                        ),
                     ),
                     "occupancy_state": np.random.choice(
                         ["occupied", "vacant"],
-                        size=len(pd.date_range(start_date, end_date, freq="5min")),
+                        size=len(
+                            pd.date_range(start_date, end_date, freq="5min")
+                        ),
                     ),
                 }
             )
@@ -702,14 +735,16 @@ class ModelTrainingPipeline:
             total_samples = len(raw_data)
 
             # Check for sufficient samples
-            sufficient_samples = total_samples >= self.config.min_samples_per_room
+            sufficient_samples = (
+                total_samples >= self.config.min_samples_per_room
+            )
 
             # Check data freshness (most recent data should be within last 24 hours)
             if "timestamp" in raw_data.columns:
                 latest_timestamp = pd.to_datetime(raw_data["timestamp"].max())
-                data_freshness_ok = (datetime.utcnow() - latest_timestamp) <= timedelta(
-                    hours=24
-                )
+                data_freshness_ok = (
+                    datetime.utcnow() - latest_timestamp
+                ) <= timedelta(hours=24)
             else:
                 data_freshness_ok = False
 
@@ -727,7 +762,8 @@ class ModelTrainingPipeline:
 
             # Calculate quality metrics
             missing_values_percent = (
-                raw_data.isnull().sum().sum() / (len(raw_data) * len(raw_data.columns))
+                raw_data.isnull().sum().sum()
+                / (len(raw_data) * len(raw_data.columns))
             ) * 100
             duplicates_count = raw_data.duplicated().sum()
 
@@ -788,7 +824,9 @@ class ModelTrainingPipeline:
                 )
 
             if not temporal_consistency_ok:
-                report.add_recommendation("Timestamps are not in chronological order")
+                report.add_recommendation(
+                    "Timestamps are not in chronological order"
+                )
 
             if missing_values_percent > 10:
                 report.add_recommendation(
@@ -796,7 +834,9 @@ class ModelTrainingPipeline:
                 )
 
             if duplicates_count > 0:
-                report.add_recommendation(f"Found {duplicates_count} duplicate records")
+                report.add_recommendation(
+                    f"Found {duplicates_count} duplicate records"
+                )
 
             if len(data_gaps) > 0:
                 report.add_recommendation(
@@ -809,7 +849,9 @@ class ModelTrainingPipeline:
             return report
 
         except Exception as e:
-            logger.error(f"Data quality validation failed for room {room_id}: {e}")
+            logger.error(
+                f"Data quality validation failed for room {room_id}: {e}"
+            )
             # Return failed quality report
             return DataQualityReport(
                 passed=False,
@@ -846,7 +888,9 @@ class ModelTrainingPipeline:
 
             # Use the existing feature engineering engine
             if not self.feature_engineering_engine:
-                raise ModelTrainingError("Feature engineering engine not available")
+                raise ModelTrainingError(
+                    "Feature engineering engine not available"
+                )
 
             # In real implementation, this would use the feature store to compute features
             # For now, create mock feature and target data
@@ -879,7 +923,8 @@ class ModelTrainingPipeline:
                         3600, len(raw_data)
                     ),  # 1 hour average
                     "transition_type": np.random.choice(
-                        ["occupied_to_vacant", "vacant_to_occupied"], len(raw_data)
+                        ["occupied_to_vacant", "vacant_to_occupied"],
+                        len(raw_data),
                     ),
                 }
             )
@@ -905,7 +950,9 @@ class ModelTrainingPipeline:
     ]:
         """Split data into training, validation, and test sets."""
         try:
-            logger.debug("Splitting data for training, validation, and testing")
+            logger.debug(
+                "Splitting data for training, validation, and testing"
+            )
 
             total_samples = len(features_df)
 
@@ -967,7 +1014,9 @@ class ModelTrainingPipeline:
 
             for model_type in models_to_train:
                 try:
-                    logger.info(f"Training {model_type} model for room {room_id}")
+                    logger.info(
+                        f"Training {model_type} model for room {room_id}"
+                    )
 
                     # Create model instance
                     if model_type == "ensemble":
@@ -1009,7 +1058,9 @@ class ModelTrainingPipeline:
                     logger.error(
                         f"Failed to train {model_type} for room {room_id}: {e}"
                     )
-                    progress.errors.append(f"{model_type} training error: {str(e)}")
+                    progress.errors.append(
+                        f"{model_type} training error: {str(e)}"
+                    )
 
             if not trained_models:
                 raise ModelTrainingError("No models were successfully trained")
@@ -1071,21 +1122,29 @@ class ModelTrainingPipeline:
                     if self.config.model_selection_metric == "mae":
                         score = mean_absolute_error(true_values, pred_values)
                     elif self.config.model_selection_metric == "rmse":
-                        score = np.sqrt(mean_squared_error(true_values, pred_values))
+                        score = np.sqrt(
+                            mean_squared_error(true_values, pred_values)
+                        )
                     elif self.config.model_selection_metric == "r2":
                         score = r2_score(true_values, pred_values)
                     else:
-                        score = mean_absolute_error(true_values, pred_values)  # Default
+                        score = mean_absolute_error(
+                            true_values, pred_values
+                        )  # Default
 
                     validation_results[model_name] = score
-                    logger.debug(f"Validation score for {model_name}: {score:.3f}")
+                    logger.debug(
+                        f"Validation score for {model_name}: {score:.3f}"
+                    )
 
                 except Exception as e:
                     logger.error(f"Validation failed for {model_name}: {e}")
                     validation_results[model_name] = float(
                         "inf"
                     )  # Worst possible score
-                    progress.errors.append(f"{model_name} validation error: {str(e)}")
+                    progress.errors.append(
+                        f"{model_name} validation error: {str(e)}"
+                    )
 
             return validation_results
 
@@ -1112,11 +1171,13 @@ class ModelTrainingPipeline:
             if self.config.model_selection_metric in ["mae", "rmse"]:
                 # Lower is better
                 best_model = min(
-                    validation_results.keys(), key=lambda k: validation_results[k]
+                    validation_results.keys(),
+                    key=lambda k: validation_results[k],
                 )
             else:  # r2 or others where higher is better
                 best_model = max(
-                    validation_results.keys(), key=lambda k: validation_results[k]
+                    validation_results.keys(),
+                    key=lambda k: validation_results[k],
                 )
 
             best_score = validation_results[best_model]
@@ -1163,10 +1224,12 @@ class ModelTrainingPipeline:
             logger.error(f"Model evaluation failed: {e}")
             raise ModelTrainingError(f"Model evaluation failed: {str(e)}")
 
-    def _meets_quality_thresholds(self, evaluation_metrics: Dict[str, float]) -> bool:
+    def _meets_quality_thresholds(
+        self, evaluation_metrics: Dict[str, float]
+    ) -> bool:
         """Check if model meets minimum quality thresholds."""
         r2_score = evaluation_metrics.get("r2", 0.0)
-        mae_score = evaluation_metrics.get("mae", float("inf"))
+        mae_score = evaluation_metrics.get("mae", float("in"))
 
         meets_accuracy = r2_score >= self.config.min_accuracy_threshold
         meets_error = mae_score <= (
@@ -1196,7 +1259,9 @@ class ModelTrainingPipeline:
             for model_name, model in trained_models.items():
                 try:
                     # Generate model version
-                    model_version = self._generate_model_version(room_id, model_name)
+                    model_version = self._generate_model_version(
+                        room_id, model_name
+                    )
                     model.model_version = model_version
 
                     # Save model artifacts
@@ -1222,7 +1287,9 @@ class ModelTrainingPipeline:
                         }
                     )
 
-                    deployment_info["model_versions"][model_name] = model_version
+                    deployment_info["model_versions"][
+                        model_name
+                    ] = model_version
 
                     logger.debug(
                         f"Deployed {model_name} v{model_version} for room {room_id}"
@@ -1245,16 +1312,22 @@ class ModelTrainingPipeline:
 
     def _generate_model_version(self, room_id: str, model_name: str) -> str:
         """Generate unique model version identifier."""
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.utcnow().strftime("%Y % m%d_ % H%M % S")
         return f"v{timestamp}_{room_id}_{model_name}"
 
     async def _save_model_artifacts(
-        self, room_id: str, model_name: str, model: BasePredictor, model_version: str
+        self,
+        room_id: str,
+        model_name: str,
+        model: BasePredictor,
+        model_version: str,
     ) -> Path:
         """Save model artifacts to storage."""
         try:
             # Create model-specific artifact directory
-            model_dir = self.artifacts_path / room_id / model_name / model_version
+            model_dir = (
+                self.artifacts_path / room_id / model_name / model_version
+            )
             model_dir.mkdir(parents=True, exist_ok=True)
 
             # Save model pickle
@@ -1299,7 +1372,9 @@ class ModelTrainingPipeline:
     ):
         """Clean up temporary training artifacts."""
         try:
-            logger.debug(f"Cleaning up training artifacts for pipeline {pipeline_id}")
+            logger.debug(
+                f"Cleaning up training artifacts for pipeline {pipeline_id}"
+            )
 
             # In a full implementation, this would clean up:
             # - Temporary feature files
@@ -1319,11 +1394,16 @@ class ModelTrainingPipeline:
         """Register trained models with the tracking manager."""
         try:
             if not self.tracking_manager:
-                logger.debug("No tracking manager available for model registration")
+                logger.debug(
+                    "No tracking manager available for model registration"
+                )
                 return
 
             for room_id, progress in training_results.items():
-                if progress.stage == TrainingStage.COMPLETED and progress.best_model:
+                if (
+                    progress.stage == TrainingStage.COMPLETED
+                    and progress.best_model
+                ):
                     # Register the best model with tracking manager
                     model_key = f"{room_id}_{progress.best_model}"
 
@@ -1341,9 +1421,13 @@ class ModelTrainingPipeline:
                         )
 
         except Exception as e:
-            logger.error(f"Failed to register models with tracking manager: {e}")
+            logger.error(
+                f"Failed to register models with tracking manager: {e}"
+            )
 
-    async def _notify_tracking_manager_of_completion(self, progress: TrainingProgress):
+    async def _notify_tracking_manager_of_completion(
+        self, progress: TrainingProgress
+    ):
         """Notify tracking manager of training completion."""
         try:
             if not self.tracking_manager:
@@ -1358,10 +1442,14 @@ class ModelTrainingPipeline:
         except Exception as e:
             logger.error(f"Failed to notify tracking manager: {e}")
 
-    def _update_training_stats(self, training_results: Dict[str, TrainingProgress]):
+    def _update_training_stats(
+        self, training_results: Dict[str, TrainingProgress]
+    ):
         """Update internal training statistics."""
         try:
-            self._training_stats["total_pipelines_run"] += len(training_results)
+            self._training_stats["total_pipelines_run"] += len(
+                training_results
+            )
 
             successful = sum(
                 1
@@ -1381,7 +1469,9 @@ class ModelTrainingPipeline:
             )
 
             if len(training_results) > 0:
-                current_average = self._training_stats["average_training_time_minutes"]
+                current_average = self._training_stats[
+                    "average_training_time_minutes"
+                ]
                 total_pipelines = self._training_stats["total_pipelines_run"]
 
                 # Update running average
@@ -1389,7 +1479,9 @@ class ModelTrainingPipeline:
                     current_average * (total_pipelines - len(training_results))
                     + total_time
                 ) / total_pipelines
-                self._training_stats["average_training_time_minutes"] = new_average
+                self._training_stats["average_training_time_minutes"] = (
+                    new_average
+                )
 
         except Exception as e:
             logger.error(f"Failed to update training statistics: {e}")
@@ -1463,7 +1555,9 @@ class ModelTrainingPipeline:
     ) -> Optional[BasePredictor]:
         """Load a model from saved artifacts."""
         try:
-            model_dir = self.artifacts_path / room_id / model_name / model_version
+            model_dir = (
+                self.artifacts_path / room_id / model_name / model_version
+            )
             model_file = model_dir / "model.pkl"
 
             if not model_file.exists():
@@ -1483,7 +1577,10 @@ class ModelTrainingPipeline:
             return None
 
     async def compare_models(
-        self, room_id: str, model_versions: List[str], comparison_days: int = 30
+        self,
+        room_id: str,
+        model_versions: List[str],
+        comparison_days: int = 30,
     ) -> Dict[str, Any]:
         """Compare performance of different model versions."""
         try:
@@ -1513,7 +1610,9 @@ class ModelTrainingPipeline:
             # Generate recommendations based on comparison
             best_version = max(
                 model_versions,
-                key=lambda v: comparison_results["metrics"][v]["accuracy_rate"],
+                key=lambda v: comparison_results["metrics"][v][
+                    "accuracy_rate"
+                ],
             )
 
             comparison_results["recommendations"] = [

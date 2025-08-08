@@ -119,7 +119,9 @@ async def websocket_predictions_endpoint(websocket: WebSocket):
 
 
 @realtime_router.websocket("/predictions/{room_id}")
-async def websocket_room_predictions_endpoint(websocket: WebSocket, room_id: str):
+async def websocket_room_predictions_endpoint(
+    websocket: WebSocket, room_id: str
+):
     """
     WebSocket endpoint for room-specific prediction streaming.
 
@@ -146,7 +148,9 @@ async def websocket_room_predictions_endpoint(websocket: WebSocket, room_id: str
 
         try:
             # Auto-subscribe to the room
-            if hasattr(integration_manager.enhanced_mqtt_manager, "websocket_manager"):
+            if hasattr(
+                integration_manager.enhanced_mqtt_manager, "websocket_manager"
+            ):
                 ws_manager = (
                     integration_manager.enhanced_mqtt_manager.realtime_publisher.websocket_manager
                 )
@@ -161,11 +165,15 @@ async def websocket_room_predictions_endpoint(websocket: WebSocket, room_id: str
                 await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
 
         except Exception as e:
-            logger.error(f"Error setting up room-specific WebSocket for {room_id}: {e}")
+            logger.error(
+                f"Error setting up room-specific WebSocket for {room_id}: {e}"
+            )
             await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
 
     except Exception as e:
-        logger.error(f"Error in WebSocket room predictions endpoint for {room_id}: {e}")
+        logger.error(
+            f"Error in WebSocket room predictions endpoint for {room_id}: {e}"
+        )
         try:
             if websocket.client_state == WebSocketState.CONNECTED:
                 await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
@@ -224,7 +232,9 @@ async def sse_room_predictions_endpoint(request: Request, room_id: str):
         return await sse_handler(room_id=room_id)
 
     except Exception as e:
-        logger.error(f"Error in SSE room predictions endpoint for {room_id}: {e}")
+        logger.error(
+            f"Error in SSE room predictions endpoint for {room_id}: {e}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create room-specific SSE stream",
@@ -282,13 +292,19 @@ async def get_realtime_connections():
 
         # Get connection information
         stats = integration_manager.get_integration_stats()
-        connection_info = stats.get("enhanced_mqtt_stats", {}).get("connections", {})
+        connection_info = stats.get("enhanced_mqtt_stats", {}).get(
+            "connections", {}
+        )
 
         return {
-            "websocket_connections": connection_info.get("websocket_connections", {}),
+            "websocket_connections": connection_info.get(
+                "websocket_connections", {}
+            ),
             "sse_connections": connection_info.get("sse_connections", {}),
             "summary": {
-                "total_active": connection_info.get("total_active_connections", 0),
+                "total_active": connection_info.get(
+                    "total_active_connections", 0
+                ),
                 "websocket_count": connection_info.get("websocket_clients", 0),
                 "sse_count": connection_info.get("sse_clients", 0),
             },
@@ -322,10 +338,8 @@ async def test_realtime_broadcast():
 
         # Broadcast via enhanced MQTT manager
         if integration_manager.enhanced_mqtt_manager:
-            results = (
-                await integration_manager.enhanced_mqtt_manager.publish_system_status(
-                    {"test_broadcast": test_data}
-                )
+            results = await integration_manager.enhanced_mqtt_manager.publish_system_status(
+                {"test_broadcast": test_data}
             )
 
             return {
@@ -366,16 +380,18 @@ async def realtime_health_check():
         enhanced_mqtt_available = "enhanced_mqtt_stats" in stats
 
         health_status = (
-            "healthy" if integration_active and enhanced_mqtt_available else "degraded"
+            "healthy"
+            if integration_active and enhanced_mqtt_available
+            else "degraded"
         )
 
         return {
             "status": health_status,
             "integration_active": integration_active,
             "enhanced_mqtt_available": enhanced_mqtt_available,
-            "realtime_publishing_enabled": stats.get("integration_config", {}).get(
-                "realtime_publishing_enabled", False
-            ),
+            "realtime_publishing_enabled": stats.get(
+                "integration_config", {}
+            ).get("realtime_publishing_enabled", False),
             "websocket_enabled": stats.get("integration_config", {}).get(
                 "websocket_enabled", False
             ),
@@ -406,7 +422,9 @@ class WebSocketConnectionHandler:
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
 
-    async def connect(self, websocket: WebSocket, connection_id: str = None) -> str:
+    async def connect(
+        self, websocket: WebSocket, connection_id: str = None
+    ) -> str:
         """Connect a WebSocket client."""
         if connection_id is None:
             connection_id = f"api_{datetime.utcnow().timestamp()}"
@@ -423,7 +441,9 @@ class WebSocketConnectionHandler:
             del self.active_connections[connection_id]
             logger.debug(f"API WebSocket client disconnected: {connection_id}")
 
-    async def send_message(self, connection_id: str, message: Dict[str, Any]) -> bool:
+    async def send_message(
+        self, connection_id: str, message: Dict[str, Any]
+    ) -> bool:
         """Send message to a specific client."""
         if connection_id in self.active_connections:
             try:

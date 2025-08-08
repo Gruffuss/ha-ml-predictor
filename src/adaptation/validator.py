@@ -21,7 +21,11 @@ from sqlalchemy import and_, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.constants import ModelType
-from ..core.exceptions import DatabaseError, ErrorSeverity, OccupancyPredictionError
+from ..core.exceptions import (
+    DatabaseError,
+    ErrorSeverity,
+    OccupancyPredictionError,
+)
 from ..data.storage.database import get_db_session
 from ..data.storage.models import Prediction
 from ..models.base.predictor import PredictionResult
@@ -156,7 +160,9 @@ class ValidationRecord:
             self.prediction_metadata = {}
         self.prediction_metadata["failure_reason"] = reason
 
-        logger.warning(f"Marked prediction {self.prediction_id} as failed: {reason}")
+        logger.warning(
+            f"Marked prediction {self.prediction_id} as failed: {reason}"
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert validation record to dictionary for serialization."""
@@ -181,7 +187,9 @@ class ValidationRecord:
                 if self.alternatives
                 else None
             ),
-            "actual_time": self.actual_time.isoformat() if self.actual_time else None,
+            "actual_time": (
+                self.actual_time.isoformat() if self.actual_time else None
+            ),
             "error_minutes": self.error_minutes,
             "accuracy_level": (
                 self.accuracy_level.value if self.accuracy_level else None
@@ -189,10 +197,14 @@ class ValidationRecord:
             "status": self.status.value,
             "prediction_time": self.prediction_time.isoformat(),
             "validation_time": (
-                self.validation_time.isoformat() if self.validation_time else None
+                self.validation_time.isoformat()
+                if self.validation_time
+                else None
             ),
             "expiration_time": (
-                self.expiration_time.isoformat() if self.expiration_time else None
+                self.expiration_time.isoformat()
+                if self.expiration_time
+                else None
             ),
             "feature_snapshot": self.feature_snapshot,
             "prediction_metadata": self.prediction_metadata,
@@ -230,7 +242,9 @@ class AccuracyMetrics:
     accuracy_by_level: Dict[str, int] = field(default_factory=dict)
 
     # Bias analysis
-    mean_bias_minutes: float = 0.0  # Positive = late predictions, negative = early
+    mean_bias_minutes: float = (
+        0.0  # Positive = late predictions, negative = early
+    )
     bias_std_minutes: float = 0.0
 
     # Confidence analysis
@@ -383,7 +397,9 @@ class PredictionValidator:
 
         except Exception as e:
             logger.error(f"Failed to start background tasks: {e}")
-            raise ValidationError("Failed to start validator background tasks", cause=e)
+            raise ValidationError(
+                "Failed to start validator background tasks", cause=e
+            )
 
     async def stop_background_tasks(self) -> None:
         """Stop background tasks gracefully."""
@@ -393,7 +409,9 @@ class PredictionValidator:
 
             # Wait for tasks to complete
             if self._background_tasks:
-                await asyncio.gather(*self._background_tasks, return_exceptions=True)
+                await asyncio.gather(
+                    *self._background_tasks, return_exceptions=True
+                )
 
             self._background_tasks.clear()
             logger.info("Stopped PredictionValidator background tasks")
@@ -452,13 +470,17 @@ class PredictionValidator:
             # Invalidate relevant caches
             self._invalidate_metrics_cache(room_id, record.model_type)
 
-            logger.debug(f"Recorded prediction {prediction_id} for room {room_id}")
+            logger.debug(
+                f"Recorded prediction {prediction_id} for room {room_id}"
+            )
 
             return prediction_id
 
         except Exception as e:
             logger.error(f"Failed to record prediction: {e}")
-            raise ValidationError("Failed to record prediction for validation", cause=e)
+            raise ValidationError(
+                "Failed to record prediction for validation", cause=e
+            )
 
     async def validate_prediction(
         self,
@@ -565,17 +587,23 @@ class PredictionValidator:
         """
         try:
             # Generate cache key
-            cache_key = f"{room_id or 'all'}_{model_type or 'all'}_{hours_back}"
+            cache_key = (
+                f"{room_id or 'all'}_{model_type or 'all'}_{hours_back}"
+            )
 
             # Check cache if not forcing recalculation
-            if not force_recalculate and self._is_metrics_cache_valid(cache_key):
+            if not force_recalculate and self._is_metrics_cache_valid(
+                cache_key
+            ):
                 with self._cache_lock:
                     cached_metrics, _ = self._metrics_cache[cache_key]
                     logger.debug(f"Using cached metrics for {cache_key}")
                     return cached_metrics
 
             # Get filtered records
-            records = self._get_filtered_records(room_id, model_type, hours_back)
+            records = self._get_filtered_records(
+                room_id, model_type, hours_back
+            )
 
             # Calculate metrics
             metrics = self._calculate_metrics_from_records(records, hours_back)
@@ -592,13 +620,17 @@ class PredictionValidator:
 
         except Exception as e:
             logger.error(f"Failed to calculate accuracy metrics: {e}")
-            raise ValidationError("Failed to calculate accuracy metrics", cause=e)
+            raise ValidationError(
+                "Failed to calculate accuracy metrics", cause=e
+            )
 
     async def get_room_accuracy(
         self, room_id: str, hours_back: int = 24
     ) -> AccuracyMetrics:
         """Get accuracy metrics for specific room across all models."""
-        return await self.get_accuracy_metrics(room_id=room_id, hours_back=hours_back)
+        return await self.get_accuracy_metrics(
+            room_id=room_id, hours_back=hours_back
+        )
 
     async def get_model_accuracy(
         self, model_type: str, hours_back: int = 24
@@ -651,7 +683,9 @@ class PredictionValidator:
             logger.error(f"Failed to get pending validations: {e}")
             raise ValidationError("Failed to get pending validations", cause=e)
 
-    async def expire_old_predictions(self, cutoff_hours: Optional[int] = None) -> int:
+    async def expire_old_predictions(
+        self, cutoff_hours: Optional[int] = None
+    ) -> int:
         """
         Mark old predictions as expired if they haven't been validated.
 
@@ -785,7 +819,10 @@ class PredictionValidator:
                 "records_by_model": dict(model_counts),
                 "records_by_status": dict(status_counts),
                 "cache_size": cache_size,
-                "memory_usage_percent": (total_records / self.max_memory_records) * 100,
+                "memory_usage_percent": (
+                    total_records / self.max_memory_records
+                )
+                * 100,
                 "background_tasks_running": len(self._background_tasks),
             }
 
@@ -824,7 +861,9 @@ class PredictionValidator:
 
                     # Remove from indexes
                     self._records_by_room[record.room_id].remove(prediction_id)
-                    self._records_by_model[record.model_type].remove(prediction_id)
+                    self._records_by_model[record.model_type].remove(
+                        prediction_id
+                    )
 
                     removed_count += 1
 
@@ -841,7 +880,9 @@ class PredictionValidator:
                 }
 
             if removed_count > 0:
-                logger.info(f"Cleaned up {removed_count} old validation records")
+                logger.info(
+                    f"Cleaned up {removed_count} old validation records"
+                )
 
             return removed_count
 
@@ -884,7 +925,9 @@ class PredictionValidator:
             logger.error(f"Failed to store prediction in database: {e}")
             # Don't raise exception - validation can continue without DB storage
 
-    async def _update_predictions_in_db(self, records: List[ValidationRecord]) -> None:
+    async def _update_predictions_in_db(
+        self, records: List[ValidationRecord]
+    ) -> None:
         """Update validated predictions in database."""
         try:
             if not records:
@@ -911,14 +954,18 @@ class PredictionValidator:
 
                     if db_prediction:
                         # Update validation results
-                        db_prediction.actual_transition_time = record.actual_time
+                        db_prediction.actual_transition_time = (
+                            record.actual_time
+                        )
                         db_prediction.accuracy_minutes = record.error_minutes
                         db_prediction.is_accurate = (
                             record.error_minutes <= self.accuracy_threshold
                             if record.error_minutes is not None
                             else None
                         )
-                        db_prediction.validation_timestamp = record.validation_time
+                        db_prediction.validation_timestamp = (
+                            record.validation_time
+                        )
 
                 await session.commit()
 
@@ -949,14 +996,19 @@ class PredictionValidator:
                     continue
 
                 # Check if within time window
-                time_diff = abs((actual_time - record.predicted_time).total_seconds())
+                time_diff = abs(
+                    (actual_time - record.predicted_time).total_seconds()
+                )
                 if time_diff <= time_window.total_seconds():
                     candidates.append(prediction_id)
 
         return candidates
 
     def _get_filtered_records(
-        self, room_id: Optional[str], model_type: Optional[str], hours_back: int
+        self,
+        room_id: Optional[str],
+        model_type: Optional[str],
+        hours_back: int,
     ) -> List[ValidationRecord]:
         """Get validation records filtered by criteria."""
         cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
@@ -995,8 +1047,12 @@ class PredictionValidator:
         validated_records = [
             r for r in records if r.status == ValidationStatus.VALIDATED
         ]
-        expired_records = [r for r in records if r.status == ValidationStatus.EXPIRED]
-        failed_records = [r for r in records if r.status == ValidationStatus.FAILED]
+        expired_records = [
+            r for r in records if r.status == ValidationStatus.EXPIRED
+        ]
+        failed_records = [
+            r for r in records if r.status == ValidationStatus.FAILED
+        ]
 
         metrics.validated_predictions = len(validated_records)
         metrics.expired_predictions = len(expired_records)
@@ -1007,7 +1063,9 @@ class PredictionValidator:
 
         # Calculate error statistics
         errors = [
-            r.error_minutes for r in validated_records if r.error_minutes is not None
+            r.error_minutes
+            for r in validated_records
+            if r.error_minutes is not None
         ]
         biases = [
             (r.actual_time - r.predicted_time).total_seconds() / 60
@@ -1025,7 +1083,9 @@ class PredictionValidator:
             metrics.std_error_minutes = (
                 statistics.stdev(errors) if len(errors) > 1 else 0.0
             )
-            metrics.rmse_minutes = (sum(e**2 for e in errors) / len(errors)) ** 0.5
+            metrics.rmse_minutes = (
+                sum(e**2 for e in errors) / len(errors)
+            ) ** 0.5
             metrics.mae_minutes = statistics.mean(errors)
 
             # Error percentiles
@@ -1038,7 +1098,9 @@ class PredictionValidator:
             }
 
             # Accuracy rate
-            accurate_count = sum(1 for e in errors if e <= self.accuracy_threshold)
+            accurate_count = sum(
+                1 for e in errors if e <= self.accuracy_threshold
+            )
             metrics.accurate_predictions = accurate_count
             metrics.accuracy_rate = (accurate_count / len(errors)) * 100
 
@@ -1080,16 +1142,22 @@ class PredictionValidator:
                 high_conf_wrong = sum(
                     1
                     for conf, err in zip(confidences, errors)
-                    if conf > high_conf_threshold and err > self.accuracy_threshold
+                    if conf > high_conf_threshold
+                    and err > self.accuracy_threshold
                 )
                 low_conf_right = sum(
                     1
                     for conf, err in zip(confidences, errors)
-                    if conf < low_conf_threshold and err <= self.accuracy_threshold
+                    if conf < low_conf_threshold
+                    and err <= self.accuracy_threshold
                 )
 
-                metrics.overconfidence_rate = (high_conf_wrong / len(confidences)) * 100
-                metrics.underconfidence_rate = (low_conf_right / len(confidences)) * 100
+                metrics.overconfidence_rate = (
+                    high_conf_wrong / len(confidences)
+                ) * 100
+                metrics.underconfidence_rate = (
+                    low_conf_right / len(confidences)
+                ) * 100
 
         # Time-based analysis
         if records:
@@ -1098,7 +1166,8 @@ class PredictionValidator:
             metrics.measurement_period_end = max(prediction_times)
 
             period_hours = (
-                metrics.measurement_period_end - metrics.measurement_period_start
+                metrics.measurement_period_end
+                - metrics.measurement_period_start
             ).total_seconds() / 3600
             if period_hours > 0:
                 metrics.predictions_per_hour = len(records) / period_hours
@@ -1146,7 +1215,8 @@ class PredictionValidator:
             # Remove oldest 10% of records
             records_to_remove = int(0.1 * self.max_memory_records)
             oldest_records = sorted(
-                self._validation_records.items(), key=lambda x: x[1].prediction_time
+                self._validation_records.items(),
+                key=lambda x: x[1].prediction_time,
             )[:records_to_remove]
 
             for prediction_id, record in oldest_records:
@@ -1223,11 +1293,15 @@ class PredictionValidator:
                     "transition_type": record.transition_type,
                     "confidence_score": record.confidence_score,
                     "actual_time": (
-                        record.actual_time.isoformat() if record.actual_time else ""
+                        record.actual_time.isoformat()
+                        if record.actual_time
+                        else ""
                     ),
                     "error_minutes": record.error_minutes,
                     "accuracy_level": (
-                        record.accuracy_level.value if record.accuracy_level else ""
+                        record.accuracy_level.value
+                        if record.accuracy_level
+                        else ""
                     ),
                     "status": record.status.value,
                     "prediction_time": record.prediction_time.isoformat(),

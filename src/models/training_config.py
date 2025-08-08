@@ -10,7 +10,6 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
 
 import yaml
 
@@ -91,13 +90,17 @@ class QualityThresholds:
             issues.append("max_error_threshold_minutes must be positive")
 
         if not (0.0 <= self.min_confidence_calibration <= 1.0):
-            issues.append("min_confidence_calibration must be between 0.0 and 1.0")
+            issues.append(
+                "min_confidence_calibration must be between 0.0 and 1.0"
+            )
 
         if self.min_samples_per_room <= 0:
             issues.append("min_samples_per_room must be positive")
 
         if not (0.0 <= self.max_missing_data_percent <= 100.0):
-            issues.append("max_missing_data_percent must be between 0.0 and 100.0")
+            issues.append(
+                "max_missing_data_percent must be between 0.0 and 100.0"
+            )
 
         return issues
 
@@ -148,8 +151,12 @@ class TrainingEnvironmentConfig:
 
     profile: TrainingProfile = TrainingProfile.PRODUCTION
     resource_limits: ResourceLimits = field(default_factory=ResourceLimits)
-    quality_thresholds: QualityThresholds = field(default_factory=QualityThresholds)
-    optimization_config: OptimizationConfig = field(default_factory=OptimizationConfig)
+    quality_thresholds: QualityThresholds = field(
+        default_factory=QualityThresholds
+    )
+    optimization_config: OptimizationConfig = field(
+        default_factory=OptimizationConfig
+    )
 
     # Paths and storage
     model_artifacts_base_path: Optional[Path] = None
@@ -177,7 +184,9 @@ class TrainingEnvironmentConfig:
             self.model_artifacts_base_path, Path
         ):
             try:
-                self.model_artifacts_base_path = Path(self.model_artifacts_base_path)
+                self.model_artifacts_base_path = Path(
+                    self.model_artifacts_base_path
+                )
             except Exception:
                 issues.append("Invalid model_artifacts_base_path")
 
@@ -354,9 +363,13 @@ class TrainingConfigManager:
                 ].items():
                     try:
                         # Convert nested dictionaries to dataclass objects
-                        env_config = self._dict_to_environment_config(profile_config)
+                        env_config = self._dict_to_environment_config(
+                            profile_config
+                        )
                         self._environment_configs[profile_name] = env_config
-                        logger.info(f"Loaded custom training profile: {profile_name}")
+                        logger.info(
+                            f"Loaded custom training profile: {profile_name}"
+                        )
                     except Exception as e:
                         logger.error(
                             f"Failed to load training profile {profile_name}: {e}"
@@ -364,10 +377,14 @@ class TrainingConfigManager:
 
             # Set default profile if specified
             if "default_profile" in config_data:
-                self._current_profile = TrainingProfile(config_data["default_profile"])
+                self._current_profile = TrainingProfile(
+                    config_data["default_profile"]
+                )
 
         except Exception as e:
-            logger.error(f"Failed to load training config from {self.config_path}: {e}")
+            logger.error(
+                f"Failed to load training config from {self.config_path}: {e}"
+            )
 
     def _dict_to_environment_config(
         self, config_dict: Dict[str, Any]
@@ -388,7 +405,9 @@ class TrainingConfigManager:
             opt_config = config_dict["optimization_config"]
             if "level" in opt_config:
                 opt_config["level"] = OptimizationLevel(opt_config["level"])
-            config_dict["optimization_config"] = OptimizationConfig(**opt_config)
+            config_dict["optimization_config"] = OptimizationConfig(
+                **opt_config
+            )
 
         if "profile" in config_dict:
             config_dict["profile"] = TrainingProfile(config_dict["profile"])
@@ -420,7 +439,9 @@ class TrainingConfigManager:
             logger.warning(
                 f"Profile {profile.value} not found, using production defaults"
             )
-            env_config = self._environment_configs[TrainingProfile.PRODUCTION.value]
+            env_config = self._environment_configs[
+                TrainingProfile.PRODUCTION.value
+            ]
 
         # Convert environment config to training config
         training_config = TrainingConfig(
@@ -518,7 +539,9 @@ class TrainingConfigManager:
         env_config = self.get_environment_config(profile)
         return env_config.optimization_config
 
-    def update_profile_config(self, profile: TrainingProfile, **config_updates):
+    def update_profile_config(
+        self, profile: TrainingProfile, **config_updates
+    ):
         """Update configuration for a specific profile."""
         if profile.value not in self._environment_configs:
             raise ValueError(f"Profile {profile.value} not found")
@@ -558,9 +581,9 @@ class TrainingConfigManager:
                     "optimization_config" in profile_dict
                     and "level" in profile_dict["optimization_config"]
                 ):
-                    profile_dict["optimization_config"]["level"] = profile_dict[
-                        "optimization_config"
-                    ]["level"].value
+                    profile_dict["optimization_config"]["level"] = (
+                        profile_dict["optimization_config"]["level"].value
+                    )
 
                 # Convert Path objects to strings
                 if (
@@ -643,7 +666,9 @@ def get_training_config_manager() -> TrainingConfigManager:
     return _global_config_manager
 
 
-def get_training_config(profile: Optional[TrainingProfile] = None) -> TrainingConfig:
+def get_training_config(
+    profile: Optional[TrainingProfile] = None,
+) -> TrainingConfig:
     """Convenience function to get training configuration."""
     config_manager = get_training_config_manager()
     return config_manager.get_training_config(profile)

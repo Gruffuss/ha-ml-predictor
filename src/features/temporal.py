@@ -77,7 +77,9 @@ class TemporalFeatureExtractor:
             features.update(
                 self._extract_time_since_features(sorted_events, target_time)
             )
-            features.update(self._extract_duration_features(sorted_events, target_time))
+            features.update(
+                self._extract_duration_features(sorted_events, target_time)
+            )
             features.update(self._extract_cyclical_features(target_time))
             features.update(
                 self._extract_historical_patterns(sorted_events, target_time)
@@ -85,7 +87,9 @@ class TemporalFeatureExtractor:
 
             # State transition timing features
             features.update(
-                self._extract_transition_timing_features(sorted_events, target_time)
+                self._extract_transition_timing_features(
+                    sorted_events, target_time
+                )
             )
 
             # Room state duration features if available
@@ -98,7 +102,9 @@ class TemporalFeatureExtractor:
 
         except Exception as e:
             logger.error(f"Failed to extract temporal features: {e}")
-            raise FeatureExtractionError(f"Temporal feature extraction failed: {e}")
+            raise FeatureExtractionError(
+                f"Temporal feature extraction failed: {e}"
+            )
 
     def _extract_time_since_features(
         self, events: List[SensorEvent], target_time: datetime
@@ -110,7 +116,7 @@ class TemporalFeatureExtractor:
             return {
                 "time_since_last_event": 3600.0,  # Default 1 hour
                 "time_since_last_on": 3600.0,
-                "time_since_last_off": 3600.0,
+                "time_since_last_of": 3600.0,
                 "time_since_last_motion": 3600.0,
             }
 
@@ -129,10 +135,13 @@ class TemporalFeatureExtractor:
         for event in reversed(events):
             if event.state == "on" and last_on_time is None:
                 last_on_time = event.timestamp
-            elif event.state == "off" and last_off_time is None:
+            elif event.state == "of" and last_off_time is None:
                 last_off_time = event.timestamp
 
-            if event.sensor_type in ["motion", "presence"] and last_motion_time is None:
+            if (
+                event.sensor_type in ["motion", "presence"]
+                and last_motion_time is None
+            ):
                 last_motion_time = event.timestamp
 
             # Stop if we have all we need
@@ -141,10 +150,14 @@ class TemporalFeatureExtractor:
 
         # Calculate time since features
         features["time_since_last_on"] = (
-            (target_time - last_on_time).total_seconds() if last_on_time else 3600.0
+            (target_time - last_on_time).total_seconds()
+            if last_on_time
+            else 3600.0
         )
-        features["time_since_last_off"] = (
-            (target_time - last_off_time).total_seconds() if last_off_time else 3600.0
+        features["time_since_last_of"] = (
+            (target_time - last_off_time).total_seconds()
+            if last_off_time
+            else 3600.0
         )
         features["time_since_last_motion"] = (
             (target_time - last_motion_time).total_seconds()
@@ -155,7 +168,7 @@ class TemporalFeatureExtractor:
         # Cap all values at 24 hours
         for key in [
             "time_since_last_on",
-            "time_since_last_off",
+            "time_since_last_of",
             "time_since_last_motion",
         ]:
             features[key] = min(features[key], 86400.0)
@@ -193,10 +206,12 @@ class TemporalFeatureExtractor:
             if current_state != event.state:
                 # State change detected
                 if current_state is not None and state_start_time is not None:
-                    duration = (event.timestamp - state_start_time).total_seconds()
+                    duration = (
+                        event.timestamp - state_start_time
+                    ).total_seconds()
                     if current_state == "on":
                         on_durations.append(duration)
-                    elif current_state == "off":
+                    elif current_state == "of":
                         off_durations.append(duration)
 
                 current_state = event.state
@@ -209,12 +224,18 @@ class TemporalFeatureExtractor:
         features["avg_off_duration"] = (
             statistics.mean(off_durations) if off_durations else 1800.0
         )
-        features["max_on_duration"] = max(on_durations) if on_durations else 3600.0
-        features["max_off_duration"] = max(off_durations) if off_durations else 3600.0
+        features["max_on_duration"] = (
+            max(on_durations) if on_durations else 3600.0
+        )
+        features["max_off_duration"] = (
+            max(off_durations) if off_durations else 3600.0
+        )
 
         return features
 
-    def _extract_cyclical_features(self, target_time: datetime) -> Dict[str, float]:
+    def _extract_cyclical_features(
+        self, target_time: datetime
+    ) -> Dict[str, float]:
         """Extract cyclical time encodings using sin/cos transformations."""
         # Adjust for timezone
         local_time = target_time + timedelta(hours=self.timezone_offset)
@@ -268,7 +289,9 @@ class TemporalFeatureExtractor:
         daily_patterns = defaultdict(list)
 
         for event in events:
-            event_local = event.timestamp + timedelta(hours=self.timezone_offset)
+            event_local = event.timestamp + timedelta(
+                hours=self.timezone_offset
+            )
             event_hour = event_local.hour
             event_day = event_local.weekday()
 
@@ -326,7 +349,9 @@ class TemporalFeatureExtractor:
         # Calculate intervals between consecutive events
         intervals = []
         for i in range(1, len(events)):
-            interval = (events[i].timestamp - events[i - 1].timestamp).total_seconds()
+            interval = (
+                events[i].timestamp - events[i - 1].timestamp
+            ).total_seconds()
             intervals.append(interval)
 
         # Average transition interval
@@ -387,10 +412,14 @@ class TemporalFeatureExtractor:
 
         # Recent occupancy ratio (last 24 hours)
         recent_cutoff = target_time - timedelta(hours=24)
-        recent_states = [s for s in sorted_states if s.timestamp >= recent_cutoff]
+        recent_states = [
+            s for s in sorted_states if s.timestamp >= recent_cutoff
+        ]
         if recent_states:
             occupied_count = sum(1 for s in recent_states if s.is_occupied)
-            features["recent_occupancy_ratio"] = occupied_count / len(recent_states)
+            features["recent_occupancy_ratio"] = occupied_count / len(
+                recent_states
+            )
         else:
             features["recent_occupancy_ratio"] = 0.5
 
@@ -415,7 +444,7 @@ class TemporalFeatureExtractor:
         return {
             "time_since_last_event": 3600.0,
             "time_since_last_on": 3600.0,
-            "time_since_last_off": 3600.0,
+            "time_since_last_of": 3600.0,
             "time_since_last_motion": 3600.0,
             "current_state_duration": 0.0,
             "avg_on_duration": 1800.0,
@@ -471,7 +500,9 @@ class TemporalFeatureExtractor:
         results = []
 
         for i, (events, target_time) in enumerate(event_batches):
-            room_states = room_states_batches[i] if room_states_batches else None
+            room_states = (
+                room_states_batches[i] if room_states_batches else None
+            )
             features = self.extract_features(events, target_time, room_states)
             results.append(features)
 

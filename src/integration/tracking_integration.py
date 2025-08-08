@@ -80,7 +80,9 @@ class TrackingIntegrationManager:
         self.system_config = get_config()
 
         # Enhanced MQTT integration
-        self.enhanced_mqtt_manager: Optional[EnhancedMQTTIntegrationManager] = None
+        self.enhanced_mqtt_manager: Optional[
+            EnhancedMQTTIntegrationManager
+        ] = None
 
         # Integration state
         self._integration_active = False
@@ -93,7 +95,9 @@ class TrackingIntegrationManager:
         """Initialize the tracking integration with real-time publishing."""
         try:
             if not self.integration_config.enable_realtime_publishing:
-                logger.info("Real-time publishing disabled, skipping integration")
+                logger.info(
+                    "Real-time publishing disabled, skipping integration"
+                )
                 return
 
             # Determine enabled channels
@@ -129,7 +133,9 @@ class TrackingIntegrationManager:
 
         except Exception as e:
             logger.error(f"Failed to initialize tracking integration: {e}")
-            raise TrackingIntegrationError("Failed to initialize integration", cause=e)
+            raise TrackingIntegrationError(
+                "Failed to initialize integration", cause=e
+            )
 
     async def shutdown(self) -> None:
         """Shutdown the tracking integration."""
@@ -141,7 +147,9 @@ class TrackingIntegrationManager:
             if self._background_tasks:
                 for task in self._background_tasks:
                     task.cancel()
-                await asyncio.gather(*self._background_tasks, return_exceptions=True)
+                await asyncio.gather(
+                    *self._background_tasks, return_exceptions=True
+                )
 
             # Shutdown enhanced MQTT manager
             if self.enhanced_mqtt_manager:
@@ -177,7 +185,9 @@ class TrackingIntegrationManager:
                 },
                 "tracking_manager_stats": {},
                 "enhanced_mqtt_stats": {},
-                "performance": {"background_tasks": len(self._background_tasks)},
+                "performance": {
+                    "background_tasks": len(self._background_tasks)
+                },
             }
 
             # Get tracking manager stats
@@ -217,7 +227,9 @@ class TrackingIntegrationManager:
         """Integrate enhanced MQTT manager with tracking manager."""
         try:
             # Replace the MQTT integration manager in tracking manager
-            self.tracking_manager.mqtt_integration_manager = self.enhanced_mqtt_manager
+            self.tracking_manager.mqtt_integration_manager = (
+                self.enhanced_mqtt_manager
+            )
 
             # Add integration callbacks for alerts and drift events
             if self.integration_config.broadcast_alerts:
@@ -235,15 +247,24 @@ class TrackingIntegrationManager:
         """Start background integration tasks."""
         try:
             # System status broadcasting task
-            if self.integration_config.publish_system_status_interval_seconds > 0:
-                status_task = asyncio.create_task(self._system_status_broadcast_loop())
+            if (
+                self.integration_config.publish_system_status_interval_seconds
+                > 0
+            ):
+                status_task = asyncio.create_task(
+                    self._system_status_broadcast_loop()
+                )
                 self._background_tasks.append(status_task)
 
             # Connection monitoring task
-            monitor_task = asyncio.create_task(self._connection_monitoring_loop())
+            monitor_task = asyncio.create_task(
+                self._connection_monitoring_loop()
+            )
             self._background_tasks.append(monitor_task)
 
-            logger.info(f"Started {len(self._background_tasks)} integration tasks")
+            logger.info(
+                f"Started {len(self._background_tasks)} integration tasks"
+            )
 
         except Exception as e:
             logger.error(f"Failed to start integration tasks: {e}")
@@ -255,7 +276,9 @@ class TrackingIntegrationManager:
             while not self._shutdown_event.is_set():
                 try:
                     # Get comprehensive system status
-                    tracking_status = await self.tracking_manager.get_tracking_status()
+                    tracking_status = (
+                        await self.tracking_manager.get_tracking_status()
+                    )
 
                     # Publish status via enhanced MQTT manager
                     if self.enhanced_mqtt_manager:
@@ -333,7 +356,8 @@ class TrackingIntegrationManager:
 
                     # Wait for next monitoring cycle
                     await asyncio.wait_for(
-                        self._shutdown_event.wait(), timeout=60  # Monitor every minute
+                        self._shutdown_event.wait(),
+                        timeout=60,  # Monitor every minute
                     )
 
                 except asyncio.TimeoutError:
@@ -367,7 +391,9 @@ class TrackingIntegrationManager:
 
             # Broadcast alert (fire and forget)
             asyncio.create_task(
-                self.enhanced_mqtt_manager.publish_system_status({"alert": alert_data})
+                self.enhanced_mqtt_manager.publish_system_status(
+                    {"alert": alert_data}
+                )
             )
 
         except Exception as e:
@@ -394,12 +420,15 @@ async def integrate_tracking_with_realtime_publishing(
     """
     try:
         integration_manager = TrackingIntegrationManager(
-            tracking_manager=tracking_manager, integration_config=integration_config
+            tracking_manager=tracking_manager,
+            integration_config=integration_config,
         )
 
         await integration_manager.initialize()
 
-        logger.info("TrackingManager successfully integrated with real-time publishing")
+        logger.info(
+            "TrackingManager successfully integrated with real-time publishing"
+        )
         return integration_manager
 
     except Exception as e:
@@ -442,11 +471,16 @@ async def create_integrated_tracking_manager(
         await tracking_manager.initialize()
 
         # Create and initialize integration
-        integration_manager = await integrate_tracking_with_realtime_publishing(
-            tracking_manager=tracking_manager, integration_config=integration_config
+        integration_manager = (
+            await integrate_tracking_with_realtime_publishing(
+                tracking_manager=tracking_manager,
+                integration_config=integration_config,
+            )
         )
 
-        logger.info("Created integrated TrackingManager with real-time publishing")
+        logger.info(
+            "Created integrated TrackingManager with real-time publishing"
+        )
         return tracking_manager, integration_manager
 
     except Exception as e:

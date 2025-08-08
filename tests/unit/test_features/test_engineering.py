@@ -7,7 +7,6 @@ feature integration, error handling, and performance management.
 
 import asyncio
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -44,7 +43,9 @@ class TestFeatureEngineeringEngine:
     @pytest.fixture
     def engine_sequential(self, mock_config):
         """Create engine with sequential processing."""
-        return FeatureEngineeringEngine(config=mock_config, enable_parallel=False)
+        return FeatureEngineeringEngine(
+            config=mock_config, enable_parallel=False
+        )
 
     @pytest.fixture
     def sample_events(self) -> List[SensorEvent]:
@@ -56,7 +57,7 @@ class TestFeatureEngineeringEngine:
             event = Mock(spec=SensorEvent)
             event.timestamp = base_time + timedelta(minutes=i * 5)
             event.room_id = "living_room"
-            event.state = "on" if i % 2 == 0 else "off"
+            event.state = "on" if i % 2 == 0 else "of"
             event.sensor_type = "motion"
             event.sensor_id = f"sensor.motion_{i}"
             events.append(event)
@@ -89,13 +90,17 @@ class TestFeatureEngineeringEngine:
         self, engine, sample_events, sample_room_states, target_time
     ):
         """Test parallel feature extraction."""
-        with patch.object(
-            engine.temporal_extractor, "extract_features"
-        ) as mock_temporal, patch.object(
-            engine.sequential_extractor, "extract_features"
-        ) as mock_sequential, patch.object(
-            engine.contextual_extractor, "extract_features"
-        ) as mock_contextual:
+        with (
+            patch.object(
+                engine.temporal_extractor, "extract_features"
+            ) as mock_temporal,
+            patch.object(
+                engine.sequential_extractor, "extract_features"
+            ) as mock_sequential,
+            patch.object(
+                engine.contextual_extractor, "extract_features"
+            ) as mock_contextual,
+        ):
 
             # Mock extractor responses
             mock_temporal.return_value = {
@@ -135,13 +140,17 @@ class TestFeatureEngineeringEngine:
         self, engine_sequential, sample_events, sample_room_states, target_time
     ):
         """Test sequential feature extraction."""
-        with patch.object(
-            engine_sequential.temporal_extractor, "extract_features"
-        ) as mock_temporal, patch.object(
-            engine_sequential.sequential_extractor, "extract_features"
-        ) as mock_sequential, patch.object(
-            engine_sequential.contextual_extractor, "extract_features"
-        ) as mock_contextual:
+        with (
+            patch.object(
+                engine_sequential.temporal_extractor, "extract_features"
+            ) as mock_temporal,
+            patch.object(
+                engine_sequential.sequential_extractor, "extract_features"
+            ) as mock_sequential,
+            patch.object(
+                engine_sequential.contextual_extractor, "extract_features"
+            ) as mock_contextual,
+        ):
 
             # Mock extractor responses
             mock_temporal.return_value = {"temporal_feature_1": 1.0}
@@ -170,13 +179,17 @@ class TestFeatureEngineeringEngine:
         self, engine, sample_events, sample_room_states, target_time
     ):
         """Test extraction with specific feature types only."""
-        with patch.object(
-            engine.temporal_extractor, "extract_features"
-        ) as mock_temporal, patch.object(
-            engine.sequential_extractor, "extract_features"
-        ) as mock_sequential, patch.object(
-            engine.contextual_extractor, "extract_features"
-        ) as mock_contextual:
+        with (
+            patch.object(
+                engine.temporal_extractor, "extract_features"
+            ) as mock_temporal,
+            patch.object(
+                engine.sequential_extractor, "extract_features"
+            ) as mock_sequential,
+            patch.object(
+                engine.contextual_extractor, "extract_features"
+            ) as mock_contextual,
+        ):
 
             mock_temporal.return_value = {"temporal_feature": 1.0}
 
@@ -195,8 +208,18 @@ class TestFeatureEngineeringEngine:
             mock_contextual.assert_not_called()
 
             assert "temporal_temporal_feature" in features
-            assert len([k for k in features.keys() if k.startswith("sequential_")]) == 0
-            assert len([k for k in features.keys() if k.startswith("contextual_")]) == 0
+            assert (
+                len(
+                    [k for k in features.keys() if k.startswith("sequential_")]
+                )
+                == 0
+            )
+            assert (
+                len(
+                    [k for k in features.keys() if k.startswith("contextual_")]
+                )
+                == 0
+            )
 
     @pytest.mark.asyncio
     async def test_extract_batch_features(self, engine):
@@ -253,7 +276,9 @@ class TestFeatureEngineeringEngine:
         """Test error handling with invalid room ID."""
         target_time = datetime(2024, 1, 15, 15, 0, 0)
 
-        with pytest.raises(FeatureExtractionError, match="Room ID is required"):
+        with pytest.raises(
+            FeatureExtractionError, match="Room ID is required"
+        ):
             await engine.extract_features(
                 room_id="", target_time=target_time  # Empty room ID
             )
@@ -295,13 +320,17 @@ class TestFeatureEngineeringEngine:
 
     def test_get_feature_names(self, engine):
         """Test feature names retrieval."""
-        with patch.object(
-            engine.temporal_extractor, "get_feature_names"
-        ) as mock_temporal, patch.object(
-            engine.sequential_extractor, "get_feature_names"
-        ) as mock_sequential, patch.object(
-            engine.contextual_extractor, "get_feature_names"
-        ) as mock_contextual:
+        with (
+            patch.object(
+                engine.temporal_extractor, "get_feature_names"
+            ) as mock_temporal,
+            patch.object(
+                engine.sequential_extractor, "get_feature_names"
+            ) as mock_sequential,
+            patch.object(
+                engine.contextual_extractor, "get_feature_names"
+            ) as mock_contextual,
+        ):
 
             mock_temporal.return_value = ["temp_feature_1", "temp_feature_2"]
             mock_sequential.return_value = ["seq_feature_1"]
@@ -335,7 +364,11 @@ class TestFeatureEngineeringEngine:
         ]
 
         with patch.object(engine, "get_feature_names") as mock_get_names:
-            mock_get_names.return_value = ["feature_1", "feature_2", "feature_3"]
+            mock_get_names.return_value = [
+                "feature_1",
+                "feature_2",
+                "feature_3",
+            ]
 
             df = engine.create_feature_dataframe(feature_dicts)
 
@@ -370,13 +403,17 @@ class TestFeatureEngineeringEngine:
 
     def test_clear_caches(self, engine):
         """Test cache clearing."""
-        with patch.object(
-            engine.temporal_extractor, "clear_cache"
-        ) as mock_temp_clear, patch.object(
-            engine.sequential_extractor, "clear_cache"
-        ) as mock_seq_clear, patch.object(
-            engine.contextual_extractor, "clear_cache"
-        ) as mock_context_clear:
+        with (
+            patch.object(
+                engine.temporal_extractor, "clear_cache"
+            ) as mock_temp_clear,
+            patch.object(
+                engine.sequential_extractor, "clear_cache"
+            ) as mock_seq_clear,
+            patch.object(
+                engine.contextual_extractor, "clear_cache"
+            ) as mock_context_clear,
+        ):
 
             engine.clear_caches()
 
@@ -412,7 +449,9 @@ class TestFeatureEngineeringEngine:
         assert len(defaults) > 50  # Should have many default features
 
         # Should have prefixed features from all extractors
-        temporal_features = [k for k in defaults.keys() if k.startswith("temporal_")]
+        temporal_features = [
+            k for k in defaults.keys() if k.startswith("temporal_")
+        ]
         sequential_features = [
             k for k in defaults.keys() if k.startswith("sequential_")
         ]
@@ -439,13 +478,17 @@ class TestFeatureEngineeringEngine:
             config=mock_config, enable_parallel=False
         )
 
-        with patch.object(
-            TemporalFeatureExtractor, "extract_features"
-        ) as mock_temporal, patch.object(
-            SequentialFeatureExtractor, "extract_features"
-        ) as mock_sequential, patch.object(
-            ContextualFeatureExtractor, "extract_features"
-        ) as mock_contextual:
+        with (
+            patch.object(
+                TemporalFeatureExtractor, "extract_features"
+            ) as mock_temporal,
+            patch.object(
+                SequentialFeatureExtractor, "extract_features"
+            ) as mock_sequential,
+            patch.object(
+                ContextualFeatureExtractor, "extract_features"
+            ) as mock_contextual,
+        ):
 
             # Mock consistent responses
             mock_temporal.return_value = {"temp_1": 1.0, "temp_2": 2.0}
@@ -468,7 +511,9 @@ class TestFeatureEngineeringEngine:
 
             # Results should be identical (excluding potentially different metadata timestamps)
             parallel_clean = {
-                k: v for k, v in parallel_features.items() if not k.startswith("meta_")
+                k: v
+                for k, v in parallel_features.items()
+                if not k.startswith("meta_")
             }
             sequential_clean = {
                 k: v
@@ -494,18 +539,22 @@ class TestFeatureEngineeringEngine:
             room_states = [Mock(spec=RoomState) for _ in range(5)]
 
             # Mock extractors to return consistent results
-            with patch.object(
-                engine.temporal_extractor,
-                "extract_features",
-                return_value={"temp": 1.0},
-            ), patch.object(
-                engine.sequential_extractor,
-                "extract_features",
-                return_value={"seq": 2.0},
-            ), patch.object(
-                engine.contextual_extractor,
-                "extract_features",
-                return_value={"context": 3.0},
+            with (
+                patch.object(
+                    engine.temporal_extractor,
+                    "extract_features",
+                    return_value={"temp": 1.0},
+                ),
+                patch.object(
+                    engine.sequential_extractor,
+                    "extract_features",
+                    return_value={"seq": 2.0},
+                ),
+                patch.object(
+                    engine.contextual_extractor,
+                    "extract_features",
+                    return_value={"context": 3.0},
+                ),
             ):
 
                 await engine.extract_features(
@@ -529,18 +578,22 @@ class TestFeatureEngineeringEngine:
             events = [Mock(spec=SensorEvent) for _ in range(5)]
             room_states = [Mock(spec=RoomState) for _ in range(2)]
 
-            with patch.object(
-                engine.temporal_extractor,
-                "extract_features",
-                return_value={"temp": 1.0},
-            ), patch.object(
-                engine.sequential_extractor,
-                "extract_features",
-                return_value={"seq": 2.0},
-            ), patch.object(
-                engine.contextual_extractor,
-                "extract_features",
-                return_value={"context": 3.0},
+            with (
+                patch.object(
+                    engine.temporal_extractor,
+                    "extract_features",
+                    return_value={"temp": 1.0},
+                ),
+                patch.object(
+                    engine.sequential_extractor,
+                    "extract_features",
+                    return_value={"seq": 2.0},
+                ),
+                patch.object(
+                    engine.contextual_extractor,
+                    "extract_features",
+                    return_value={"context": 3.0},
+                ),
             ):
 
                 return await engine.extract_features(
@@ -565,13 +618,17 @@ class TestFeatureEngineeringEngine:
         self, engine, sample_events, target_time
     ):
         """Test handling when some extractors fail in parallel processing."""
-        with patch.object(
-            engine.temporal_extractor, "extract_features"
-        ) as mock_temporal, patch.object(
-            engine.sequential_extractor, "extract_features"
-        ) as mock_sequential, patch.object(
-            engine.contextual_extractor, "extract_features"
-        ) as mock_contextual:
+        with (
+            patch.object(
+                engine.temporal_extractor, "extract_features"
+            ) as mock_temporal,
+            patch.object(
+                engine.sequential_extractor, "extract_features"
+            ) as mock_sequential,
+            patch.object(
+                engine.contextual_extractor, "extract_features"
+            ) as mock_contextual,
+        ):
 
             # Temporal succeeds, sequential fails, contextual succeeds
             mock_temporal.return_value = {"temp_feature": 1.0}
@@ -624,7 +681,9 @@ class TestFeatureEngineeringEngine:
         target_time = datetime(2024, 1, 15, 15, 0, 0)
 
         # Mock extractors to return large feature sets
-        large_temporal = {f"temporal_feature_{i}": float(i) for i in range(100)}
+        large_temporal = {
+            f"temporal_feature_{i}": float(i) for i in range(100)
+        }
         large_sequential = {
             f"sequential_feature_{i}": float(i + 100) for i in range(50)
         }
@@ -632,16 +691,22 @@ class TestFeatureEngineeringEngine:
             f"contextual_feature_{i}": float(i + 200) for i in range(75)
         }
 
-        with patch.object(
-            engine.temporal_extractor, "extract_features", return_value=large_temporal
-        ), patch.object(
-            engine.sequential_extractor,
-            "extract_features",
-            return_value=large_sequential,
-        ), patch.object(
-            engine.contextual_extractor,
-            "extract_features",
-            return_value=large_contextual,
+        with (
+            patch.object(
+                engine.temporal_extractor,
+                "extract_features",
+                return_value=large_temporal,
+            ),
+            patch.object(
+                engine.sequential_extractor,
+                "extract_features",
+                return_value=large_sequential,
+            ),
+            patch.object(
+                engine.contextual_extractor,
+                "extract_features",
+                return_value=large_contextual,
+            ),
         ):
 
             features = await engine.extract_features(
@@ -653,13 +718,25 @@ class TestFeatureEngineeringEngine:
 
             # Should handle large feature sets
             temporal_count = len(
-                [k for k in features.keys() if k.startswith("temporal_temporal_")]
+                [
+                    k
+                    for k in features.keys()
+                    if k.startswith("temporal_temporal_")
+                ]
             )
             sequential_count = len(
-                [k for k in features.keys() if k.startswith("sequential_sequential_")]
+                [
+                    k
+                    for k in features.keys()
+                    if k.startswith("sequential_sequential_")
+                ]
             )
             contextual_count = len(
-                [k for k in features.keys() if k.startswith("contextual_contextual_")]
+                [
+                    k
+                    for k in features.keys()
+                    if k.startswith("contextual_contextual_")
+                ]
             )
 
             assert temporal_count == 100
@@ -691,18 +768,22 @@ class TestFeatureEngineeringEngine:
             time.sleep(0.01)  # 10ms delay
             return {"feature": 1.0}
 
-        with patch.object(
-            engine.temporal_extractor,
-            "extract_features",
-            side_effect=mock_extraction_with_delay,
-        ), patch.object(
-            engine.sequential_extractor,
-            "extract_features",
-            side_effect=mock_extraction_with_delay,
-        ), patch.object(
-            engine.contextual_extractor,
-            "extract_features",
-            side_effect=mock_extraction_with_delay,
+        with (
+            patch.object(
+                engine.temporal_extractor,
+                "extract_features",
+                side_effect=mock_extraction_with_delay,
+            ),
+            patch.object(
+                engine.sequential_extractor,
+                "extract_features",
+                side_effect=mock_extraction_with_delay,
+            ),
+            patch.object(
+                engine.contextual_extractor,
+                "extract_features",
+                side_effect=mock_extraction_with_delay,
+            ),
         ):
 
             start_time = time.time()
@@ -722,7 +803,9 @@ class TestFeatureEngineeringEngine:
                 assert extraction_time < 0.05  # Allow some overhead
             else:
                 # Should take roughly 30ms (sequential execution)
-                assert extraction_time > 0.025  # Should be slower than parallel
+                assert (
+                    extraction_time > 0.025
+                )  # Should be slower than parallel
 
             # Results should be valid regardless of processing mode
             assert isinstance(features, dict)

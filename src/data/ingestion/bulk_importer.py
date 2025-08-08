@@ -13,7 +13,6 @@ import logging
 from pathlib import Path
 import pickle
 import traceback
-from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
@@ -190,14 +189,18 @@ class BulkImporter:
 
         # Update progress tracking
         self.progress.total_entities = len(entity_ids)
-        self.progress.current_date_range = f"{start_date.date()} to {end_date.date()}"
+        self.progress.current_date_range = (
+            f"{start_date.date()} to {end_date.date()}"
+        )
 
         try:
             # Estimate total events for progress tracking
             await self._estimate_total_events(entity_ids, start_date, end_date)
 
             # Process entities in batches
-            await self._process_entities_batch(entity_ids, start_date, end_date)
+            await self._process_entities_batch(
+                entity_ids, start_date, end_date
+            )
 
             # Generate final report
             await self._generate_import_report()
@@ -333,10 +336,14 @@ class BulkImporter:
         for i in range(
             0, len(remaining_entities), self.import_config.entity_batch_size
         ):
-            batch = remaining_entities[i : i + self.import_config.entity_batch_size]
+            batch = remaining_entities[
+                i : i + self.import_config.entity_batch_size
+            ]
 
             # Limit concurrency
-            semaphore = asyncio.Semaphore(self.import_config.max_concurrent_entities)
+            semaphore = asyncio.Semaphore(
+                self.import_config.max_concurrent_entities
+            )
 
             # Process batch concurrently
             tasks = [
@@ -376,7 +383,8 @@ class BulkImporter:
 
             while current_date < end_date:
                 chunk_end = min(
-                    current_date + timedelta(days=self.import_config.chunk_days),
+                    current_date
+                    + timedelta(days=self.import_config.chunk_days),
                     end_date,
                 )
 
@@ -396,9 +404,7 @@ class BulkImporter:
                         self.progress.processed_events += processed_count
 
                 except Exception as e:
-                    error_msg = (
-                        f"Error processing {entity_id} chunk {current_date.date()}: {e}"
-                    )
+                    error_msg = f"Error processing {entity_id} chunk {current_date.date()}: {e}"
                     logger.error(error_msg)
                     self.progress.errors.append(error_msg)
                     self.stats["api_errors"] += 1
@@ -412,7 +418,9 @@ class BulkImporter:
             self._completed_entities.add(entity_id)
             self.stats["entities_processed"] += 1
 
-            logger.info(f"Completed entity {entity_id}: {entity_events} events")
+            logger.info(
+                f"Completed entity {entity_id}: {entity_events} events"
+            )
 
         except Exception as e:
             error_msg = f"Failed to process entity {entity_id}: {e}"
@@ -442,25 +450,29 @@ class BulkImporter:
 
             # Process events through event processor
             if self.import_config.validate_events:
-                processed_events = await self.event_processor.process_event_batch(
-                    ha_events
+                processed_events = (
+                    await self.event_processor.process_event_batch(ha_events)
                 )
             else:
                 # Skip validation for faster processing
-                processed_events = await self._convert_ha_events_to_sensor_events(
-                    ha_events
+                processed_events = (
+                    await self._convert_ha_events_to_sensor_events(ha_events)
                 )
 
             # Bulk insert to database
             if processed_events:
-                inserted_count = await self._bulk_insert_events(processed_events)
+                inserted_count = await self._bulk_insert_events(
+                    processed_events
+                )
                 self.stats["events_imported"] += inserted_count
                 return inserted_count
 
             return 0
 
         except Exception as e:
-            logger.error(f"Error processing history chunk for {entity_id}: {e}")
+            logger.error(
+                f"Error processing history chunk for {entity_id}: {e}"
+            )
             self.stats["database_errors"] += 1
             return 0
 
@@ -469,11 +481,15 @@ class BulkImporter:
     ) -> Optional[HAEvent]:
         """Convert Home Assistant history record to HAEvent."""
         try:
-            timestamp_str = record.get("last_changed", record.get("last_updated", ""))
+            timestamp_str = record.get(
+                "last_changed", record.get("last_updated", "")
+            )
             if not timestamp_str:
                 return None
 
-            timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+            timestamp = datetime.fromisoformat(
+                timestamp_str.replace("Z", "+00:00")
+            )
 
             return HAEvent(
                 entity_id=record.get("entity_id", ""),
@@ -497,7 +513,9 @@ class BulkImporter:
             if not room_config:
                 continue
 
-            sensor_type = self._determine_sensor_type(ha_event.entity_id, room_config)
+            sensor_type = self._determine_sensor_type(
+                ha_event.entity_id, room_config
+            )
 
             sensor_event = SensorEvent(
                 room_id=room_config.room_id,
@@ -587,7 +605,9 @@ class BulkImporter:
 
         if self.import_config.progress_callback:
             try:
-                if asyncio.iscoroutinefunction(self.import_config.progress_callback):
+                if asyncio.iscoroutinefunction(
+                    self.import_config.progress_callback
+                ):
                     await self.import_config.progress_callback(self.progress)
                 else:
                     self.import_config.progress_callback(self.progress)
@@ -630,7 +650,8 @@ class BulkImporter:
                 )
                 * 100,
                 "error_rate": (
-                    len(self.progress.errors) / max(self.progress.processed_events, 1)
+                    len(self.progress.errors)
+                    / max(self.progress.processed_events, 1)
                 )
                 * 100,
             },
@@ -651,10 +672,16 @@ class BulkImporter:
 
     def get_import_stats(self) -> Dict[str, Any]:
         """Get current import statistics."""
-        return {"progress": self.progress.to_dict(), "stats": self.stats.copy()}
+        return {
+            "progress": self.progress.to_dict(),
+            "stats": self.stats.copy(),
+        }
 
     async def validate_data_sufficiency(
-        self, room_id: str, minimum_days: int = 30, minimum_events_per_day: int = 10
+        self,
+        room_id: str,
+        minimum_days: int = 30,
+        minimum_events_per_day: int = 10,
     ) -> Dict[str, Any]:
         """
         Validate that imported data is sufficient for model training.
@@ -672,11 +699,11 @@ class BulkImporter:
                 # Count events by day for the room
                 query = text(
                     """
-                    SELECT 
+                    SELECT
                         DATE(timestamp) as event_date,
                         COUNT(*) as event_count
-                    FROM sensor_events 
-                    WHERE room_id = :room_id 
+                    FROM sensor_events
+                    WHERE room_id =:room_id
                         AND timestamp >= NOW() - INTERVAL '90 days'
                     GROUP BY DATE(timestamp)
                     ORDER BY event_date DESC
@@ -700,7 +727,9 @@ class BulkImporter:
                 )
 
                 sufficient_days = total_days >= minimum_days
-                sufficient_events = avg_events_per_day >= minimum_events_per_day
+                sufficient_events = (
+                    avg_events_per_day >= minimum_events_per_day
+                )
 
                 return {
                     "sufficient": sufficient_days and sufficient_events,
@@ -737,7 +766,9 @@ class BulkImporter:
         if sufficient_days and sufficient_events:
             return "Data is sufficient for model training"
         elif not sufficient_days:
-            return f"Need more historical data (only {total_days} days available)"
+            return (
+                f"Need more historical data (only {total_days} days available)"
+            )
         elif not sufficient_events:
             return f"Low event frequency ({avg_events_per_day:.1f} events/day), check sensor configuration"
         else:

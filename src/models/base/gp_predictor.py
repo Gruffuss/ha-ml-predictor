@@ -27,7 +27,9 @@ try:
     from sklearn.gaussian_process.kernels import PeriodicKernel
 except ImportError:
     try:
-        from sklearn.gaussian_process.kernels import ExpSineSquared as PeriodicKernel
+        from sklearn.gaussian_process.kernels import (
+            ExpSineSquared as PeriodicKernel,
+        )
     except ImportError:
         # Create a placeholder class if neither is available
         class PeriodicKernel:
@@ -71,13 +73,17 @@ class GaussianProcessPredictor(BasePredictor):
         super().__init__(ModelType.GAUSSIAN_PROCESS, room_id)
 
         # Default GP parameters
-        default_params = DEFAULT_MODEL_PARAMS[ModelType.GAUSSIAN_PROCESS].copy()
+        default_params = DEFAULT_MODEL_PARAMS[
+            ModelType.GAUSSIAN_PROCESS
+        ].copy()
         default_params.update(kwargs)
 
         self.model_params = {
             "kernel_type": default_params.get("kernel", "composite"),
             "alpha": default_params.get("alpha", 1e-6),
-            "n_restarts_optimizer": default_params.get("n_restarts_optimizer", 3),
+            "n_restarts_optimizer": default_params.get(
+                "n_restarts_optimizer", 3
+            ),
             "normalize_y": default_params.get("normalize_y", True),
             "copy_X_train": default_params.get("copy_X_train", True),
             "random_state": default_params.get("random_state", 42),
@@ -85,8 +91,12 @@ class GaussianProcessPredictor(BasePredictor):
             "confidence_intervals": default_params.get(
                 "confidence_intervals", [0.68, 0.95]
             ),
-            "uncertainty_threshold": default_params.get("uncertainty_threshold", 0.5),
-            "max_inducing_points": default_params.get("max_inducing_points", 500),
+            "uncertainty_threshold": default_params.get(
+                "uncertainty_threshold", 0.5
+            ),
+            "max_inducing_points": default_params.get(
+                "max_inducing_points", 500
+            ),
         }
 
         # Model components
@@ -118,7 +128,7 @@ class GaussianProcessPredictor(BasePredictor):
         """
         kernel_type = self.model_params["kernel_type"]
 
-        if kernel_type == "rbf":
+        if kernel_type == "rb":
             # Simple RBF kernel
             kernel = C(1.0, (1e-3, 1e3)) * RBF(
                 length_scale=1.0, length_scale_bounds=(1e-2, 1e2)
@@ -134,9 +144,9 @@ class GaussianProcessPredictor(BasePredictor):
             # Periodic kernel for daily/weekly patterns
             try:
                 # Try PeriodicKernel first (newer scikit-learn versions)
-                if hasattr(PeriodicKernel, "__module__") and "placeholder" not in str(
-                    PeriodicKernel
-                ):
+                if hasattr(
+                    PeriodicKernel, "__module__"
+                ) and "placeholder" not in str(PeriodicKernel):
                     kernel = C(1.0, (1e-3, 1e3)) * PeriodicKernel(
                         periodicity=24.0,  # 24 hour cycle
                         length_scale=1.0,
@@ -309,9 +319,13 @@ class GaussianProcessPredictor(BasePredictor):
 
             # Calculate training metrics
             if self.use_sparse_gp:
-                y_pred_mean, y_pred_std = self.model.predict(X_scaled, return_std=True)
+                y_pred_mean, y_pred_std = self.model.predict(
+                    X_scaled, return_std=True
+                )
             else:
-                y_pred_mean, y_pred_std = self.model.predict(X_scaled, return_std=True)
+                y_pred_mean, y_pred_std = self.model.predict(
+                    X_scaled, return_std=True
+                )
 
             training_score = r2_score(y_train, y_pred_mean)
             training_mae = mean_absolute_error(y_train, y_pred_mean)
@@ -326,8 +340,13 @@ class GaussianProcessPredictor(BasePredictor):
             validation_rmse = None
             avg_validation_std = None
 
-            if validation_features is not None and validation_targets is not None:
-                X_val_scaled = self.feature_scaler.transform(validation_features)
+            if (
+                validation_features is not None
+                and validation_targets is not None
+            ):
+                X_val_scaled = self.feature_scaler.transform(
+                    validation_features
+                )
                 y_val_true = self._prepare_targets(validation_targets)
 
                 y_val_pred_mean, y_val_pred_std = self.model.predict(
@@ -335,14 +354,18 @@ class GaussianProcessPredictor(BasePredictor):
                 )
 
                 validation_score = r2_score(y_val_true, y_val_pred_mean)
-                validation_mae = mean_absolute_error(y_val_true, y_val_pred_mean)
+                validation_mae = mean_absolute_error(
+                    y_val_true, y_val_pred_mean
+                )
                 validation_rmse = np.sqrt(
                     mean_squared_error(y_val_true, y_val_pred_mean)
                 )
                 avg_validation_std = np.mean(y_val_pred_std)
 
                 # Calibrate uncertainty on validation data
-                self._calibrate_uncertainty(y_val_true, y_val_pred_mean, y_val_pred_std)
+                self._calibrate_uncertainty(
+                    y_val_true, y_val_pred_mean, y_val_pred_std
+                )
 
             # Update model state
             self.is_trained = True
@@ -361,7 +384,9 @@ class GaussianProcessPredictor(BasePredictor):
                 "avg_prediction_std": float(avg_prediction_std),
                 "kernel_type": self.model_params["kernel_type"],
                 "n_inducing_points": (
-                    len(self.inducing_points) if self.use_sparse_gp else len(features)
+                    len(self.inducing_points)
+                    if self.use_sparse_gp
+                    else len(features)
                 ),
                 "sparse_gp": self.use_sparse_gp,
                 "uncertainty_calibrated": self.uncertainty_calibrated,
@@ -444,7 +469,9 @@ class GaussianProcessPredictor(BasePredictor):
             X_scaled = self.feature_scaler.transform(features)
 
             # Get predictions with uncertainty
-            y_pred_mean, y_pred_std = self.model.predict(X_scaled, return_std=True)
+            y_pred_mean, y_pred_std = self.model.predict(
+                X_scaled, return_std=True
+            )
 
             for idx in range(len(features)):
                 mean_time_until = y_pred_mean[idx]
@@ -452,10 +479,14 @@ class GaussianProcessPredictor(BasePredictor):
 
                 # Ensure reasonable bounds
                 mean_time_until = np.clip(mean_time_until, 60, 86400)
-                std_time_until = max(std_time_until, 30)  # Minimum 30 seconds std
+                std_time_until = max(
+                    std_time_until, 30
+                )  # Minimum 30 seconds std
 
                 # Calculate predicted transition time
-                predicted_time = prediction_time + timedelta(seconds=mean_time_until)
+                predicted_time = prediction_time + timedelta(
+                    seconds=mean_time_until
+                )
 
                 # Determine transition type
                 transition_type = self._determine_transition_type(
@@ -474,7 +505,10 @@ class GaussianProcessPredictor(BasePredictor):
 
                 # Generate alternative scenarios based on uncertainty
                 alternatives = self._generate_alternative_scenarios(
-                    prediction_time, mean_time_until, std_time_until, transition_type
+                    prediction_time,
+                    mean_time_until,
+                    std_time_until,
+                    transition_type,
                 )
 
                 # Create prediction result with GP-specific information
@@ -488,7 +522,9 @@ class GaussianProcessPredictor(BasePredictor):
                     model_version=self.model_version,
                     features_used=self.feature_names,
                     prediction_metadata={
-                        "time_until_transition_seconds": float(mean_time_until),
+                        "time_until_transition_seconds": float(
+                            mean_time_until
+                        ),
                         "prediction_std": float(std_time_until),
                         "prediction_method": "gaussian_process",
                         "uncertainty_quantification": {
@@ -562,7 +598,9 @@ class GaussianProcessPredictor(BasePredictor):
                     )
 
                     for i, feature_name in enumerate(self.feature_names):
-                        importance[feature_name] = float(normalized_importance[i])
+                        importance[feature_name] = float(
+                            normalized_importance[i]
+                        )
             else:
                 # Fallback: uniform importance
                 uniform_importance = 1.0 / n_features
@@ -630,7 +668,9 @@ class GaussianProcessPredictor(BasePredictor):
             ]
 
             # Theoretical quantiles for normal distribution
-            theoretical_quantiles = [stats.norm.ppf(0.5 + q / 2) for q in quantiles]
+            theoretical_quantiles = [
+                stats.norm.ppf(0.5 + q / 2) for q in quantiles
+            ]
 
             # Store calibration curve (ratio of empirical to theoretical)
             self.calibration_curve = {
@@ -639,7 +679,9 @@ class GaussianProcessPredictor(BasePredictor):
             }
 
             self.uncertainty_calibrated = True
-            logger.info(f"Uncertainty calibration completed: {self.calibration_curve}")
+            logger.info(
+                f"Uncertainty calibration completed: {self.calibration_curve}"
+            )
 
         except Exception as e:
             logger.warning(f"Uncertainty calibration failed: {e}")
@@ -710,7 +752,9 @@ class GaussianProcessPredictor(BasePredictor):
         if self.training_history:
             last_training = self.training_history[-1]
             if last_training.validation_score is not None:
-                base_confidence = max(0.1, min(0.95, last_training.validation_score))
+                base_confidence = max(
+                    0.1, min(0.95, last_training.validation_score)
+                )
             else:
                 base_confidence = max(
                     0.1, min(0.95, last_training.training_score or 0.7)
@@ -720,7 +764,9 @@ class GaussianProcessPredictor(BasePredictor):
 
         # Adjust based on prediction uncertainty
         # Lower uncertainty = higher confidence
-        uncertainty_factor = 1.0 / (1.0 + std / 1800.0)  # Normalize by 30 minutes
+        uncertainty_factor = 1.0 / (
+            1.0 + std / 1800.0
+        )  # Normalize by 30 minutes
 
         # Combine base confidence with uncertainty
         confidence = base_confidence * uncertainty_factor
@@ -735,7 +781,11 @@ class GaussianProcessPredictor(BasePredictor):
         return float(np.clip(confidence, 0.1, 0.95))
 
     def _generate_alternative_scenarios(
-        self, base_time: datetime, mean: float, std: float, transition_type: str
+        self,
+        base_time: datetime,
+        mean: float,
+        std: float,
+        transition_type: str,
     ) -> List[Tuple[datetime, float]]:
         """
         Generate alternative prediction scenarios based on uncertainty.
@@ -786,13 +836,17 @@ class GaussianProcessPredictor(BasePredictor):
 
             # Calculate minimum distance to training points
             training_points = self.model.X_train_
-            distances = np.sqrt(np.sum((training_points - X_point) ** 2, axis=1))
+            distances = np.sqrt(
+                np.sum((training_points - X_point) ** 2, axis=1)
+            )
             min_distance = np.min(distances)
 
             # Normalize distance to uncertainty (0-1 scale)
             # Larger distance = higher epistemic uncertainty
             max_reasonable_distance = 5.0  # Heuristic
-            epistemic_uncertainty = min(1.0, min_distance / max_reasonable_distance)
+            epistemic_uncertainty = min(
+                1.0, min_distance / max_reasonable_distance
+            )
 
             return float(epistemic_uncertainty)
 
@@ -822,7 +876,9 @@ class GaussianProcessPredictor(BasePredictor):
         ):
             target_times = pd.to_datetime(targets["target_time"])
             next_times = pd.to_datetime(targets["next_transition_time"])
-            target_values = (next_times - target_times).dt.total_seconds().values
+            target_values = (
+                (next_times - target_times).dt.total_seconds().values
+            )
         else:
             target_values = targets.iloc[:, 0].values
 
@@ -850,7 +906,10 @@ class GaussianProcessPredictor(BasePredictor):
         return metrics
 
     async def incremental_update(
-        self, features: pd.DataFrame, targets: pd.DataFrame, learning_rate: float = 0.1
+        self,
+        features: pd.DataFrame,
+        targets: pd.DataFrame,
+        learning_rate: float = 0.1,
     ) -> TrainingResult:
         """
         Perform incremental update of the GP model.
@@ -869,7 +928,9 @@ class GaussianProcessPredictor(BasePredictor):
         start_time = datetime.utcnow()
 
         try:
-            logger.info(f"Starting incremental GP update for room {self.room_id}")
+            logger.info(
+                f"Starting incremental GP update for room {self.room_id}"
+            )
 
             if not self.is_trained:
                 logger.warning(
@@ -892,11 +953,15 @@ class GaussianProcessPredictor(BasePredictor):
                 if len(X_new) > 5:
                     # Simple approach: add a few representative points
                     n_add = min(10, len(X_new) // 2)
-                    indices = np.random.choice(len(X_new), n_add, replace=False)
+                    indices = np.random.choice(
+                        len(X_new), n_add, replace=False
+                    )
                     new_inducing = X_new[indices]
 
                     # Combine with existing inducing points
-                    combined_inducing = np.vstack([self.inducing_points, new_inducing])
+                    combined_inducing = np.vstack(
+                        [self.inducing_points, new_inducing]
+                    )
 
                     # If too many inducing points, subsample
                     if (
@@ -906,7 +971,9 @@ class GaussianProcessPredictor(BasePredictor):
                         from sklearn.cluster import KMeans
 
                         n_keep = self.model_params["max_inducing_points"]
-                        kmeans = KMeans(n_clusters=n_keep, random_state=42, n_init=10)
+                        kmeans = KMeans(
+                            n_clusters=n_keep, random_state=42, n_init=10
+                        )
                         kmeans.fit(combined_inducing)
 
                         # Select points closest to cluster centers
@@ -918,7 +985,9 @@ class GaussianProcessPredictor(BasePredictor):
                             closest_idx = np.argmin(distances)
                             inducing_indices.append(closest_idx)
 
-                        self.inducing_points = combined_inducing[inducing_indices]
+                        self.inducing_points = combined_inducing[
+                            inducing_indices
+                        ]
                     else:
                         self.inducing_points = combined_inducing
 
@@ -958,7 +1027,9 @@ class GaussianProcessPredictor(BasePredictor):
             self.kernel_params_history.append(self.model.kernel_.get_params())
 
             # Calculate performance on new data
-            y_pred_mean, y_pred_std = self.model.predict(X_new, return_std=True)
+            y_pred_mean, y_pred_std = self.model.predict(
+                X_new, return_std=True
+            )
 
             training_score = r2_score(y_new, y_pred_mean)
             training_mae = mean_absolute_error(y_new, y_pred_mean)
@@ -982,10 +1053,14 @@ class GaussianProcessPredictor(BasePredictor):
                     "incremental_mae": training_mae,
                     "incremental_r2": training_score,
                     "avg_prediction_uncertainty": float(avg_uncertainty),
-                    "log_marginal_likelihood": float(self.log_marginal_likelihood),
+                    "log_marginal_likelihood": float(
+                        self.log_marginal_likelihood
+                    ),
                     "sparse_gp": self.use_sparse_gp,
                     "n_inducing_points": (
-                        len(self.inducing_points) if self.use_sparse_gp else len(X_new)
+                        len(self.inducing_points)
+                        if self.use_sparse_gp
+                        else len(X_new)
                     ),
                 },
             )

@@ -40,7 +40,7 @@ class TestSensorEvent:
             sensor_id="binary_sensor.test_motion",
             sensor_type="motion",
             state="on",
-            previous_state="off",
+            previous_state="of",
             timestamp=timestamp,
             attributes=attributes,
             is_human_triggered=True,
@@ -52,7 +52,7 @@ class TestSensorEvent:
         assert event.sensor_id == "binary_sensor.test_motion"
         assert event.sensor_type == "motion"
         assert event.state == "on"
-        assert event.previous_state == "off"
+        assert event.previous_state == "of"
         assert event.timestamp == timestamp
         assert event.attributes == attributes
         assert event.is_human_triggered is True
@@ -65,18 +65,20 @@ class TestSensorEvent:
             room_id="bedroom",
             sensor_id="binary_sensor.bedroom_motion",
             sensor_type="presence",
-            state="off",
+            state="of",
             timestamp=datetime.utcnow(),
         )
 
         assert event.room_id == "bedroom"
         assert event.sensor_id == "binary_sensor.bedroom_motion"
         assert event.sensor_type == "presence"
-        assert event.state == "off"
+        assert event.state == "of"
         assert event.is_human_triggered is True  # Default value
 
     @pytest.mark.asyncio
-    async def test_get_recent_events(self, test_db_session, sample_sensor_events):
+    async def test_get_recent_events(
+        self, test_db_session, sample_sensor_events
+    ):
         """Test getting recent events for a room."""
         # Add events to database
         for event in sample_sensor_events:
@@ -123,7 +125,7 @@ class TestSensorEvent:
                 sensor_id="binary_sensor.test",
                 sensor_type="motion",
                 state="on",
-                previous_state="off",
+                previous_state="of",
                 timestamp=base_time + timedelta(minutes=i * 10),
             )
             for i in range(3)
@@ -170,8 +172,8 @@ class TestSensorEvent:
                 room_id="test_room",
                 sensor_id=f"binary_sensor.sensor_{i % 2}",
                 sensor_type="motion",
-                state="on" if i % 2 == 0 else "off",
-                previous_state="off" if i % 2 == 0 else "on",
+                state="on" if i % 2 == 0 else "of",
+                previous_state="of" if i % 2 == 0 else "on",
                 timestamp=base_time + timedelta(minutes=i * 2),
             )
             sequence1_events.append(event)
@@ -184,8 +186,8 @@ class TestSensorEvent:
                 room_id="test_room",
                 sensor_id="binary_sensor.sensor_2",
                 sensor_type="motion",
-                state="on" if i % 2 == 0 else "off",
-                previous_state="off" if i % 2 == 0 else "on",
+                state="on" if i % 2 == 0 else "of",
+                previous_state="of" if i % 2 == 0 else "on",
                 timestamp=base_time + timedelta(minutes=40 + i * 2),
             )
             sequence2_events.append(event)
@@ -195,7 +197,10 @@ class TestSensorEvent:
 
         # Get transition sequences
         sequences = await SensorEvent.get_transition_sequences(
-            test_db_session, "test_room", lookback_hours=2, min_sequence_length=3
+            test_db_session,
+            "test_room",
+            lookback_hours=2,
+            min_sequence_length=3,
         )
 
         # Should get 2 sequences
@@ -267,7 +272,9 @@ class TestRoomState:
         await test_db_session.commit()
 
         # Get current state
-        current_state = await RoomState.get_current_state(test_db_session, "office")
+        current_state = await RoomState.get_current_state(
+            test_db_session, "office"
+        )
 
         assert current_state is not None
         assert current_state.timestamp == base_time
@@ -324,8 +331,14 @@ class TestPrediction:
         transition_time = prediction_time + timedelta(minutes=15)
         feature_importance = {"temperature": 0.3, "motion": 0.7}
         alternatives = [
-            {"time": transition_time + timedelta(minutes=5), "confidence": 0.6},
-            {"time": transition_time + timedelta(minutes=-5), "confidence": 0.4},
+            {
+                "time": transition_time + timedelta(minutes=5),
+                "confidence": 0.6,
+            },
+            {
+                "time": transition_time + timedelta(minutes=-5),
+                "confidence": 0.4,
+            },
         ]
 
         prediction = Prediction(
@@ -437,7 +450,8 @@ class TestPrediction:
                 confidence_score=0.9,
                 model_type="lstm",
                 model_version="v1.0",
-                actual_transition_time=base_time - timedelta(hours=23, minutes=5),
+                actual_transition_time=base_time
+                - timedelta(hours=23, minutes=5),
                 accuracy_minutes=5.0,
                 is_accurate=True,
                 validation_timestamp=base_time - timedelta(hours=22),
@@ -451,7 +465,8 @@ class TestPrediction:
                 confidence_score=0.7,
                 model_type="lstm",
                 model_version="v1.0",
-                actual_transition_time=base_time - timedelta(hours=46, minutes=30),
+                actual_transition_time=base_time
+                - timedelta(hours=46, minutes=30),
                 accuracy_minutes=30.0,
                 is_accurate=False,
                 validation_timestamp=base_time - timedelta(hours=46),
@@ -465,7 +480,8 @@ class TestPrediction:
                 confidence_score=0.8,
                 model_type="lstm",
                 model_version="v1.0",
-                actual_transition_time=base_time - timedelta(hours=70, minutes=50),
+                actual_transition_time=base_time
+                - timedelta(hours=70, minutes=50),
                 accuracy_minutes=10.0,
                 is_accurate=True,
                 validation_timestamp=base_time - timedelta(hours=70),
@@ -558,7 +574,10 @@ class TestFeatureStore:
             "light_level": 250,
             "other_rooms_occupied": 2,
         }
-        environmental_features = {"weather": "sunny", "outdoor_temperature": 18.0}
+        environmental_features = {
+            "weather": "sunny",
+            "outdoor_temperature": 18.0,
+        }
 
         feature_store = FeatureStore(
             room_id="study",
@@ -708,7 +727,8 @@ class TestModelApplicationLevelRelationships:
         prediction = Prediction(
             room_id="test_room",
             prediction_time=datetime.utcnow(),
-            predicted_transition_time=datetime.utcnow() + timedelta(minutes=15),
+            predicted_transition_time=datetime.utcnow()
+            + timedelta(minutes=15),
             transition_type="occupied_to_vacant",
             confidence_score=0.8,
             model_type="lstm",
@@ -750,7 +770,8 @@ class TestModelApplicationLevelRelationships:
         prediction = Prediction(
             room_id="test_room",
             prediction_time=datetime.utcnow(),
-            predicted_transition_time=datetime.utcnow() + timedelta(minutes=20),
+            predicted_transition_time=datetime.utcnow()
+            + timedelta(minutes=20),
             transition_type="occupied_to_vacant",
             confidence_score=0.75,
             model_type="xgboost",
@@ -795,7 +816,9 @@ class TestModelConstraints:
             await test_db_session.commit()
             # Should succeed
         except IntegrityError:
-            pytest.fail("Valid confidence score should not raise IntegrityError")
+            pytest.fail(
+                "Valid confidence score should not raise IntegrityError"
+            )
 
     @pytest.mark.asyncio
     async def test_model_accuracy_constraints(self, test_db_session):
@@ -906,7 +929,7 @@ class TestModelIntegration:
             sensor_id="binary_sensor.test_motion",
             sensor_type="motion",
             state="on",
-            previous_state="off",
+            previous_state="of",
             timestamp=datetime.utcnow() - timedelta(minutes=30),
             is_human_triggered=True,
             confidence_score=0.85,
@@ -948,7 +971,7 @@ class TestModelIntegration:
             room_id="integration_test_room",
             sensor_id="binary_sensor.test_motion",
             sensor_type="motion",
-            state="off",
+            state="of",
             previous_state="on",
             timestamp=datetime.utcnow(),  # Actual transition happened now
             is_human_triggered=True,
@@ -964,7 +987,9 @@ class TestModelIntegration:
             ).total_seconds()
             / 60
         )
-        prediction.is_accurate = prediction.accuracy_minutes <= 15  # Within threshold
+        prediction.is_accurate = (
+            prediction.accuracy_minutes <= 15
+        )  # Within threshold
         prediction.validation_timestamp = datetime.utcnow()
 
         await test_db_session.commit()
@@ -974,7 +999,8 @@ class TestModelIntegration:
 
         # Check application-level relationships work by querying related records
         triggering_event = await test_db_session.get(
-            SensorEvent, (prediction.triggering_event_id, trigger_event.timestamp)
+            SensorEvent,
+            (prediction.triggering_event_id, trigger_event.timestamp),
         )
         related_room_state = await test_db_session.get(
             RoomState, prediction.room_state_id
@@ -991,7 +1017,8 @@ class TestModelIntegration:
 
         # Check accuracy calculation
         expected_accuracy = abs(
-            (predicted_transition - actual_event.timestamp).total_seconds() / 60
+            (predicted_transition - actual_event.timestamp).total_seconds()
+            / 60
         )
         assert abs(prediction.accuracy_minutes - expected_accuracy) < 0.1
 

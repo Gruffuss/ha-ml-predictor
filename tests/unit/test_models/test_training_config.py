@@ -158,9 +158,13 @@ class TestQualityThresholds:
         assert len(issues) == 5
         assert "min_accuracy_threshold must be between 0.0 and 1.0" in issues
         assert "max_error_threshold_minutes must be positive" in issues
-        assert "min_confidence_calibration must be between 0.0 and 1.0" in issues
+        assert (
+            "min_confidence_calibration must be between 0.0 and 1.0" in issues
+        )
         assert "min_samples_per_room must be positive" in issues
-        assert "max_missing_data_percent must be between 0.0 and 100.0" in issues
+        assert (
+            "max_missing_data_percent must be between 0.0 and 100.0" in issues
+        )
 
     def test_quality_thresholds_boundary_values(self):
         """Test quality thresholds validation with boundary values."""
@@ -213,7 +217,10 @@ class TestOptimizationConfig:
 
     def test_optimization_config_custom_values(self):
         """Test OptimizationConfig with custom values."""
-        custom_ensemble_space = {"meta_learner": ["random_forest"], "cv_folds": [5]}
+        custom_ensemble_space = {
+            "meta_learner": ["random_forest"],
+            "cv_folds": [5],
+        }
 
         opt_config = OptimizationConfig(
             enabled=False,
@@ -288,21 +295,28 @@ class TestTrainingEnvironmentConfig:
 
         # Configuration with invalid nested components
         invalid_limits = ResourceLimits(max_memory_gb=-1.0)  # Invalid
-        invalid_thresholds = QualityThresholds(min_accuracy_threshold=2.0)  # Invalid
+        invalid_thresholds = QualityThresholds(
+            min_accuracy_threshold=2.0
+        )  # Invalid
 
         invalid_env_config = TrainingEnvironmentConfig(
-            resource_limits=invalid_limits, quality_thresholds=invalid_thresholds
+            resource_limits=invalid_limits,
+            quality_thresholds=invalid_thresholds,
         )
 
         issues = invalid_env_config.validate()
-        assert len(issues) >= 2  # Should have issues from both nested components
+        assert (
+            len(issues) >= 2
+        )  # Should have issues from both nested components
 
     def test_environment_config_path_validation(self):
         """Test path validation in TrainingEnvironmentConfig."""
         with tempfile.TemporaryDirectory() as temp_dir:
             valid_path = Path(temp_dir) / "models"
 
-            env_config = TrainingEnvironmentConfig(model_artifacts_base_path=valid_path)
+            env_config = TrainingEnvironmentConfig(
+                model_artifacts_base_path=valid_path
+            )
 
             issues = env_config.validate()
             assert len(issues) == 0
@@ -356,13 +370,18 @@ class TestTrainingConfigManager:
         with tempfile.TemporaryDirectory() as temp_dir:
             config_path = Path(temp_dir) / "training_config.yaml"
 
-            with patch("src.models.training_config.get_config") as mock_get_config:
+            with patch(
+                "src.models.training_config.get_config"
+            ) as mock_get_config:
                 mock_get_config.return_value = MagicMock()
 
                 config_manager = TrainingConfigManager(config_path)
 
                 assert config_manager.config_path == config_path
-                assert config_manager._current_profile == TrainingProfile.PRODUCTION
+                assert (
+                    config_manager._current_profile
+                    == TrainingProfile.PRODUCTION
+                )
 
                 # Should have all default profiles
                 assert len(config_manager._environment_configs) == 6
@@ -375,14 +394,16 @@ class TestTrainingConfigManager:
                     in config_manager._environment_configs
                 )
                 assert (
-                    TrainingProfile.TESTING.value in config_manager._environment_configs
+                    TrainingProfile.TESTING.value
+                    in config_manager._environment_configs
                 )
                 assert (
                     TrainingProfile.RESEARCH.value
                     in config_manager._environment_configs
                 )
                 assert (
-                    TrainingProfile.QUICK.value in config_manager._environment_configs
+                    TrainingProfile.QUICK.value
+                    in config_manager._environment_configs
                 )
                 assert (
                     TrainingProfile.COMPREHENSIVE.value
@@ -414,7 +435,9 @@ class TestTrainingConfigManager:
             assert prod_config.quality_thresholds.min_accuracy_threshold == 0.7
 
             # Test testing profile
-            test_config = config_manager.get_environment_config(TrainingProfile.TESTING)
+            test_config = config_manager.get_environment_config(
+                TrainingProfile.TESTING
+            )
             assert test_config.profile == TrainingProfile.TESTING
             assert test_config.resource_limits.max_training_time_minutes == 5
             assert test_config.resource_limits.max_memory_gb == 2.0
@@ -425,11 +448,18 @@ class TestTrainingConfigManager:
                 TrainingProfile.RESEARCH
             )
             assert research_config.profile == TrainingProfile.RESEARCH
-            assert research_config.resource_limits.max_training_time_minutes == 300
             assert (
-                research_config.optimization_config.level == OptimizationLevel.INTENSIVE
+                research_config.resource_limits.max_training_time_minutes
+                == 300
             )
-            assert research_config.quality_thresholds.min_accuracy_threshold == 0.8
+            assert (
+                research_config.optimization_config.level
+                == OptimizationLevel.INTENSIVE
+            )
+            assert (
+                research_config.quality_thresholds.min_accuracy_threshold
+                == 0.8
+            )
 
     def test_profile_management(self):
         """Test setting and getting current profile."""
@@ -438,17 +468,26 @@ class TestTrainingConfigManager:
             config_manager = TrainingConfigManager()
 
             # Initial profile should be production
-            assert config_manager.get_current_profile() == TrainingProfile.PRODUCTION
+            assert (
+                config_manager.get_current_profile()
+                == TrainingProfile.PRODUCTION
+            )
 
             # Set to development profile
             config_manager.set_current_profile(TrainingProfile.DEVELOPMENT)
-            assert config_manager.get_current_profile() == TrainingProfile.DEVELOPMENT
+            assert (
+                config_manager.get_current_profile()
+                == TrainingProfile.DEVELOPMENT
+            )
 
             # Test invalid profile
             with pytest.raises(
-                ValueError, match="Training profile invalid_profile not available"
+                ValueError,
+                match="Training profile invalid_profile not available",
             ):
-                config_manager.set_current_profile(TrainingProfile("invalid_profile"))
+                config_manager.set_current_profile(
+                    TrainingProfile("invalid_profile")
+                )
 
     def test_training_config_generation(self):
         """Test training config generation from environment config."""
@@ -463,8 +502,12 @@ class TestTrainingConfigManager:
 
             assert isinstance(training_config, TrainingConfig)
             assert training_config.lookback_days == 30  # Development lookback
-            assert training_config.max_training_time_minutes == 15  # Development limit
-            assert training_config.min_samples_per_room == 50  # Development threshold
+            assert (
+                training_config.max_training_time_minutes == 15
+            )  # Development limit
+            assert (
+                training_config.min_samples_per_room == 50
+            )  # Development threshold
             assert (
                 training_config.enable_hyperparameter_optimization is False
             )  # Development setting
@@ -473,11 +516,17 @@ class TestTrainingConfigManager:
             )  # Not testing profile
 
             # Test testing profile config generation
-            testing_config = config_manager.get_training_config(TrainingProfile.TESTING)
+            testing_config = config_manager.get_training_config(
+                TrainingProfile.TESTING
+            )
 
             assert testing_config.lookback_days == 7  # Testing lookback
-            assert testing_config.max_training_time_minutes == 5  # Testing limit
-            assert testing_config.save_intermediate_results is False  # Testing profile
+            assert (
+                testing_config.max_training_time_minutes == 5
+            )  # Testing limit
+            assert (
+                testing_config.save_intermediate_results is False
+            )  # Testing profile
 
     def test_lookback_days_mapping(self):
         """Test lookback days mapping for different profiles."""
@@ -496,7 +545,9 @@ class TestTrainingConfigManager:
             }
 
             for profile, expected_days in expected_lookback.items():
-                actual_days = config_manager._get_lookback_days_for_profile(profile)
+                actual_days = config_manager._get_lookback_days_for_profile(
+                    profile
+                )
                 assert actual_days == expected_days
 
     def test_configuration_validation(self):
@@ -568,12 +619,18 @@ class TestTrainingConfigManager:
             updated_config = config_manager.get_environment_config(
                 TrainingProfile.DEVELOPMENT
             )
-            assert updated_config.training_monitoring_enabled != initial_monitoring
+            assert (
+                updated_config.training_monitoring_enabled
+                != initial_monitoring
+            )
 
             # Test invalid profile update
-            with pytest.raises(ValueError, match="Profile invalid_profile not found"):
+            with pytest.raises(
+                ValueError, match="Profile invalid_profile not found"
+            ):
                 config_manager.update_profile_config(
-                    TrainingProfile("invalid_profile"), training_monitoring_enabled=True
+                    TrainingProfile("invalid_profile"),
+                    training_monitoring_enabled=True,
                 )
 
     def test_profile_comparison(self):
@@ -620,7 +677,9 @@ class TestTrainingConfigManager:
             ]
 
             for use_case, expected_profile in test_cases:
-                recommended = config_manager.recommend_profile_for_use_case(use_case)
+                recommended = config_manager.recommend_profile_for_use_case(
+                    use_case
+                )
                 assert recommended == expected_profile
 
 
@@ -681,7 +740,10 @@ class TestConfigurationFileSerialization:
                                 "min_accuracy_threshold": 0.65,
                                 "max_error_threshold_minutes": 25.0,
                             },
-                            "optimization_config": {"enabled": True, "level": "basic"},
+                            "optimization_config": {
+                                "enabled": True,
+                                "level": "basic",
+                            },
                         }
                     },
                 }
@@ -693,15 +755,27 @@ class TestConfigurationFileSerialization:
                 config_manager = TrainingConfigManager(config_path)
 
                 # Verify loading
-                assert config_manager._current_profile == TrainingProfile.TESTING
+                assert (
+                    config_manager._current_profile == TrainingProfile.TESTING
+                )
                 assert "custom_profile" in config_manager._environment_configs
 
-                custom_env = config_manager._environment_configs["custom_profile"]
-                assert custom_env.resource_limits.max_training_time_minutes == 45
+                custom_env = config_manager._environment_configs[
+                    "custom_profile"
+                ]
+                assert (
+                    custom_env.resource_limits.max_training_time_minutes == 45
+                )
                 assert custom_env.resource_limits.max_parallel_models == 3
-                assert custom_env.quality_thresholds.min_accuracy_threshold == 0.65
+                assert (
+                    custom_env.quality_thresholds.min_accuracy_threshold
+                    == 0.65
+                )
                 assert custom_env.optimization_config.enabled is True
-                assert custom_env.optimization_config.level == OptimizationLevel.BASIC
+                assert (
+                    custom_env.optimization_config.level
+                    == OptimizationLevel.BASIC
+                )
 
     def test_config_file_loading_error_handling(self):
         """Test error handling during config file loading."""
@@ -720,7 +794,10 @@ class TestConfigurationFileSerialization:
 
                 # Should still have default profiles despite invalid file
                 assert len(config_manager._environment_configs) == 6
-                assert config_manager._current_profile == TrainingProfile.PRODUCTION
+                assert (
+                    config_manager._current_profile
+                    == TrainingProfile.PRODUCTION
+                )
 
 
 class TestGlobalConfigManager:
@@ -759,7 +836,9 @@ class TestGlobalConfigManager:
 
             assert isinstance(config, TrainingConfig)
             assert config.lookback_days == 30  # Development profile
-            assert config.max_training_time_minutes == 15  # Development profile
+            assert (
+                config.max_training_time_minutes == 15
+            )  # Development profile
 
             # Test with default profile (None)
             default_config = get_training_config(None)
@@ -779,16 +858,25 @@ class TestConfigurationIntegration:
             config_manager = TrainingConfigManager()
 
             # Test different profiles produce different configurations
-            dev_config = config_manager.get_training_config(TrainingProfile.DEVELOPMENT)
-            prod_config = config_manager.get_training_config(TrainingProfile.PRODUCTION)
-            test_config = config_manager.get_training_config(TrainingProfile.TESTING)
+            dev_config = config_manager.get_training_config(
+                TrainingProfile.DEVELOPMENT
+            )
+            prod_config = config_manager.get_training_config(
+                TrainingProfile.PRODUCTION
+            )
+            test_config = config_manager.get_training_config(
+                TrainingProfile.TESTING
+            )
 
             # Verify key differences between profiles
             assert (
                 dev_config.max_training_time_minutes
                 < prod_config.max_training_time_minutes
             )
-            assert test_config.min_samples_per_room < dev_config.min_samples_per_room
+            assert (
+                test_config.min_samples_per_room
+                < dev_config.min_samples_per_room
+            )
             assert not dev_config.enable_hyperparameter_optimization
             assert prod_config.enable_hyperparameter_optimization
 
@@ -802,7 +890,8 @@ class TestConfigurationIntegration:
                 assert config.ensemble_enabled is True
                 assert config.cv_folds == 5
                 assert (
-                    config.validation_strategy == ValidationStrategy.TIME_SERIES_SPLIT
+                    config.validation_strategy
+                    == ValidationStrategy.TIME_SERIES_SPLIT
                 )
 
     def test_profile_resource_mapping(self):
@@ -813,7 +902,9 @@ class TestConfigurationIntegration:
             config_manager = TrainingConfigManager()
 
             # Test resource mapping for production profile
-            prod_env = config_manager.get_environment_config(TrainingProfile.PRODUCTION)
+            prod_env = config_manager.get_environment_config(
+                TrainingProfile.PRODUCTION
+            )
             prod_training = config_manager.get_training_config(
                 TrainingProfile.PRODUCTION
             )
@@ -827,9 +918,13 @@ class TestConfigurationIntegration:
                 == prod_env.resource_limits.max_parallel_models
             )
             assert (
-                prod_training.memory_limit_gb == prod_env.resource_limits.max_memory_gb
+                prod_training.memory_limit_gb
+                == prod_env.resource_limits.max_memory_gb
             )
-            assert prod_training.cpu_cores == prod_env.resource_limits.max_cpu_cores
+            assert (
+                prod_training.cpu_cores
+                == prod_env.resource_limits.max_cpu_cores
+            )
 
             # Test quality threshold mapping
             assert (

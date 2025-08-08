@@ -21,9 +21,15 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 import logging
 import traceback
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
@@ -99,7 +105,9 @@ class ManualRetrainRequest(BaseModel):
         None, description="Specific room to retrain (all if None)"
     )
     force: bool = Field(False, description="Force retrain even if not needed")
-    strategy: str = Field("auto", pattern="^(auto|incremental|full|feature_refresh)$")
+    strategy: str = Field(
+        "auto", pattern="^(auto|incremental|full|feature_refresh)$"
+    )
     reason: str = Field("manual_request", description="Reason for retraining")
 
 
@@ -133,7 +141,9 @@ class RateLimitTracker:
     def __init__(self):
         self.requests = {}
 
-    def is_allowed(self, client_ip: str, limit: int, window_minutes: int = 1) -> bool:
+    def is_allowed(
+        self, client_ip: str, limit: int, window_minutes: int = 1
+    ) -> bool:
         """Check if request is within rate limits."""
         now = datetime.now()
         window_start = now - timedelta(minutes=window_minutes)
@@ -172,7 +182,10 @@ async def get_tracking_manager() -> "TrackingManager":
     global _tracking_manager_instance
     if _tracking_manager_instance is None:
         # Lazy import to prevent circular dependency
-        from ..adaptation.tracking_manager import TrackingConfig, TrackingManager
+        from ..adaptation.tracking_manager import (
+            TrackingConfig,
+            TrackingManager,
+        )
 
         config = get_config()
         # Create default tracking config if not available
@@ -212,7 +225,9 @@ async def verify_api_key(
         return True
 
     if not credentials:
-        raise APIAuthenticationError("API Key required", "Missing authorization header")
+        raise APIAuthenticationError(
+            "API Key required", "Missing authorization header"
+        )
 
     if credentials.credentials != config.api.api_key:
         raise APIAuthenticationError("Invalid API key", "Key does not match")
@@ -229,7 +244,9 @@ async def check_rate_limit(request: Request) -> bool:
 
     client_ip = request.client.host
     if not rate_limiter.is_allowed(client_ip, config.api.requests_per_minute):
-        raise APIRateLimitError(client_ip, config.api.requests_per_minute, "minute")
+        raise APIRateLimitError(
+            client_ip, config.api.requests_per_minute, "minute"
+        )
 
     return True
 
@@ -275,7 +292,9 @@ async def background_health_check():
             health = await db_manager.health_check()
 
             if not health.get("database_connected", False):
-                logger.warning("Database connection lost in background health check")
+                logger.warning(
+                    "Database connection lost in background health check"
+                )
 
         except asyncio.CancelledError:
             break
@@ -310,7 +329,8 @@ def create_app() -> FastAPI:
 
     # Add trusted host middleware for security
     app.add_middleware(
-        TrustedHostMiddleware, allowed_hosts=["*"]  # Configure based on deployment
+        TrustedHostMiddleware,
+        allowed_hosts=["*"],  # Configure based on deployment
     )
 
     # Exception handlers
@@ -328,7 +348,9 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(OccupancyPredictionError)
-    async def system_error_handler(request: Request, exc: OccupancyPredictionError):
+    async def system_error_handler(
+        request: Request, exc: OccupancyPredictionError
+    ):
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         if exc.severity in [ErrorSeverity.LOW, ErrorSeverity.MEDIUM]:
             status_code = status.HTTP_400_BAD_REQUEST
@@ -460,7 +482,9 @@ async def health_check():
             mqtt_manager = await get_mqtt_manager()
             mqtt_stats = await mqtt_manager.get_integration_stats()
             mqtt_health = {
-                "status": "healthy" if mqtt_stats.mqtt_connected else "degraded",
+                "status": (
+                    "healthy" if mqtt_stats.mqtt_connected else "degraded"
+                ),
                 "connected": mqtt_stats.mqtt_connected,
                 "predictions_published": mqtt_stats.predictions_published,
             }
@@ -496,7 +520,9 @@ async def health_check():
                 "memory_usage": "N/A",  # Could add memory monitoring
             },
             error_count=sum(
-                1 for c in [tracking_health, mqtt_health] if c.get("status") == "error"
+                1
+                for c in [tracking_health, mqtt_health]
+                if c.get("status") == "error"
             ),
             uptime_seconds=0,  # Could track actual uptime
         )
@@ -525,7 +551,8 @@ async def get_room_prediction(
 
         if not prediction_data:
             raise APIServerError(
-                f"get_prediction_for_{room_id}", Exception("No prediction available")
+                f"get_prediction_for_{room_id}",
+                Exception("No prediction available"),
             )
 
         return PredictionResponse(
@@ -535,7 +562,9 @@ async def get_room_prediction(
             ),
             next_transition_time=(
                 datetime.fromisoformat(
-                    prediction_data["next_transition_time"].replace("Z", "+00:00")
+                    prediction_data["next_transition_time"].replace(
+                        "Z", "+00:00"
+                    )
                 )
                 if prediction_data.get("next_transition_time")
                 else None
@@ -550,7 +579,9 @@ async def get_room_prediction(
     except APIResourceNotFoundError:
         raise
     except Exception as e:
-        logger.error(f"Failed to get prediction for room {room_id}: {e}", exc_info=True)
+        logger.error(
+            f"Failed to get prediction for room {room_id}: {e}", exc_info=True
+        )
         raise APIServerError(f"get_prediction_for_{room_id}", e)
 
 
@@ -569,7 +600,9 @@ async def get_all_predictions(
                 prediction = await get_room_prediction(room_id)
                 predictions.append(prediction)
             except Exception as e:
-                logger.warning(f"Failed to get prediction for room {room_id}: {e}")
+                logger.warning(
+                    f"Failed to get prediction for room {room_id}: {e}"
+                )
                 # Continue with other rooms
 
         return predictions
@@ -595,7 +628,9 @@ async def get_accuracy_metrics(
 
         # Get metrics from tracking manager
         tracking_manager = await get_tracking_manager()
-        metrics_data = await tracking_manager.get_accuracy_metrics(room_id, hours)
+        metrics_data = await tracking_manager.get_accuracy_metrics(
+            room_id, hours
+        )
 
         return AccuracyMetricsResponse(
             room_id=metrics_data["room_id"],
@@ -740,7 +775,9 @@ class APIServer:
             logger.info("API server disabled in configuration")
             return
 
-        logger.info(f"Starting API server on {self.config.host}:{self.config.port}")
+        logger.info(
+            f"Starting API server on {self.config.host}:{self.config.port}"
+        )
 
         # Configure uvicorn
         config = uvicorn.Config(

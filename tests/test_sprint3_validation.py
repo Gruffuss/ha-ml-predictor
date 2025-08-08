@@ -1,7 +1,7 @@
 """
 Sprint 3 Validation Tests - Model Development & Training
 
-This module contains comprehensive validation tests to ensure all Sprint 3 
+This module contains comprehensive validation tests to ensure all Sprint 3
 model components are working correctly before proceeding to Sprint 4.
 """
 
@@ -55,7 +55,10 @@ def test_sprint3_base_predictor_interface():
     )
 
     assert pred_result.predicted_time is not None
-    assert pred_result.transition_type in ["vacant_to_occupied", "occupied_to_vacant"]
+    assert pred_result.transition_type in [
+        "vacant_to_occupied",
+        "occupied_to_vacant",
+    ]
     assert 0.0 <= pred_result.confidence_score <= 1.0
 
     # Test serialization
@@ -92,7 +95,7 @@ def test_sprint3_lstm_predictor_structure():
     predictor = LSTMPredictor(room_id="test_room")
     assert predictor.model_type == ModelType.LSTM
     assert predictor.room_id == "test_room"
-    assert predictor.is_trained == False
+    assert predictor.is_trained is False
     assert isinstance(predictor.model_params, dict)
     assert "sequence_length" in predictor.model_params
     assert "hidden_layers" in predictor.model_params
@@ -114,7 +117,7 @@ def test_sprint3_xgboost_predictor_structure():
     predictor = XGBoostPredictor(room_id="test_room")
     assert predictor.model_type == ModelType.XGBOOST
     assert predictor.room_id == "test_room"
-    assert predictor.is_trained == False
+    assert predictor.is_trained is False
     assert isinstance(predictor.model_params, dict)
     assert "n_estimators" in predictor.model_params
     assert "max_depth" in predictor.model_params
@@ -134,7 +137,7 @@ def test_sprint3_hmm_predictor_structure():
     predictor = HMMPredictor(room_id="test_room")
     assert predictor.model_type == ModelType.HMM
     assert predictor.room_id == "test_room"
-    assert predictor.is_trained == False
+    assert predictor.is_trained is False
     assert isinstance(predictor.model_params, dict)
     assert "n_components" in predictor.model_params
     assert "covariance_type" in predictor.model_params
@@ -149,7 +152,7 @@ def test_sprint3_ensemble_structure():
     ensemble = OccupancyEnsemble(room_id="test_room")
     assert ensemble.model_type == ModelType.ENSEMBLE
     assert ensemble.room_id == "test_room"
-    assert ensemble.is_trained == False
+    assert ensemble.is_trained is False
     assert isinstance(ensemble.model_params, dict)
     assert "meta_learner" in ensemble.model_params
 
@@ -190,7 +193,9 @@ async def test_sprint3_model_training_basic():
     base_time = (
         1800 + features.iloc[:, 0] * 600
     )  # 30 min +/- 10 min based on first feature
-    targets_data = np.clip(base_time + np.random.normal(0, 300, n_samples), 60, 86400)
+    targets_data = np.clip(
+        base_time + np.random.normal(0, 300, n_samples), 60, 86400
+    )
 
     targets = pd.DataFrame({"time_until_transition_seconds": targets_data})
 
@@ -198,14 +203,16 @@ async def test_sprint3_model_training_basic():
     result = await predictor.train(features, targets)
 
     # Validate training result
-    assert result.success == True
+    assert result.success is True
     assert result.training_time_seconds > 0
     assert result.training_samples == n_samples
     assert result.training_score is not None
-    assert result.training_score >= 0  # R² can be negative, but should be reasonable
+    assert (
+        result.training_score >= 0
+    )  # R² can be negative, but should be reasonable
 
     # Check model state
-    assert predictor.is_trained == True
+    assert predictor.is_trained is True
     assert predictor.training_date is not None
     assert len(predictor.feature_names) == n_features
 
@@ -258,7 +265,9 @@ async def test_sprint3_model_prediction_basic():
     prediction_time = datetime.utcnow()
 
     # Make predictions
-    predictions = await predictor.predict(pred_features, prediction_time, "vacant")
+    predictions = await predictor.predict(
+        pred_features, prediction_time, "vacant"
+    )
 
     # Validate predictions
     assert isinstance(predictions, list)
@@ -267,7 +276,10 @@ async def test_sprint3_model_prediction_basic():
     for pred in predictions:
         assert isinstance(pred.predicted_time, datetime)
         assert pred.predicted_time > prediction_time
-        assert pred.transition_type in ["vacant_to_occupied", "occupied_to_vacant"]
+        assert pred.transition_type in [
+            "vacant_to_occupied",
+            "occupied_to_vacant",
+        ]
         assert 0.0 <= pred.confidence_score <= 1.0
         assert pred.model_type == "xgboost"
         assert pred.model_version is not None
@@ -295,7 +307,9 @@ async def test_sprint3_lstm_sequence_handling():
             sample = np.random.randn(n_features)
         else:
             # Each sample is correlated with previous sample
-            sample = 0.7 * features_data[-1] + 0.3 * np.random.randn(n_features)
+            sample = 0.7 * features_data[-1] + 0.3 * np.random.randn(
+                n_features
+            )
         features_data.append(sample)
 
     features = pd.DataFrame(
@@ -323,8 +337,8 @@ async def test_sprint3_lstm_sequence_handling():
     result = await predictor.train(features, targets)
 
     # Should succeed even with sequence generation
-    assert result.success == True
-    assert predictor.is_trained == True
+    assert result.success is True
+    assert predictor.is_trained is True
 
     # Test sequence-specific metrics
     assert "sequences_generated" in result.training_metrics
@@ -335,7 +349,9 @@ async def test_sprint3_lstm_sequence_handling():
     pred_features = features.tail(
         predictor.sequence_length + 5
     )  # Ensure enough for sequence
-    predictions = await predictor.predict(pred_features, datetime.utcnow(), "occupied")
+    predictions = await predictor.predict(
+        pred_features, datetime.utcnow(), "occupied"
+    )
 
     assert len(predictions) > 0
     assert all(pred.model_type == "lstm" for pred in predictions)
@@ -361,20 +377,27 @@ async def test_sprint3_hmm_state_identification():
         state = i % 3
 
         if state == 0:  # Short stay state
-            features = np.random.normal([1, -1, 0, 0, 0, 0, 0, 0], 0.5, n_features)
+            features = np.random.normal(
+                [1, -1, 0, 0, 0, 0, 0, 0], 0.5, n_features
+            )
             duration = np.random.normal(600, 100)  # ~10 minutes
         elif state == 1:  # Medium stay state
-            features = np.random.normal([-1, 1, 1, 0, 0, 0, 0, 0], 0.5, n_features)
+            features = np.random.normal(
+                [-1, 1, 1, 0, 0, 0, 0, 0], 0.5, n_features
+            )
             duration = np.random.normal(3600, 300)  # ~1 hour
         else:  # Long stay state
-            features = np.random.normal([0, 0, -1, 1, 1, 0, 0, 0], 0.5, n_features)
+            features = np.random.normal(
+                [0, 0, -1, 1, 1, 0, 0, 0], 0.5, n_features
+            )
             duration = np.random.normal(7200, 600)  # ~2 hours
 
         features_data.append(features)
         targets_data.append(np.clip(duration, 60, 86400))
 
     features = pd.DataFrame(
-        features_data, columns=[f"state_feature_{i}" for i in range(n_features)]
+        features_data,
+        columns=[f"state_feature_{i}" for i in range(n_features)],
     )
     targets = pd.DataFrame({"time_until_transition_seconds": targets_data})
 
@@ -382,12 +405,15 @@ async def test_sprint3_hmm_state_identification():
     result = await predictor.train(features, targets)
 
     # Should identify states successfully
-    assert result.success == True
-    assert predictor.is_trained == True
+    assert result.success is True
+    assert predictor.is_trained is True
 
     # Check state-specific metrics
     assert "n_states" in result.training_metrics
-    assert result.training_metrics["n_states"] == predictor.model_params["n_components"]
+    assert (
+        result.training_metrics["n_states"]
+        == predictor.model_params["n_components"]
+    )
     assert "state_distribution" in result.training_metrics
 
     # Test state info
@@ -398,7 +424,9 @@ async def test_sprint3_hmm_state_identification():
 
     # Test prediction with state information
     pred_features = features.head(10)
-    predictions = await predictor.predict(pred_features, datetime.utcnow(), "unknown")
+    predictions = await predictor.predict(
+        pred_features, datetime.utcnow(), "unknown"
+    )
 
     assert len(predictions) == 10
     for pred in predictions:
@@ -433,7 +461,8 @@ async def test_sprint3_ensemble_training():
     features_data[:, 15:20] = np.round(features_data[:, 15:20])
 
     features = pd.DataFrame(
-        features_data, columns=[f"ensemble_feature_{i}" for i in range(n_features)]
+        features_data,
+        columns=[f"ensemble_feature_{i}" for i in range(n_features)],
     )
 
     # Generate targets with complex patterns
@@ -442,7 +471,9 @@ async def test_sprint3_ensemble_training():
         # Complex relationship involving multiple features
         base_time = 1800  # 30 minutes
         base_time += features_data[i, 0] * 400  # Linear component
-        base_time += features_data[i, 1] * features_data[i, 2] * 200  # Interaction
+        base_time += (
+            features_data[i, 1] * features_data[i, 2] * 200
+        )  # Interaction
         base_time += np.sin(i * 0.1) * 300  # Temporal pattern
 
         target = np.clip(base_time + np.random.normal(0, 200), 60, 86400)
@@ -463,10 +494,10 @@ async def test_sprint3_ensemble_training():
     )
 
     # Validate ensemble training
-    assert result.success == True
-    assert ensemble.is_trained == True
-    assert ensemble.base_models_trained == True
-    assert ensemble.meta_learner_trained == True
+    assert result.success is True
+    assert ensemble.is_trained is True
+    assert ensemble.base_models_trained is True
+    assert ensemble.meta_learner_trained is True
 
     # Check ensemble-specific metrics
     assert "base_model_count" in result.training_metrics
@@ -495,7 +526,9 @@ async def test_sprint3_ensemble_training():
         assert pred.model_type == "ensemble"
         assert "base_model_predictions" in pred.prediction_metadata
         assert "model_weights" in pred.prediction_metadata
-        assert pred.alternatives is not None  # Should have alternative predictions
+        assert (
+            pred.alternatives is not None
+        )  # Should have alternative predictions
 
 
 def test_sprint3_model_serialization():
@@ -513,17 +546,23 @@ def test_sprint3_model_serialization():
     # Test serialization
     with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
         success = predictor.save_model(tmp_file.name)
-        assert success == True
+        assert success is True
 
         # Test deserialization
         new_predictor = XGBoostPredictor(room_id="other_room")
         load_success = new_predictor.load_model(tmp_file.name)
 
-        assert load_success == True
-        assert new_predictor.room_id == "test_room"  # Should be loaded from file
+        assert load_success is True
+        assert (
+            new_predictor.room_id == "test_room"
+        )  # Should be loaded from file
         assert new_predictor.model_version == "v1.5"
-        assert new_predictor.feature_names == ["feature_1", "feature_2", "feature_3"]
-        assert new_predictor.is_trained == True
+        assert new_predictor.feature_names == [
+            "feature_1",
+            "feature_2",
+            "feature_3",
+        ]
+        assert new_predictor.is_trained is True
 
     # Cleanup
     import os
@@ -541,7 +580,11 @@ def test_sprint3_feature_validation():
 
     # Test valid features
     valid_features = pd.DataFrame(
-        {"feature_a": [1, 2, 3], "feature_b": [4, 5, 6], "feature_c": [7, 8, 9]}
+        {
+            "feature_a": [1, 2, 3],
+            "feature_b": [4, 5, 6],
+            "feature_c": [7, 8, 9],
+        }
     )
 
     assert predictor.validate_features(valid_features) == True
@@ -612,9 +655,15 @@ def test_sprint3_file_structure():
     assert (base_path / "src" / "models" / "__init__.py").exists()
     assert (base_path / "src" / "models" / "base" / "__init__.py").exists()
     assert (base_path / "src" / "models" / "base" / "predictor.py").exists()
-    assert (base_path / "src" / "models" / "base" / "lstm_predictor.py").exists()
-    assert (base_path / "src" / "models" / "base" / "xgboost_predictor.py").exists()
-    assert (base_path / "src" / "models" / "base" / "hmm_predictor.py").exists()
+    assert (
+        base_path / "src" / "models" / "base" / "lstm_predictor.py"
+    ).exists()
+    assert (
+        base_path / "src" / "models" / "base" / "xgboost_predictor.py"
+    ).exists()
+    assert (
+        base_path / "src" / "models" / "base" / "hmm_predictor.py"
+    ).exists()
 
     # Ensemble file
     assert (base_path / "src" / "models" / "ensemble.py").exists()
@@ -664,7 +713,9 @@ async def test_sprint3_end_to_end_modeling_pipeline():
             [
                 np.sin(2 * np.pi * hour_of_day / 24),  # Hour sine
                 np.cos(2 * np.pi * hour_of_day / 24),  # Hour cosine
-                1.0 if (hour_of_day >= 22 or hour_of_day <= 6) else 0.0,  # Sleep hours
+                (
+                    1.0 if (hour_of_day >= 22 or hour_of_day <= 6) else 0.0
+                ),  # Sleep hours
                 1.0 if sample_idx % 7 >= 5 else 0.0,  # Weekend
                 np.random.exponential(1800),  # Time since last event
                 np.random.gamma(2, 900),  # State duration
@@ -744,15 +795,17 @@ async def test_sprint3_end_to_end_modeling_pipeline():
     )
 
     # Validate training success
-    assert training_result.success == True
-    assert ensemble.is_trained == True
+    assert training_result.success is True
+    assert ensemble.is_trained is True
     assert training_result.training_score > 0.0  # Should learn something
 
     # Test comprehensive prediction
     test_features = val_features.head(10)
     prediction_time = datetime.utcnow()
 
-    predictions = await ensemble.predict(test_features, prediction_time, "vacant")
+    predictions = await ensemble.predict(
+        test_features, prediction_time, "vacant"
+    )
 
     # Validate predictions
     assert len(predictions) == 10
@@ -761,7 +814,10 @@ async def test_sprint3_end_to_end_modeling_pipeline():
         # Basic validation
         assert isinstance(pred.predicted_time, datetime)
         assert pred.predicted_time > prediction_time
-        assert pred.transition_type in ["vacant_to_occupied", "occupied_to_vacant"]
+        assert pred.transition_type in [
+            "vacant_to_occupied",
+            "occupied_to_vacant",
+        ]
         assert 0.0 <= pred.confidence_score <= 1.0
 
         # Ensemble-specific validation
