@@ -281,7 +281,7 @@ class OccupancyEnsemble(BasePredictor):
             ensemble_predictions = self.meta_learner.predict(meta_features_df)
 
             # Combine base model predictions with meta-learner output
-            ensemble_results = self._combine_predictions(
+            ensemble_results = await self._combine_predictions(
                 base_results, ensemble_predictions, prediction_time, current_state
             )
 
@@ -705,7 +705,7 @@ class OccupancyEnsemble(BasePredictor):
             else:
                 return np.full(len(features), 1800.0)
 
-    def _combine_predictions(
+    async def _combine_predictions(
         self,
         base_results: Dict[str, List[PredictionResult]],
         ensemble_predictions: np.ndarray,
