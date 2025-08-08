@@ -11,29 +11,21 @@ import json
 import logging
 import statistics
 import threading
-from collections import defaultdict
-from collections import deque
-from dataclasses import dataclass
-from dataclasses import field
-from datetime import datetime
-from datetime import timedelta
+from collections import defaultdict, deque
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from ..core.constants import ModelType
-from ..core.exceptions import ErrorSeverity
-from ..core.exceptions import OccupancyPredictionError
-from .validator import AccuracyLevel
-from .validator import AccuracyMetrics
-from .validator import PredictionValidator
-from .validator import ValidationRecord
+from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
+from .validator import (
+    AccuracyLevel,
+    AccuracyMetrics,
+    PredictionValidator,
+    ValidationRecord,
+)
 
 logger = logging.getLogger(__name__)
 

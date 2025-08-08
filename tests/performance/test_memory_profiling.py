@@ -16,15 +16,9 @@ import statistics
 import time
 import tracemalloc
 import weakref
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Tuple
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Tuple
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pandas as pd

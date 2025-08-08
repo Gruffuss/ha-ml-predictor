@@ -8,30 +8,22 @@ state transitions.
 
 import logging
 import warnings
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.gaussian_process.kernels import ConstantKernel as C
-from sklearn.gaussian_process.kernels import Matern
-from sklearn.gaussian_process.kernels import RationalQuadratic
-from sklearn.gaussian_process.kernels import WhiteKernel
+from sklearn.gaussian_process.kernels import Matern, RationalQuadratic, WhiteKernel
 
 # Try to import PeriodicKernel, fallback to ExpSineSquared if not available
 try:
     from sklearn.gaussian_process.kernels import PeriodicKernel
 except ImportError:
     try:
-        from sklearn.gaussian_process.kernels import \
-            ExpSineSquared as PeriodicKernel
+        from sklearn.gaussian_process.kernels import ExpSineSquared as PeriodicKernel
     except ImportError:
         # Create a placeholder class if neither is available
         class PeriodicKernel:
@@ -43,18 +35,12 @@ except ImportError:
                 return self.kernel(*args, **kwargs)
 
 
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 
-from ...core.constants import DEFAULT_MODEL_PARAMS
-from ...core.constants import ModelType
-from ...core.exceptions import ModelPredictionError
-from ...core.exceptions import ModelTrainingError
-from .predictor import BasePredictor
-from .predictor import PredictionResult
-from .predictor import TrainingResult
+from ...core.constants import DEFAULT_MODEL_PARAMS, ModelType
+from ...core.exceptions import ModelPredictionError, ModelTrainingError
+from .predictor import BasePredictor, PredictionResult, TrainingResult
 
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")

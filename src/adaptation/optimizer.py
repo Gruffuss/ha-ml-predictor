@@ -11,22 +11,15 @@ import json
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
-from dataclasses import field
-from datetime import datetime
-from datetime import timedelta
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
+
 # Optimization libraries
 from sklearn.model_selection import ParameterGrid
 
@@ -34,9 +27,7 @@ from sklearn.model_selection import ParameterGrid
 try:
     import skopt
     from skopt import gp_minimize
-    from skopt.space import Categorical
-    from skopt.space import Integer
-    from skopt.space import Real
+    from skopt.space import Categorical, Integer, Real
 
     SKOPT_AVAILABLE = True
 except ImportError:
@@ -48,10 +39,8 @@ except ImportError:
     SKOPT_AVAILABLE = False
 
 from ..core.constants import ModelType
-from ..core.exceptions import ErrorSeverity
-from ..core.exceptions import OccupancyPredictionError
-from ..models.base.predictor import BasePredictor
-from ..models.base.predictor import TrainingResult
+from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
+from ..models.base.predictor import BasePredictor, TrainingResult
 from .drift_detector import DriftMetrics
 from .validator import AccuracyMetrics
 

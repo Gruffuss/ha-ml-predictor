@@ -9,21 +9,15 @@ import logging
 import math
 import statistics
 from collections import defaultdict
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
 from ..core.constants import TEMPORAL_FEATURE_NAMES
 from ..core.exceptions import FeatureExtractionError
-from ..data.storage.models import RoomState
-from ..data.storage.models import SensorEvent
+from ..data.storage.models import RoomState, SensorEvent
 
 logger = logging.getLogger(__name__)
 

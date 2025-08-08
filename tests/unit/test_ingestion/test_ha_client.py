@@ -7,31 +7,23 @@ rate limiting, and error handling for the HomeAssistantClient class.
 
 import asyncio
 import json
-from datetime import datetime
-from datetime import timedelta
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import call
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
 
 import pytest
 import pytest_asyncio
-from aiohttp import ClientError
-from aiohttp import ClientTimeout
-from websockets.exceptions import ConnectionClosed
-from websockets.exceptions import InvalidStatusCode
+from aiohttp import ClientError, ClientTimeout
+from websockets.exceptions import ConnectionClosed, InvalidStatusCode
 
-from src.core.config import HomeAssistantConfig
-from src.core.config import SystemConfig
-from src.core.exceptions import EntityNotFoundError
-from src.core.exceptions import HomeAssistantAPIError
-from src.core.exceptions import HomeAssistantAuthenticationError
-from src.core.exceptions import HomeAssistantConnectionError
-from src.core.exceptions import WebSocketError
-from src.data.ingestion.ha_client import HAEvent
-from src.data.ingestion.ha_client import HomeAssistantClient
-from src.data.ingestion.ha_client import RateLimiter
+from src.core.config import HomeAssistantConfig, SystemConfig
+from src.core.exceptions import (
+    EntityNotFoundError,
+    HomeAssistantAPIError,
+    HomeAssistantAuthenticationError,
+    HomeAssistantConnectionError,
+    WebSocketError,
+)
+from src.data.ingestion.ha_client import HAEvent, HomeAssistantClient, RateLimiter
 from src.data.storage.models import SensorEvent
 
 

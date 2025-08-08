@@ -6,26 +6,15 @@ feature integration, error handling, and performance management.
 """
 
 import asyncio
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
-from src.core.config import RoomConfig
-from src.core.config import SystemConfig
-from src.core.exceptions import ConfigurationError
-from src.core.exceptions import FeatureExtractionError
-from src.data.storage.models import RoomState
-from src.data.storage.models import SensorEvent
+from src.core.config import RoomConfig, SystemConfig
+from src.core.exceptions import ConfigurationError, FeatureExtractionError
+from src.data.storage.models import RoomState, SensorEvent
 from src.features.contextual import ContextualFeatureExtractor
 from src.features.engineering import FeatureEngineeringEngine
 from src.features.sequential import SequentialFeatureExtractor

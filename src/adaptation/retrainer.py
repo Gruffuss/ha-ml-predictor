@@ -10,38 +10,22 @@ import heapq
 import json
 import logging
 import threading
-from collections import defaultdict
-from collections import deque
-from dataclasses import dataclass
-from dataclasses import field
-from datetime import datetime
-from datetime import timedelta
+from collections import defaultdict, deque
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Set
-from typing import Tuple
-from typing import Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from ..core.constants import ModelType
-from ..core.exceptions import ErrorSeverity
-from ..core.exceptions import OccupancyPredictionError
-from ..models.base.predictor import PredictionResult
-from ..models.base.predictor import TrainingResult
-from .drift_detector import ConceptDriftDetector
-from .drift_detector import DriftMetrics
-from .drift_detector import DriftSeverity
-from .optimizer import ModelOptimizer
-from .optimizer import OptimizationConfig
-from .optimizer import OptimizationResult
-from .validator import AccuracyMetrics
-from .validator import PredictionValidator
+from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
+from ..models.base.predictor import PredictionResult, TrainingResult
+from .drift_detector import ConceptDriftDetector, DriftMetrics, DriftSeverity
+from .optimizer import ModelOptimizer, OptimizationConfig, OptimizationResult
+from .validator import AccuracyMetrics, PredictionValidator
 
 logger = logging.getLogger(__name__)
 

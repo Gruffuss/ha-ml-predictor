@@ -23,49 +23,35 @@ import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import call
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
 
 import pytest
 import pytest_asyncio
 import websockets
-from aiohttp import ClientSession
-from aiohttp import web
+from aiohttp import ClientSession, web
 from aiohttp.test_utils import AioHTTPTestCase
 from fastapi.testclient import TestClient
 
-from src.adaptation.tracking_manager import TrackingConfig
-from src.adaptation.tracking_manager import TrackingManager
-from src.core.config import SystemConfig
-from src.core.config import get_config
-from src.core.constants import SensorState
-from src.core.constants import SensorType
+from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
+from src.core.config import SystemConfig, get_config
+from src.core.constants import SensorState, SensorType
 from src.data.ingestion.event_processor import EventProcessor
 from src.data.ingestion.ha_client import HAEvent
-from src.data.storage.models import Prediction
-from src.data.storage.models import RoomState
-from src.data.storage.models import SensorEvent
-from src.integration.api_server import create_app
-from src.integration.api_server import set_tracking_manager
-from src.integration.enhanced_mqtt_manager import \
-    EnhancedMQTTIntegrationManager
-from src.integration.realtime_publisher import PublishingChannel
-from src.integration.realtime_publisher import RealtimePredictionEvent
-from src.integration.realtime_publisher import RealtimePublishingSystem
-from src.integration.tracking_integration import IntegrationConfig
-from src.integration.tracking_integration import TrackingIntegrationManager
-from src.integration.tracking_integration import \
-    create_integrated_tracking_manager
+from src.data.storage.models import Prediction, RoomState, SensorEvent
+from src.integration.api_server import create_app, set_tracking_manager
+from src.integration.enhanced_mqtt_manager import EnhancedMQTTIntegrationManager
+from src.integration.realtime_publisher import (
+    PublishingChannel,
+    RealtimePredictionEvent,
+    RealtimePublishingSystem,
+)
+from src.integration.tracking_integration import (
+    IntegrationConfig,
+    TrackingIntegrationManager,
+    create_integrated_tracking_manager,
+)
 from src.models.base.predictor import PredictionResult
 
 logger = logging.getLogger(__name__)
@@ -846,8 +832,7 @@ class TestConfigurationValidation:
             mock_tracking.notification_callbacks = []
             mock_tracking_class.return_value = mock_tracking
 
-            from src.integration.tracking_integration import \
-                TrackingIntegrationManager
+            from src.integration.tracking_integration import TrackingIntegrationManager
 
             manager = TrackingIntegrationManager(
                 tracking_manager=mock_tracking, integration_config=minimal_config

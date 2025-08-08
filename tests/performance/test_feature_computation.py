@@ -14,13 +14,9 @@ Tests feature extraction performance across different scenarios:
 import asyncio
 import statistics
 import time
-from datetime import datetime
-from datetime import timedelta
-from typing import Dict
-from typing import List
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from typing import Dict, List
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pandas as pd

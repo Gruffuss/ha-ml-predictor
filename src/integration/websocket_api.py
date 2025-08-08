@@ -24,38 +24,28 @@ import logging
 import uuid
 import weakref
 from contextlib import asynccontextmanager
-from dataclasses import asdict
-from dataclasses import dataclass
-from datetime import datetime
-from datetime import timedelta
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Set
-from typing import Union
+from typing import Any, Callable, Dict, List, Optional, Set, Union
 
 import websockets
-from pydantic import BaseModel
-from pydantic import Field
-from pydantic import validator
+from pydantic import BaseModel, Field, validator
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
-from starlette.responses import PlainTextResponse
-from starlette.routing import Route
-from starlette.routing import WebSocketRoute
+from starlette.responses import JSONResponse, PlainTextResponse
+from starlette.routing import Route, WebSocketRoute
 from websockets.server import WebSocketServerProtocol
 
 from ..core.config import get_config
-from ..core.exceptions import ErrorSeverity
-from ..core.exceptions import OccupancyPredictionError
-from ..core.exceptions import WebSocketAuthenticationError
-from ..core.exceptions import WebSocketConnectionError
-from ..core.exceptions import WebSocketRateLimitError
-from ..core.exceptions import WebSocketValidationError
+from ..core.exceptions import (
+    ErrorSeverity,
+    OccupancyPredictionError,
+    WebSocketAuthenticationError,
+    WebSocketConnectionError,
+    WebSocketRateLimitError,
+    WebSocketValidationError,
+)
 from ..models.base.predictor import PredictionResult
 
 logger = logging.getLogger(__name__)

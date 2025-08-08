@@ -7,50 +7,35 @@ This module provides shared fixtures and configuration for all tests.
 import asyncio
 import os
 import tempfile
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from typing import Any, Dict, List, Optional
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from src.core.config import DatabaseConfig
-from src.core.config import HomeAssistantConfig
-from src.core.config import RoomConfig
-from src.core.config import SystemConfig
-from src.core.constants import SensorState
-from src.core.constants import SensorType
+from src.core.config import (
+    DatabaseConfig,
+    HomeAssistantConfig,
+    RoomConfig,
+    SystemConfig,
+)
+from src.core.constants import SensorState, SensorType
 from src.data.ingestion.event_processor import EventProcessor
-from src.data.ingestion.ha_client import HAEvent
-from src.data.ingestion.ha_client import HomeAssistantClient
+from src.data.ingestion.ha_client import HAEvent, HomeAssistantClient
 from src.data.storage.database import DatabaseManager
-from src.data.storage.models import Base
-from src.data.storage.models import Prediction
-from src.data.storage.models import RoomState
-from src.data.storage.models import SensorEvent
+from src.data.storage.models import Base, Prediction, RoomState, SensorEvent
 
 
 def _patch_models_for_sqlite(engine):
     """Patch models to be SQLite-compatible by removing composite primary keys."""
-    from sqlalchemy import BigInteger
-    from sqlalchemy import Column
-    from sqlalchemy import DateTime
+    from sqlalchemy import BigInteger, Column, DateTime
     from sqlalchemy.sql import func
 
-    from src.data.storage.models import Prediction
-    from src.data.storage.models import RoomState
-    from src.data.storage.models import SensorEvent
+    from src.data.storage.models import Prediction, RoomState, SensorEvent
 
     # Remove timestamp from primary key for SensorEvent
     # This allows SQLite to work with autoincrement on id only

@@ -9,46 +9,47 @@ from unittest.mock import Mock
 
 import pytest
 
-from src.core.exceptions import \
-    ConfigFileNotFoundError  # Base exception; Configuration errors; Home Assistant errors; Database errors; Model errors; Feature engineering errors; MQTT and Integration errors; System errors
-from src.core.exceptions import ConfigParsingError
-from src.core.exceptions import ConfigurationError
-from src.core.exceptions import ConfigValidationError
-from src.core.exceptions import DatabaseConnectionError
-from src.core.exceptions import DatabaseError
-from src.core.exceptions import DatabaseIntegrityError
-from src.core.exceptions import DatabaseMigrationError
-from src.core.exceptions import DatabaseQueryError
-from src.core.exceptions import DataValidationError
-from src.core.exceptions import EntityNotFoundError
-from src.core.exceptions import ErrorSeverity
-from src.core.exceptions import FeatureEngineeringError
-from src.core.exceptions import FeatureExtractionError
-from src.core.exceptions import FeatureStoreError
-from src.core.exceptions import FeatureValidationError
-from src.core.exceptions import HomeAssistantAPIError
-from src.core.exceptions import HomeAssistantAuthenticationError
-from src.core.exceptions import HomeAssistantConnectionError
-from src.core.exceptions import HomeAssistantError
-from src.core.exceptions import InsufficientTrainingDataError
-from src.core.exceptions import IntegrationError
-from src.core.exceptions import MaintenanceModeError
-from src.core.exceptions import MissingFeatureError
-from src.core.exceptions import ModelError
-from src.core.exceptions import ModelNotFoundError
-from src.core.exceptions import ModelPredictionError
-from src.core.exceptions import ModelTrainingError
-from src.core.exceptions import ModelVersionMismatchError
-from src.core.exceptions import MQTTConnectionError
-from src.core.exceptions import MQTTError
-from src.core.exceptions import MQTTPublishError
-from src.core.exceptions import MQTTSubscriptionError
-from src.core.exceptions import OccupancyPredictionError
-from src.core.exceptions import RateLimitExceededError
-from src.core.exceptions import ResourceExhaustionError
-from src.core.exceptions import ServiceUnavailableError
-from src.core.exceptions import SystemError
-from src.core.exceptions import WebSocketError
+from src.core.exceptions import (  # Base exception; Configuration errors; Home Assistant errors; Database errors; Model errors; Feature engineering errors; MQTT and Integration errors; System errors
+    ConfigFileNotFoundError,
+    ConfigParsingError,
+    ConfigurationError,
+    ConfigValidationError,
+    DatabaseConnectionError,
+    DatabaseError,
+    DatabaseIntegrityError,
+    DatabaseMigrationError,
+    DatabaseQueryError,
+    DataValidationError,
+    EntityNotFoundError,
+    ErrorSeverity,
+    FeatureEngineeringError,
+    FeatureExtractionError,
+    FeatureStoreError,
+    FeatureValidationError,
+    HomeAssistantAPIError,
+    HomeAssistantAuthenticationError,
+    HomeAssistantConnectionError,
+    HomeAssistantError,
+    InsufficientTrainingDataError,
+    IntegrationError,
+    MaintenanceModeError,
+    MissingFeatureError,
+    ModelError,
+    ModelNotFoundError,
+    ModelPredictionError,
+    ModelTrainingError,
+    ModelVersionMismatchError,
+    MQTTConnectionError,
+    MQTTError,
+    MQTTPublishError,
+    MQTTSubscriptionError,
+    OccupancyPredictionError,
+    RateLimitExceededError,
+    ResourceExhaustionError,
+    ServiceUnavailableError,
+    SystemError,
+    WebSocketError,
+)
 
 
 class TestErrorSeverity:

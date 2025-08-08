@@ -17,49 +17,55 @@ import asyncio
 import json
 import logging
 import tempfile
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from typing import Any, Dict, List, Optional
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import websockets
 
-from src.adaptation.drift_detector import ConceptDriftDetector
-from src.adaptation.drift_detector import DriftMetrics
-from src.adaptation.drift_detector import DriftSeverity
-from src.adaptation.drift_detector import DriftType
-from src.adaptation.optimizer import ModelOptimizer
-from src.adaptation.optimizer import OptimizationConfig
-from src.adaptation.optimizer import OptimizationObjective
-from src.adaptation.optimizer import OptimizationStrategy
-from src.adaptation.retrainer import AdaptiveRetrainer
-from src.adaptation.retrainer import RetrainingRequest
-from src.adaptation.retrainer import RetrainingStatus
-from src.adaptation.retrainer import RetrainingTrigger
-from src.adaptation.tracker import AccuracyAlert
-from src.adaptation.tracker import AccuracyTracker
-from src.adaptation.tracker import AlertSeverity
-from src.adaptation.tracker import RealTimeMetrics
-from src.adaptation.tracker import TrendDirection
-from src.adaptation.tracking_manager import TrackingConfig
-from src.adaptation.tracking_manager import TrackingManager
+from src.adaptation.drift_detector import (
+    ConceptDriftDetector,
+    DriftMetrics,
+    DriftSeverity,
+    DriftType,
+)
+from src.adaptation.optimizer import (
+    ModelOptimizer,
+    OptimizationConfig,
+    OptimizationObjective,
+    OptimizationStrategy,
+)
+from src.adaptation.retrainer import (
+    AdaptiveRetrainer,
+    RetrainingRequest,
+    RetrainingStatus,
+    RetrainingTrigger,
+)
+from src.adaptation.tracker import (
+    AccuracyAlert,
+    AccuracyTracker,
+    AlertSeverity,
+    RealTimeMetrics,
+    TrendDirection,
+)
+from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
+
 # Import all Sprint 4 components
-from src.adaptation.validator import AccuracyLevel
-from src.adaptation.validator import AccuracyMetrics
-from src.adaptation.validator import PredictionValidator
-from src.adaptation.validator import ValidationRecord
+from src.adaptation.validator import (
+    AccuracyLevel,
+    AccuracyMetrics,
+    PredictionValidator,
+    ValidationRecord,
+)
 from src.core.constants import ModelType
 from src.core.exceptions import OccupancyPredictionError
-from src.integration.dashboard import DashboardConfig
-from src.integration.dashboard import DashboardMode
-from src.integration.dashboard import PerformanceDashboard
+from src.integration.dashboard import (
+    DashboardConfig,
+    DashboardMode,
+    PerformanceDashboard,
+)
 from src.models.base.predictor import PredictionResult
 
 logger = logging.getLogger(__name__)

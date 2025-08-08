@@ -10,47 +10,40 @@ import asyncio
 import logging
 import threading
 from dataclasses import dataclass
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
+from datetime import datetime, timedelta
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from ..core.constants import ModelType
-from ..core.exceptions import ErrorSeverity
-from ..core.exceptions import OccupancyPredictionError
-from ..data.storage.models import RoomState
-from ..data.storage.models import SensorEvent
+from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
+from ..data.storage.models import RoomState, SensorEvent
 from ..integration.enhanced_mqtt_manager import EnhancedMQTTIntegrationManager
-from ..integration.realtime_publisher import PublishingChannel
-from ..integration.realtime_publisher import RealtimePublishingSystem
+from ..integration.realtime_publisher import PublishingChannel, RealtimePublishingSystem
 from ..models.base.predictor import PredictionResult
-from .drift_detector import ConceptDriftDetector
-from .drift_detector import DriftMetrics
-from .drift_detector import DriftSeverity
-from .optimizer import ModelOptimizer
-from .optimizer import OptimizationConfig
-from .optimizer import OptimizationObjective
-from .optimizer import OptimizationStrategy
-from .retrainer import AdaptiveRetrainer
-from .retrainer import RetrainingRequest
-from .retrainer import RetrainingStatus
-from .retrainer import RetrainingTrigger
-from .tracker import AccuracyAlert
-from .tracker import AccuracyTracker
-from .tracker import RealTimeMetrics
+from .drift_detector import ConceptDriftDetector, DriftMetrics, DriftSeverity
+from .optimizer import (
+    ModelOptimizer,
+    OptimizationConfig,
+    OptimizationObjective,
+    OptimizationStrategy,
+)
+from .retrainer import (
+    AdaptiveRetrainer,
+    RetrainingRequest,
+    RetrainingStatus,
+    RetrainingTrigger,
+)
+from .tracker import AccuracyAlert, AccuracyTracker, RealTimeMetrics
 from .validator import PredictionValidator
 
 logger = logging.getLogger(__name__)
 
 # Import dashboard components with graceful fallback
 try:
-    from ..integration.dashboard import DashboardConfig
-    from ..integration.dashboard import DashboardMode
-    from ..integration.dashboard import PerformanceDashboard
+    from ..integration.dashboard import (
+        DashboardConfig,
+        DashboardMode,
+        PerformanceDashboard,
+    )
 
     DASHBOARD_AVAILABLE = True
 except ImportError as e:
@@ -1434,8 +1427,7 @@ class TrackingManager:
         """
         try:
             # Use late import to avoid circular dependency during module initialization
-            from ..integration.api_server import \
-                integrate_with_tracking_manager
+            from ..integration.api_server import integrate_with_tracking_manager
 
             logger.info("Starting integrated REST API server...")
             api_server = await integrate_with_tracking_manager(self)
@@ -1744,8 +1736,7 @@ class TrackingManager:
 
             # Use adaptive retrainer if available
             if hasattr(self, "adaptive_retrainer") and self.adaptive_retrainer:
-                from .retrainer import RetrainingRequest
-                from .retrainer import RetrainingTrigger
+                from .retrainer import RetrainingRequest, RetrainingTrigger
 
                 # Create retraining request
                 request = RetrainingRequest(

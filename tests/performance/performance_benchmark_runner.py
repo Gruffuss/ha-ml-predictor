@@ -18,29 +18,22 @@ import json
 import statistics
 import time
 import traceback
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import pytest
 
 try:
-    from .test_feature_computation import \
-        benchmark_feature_computation_performance
+    from .test_feature_computation import benchmark_feature_computation_performance
     from .test_memory_profiling import benchmark_memory_performance
     from .test_prediction_latency import benchmark_prediction_performance
     from .test_throughput import benchmark_system_throughput
 except ImportError:
     # Handle case when running as script
-    from test_feature_computation import \
-        benchmark_feature_computation_performance
+    from test_feature_computation import benchmark_feature_computation_performance
     from test_memory_profiling import benchmark_memory_performance
     from test_prediction_latency import benchmark_prediction_performance
     from test_throughput import benchmark_system_throughput

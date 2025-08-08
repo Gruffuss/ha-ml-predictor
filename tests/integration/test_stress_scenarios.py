@@ -19,19 +19,10 @@ import asyncio
 import gc
 import logging
 import time
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import httpx
 import psutil
@@ -40,21 +31,18 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import DisconnectionError
 
-from src.adaptation.tracking_manager import TrackingConfig
-from src.adaptation.tracking_manager import TrackingManager
+from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
 from src.core.config import get_config
-from src.core.exceptions import DatabaseConnectionError
-from src.core.exceptions import DatabaseError
-from src.core.exceptions import ErrorSeverity
-from src.core.exceptions import SystemResourceError
-from src.data.storage.database import DatabaseManager
-from src.data.storage.database import get_database_manager
-from src.data.storage.models import RoomState
-from src.data.storage.models import SensorEvent
-from src.integration.api_server import APIServer
-from src.integration.api_server import create_app
-from src.integration.enhanced_mqtt_manager import \
-    EnhancedMQTTIntegrationManager
+from src.core.exceptions import (
+    DatabaseConnectionError,
+    DatabaseError,
+    ErrorSeverity,
+    SystemResourceError,
+)
+from src.data.storage.database import DatabaseManager, get_database_manager
+from src.data.storage.models import RoomState, SensorEvent
+from src.integration.api_server import APIServer, create_app
+from src.integration.enhanced_mqtt_manager import EnhancedMQTTIntegrationManager
 
 logger = logging.getLogger(__name__)
 

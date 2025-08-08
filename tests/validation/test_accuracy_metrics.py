@@ -9,27 +9,22 @@ reporting used in the occupancy prediction system validation.
 import asyncio
 import statistics
 from collections import defaultdict
-from datetime import datetime
-from datetime import timedelta
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from src.adaptation.validator import AccuracyLevel
-from src.adaptation.validator import AccuracyMetrics
-from src.adaptation.validator import PredictionValidator
-from src.adaptation.validator import ValidationError
-from src.adaptation.validator import ValidationRecord
-from src.adaptation.validator import ValidationStatus
+from src.adaptation.validator import (
+    AccuracyLevel,
+    AccuracyMetrics,
+    PredictionValidator,
+    ValidationError,
+    ValidationRecord,
+    ValidationStatus,
+)
 from src.models.base.predictor import PredictionResult
 
 

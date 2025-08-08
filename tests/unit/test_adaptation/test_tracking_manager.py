@@ -7,28 +7,25 @@ all adaptation components, integration workflows, and real-time monitoring.
 
 import asyncio
 import json
-from datetime import datetime
-from datetime import timedelta
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
-from src.adaptation.drift_detector import ConceptDriftDetector
-from src.adaptation.drift_detector import DriftMetrics
-from src.adaptation.drift_detector import DriftSeverity
-from src.adaptation.optimizer import ModelOptimizer
-from src.adaptation.optimizer import OptimizationConfig
-from src.adaptation.retrainer import AdaptiveRetrainer
-from src.adaptation.retrainer import RetrainingRequest
-from src.adaptation.retrainer import RetrainingStatus
+from src.adaptation.drift_detector import (
+    ConceptDriftDetector,
+    DriftMetrics,
+    DriftSeverity,
+)
+from src.adaptation.optimizer import ModelOptimizer, OptimizationConfig
+from src.adaptation.retrainer import (
+    AdaptiveRetrainer,
+    RetrainingRequest,
+    RetrainingStatus,
+)
 from src.adaptation.tracker import AccuracyTracker
-from src.adaptation.tracking_manager import TrackingConfig
-from src.adaptation.tracking_manager import TrackingManager
-from src.adaptation.validator import AccuracyMetrics
-from src.adaptation.validator import PredictionValidator
+from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
+from src.adaptation.validator import AccuracyMetrics, PredictionValidator
 from src.models.base.predictor import PredictionResult
 
 # Test fixtures

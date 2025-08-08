@@ -7,23 +7,21 @@ validation workflows, and comprehensive prediction performance analysis.
 
 import asyncio
 import json
-from datetime import datetime
-from datetime import timedelta
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.adaptation.validator import AccuracyLevel
-from src.adaptation.validator import AccuracyMetrics
-from src.adaptation.validator import PredictionValidator
-from src.adaptation.validator import ValidationRecord
-from src.adaptation.validator import ValidationStatus
+from src.adaptation.validator import (
+    AccuracyLevel,
+    AccuracyMetrics,
+    PredictionValidator,
+    ValidationRecord,
+    ValidationStatus,
+)
 from src.core.constants import ModelType
 from src.core.exceptions import OccupancyPredictionError
 from src.data.storage.models import Prediction

@@ -6,29 +6,18 @@ tabular feature-based occupancy predictions with excellent interpretability.
 """
 
 import logging
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 
-from ...core.constants import DEFAULT_MODEL_PARAMS
-from ...core.constants import ModelType
-from ...core.exceptions import ModelPredictionError
-from ...core.exceptions import ModelTrainingError
-from .predictor import BasePredictor
-from .predictor import PredictionResult
-from .predictor import TrainingResult
+from ...core.constants import DEFAULT_MODEL_PARAMS, ModelType
+from ...core.exceptions import ModelPredictionError, ModelTrainingError
+from .predictor import BasePredictor, PredictionResult, TrainingResult
 
 logger = logging.getLogger(__name__)
 

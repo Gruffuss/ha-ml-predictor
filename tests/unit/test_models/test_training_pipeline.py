@@ -11,33 +11,27 @@ import json
 import tempfile
 import time
 import uuid
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from typing import Any, Dict, List, Optional
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
 from src.core.exceptions import ModelTrainingError
-from src.models.base.predictor import BasePredictor
-from src.models.base.predictor import PredictionResult
-from src.models.base.predictor import TrainingResult
+from src.models.base.predictor import BasePredictor, PredictionResult, TrainingResult
 from src.models.ensemble import OccupancyEnsemble
-from src.models.training_pipeline import DataQualityReport
-from src.models.training_pipeline import ModelTrainingPipeline
-from src.models.training_pipeline import TrainingConfig
-from src.models.training_pipeline import TrainingProgress
-from src.models.training_pipeline import TrainingStage
-from src.models.training_pipeline import TrainingType
-from src.models.training_pipeline import ValidationStrategy
+from src.models.training_pipeline import (
+    DataQualityReport,
+    ModelTrainingPipeline,
+    TrainingConfig,
+    TrainingProgress,
+    TrainingStage,
+    TrainingType,
+    ValidationStrategy,
+)
 
 
 @pytest.fixture

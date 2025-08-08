@@ -9,25 +9,24 @@ management.
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from typing import Any, Dict
+from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
 
-from src.models.training_config import OptimizationConfig
-from src.models.training_config import OptimizationLevel
-from src.models.training_config import QualityThresholds
-from src.models.training_config import ResourceLimits
-from src.models.training_config import TrainingConfigManager
-from src.models.training_config import TrainingEnvironmentConfig
-from src.models.training_config import TrainingProfile
-from src.models.training_config import get_training_config
-from src.models.training_config import get_training_config_manager
-from src.models.training_pipeline import TrainingConfig
-from src.models.training_pipeline import ValidationStrategy
+from src.models.training_config import (
+    OptimizationConfig,
+    OptimizationLevel,
+    QualityThresholds,
+    ResourceLimits,
+    TrainingConfigManager,
+    TrainingEnvironmentConfig,
+    TrainingProfile,
+    get_training_config,
+    get_training_config_manager,
+)
+from src.models.training_pipeline import TrainingConfig, ValidationStrategy
 
 
 class TestResourceLimits:

@@ -8,29 +8,25 @@ convergence testing, and performance optimization workflows.
 import asyncio
 import json
 import time
-from datetime import datetime
-from datetime import timedelta
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
-from sklearn.datasets import make_classification
-from sklearn.datasets import make_regression
+from sklearn.datasets import make_classification, make_regression
 from sklearn.model_selection import train_test_split
 
 from src.adaptation.drift_detector import DriftMetrics
-from src.adaptation.optimizer import ModelOptimizer
-from src.adaptation.optimizer import OptimizationConfig
-from src.adaptation.optimizer import OptimizationObjective
-from src.adaptation.optimizer import OptimizationResult
-from src.adaptation.optimizer import OptimizationStrategy
+from src.adaptation.optimizer import (
+    ModelOptimizer,
+    OptimizationConfig,
+    OptimizationObjective,
+    OptimizationResult,
+    OptimizationStrategy,
+)
 from src.adaptation.validator import AccuracyMetrics
-from src.models.base.predictor import BasePredictor
-from src.models.base.predictor import TrainingResult
+from src.models.base.predictor import BasePredictor, TrainingResult
 
 # Test fixtures and utilities
 

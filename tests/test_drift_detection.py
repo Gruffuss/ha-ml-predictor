@@ -7,27 +7,28 @@ with the existing prediction validation infrastructure.
 
 import asyncio
 from dataclasses import asdict
-from datetime import datetime
-from datetime import timedelta
-from unittest.mock import AsyncMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, Mock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from src.adaptation.drift_detector import ConceptDriftDetector
-from src.adaptation.drift_detector import DriftDetectionError
-from src.adaptation.drift_detector import DriftMetrics
-from src.adaptation.drift_detector import DriftSeverity
-from src.adaptation.drift_detector import DriftType
-from src.adaptation.drift_detector import FeatureDriftDetector
-from src.adaptation.drift_detector import FeatureDriftResult
-from src.adaptation.drift_detector import StatisticalTest
-from src.adaptation.validator import AccuracyMetrics
-from src.adaptation.validator import PredictionValidator
-from src.adaptation.validator import ValidationRecord
+from src.adaptation.drift_detector import (
+    ConceptDriftDetector,
+    DriftDetectionError,
+    DriftMetrics,
+    DriftSeverity,
+    DriftType,
+    FeatureDriftDetector,
+    FeatureDriftResult,
+    StatisticalTest,
+)
+from src.adaptation.validator import (
+    AccuracyMetrics,
+    PredictionValidator,
+    ValidationRecord,
+)
 
 
 class TestDriftMetrics:

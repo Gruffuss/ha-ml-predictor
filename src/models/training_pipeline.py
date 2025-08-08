@@ -12,33 +12,22 @@ import logging
 import pickle
 import shutil
 import uuid
-from dataclasses import dataclass
-from dataclasses import field
-from datetime import datetime
-from datetime import timedelta
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import TimeSeriesSplit
 
 from ..core.constants import ModelType
-from ..core.exceptions import ModelTrainingError
-from ..core.exceptions import OccupancyPredictionError
+from ..core.exceptions import ModelTrainingError, OccupancyPredictionError
 from ..features.engineering import FeatureEngineeringEngine
 from ..features.store import FeatureStore
-from .base.predictor import BasePredictor
-from .base.predictor import TrainingResult
+from .base.predictor import BasePredictor, TrainingResult
 from .ensemble import OccupancyEnsemble
 
 logger = logging.getLogger(__name__)

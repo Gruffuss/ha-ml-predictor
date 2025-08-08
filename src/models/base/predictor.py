@@ -7,27 +7,18 @@ predictive models in the occupancy prediction system.
 
 import logging
 import pickle
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 
 from ...core.config import SystemConfig
-from ...core.constants import ModelType
-from ...core.constants import PredictionType
-from ...core.exceptions import ModelPredictionError
-from ...core.exceptions import ModelTrainingError
+from ...core.constants import ModelType, PredictionType
+from ...core.exceptions import ModelPredictionError, ModelTrainingError
 
 logger = logging.getLogger(__name__)
 

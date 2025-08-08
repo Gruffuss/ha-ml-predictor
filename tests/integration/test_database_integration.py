@@ -5,25 +5,23 @@ Tests full database operations including models, relationships,
 queries, and TimescaleDB-specific functionality.
 """
 
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import func
-from sqlalchemy import select
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 
-from src.data.storage.database import DatabaseManager
-from src.data.storage.database import get_database_manager
-from src.data.storage.models import FeatureStore
-from src.data.storage.models import ModelAccuracy
-from src.data.storage.models import Prediction
-from src.data.storage.models import RoomState
-from src.data.storage.models import SensorEvent
-from src.data.storage.models import create_timescale_hypertables
-from src.data.storage.models import optimize_database_performance
+from src.data.storage.database import DatabaseManager, get_database_manager
+from src.data.storage.models import (
+    FeatureStore,
+    ModelAccuracy,
+    Prediction,
+    RoomState,
+    SensorEvent,
+    create_timescale_hypertables,
+    optimize_database_performance,
+)
 
 
 @pytest.mark.integration

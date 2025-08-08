@@ -7,24 +7,16 @@ door states, multi-room correlations, and seasonal patterns.
 
 import statistics
 from collections import defaultdict
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 import pytest
 
-from src.core.config import RoomConfig
-from src.core.config import SystemConfig
+from src.core.config import RoomConfig, SystemConfig
 from src.core.exceptions import FeatureExtractionError
-from src.data.storage.models import RoomState
-from src.data.storage.models import SensorEvent
+from src.data.storage.models import RoomState, SensorEvent
 from src.features.contextual import ContextualFeatureExtractor
 
 

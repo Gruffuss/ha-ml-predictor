@@ -9,38 +9,27 @@ factories, and integration test helpers.
 import asyncio
 import json
 import logging
-from dataclasses import dataclass
-from dataclasses import field
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 import pytest_asyncio
 import websockets
-from aiohttp import ClientSession
-from aiohttp import web
+from aiohttp import ClientSession, web
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.adaptation.tracking_manager import TrackingConfig
-from src.adaptation.tracking_manager import TrackingManager
-from src.core.config import APIConfig
-from src.core.config import MQTTConfig
-from src.core.config import SystemConfig
+from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
+from src.core.config import APIConfig, MQTTConfig, SystemConfig
 from src.integration.enhanced_mqtt_manager import EnhancedIntegrationStats
 from src.integration.mqtt_integration_manager import MQTTIntegrationStats
-from src.integration.realtime_publisher import PublishingChannel
-from src.integration.realtime_publisher import PublishingMetrics
-from src.integration.realtime_publisher import RealtimePredictionEvent
+from src.integration.realtime_publisher import (
+    PublishingChannel,
+    PublishingMetrics,
+    RealtimePredictionEvent,
+)
 
 logger = logging.getLogger(__name__)
 

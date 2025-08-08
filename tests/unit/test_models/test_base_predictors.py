@@ -9,28 +9,21 @@ calibration, and performance benchmarking.
 import asyncio
 import tempfile
 import time
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict
-from typing import List
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from typing import Dict, List
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
 from src.core.constants import ModelType
-from src.core.exceptions import ModelPredictionError
-from src.core.exceptions import ModelTrainingError
+from src.core.exceptions import ModelPredictionError, ModelTrainingError
 from src.models.base.gp_predictor import GaussianProcessPredictor
 from src.models.base.hmm_predictor import HMMPredictor
 from src.models.base.lstm_predictor import LSTMPredictor
-from src.models.base.predictor import BasePredictor
-from src.models.base.predictor import PredictionResult
-from src.models.base.predictor import TrainingResult
+from src.models.base.predictor import BasePredictor, PredictionResult, TrainingResult
 from src.models.base.xgboost_predictor import XGBoostPredictor
 
 

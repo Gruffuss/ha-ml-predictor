@@ -5,25 +5,19 @@ This module tests the SequentialFeatureExtractor for movement patterns,
 room transitions, velocity analysis, and human vs cat classification.
 """
 
-from collections import Counter
-from collections import defaultdict
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from src.core.config import RoomConfig
-from src.core.config import SystemConfig
+from src.core.config import RoomConfig, SystemConfig
 from src.core.exceptions import FeatureExtractionError
-from src.data.ingestion.event_processor import MovementPatternClassifier
-from src.data.ingestion.event_processor import MovementSequence
+from src.data.ingestion.event_processor import (
+    MovementPatternClassifier,
+    MovementSequence,
+)
 from src.data.storage.models import SensorEvent
 from src.features.sequential import SequentialFeatureExtractor
 

@@ -17,23 +17,15 @@ import json
 import logging
 import ssl
 import threading
-from dataclasses import asdict
-from dataclasses import dataclass
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import paho.mqtt.enums as mqtt_enums
 from paho.mqtt import client as mqtt_client
 
 from ..core.config import MQTTConfig
-from ..core.exceptions import ErrorSeverity
-from ..core.exceptions import OccupancyPredictionError
+from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
 from ..models.base.predictor import PredictionResult
 
 logger = logging.getLogger(__name__)

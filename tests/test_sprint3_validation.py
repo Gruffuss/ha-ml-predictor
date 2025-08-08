@@ -7,12 +7,9 @@ model components are working correctly before proceeding to Sprint 4.
 
 import asyncio
 import logging
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from typing import List
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -29,9 +26,11 @@ def test_sprint3_imports():
     # Base model components
     from src.models.base.hmm_predictor import HMMPredictor
     from src.models.base.lstm_predictor import LSTMPredictor
-    from src.models.base.predictor import BasePredictor
-    from src.models.base.predictor import PredictionResult
-    from src.models.base.predictor import TrainingResult
+    from src.models.base.predictor import (
+        BasePredictor,
+        PredictionResult,
+        TrainingResult,
+    )
     from src.models.base.xgboost_predictor import XGBoostPredictor
     from src.models.ensemble import OccupancyEnsemble
 
@@ -42,9 +41,11 @@ def test_sprint3_imports():
 def test_sprint3_base_predictor_interface():
     """Test that the base predictor interface is properly structured."""
     from src.core.constants import ModelType
-    from src.models.base.predictor import BasePredictor
-    from src.models.base.predictor import PredictionResult
-    from src.models.base.predictor import TrainingResult
+    from src.models.base.predictor import (
+        BasePredictor,
+        PredictionResult,
+        TrainingResult,
+    )
 
     # Test PredictionResult
     pred_result = PredictionResult(
@@ -805,8 +806,7 @@ def test_sprint3_smoke_test():
     from src.core.constants import ModelType
     from src.models.base.hmm_predictor import HMMPredictor
     from src.models.base.lstm_predictor import LSTMPredictor
-    from src.models.base.predictor import BasePredictor
-    from src.models.base.predictor import PredictionResult
+    from src.models.base.predictor import BasePredictor, PredictionResult
     from src.models.base.xgboost_predictor import XGBoostPredictor
     from src.models.ensemble import OccupancyEnsemble
 

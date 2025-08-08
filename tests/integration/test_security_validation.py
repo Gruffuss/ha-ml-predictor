@@ -21,17 +21,9 @@ import hashlib
 import logging
 import secrets
 import time
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from urllib.parse import quote
 
 import httpx
@@ -43,13 +35,14 @@ from fastapi.testclient import TestClient
 
 from src.adaptation.tracking_manager import TrackingManager
 from src.core.config import get_config
-from src.core.exceptions import APIAuthenticationError
-from src.core.exceptions import APIAuthorizationError
-from src.core.exceptions import APIRateLimitError
-from src.core.exceptions import APISecurityError
-from src.core.exceptions import ErrorSeverity
-from src.integration.api_server import APIServer
-from src.integration.api_server import create_app
+from src.core.exceptions import (
+    APIAuthenticationError,
+    APIAuthorizationError,
+    APIRateLimitError,
+    APISecurityError,
+    ErrorSeverity,
+)
+from src.integration.api_server import APIServer, create_app
 
 logger = logging.getLogger(__name__)
 

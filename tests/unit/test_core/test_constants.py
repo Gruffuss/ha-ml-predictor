@@ -6,28 +6,30 @@ Tests all enum classes and constant values used throughout the system.
 
 import pytest
 
-from src.core.constants import ABSENCE_STATES
-from src.core.constants import API_ENDPOINTS
-from src.core.constants import CAT_MOVEMENT_PATTERNS
-from src.core.constants import CONTEXTUAL_FEATURE_NAMES
-from src.core.constants import DB_TABLES
-from src.core.constants import DEFAULT_CONFIDENCE_THRESHOLD
-from src.core.constants import DEFAULT_MODEL_PARAMS
-from src.core.constants import DOOR_CLOSED_STATES
-from src.core.constants import DOOR_OPEN_STATES
-from src.core.constants import HUMAN_MOVEMENT_PATTERNS
-from src.core.constants import INVALID_STATES
-from src.core.constants import MAX_SEQUENCE_GAP
-from src.core.constants import MIN_EVENT_SEPARATION
-from src.core.constants import MQTT_TOPICS
-from src.core.constants import PRESENCE_STATES
-from src.core.constants import SEQUENTIAL_FEATURE_NAMES
-from src.core.constants import TEMPORAL_FEATURE_NAMES
-from src.core.constants import EventType
-from src.core.constants import ModelType
-from src.core.constants import PredictionType
-from src.core.constants import SensorState
-from src.core.constants import SensorType
+from src.core.constants import (
+    ABSENCE_STATES,
+    API_ENDPOINTS,
+    CAT_MOVEMENT_PATTERNS,
+    CONTEXTUAL_FEATURE_NAMES,
+    DB_TABLES,
+    DEFAULT_CONFIDENCE_THRESHOLD,
+    DEFAULT_MODEL_PARAMS,
+    DOOR_CLOSED_STATES,
+    DOOR_OPEN_STATES,
+    HUMAN_MOVEMENT_PATTERNS,
+    INVALID_STATES,
+    MAX_SEQUENCE_GAP,
+    MIN_EVENT_SEPARATION,
+    MQTT_TOPICS,
+    PRESENCE_STATES,
+    SEQUENTIAL_FEATURE_NAMES,
+    TEMPORAL_FEATURE_NAMES,
+    EventType,
+    ModelType,
+    PredictionType,
+    SensorState,
+    SensorType,
+)
 
 
 class TestSensorType:

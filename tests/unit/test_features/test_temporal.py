@@ -7,19 +7,14 @@ and performance with realistic occupancy data patterns.
 
 import math
 import statistics
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
-from unittest.mock import Mock
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from typing import Any, Dict, List
+from unittest.mock import Mock, patch
 
 import pytest
 
 from src.core.exceptions import FeatureExtractionError
-from src.data.storage.models import RoomState
-from src.data.storage.models import SensorEvent
+from src.data.storage.models import RoomState, SensorEvent
 from src.features.temporal import TemporalFeatureExtractor
 
 

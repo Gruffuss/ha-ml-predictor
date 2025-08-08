@@ -8,26 +8,23 @@ and ensure proper functionality of authentication, subscriptions, and real-time 
 import asyncio
 import json
 import uuid
-from datetime import datetime
-from datetime import timedelta
-from typing import Dict
-from typing import List
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from typing import Dict, List
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import websockets
 from websockets.server import WebSocketServerProtocol
 
-from src.adaptation.tracking_manager import TrackingConfig
-from src.adaptation.tracking_manager import TrackingManager
+from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
 from src.core.config import get_config
-from src.integration.websocket_api import ClientConnection
-from src.integration.websocket_api import MessageType
-from src.integration.websocket_api import WebSocketAPIServer
-from src.integration.websocket_api import WebSocketConnectionManager
-from src.integration.websocket_api import WebSocketMessage
+from src.integration.websocket_api import (
+    ClientConnection,
+    MessageType,
+    WebSocketAPIServer,
+    WebSocketConnectionManager,
+    WebSocketMessage,
+)
 from src.models.base.predictor import PredictionResult
 
 

@@ -17,22 +17,15 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+
 # Defer imports to prevent circular dependency
-from typing import TYPE_CHECKING
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 if TYPE_CHECKING:
     from ..adaptation.tracking_manager import TrackingConfig, TrackingManager
 
-from ..core.config import MQTTConfig
-from ..core.config import RoomConfig
-from ..core.config import get_config
-from ..core.exceptions import ErrorSeverity
-from ..core.exceptions import OccupancyPredictionError
+from ..core.config import MQTTConfig, RoomConfig, get_config
+from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
 from .enhanced_mqtt_manager import EnhancedMQTTIntegrationManager
 from .realtime_publisher import PublishingChannel
 

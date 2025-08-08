@@ -8,35 +8,22 @@ predictors (LSTM, XGBoost, HMM) using stacking with a meta-learner.
 import asyncio
 import logging
 import warnings
-from datetime import datetime
-from datetime import timedelta
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Tuple
-from typing import Union
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_absolute_error
-from sklearn.metrics import mean_squared_error
-from sklearn.metrics import r2_score
-from sklearn.model_selection import KFold
-from sklearn.model_selection import cross_val_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import KFold, cross_val_score
 from sklearn.preprocessing import StandardScaler
 
-from ..core.constants import DEFAULT_MODEL_PARAMS
-from ..core.constants import ModelType
-from ..core.exceptions import ModelPredictionError
-from ..core.exceptions import ModelTrainingError
+from ..core.constants import DEFAULT_MODEL_PARAMS, ModelType
+from ..core.exceptions import ModelPredictionError, ModelTrainingError
 from .base.gp_predictor import GaussianProcessPredictor
 from .base.hmm_predictor import HMMPredictor
 from .base.lstm_predictor import LSTMPredictor
-from .base.predictor import BasePredictor
-from .base.predictor import PredictionResult
-from .base.predictor import TrainingResult
+from .base.predictor import BasePredictor, PredictionResult, TrainingResult
 from .base.xgboost_predictor import XGBoostPredictor
 
 logger = logging.getLogger(__name__)
@@ -423,8 +410,7 @@ class OccupancyEnsemble(BasePredictor):
             ensemble_predictions = await self._predict_ensemble(features)
             y_true = self._prepare_targets(targets)
 
-            from sklearn.metrics import mean_absolute_error
-            from sklearn.metrics import r2_score
+            from sklearn.metrics import mean_absolute_error, r2_score
 
             training_score = r2_score(y_true, ensemble_predictions)
             training_mae = mean_absolute_error(y_true, ensemble_predictions)

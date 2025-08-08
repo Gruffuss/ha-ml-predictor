@@ -8,31 +8,25 @@ retraining strategies, and automated model updating workflows.
 import asyncio
 import heapq
 import json
-from datetime import datetime
-from datetime import timedelta
-from unittest.mock import AsyncMock
-from unittest.mock import MagicMock
-from unittest.mock import Mock
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from src.adaptation.drift_detector import DriftMetrics
-from src.adaptation.drift_detector import DriftSeverity
-from src.adaptation.drift_detector import DriftType
-from src.adaptation.optimizer import ModelOptimizer
-from src.adaptation.optimizer import OptimizationResult
-from src.adaptation.retrainer import AdaptiveRetrainer
-from src.adaptation.retrainer import RetrainingProgress
-from src.adaptation.retrainer import RetrainingRequest
-from src.adaptation.retrainer import RetrainingStatus
-from src.adaptation.retrainer import RetrainingStrategy
-from src.adaptation.retrainer import RetrainingTrigger
+from src.adaptation.drift_detector import DriftMetrics, DriftSeverity, DriftType
+from src.adaptation.optimizer import ModelOptimizer, OptimizationResult
+from src.adaptation.retrainer import (
+    AdaptiveRetrainer,
+    RetrainingProgress,
+    RetrainingRequest,
+    RetrainingStatus,
+    RetrainingStrategy,
+    RetrainingTrigger,
+)
 from src.adaptation.tracking_manager import TrackingConfig
-from src.adaptation.validator import AccuracyMetrics
-from src.adaptation.validator import PredictionValidator
+from src.adaptation.validator import AccuracyMetrics, PredictionValidator
 from src.models.base.predictor import TrainingResult
 
 # Test fixtures and utilities

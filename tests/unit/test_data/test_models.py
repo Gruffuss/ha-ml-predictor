@@ -4,29 +4,27 @@ Unit tests for database models.
 Tests SQLAlchemy models, relationships, class methods, and data validation.
 """
 
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
-from unittest.mock import Mock
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import func
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from src.core.constants import SensorState
-from src.core.constants import SensorType
-from src.data.storage.models import Base
-from src.data.storage.models import FeatureStore
-from src.data.storage.models import ModelAccuracy
-from src.data.storage.models import Prediction
-from src.data.storage.models import RoomState
-from src.data.storage.models import SensorEvent
-from src.data.storage.models import create_timescale_hypertables
-from src.data.storage.models import get_bulk_insert_query
-from src.data.storage.models import optimize_database_performance
+from src.core.constants import SensorState, SensorType
+from src.data.storage.models import (
+    Base,
+    FeatureStore,
+    ModelAccuracy,
+    Prediction,
+    RoomState,
+    SensorEvent,
+    create_timescale_hypertables,
+    get_bulk_insert_query,
+    optimize_database_performance,
+)
 
 
 class TestSensorEvent:

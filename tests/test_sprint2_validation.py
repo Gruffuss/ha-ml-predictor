@@ -6,12 +6,9 @@ feature engineering components are working correctly before proceeding to Sprint
 """
 
 import asyncio
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from typing import List
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
@@ -27,9 +24,7 @@ def test_sprint2_imports():
     from src.features.contextual import ContextualFeatureExtractor
     from src.features.engineering import FeatureEngineeringEngine
     from src.features.sequential import SequentialFeatureExtractor
-    from src.features.store import FeatureCache
-    from src.features.store import FeatureRecord
-    from src.features.store import FeatureStore
+    from src.features.store import FeatureCache, FeatureRecord, FeatureStore
     from src.features.temporal import TemporalFeatureExtractor
 
     # All imports successful
@@ -38,8 +33,7 @@ def test_sprint2_imports():
 
 def test_sprint2_temporal_extractor_structure():
     """Test that the temporal feature extractor is properly structured."""
-    from src.data.storage.models import RoomState
-    from src.data.storage.models import SensorEvent
+    from src.data.storage.models import RoomState, SensorEvent
     from src.features.temporal import TemporalFeatureExtractor
 
     # Test extractor initialization
@@ -177,8 +171,7 @@ def test_sprint2_feature_engineering_engine():
 @pytest.mark.asyncio
 async def test_sprint2_feature_extraction_basic():
     """Test basic feature extraction with mock data."""
-    from src.data.storage.models import RoomState
-    from src.data.storage.models import SensorEvent
+    from src.data.storage.models import RoomState, SensorEvent
     from src.features.engineering import FeatureEngineeringEngine
 
     # Create engine
@@ -247,8 +240,7 @@ async def test_sprint2_feature_extraction_basic():
 
 def test_sprint2_feature_cache():
     """Test the feature cache functionality."""
-    from src.features.store import FeatureCache
-    from src.features.store import FeatureRecord
+    from src.features.store import FeatureCache, FeatureRecord
 
     # Create cache
     cache = FeatureCache(max_size=5)
@@ -546,8 +538,7 @@ def test_sprint2_file_structure():
 @pytest.mark.asyncio
 async def test_sprint2_end_to_end_feature_pipeline():
     """Test a complete end-to-end feature extraction pipeline."""
-    from src.data.storage.models import RoomState
-    from src.data.storage.models import SensorEvent
+    from src.data.storage.models import RoomState, SensorEvent
     from src.features.store import FeatureStore
 
     # Create feature store

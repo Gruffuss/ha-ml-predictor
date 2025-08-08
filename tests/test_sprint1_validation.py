@@ -6,8 +6,7 @@ components are working correctly before proceeding to Sprint 2.
 """
 
 import asyncio
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -19,27 +18,21 @@ def test_sprint1_imports():
     """Test that all Sprint 1 components can be imported successfully."""
 
     # Core components
-    from src.core.config import ConfigLoader
-    from src.core.config import SystemConfig
-    from src.core.config import get_config
-    from src.core.constants import EventType
-    from src.core.constants import SensorState
-    from src.core.constants import SensorType
-    from src.core.exceptions import DatabaseConnectionError
-    from src.core.exceptions import OccupancyPredictionError
-    from src.data.ingestion.bulk_importer import BulkImporter
-    from src.data.ingestion.bulk_importer import ImportProgress
-    from src.data.ingestion.event_processor import EventProcessor
-    from src.data.ingestion.event_processor import MovementPatternClassifier
+    from src.core.config import ConfigLoader, SystemConfig, get_config
+    from src.core.constants import EventType, SensorState, SensorType
+    from src.core.exceptions import DatabaseConnectionError, OccupancyPredictionError
+    from src.data.ingestion.bulk_importer import BulkImporter, ImportProgress
+    from src.data.ingestion.event_processor import (
+        EventProcessor,
+        MovementPatternClassifier,
+    )
+
     # Data ingestion components
-    from src.data.ingestion.ha_client import HAEvent
-    from src.data.ingestion.ha_client import HomeAssistantClient
-    from src.data.storage.database import DatabaseManager
-    from src.data.storage.database import get_database_manager
+    from src.data.ingestion.ha_client import HAEvent, HomeAssistantClient
+    from src.data.storage.database import DatabaseManager, get_database_manager
+
     # Data storage components
-    from src.data.storage.models import Prediction
-    from src.data.storage.models import RoomState
-    from src.data.storage.models import SensorEvent
+    from src.data.storage.models import Prediction, RoomState, SensorEvent
 
     # All imports successful
     assert True
@@ -75,13 +68,11 @@ def test_sprint1_config_system(test_config_dir):
 
 def test_sprint1_database_system():
     """Test that the database system components are properly structured."""
-    from unittest.mock import AsyncMock
-    from unittest.mock import MagicMock
+    from unittest.mock import AsyncMock, MagicMock
 
     from src.core.config import DatabaseConfig
     from src.data.storage.database import DatabaseManager
-    from src.data.storage.models import RoomState
-    from src.data.storage.models import SensorEvent
+    from src.data.storage.models import RoomState, SensorEvent
 
     # Test that models can be instantiated
     event = SensorEvent(
@@ -121,9 +112,7 @@ def test_sprint1_database_system():
 
 def test_sprint1_ha_client_structure(test_system_config):
     """Test that HA client components are properly structured."""
-    from src.data.ingestion.ha_client import HAEvent
-    from src.data.ingestion.ha_client import HomeAssistantClient
-    from src.data.ingestion.ha_client import RateLimiter
+    from src.data.ingestion.ha_client import HAEvent, HomeAssistantClient, RateLimiter
 
     # Test client initialization
     client = HomeAssistantClient(test_system_config)
@@ -149,8 +138,7 @@ def test_sprint1_ha_client_structure(test_system_config):
 
 def test_sprint1_event_processing():
     """Test that event processing components work correctly."""
-    from src.data.ingestion.event_processor import EventProcessor
-    from src.data.ingestion.event_processor import EventValidator
+    from src.data.ingestion.event_processor import EventProcessor, EventValidator
     from src.data.ingestion.ha_client import HAEvent
 
     # Create processor with test config
@@ -179,9 +167,11 @@ def test_sprint1_event_processing():
 
 def test_sprint1_bulk_importer_structure():
     """Test that bulk importer components are properly structured."""
-    from src.data.ingestion.bulk_importer import BulkImporter
-    from src.data.ingestion.bulk_importer import ImportConfig
-    from src.data.ingestion.bulk_importer import ImportProgress
+    from src.data.ingestion.bulk_importer import (
+        BulkImporter,
+        ImportConfig,
+        ImportProgress,
+    )
 
     # Test ImportProgress
     progress = ImportProgress()
@@ -202,11 +192,13 @@ def test_sprint1_bulk_importer_structure():
 
 def test_sprint1_exception_handling():
     """Test that exception handling works correctly."""
-    from src.core.exceptions import ConfigurationError
-    from src.core.exceptions import DatabaseConnectionError
-    from src.core.exceptions import HomeAssistantConnectionError
-    from src.core.exceptions import ModelTrainingError
-    from src.core.exceptions import OccupancyPredictionError
+    from src.core.exceptions import (
+        ConfigurationError,
+        DatabaseConnectionError,
+        HomeAssistantConnectionError,
+        ModelTrainingError,
+        OccupancyPredictionError,
+    )
 
     # Test base exception
     base_error = OccupancyPredictionError(
@@ -234,18 +226,20 @@ def test_sprint1_exception_handling():
 
 def test_sprint1_constants_and_enums():
     """Test that constants and enums are properly defined."""
-    from src.core.constants import ABSENCE_STATES
-    from src.core.constants import DB_TABLES
-    from src.core.constants import INVALID_STATES
-    from src.core.constants import MAX_SEQUENCE_GAP
-    from src.core.constants import MIN_EVENT_SEPARATION
-    from src.core.constants import MQTT_TOPICS
-    from src.core.constants import PRESENCE_STATES
-    from src.core.constants import TEMPORAL_FEATURE_NAMES
-    from src.core.constants import EventType
-    from src.core.constants import ModelType
-    from src.core.constants import SensorState
-    from src.core.constants import SensorType
+    from src.core.constants import (
+        ABSENCE_STATES,
+        DB_TABLES,
+        INVALID_STATES,
+        MAX_SEQUENCE_GAP,
+        MIN_EVENT_SEPARATION,
+        MQTT_TOPICS,
+        PRESENCE_STATES,
+        TEMPORAL_FEATURE_NAMES,
+        EventType,
+        ModelType,
+        SensorState,
+        SensorType,
+    )
 
     # Test enums have expected values
     assert SensorType.MOTION.value == "motion"
@@ -269,9 +263,7 @@ def test_sprint1_constants_and_enums():
 
 def test_sprint1_model_relationships():
     """Test that database model relationships are properly structured."""
-    from src.data.storage.models import Prediction
-    from src.data.storage.models import RoomState
-    from src.data.storage.models import SensorEvent
+    from src.data.storage.models import Prediction, RoomState, SensorEvent
 
     # Test that models can be instantiated with relationships
     sensor_event = SensorEvent(
@@ -347,8 +339,7 @@ def test_sprint1_end_to_end_workflow():
     """Test a complete end-to-end workflow for Sprint 1 (structure validation)."""
     from src.data.ingestion.event_processor import EventProcessor
     from src.data.ingestion.ha_client import HAEvent
-    from src.data.storage.models import RoomState
-    from src.data.storage.models import SensorEvent
+    from src.data.storage.models import RoomState, SensorEvent
 
     # 1. Event processing workflow validation
     processor = EventProcessor()
@@ -434,8 +425,7 @@ def test_sprint1_smoke_test():
     assert sensor_event.room_id == "test"
 
     # Test configuration structure exists
-    from src.core.config import DatabaseConfig
-    from src.core.config import HomeAssistantConfig
+    from src.core.config import DatabaseConfig, HomeAssistantConfig
 
     ha_config = HomeAssistantConfig(url="http://test", token="test")
     db_config = DatabaseConfig(

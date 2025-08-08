@@ -13,31 +13,24 @@ import json
 import logging
 import threading
 import uuid
-from dataclasses import dataclass
-from dataclasses import field
-from datetime import datetime
-from datetime import timedelta
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Set
-from typing import Union
+from typing import Any, Callable, Dict, List, Optional, Set, Union
 
 try:
     import uvicorn
-    from fastapi import Depends
-    from fastapi import FastAPI
-    from fastapi import HTTPException
-    from fastapi import Query
-    from fastapi import WebSocket
-    from fastapi import WebSocketDisconnect
+    from fastapi import (
+        Depends,
+        FastAPI,
+        HTTPException,
+        Query,
+        WebSocket,
+        WebSocketDisconnect,
+    )
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import FileResponse
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import FileResponse, JSONResponse
     from fastapi.staticfiles import StaticFiles
     from pydantic import BaseModel
 
@@ -59,28 +52,32 @@ except ImportError:
 # Defer imports to prevent circular dependency
 from typing import TYPE_CHECKING
 
-from ..adaptation.drift_detector import ConceptDriftDetector
-from ..adaptation.drift_detector import DriftMetrics
-from ..adaptation.drift_detector import DriftSeverity
-from ..adaptation.drift_detector import DriftType
-from ..adaptation.retrainer import AdaptiveRetrainer
-from ..adaptation.retrainer import RetrainingRequest
-from ..adaptation.retrainer import RetrainingStatus
-from ..adaptation.retrainer import RetrainingTrigger
-from ..adaptation.tracker import AccuracyAlert
-from ..adaptation.tracker import AccuracyTracker
-from ..adaptation.tracker import AlertSeverity
-from ..adaptation.tracker import RealTimeMetrics
-from ..adaptation.tracker import TrendDirection
+from ..adaptation.drift_detector import (
+    ConceptDriftDetector,
+    DriftMetrics,
+    DriftSeverity,
+    DriftType,
+)
+from ..adaptation.retrainer import (
+    AdaptiveRetrainer,
+    RetrainingRequest,
+    RetrainingStatus,
+    RetrainingTrigger,
+)
+from ..adaptation.tracker import (
+    AccuracyAlert,
+    AccuracyTracker,
+    AlertSeverity,
+    RealTimeMetrics,
+    TrendDirection,
+)
 
 if TYPE_CHECKING:
     from ..adaptation.tracking_manager import TrackingConfig, TrackingManager
 
-from ..adaptation.validator import AccuracyLevel
-from ..adaptation.validator import AccuracyMetrics
+from ..adaptation.validator import AccuracyLevel, AccuracyMetrics
 from ..core.constants import ModelType
-from ..core.exceptions import ErrorSeverity
-from ..core.exceptions import OccupancyPredictionError
+from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
 
 logger = logging.getLogger(__name__)
 
