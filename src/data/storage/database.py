@@ -365,16 +365,55 @@ class DatabaseManager:
             async with self.get_session() as session:
                 await session.execute(text("SELECT 1"))
 
-                # Check TimescaleDB status
+                # Check TimescaleDB status and extract version information
                 try:
                     result = await session.execute(
                         text(
                             "SELECT timescaledb_information.get_version_info()"
                         )
                     )
+                    
+                    # Extract TimescaleDB version information from the result
+                    version_info = {}
+                    try:
+                        version_row = result.fetchone()
+                        if version_row and version_row[0]:
+                            # Parse the version info (format: "TimescaleDB version X.Y.Z on PostgreSQL A.B.C")
+                            version_string = str(version_row[0])
+                            version_info["full_version"] = version_string
+                            
+                            # Extract TimescaleDB version number
+                            if "TimescaleDB version" in version_string:
+                                # Extract version between "TimescaleDB version " and " on" (or end of string)
+                                start = version_string.find("TimescaleDB version ") + 20
+                                end = version_string.find(" on", start)
+                                if end == -1:  # No " on" found, use end of string
+                                    end = len(version_string)
+                                if end > start:
+                                    version_info["timescale_version"] = version_string[start:end].strip()
+                            
+                            # Extract PostgreSQL version
+                            if "PostgreSQL" in version_string:
+                                pg_start = version_string.find("PostgreSQL ") + 11
+                                # Find end of version (next space or end of string)
+                                pg_end = version_string.find(" ", pg_start)
+                                if pg_end == -1:
+                                    pg_end = len(version_string)
+                                version_info["postgresql_version"] = version_string[pg_start:pg_end]
+                        
+                    except Exception as parse_error:
+                        logger.debug(f"Failed to parse TimescaleDB version info: {parse_error}")
+                        version_info["parse_error"] = str(parse_error)
+                    
                     health_status["timescale_status"] = "available"
-                except Exception:
+                    health_status["timescale_version_info"] = version_info
+                    
+                except Exception as timescale_error:
                     health_status["timescale_status"] = "unavailable"
+                    health_status["timescale_version_info"] = {
+                        "error": str(timescale_error)
+                    }
+                    logger.debug(f"TimescaleDB version check failed: {timescale_error}")
 
                 # Performance metrics
                 response_time = time.time() - start_time

@@ -483,7 +483,11 @@ class TrainingIntegrationManager:
             training_profile = self._select_training_profile_for_strategy(
                 strategy
             )
-            self.config_manager.set_current_profile(training_profile)
+            
+            # Pass training type to configuration system for specialized handling
+            self.config_manager.set_current_profile(
+                training_profile, training_type=training_type
+            )
 
             # Start training pipeline
             pipeline_task = asyncio.create_task(

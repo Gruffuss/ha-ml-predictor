@@ -815,11 +815,44 @@ class EnhancedIntegrationManager:
                     "state_updates_sent": self.stats.state_updates_sent,
                     "integration_errors": self.stats.integration_errors,
                 }
+            
+            # Conditionally include logs based on include_logs parameter
+            if include_logs:
+                try:
+                    # Add recent log entries for diagnostic purposes
+                    diagnostic_data["recent_logs"] = {
+                        "last_error": getattr(self, "_last_error_message", None),
+                        "last_error_time": getattr(self, "_last_error_time", None),
+                        "integration_status": self._get_integration_status_logs(),
+                        "command_history": self._get_recent_command_history(),
+                    }
+                    
+                    # Add connection status logs
+                    if hasattr(self, '_connection_logs'):
+                        diagnostic_data["recent_logs"]["connection_history"] = self._connection_logs[-10:]
+                        
+                except Exception as log_error:
+                    diagnostic_data["log_collection_error"] = str(log_error)
 
             return {"status": "success", "diagnostic_data": diagnostic_data}
 
         except Exception as e:
             return {"status": "error", "message": str(e)}
+
+    def _get_integration_status_logs(self) -> Dict[str, Any]:
+        """Get integration status logs for diagnostics."""
+        return {
+            "is_connected": getattr(self, 'is_connected', False),
+            "last_connection_attempt": getattr(self, '_last_connection_attempt', None),
+            "connection_attempts": getattr(self, '_connection_attempts', 0),
+            "last_successful_command": getattr(self, '_last_successful_command_time', None),
+        }
+
+    def _get_recent_command_history(self) -> List[Dict[str, Any]]:
+        """Get recent command history for diagnostics."""
+        if hasattr(self, '_command_history'):
+            return self._command_history[-5:]  # Last 5 commands
+        return []
 
     async def _handle_check_database(
         self, parameters: Dict[str, Any]

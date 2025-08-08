@@ -15,6 +15,7 @@ import json
 import logging
 from pathlib import Path
 import threading
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import statistics
 
@@ -1275,59 +1276,58 @@ class AccuracyTracker:
             for alert_spec in alerts_to_create:
                 alert_key = f"{entity_key}_{alert_spec['condition']}"
 
-                # Check if alert already exists and is active
+                # Check if alert already exists and is active using unique alert_key for deduplication
                 existing_alert = None
                 for alert in self._active_alerts.values():
-                    if (
-                        alert.room_id == metrics.room_id
-                        and alert.model_type == metrics.model_type
-                        and alert.trigger_condition == alert_spec["condition"]
-                        and not alert.resolved
-                    ):
+                    existing_alert_key = f"{alert.room_id or 'all'}_{alert.model_type or 'all'}_{alert.trigger_condition}"
+                    if existing_alert_key == alert_key and not alert.resolved:
                         existing_alert = alert
                         break
 
                 if not existing_alert:
-                    # Create new alert
-                    alert = AccuracyAlert(
-                        alert_id=f"acc_{self._alert_counter}_{int(datetime.utcnow().timestamp())}",
-                        room_id=metrics.room_id,
-                        model_type=metrics.model_type,
-                        severity=alert_spec["severity"],
-                        trigger_condition=alert_spec["condition"],
-                        current_value=alert_spec["value"],
-                        threshold_value=alert_spec["threshold"],
-                        description=alert_spec["description"],
-                        affected_metrics={
-                            "accuracy_1h": metrics.window_1h_accuracy,
-                            "accuracy_6h": metrics.window_6h_accuracy,
-                            "accuracy_24h": metrics.window_24h_accuracy,
-                            "error_6h": metrics.window_6h_mean_error,
-                            "trend_slope": metrics.trend_slope,
-                        },
-                        recent_predictions=metrics.window_6h_predictions,
-                        trend_data={
-                            "direction": metrics.accuracy_trend.value,
-                            "slope": metrics.trend_slope,
-                            "confidence": metrics.trend_confidence,
-                        },
-                    )
+                    # Use alert_key for deduplication - check if we have this exact alert already
+                    if alert_key not in [f"{a.room_id or 'all'}_{a.model_type or 'all'}_{a.trigger_condition}" 
+                                        for a in self._active_alerts.values() if not a.resolved]:
+                        # Create new alert
+                        alert = AccuracyAlert(
+                            alert_id=f"acc_{self._alert_counter}_{int(datetime.utcnow().timestamp())}",
+                            room_id=metrics.room_id,
+                            model_type=metrics.model_type,
+                            severity=alert_spec["severity"],
+                            trigger_condition=alert_spec["condition"],
+                            current_value=alert_spec["value"],
+                            threshold_value=alert_spec["threshold"],
+                            description=alert_spec["description"],
+                            affected_metrics={
+                                "accuracy_1h": metrics.window_1h_accuracy,
+                                "accuracy_6h": metrics.window_6h_accuracy,
+                                "accuracy_24h": metrics.window_24h_accuracy,
+                                "error_6h": metrics.window_6h_mean_error,
+                                "trend_slope": metrics.trend_slope,
+                            },
+                            recent_predictions=metrics.window_6h_predictions,
+                            trend_data={
+                                "direction": metrics.accuracy_trend.value,
+                                "slope": metrics.trend_slope,
+                                "confidence": metrics.trend_confidence,
+                            },
+                        )
 
-                    self._active_alerts[alert.alert_id] = alert
-                    self._alert_history.append(alert)
-                    self._alert_counter += 1
+                        self._active_alerts[alert.alert_id] = alert
+                        self._alert_history.append(alert)
+                        self._alert_counter += 1
 
-                    # Update metrics with active alert
-                    metrics.active_alerts.append(alert.alert_id)
-                    metrics.last_alert_time = alert.triggered_time
+                        # Update metrics with active alert
+                        metrics.active_alerts.append(alert.alert_id)
+                        metrics.last_alert_time = alert.triggered_time
 
-                    # Notify callbacks
-                    await self._notify_alert_callbacks(alert)
+                        # Notify callbacks
+                        await self._notify_alert_callbacks(alert)
 
-                    logger.warning(
-                        f"Created {alert_spec['severity'].value} alert: "
-                        f"{alert_spec['description']} for {entity_key}"
-                    )
+                        logger.warning(
+                            f"Created {alert_spec['severity'].value} alert: "
+                            f"{alert_spec['description']} for {entity_key}"
+                        )
 
         except Exception as e:
             logger.error(
@@ -1400,29 +1400,47 @@ class AccuracyTracker:
             if not metrics:
                 return False
 
-            # Check if condition has improved beyond threshold
+            # Check if condition has improved beyond threshold using current_value for comparison
             condition = alert.trigger_condition
-            current_value = alert.current_value
+            current_value = alert.current_value  # Use stored value from when alert was created
             threshold = alert.threshold_value
+            
+            # Get the current metric value to compare with stored current_value
+            if condition.startswith("accuracy_"):
+                current_metric_value = metrics.window_6h_accuracy
+            elif condition.startswith("error_"):
+                current_metric_value = metrics.window_6h_mean_error
+            elif condition == "trend_degrading":
+                current_metric_value = metrics.trend_slope
+            elif condition.startswith("validation_lag_"):
+                current_metric_value = metrics.validation_lag_minutes
+            else:
+                current_metric_value = current_value
 
+            # Use current_value in resolution logic to compare improvement
             if condition.startswith("accuracy_"):
                 # Accuracy improved above threshold + buffer
-                current_accuracy = metrics.window_6h_accuracy
-                return current_accuracy > (threshold + 5)  # 5% buffer
+                # Compare current metric with the original current_value when alert was created
+                improvement = current_metric_value - current_value  # How much it improved
+                return current_metric_value > (threshold + 5) and improvement > 5  # 5% buffer + improvement
 
             elif condition.startswith("error_"):
                 # Error reduced below threshold - buffer
-                current_error = metrics.window_6h_mean_error
-                return current_error < (threshold - 2)  # 2 minute buffer
+                # Compare current metric with the original current_value when alert was created
+                improvement = current_value - current_metric_value  # How much error decreased
+                return current_metric_value < (threshold - 2) and improvement > 2  # 2 min buffer + improvement
 
             elif condition == "trend_degrading":
-                # Trend is no longer degrading
-                return metrics.accuracy_trend != TrendDirection.DEGRADING
+                # Trend is no longer degrading and has improved from original current_value
+                trend_improvement = current_metric_value - current_value  # Slope improvement
+                return (metrics.accuracy_trend != TrendDirection.DEGRADING and 
+                       trend_improvement > 1.0)  # Trend slope improved by at least 1%/hour
 
             elif condition.startswith("validation_lag_"):
                 # Validation lag improved below threshold - buffer
-                current_lag = metrics.validation_lag_minutes
-                return current_lag < (threshold - 2)  # 2 minute buffer
+                # Compare current metric with the original current_value when alert was created
+                improvement = current_value - current_metric_value  # How much lag decreased
+                return current_metric_value < (threshold - 2) and improvement > 2  # 2 min buffer + improvement
 
             return False
 

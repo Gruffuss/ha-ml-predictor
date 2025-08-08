@@ -21,6 +21,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 import logging
 import traceback
+from typing import TYPE_CHECKING
 
 from fastapi import (
     BackgroundTasks,
@@ -464,17 +465,75 @@ async def health_check():
         db_manager = await get_database_manager()
         db_health = await db_manager.health_check()
 
-        # Check tracking manager (if available)
+        # Check tracking manager (comprehensive health check)
         tracking_health = {"status": "unknown"}
         try:
             tracking_manager = await get_tracking_manager()
-            # Add tracking-specific health checks here
+            
+            # Get comprehensive tracking status
+            tracking_status = await tracking_manager.get_tracking_status()
+            
+            # Determine overall tracking health based on components
+            tracking_active = tracking_status.get("tracking_active", False)
+            config_enabled = tracking_status.get("config", {}).get("enabled", False)
+            performance_metrics = tracking_status.get("performance", {})
+            
+            # Check for any error conditions
+            has_errors = False
+            error_details = []
+            
+            # Check validator status
+            validator_status = tracking_status.get("validator", {})
+            if "error" in validator_status:
+                has_errors = True
+                error_details.append(f"Validator error: {validator_status['error']}")
+            
+            # Check accuracy tracker status
+            accuracy_tracker_status = tracking_status.get("accuracy_tracker", {})
+            if "error" in accuracy_tracker_status:
+                has_errors = True
+                error_details.append(f"Accuracy tracker error: {accuracy_tracker_status['error']}")
+            
+            # Check background tasks
+            background_tasks = performance_metrics.get("background_tasks", 0)
+            if background_tasks == 0 and tracking_active:
+                error_details.append("No background tasks running despite tracking being active")
+            
+            # Determine status
+            if has_errors:
+                status = "error"
+            elif not config_enabled:
+                status = "disabled"
+            elif not tracking_active:
+                status = "inactive"
+            else:
+                status = "healthy"
+            
             tracking_health = {
-                "status": "healthy",
-                "details": "Tracking manager accessible",
+                "status": status,
+                "tracking_active": tracking_active,
+                "config_enabled": config_enabled,
+                "background_tasks": background_tasks,
+                "total_predictions_recorded": performance_metrics.get("total_predictions_recorded", 0),
+                "total_validations_performed": performance_metrics.get("total_validations_performed", 0),
+                "total_drift_checks_performed": performance_metrics.get("total_drift_checks_performed", 0),
+                "system_uptime_seconds": performance_metrics.get("system_uptime_seconds", 0),
+                "validator_available": validator_status.get("total_predictions", 0) >= 0 if validator_status else False,
+                "accuracy_tracker_available": accuracy_tracker_status.get("total_predictions", 0) >= 0 if accuracy_tracker_status else False,
+                "drift_detector_available": "drift_detector" in tracking_status and tracking_status["drift_detector"] is not None,
+                "adaptive_retrainer_available": "adaptive_retrainer" in tracking_status and tracking_status["adaptive_retrainer"] is not None,
             }
+            
+            if error_details:
+                tracking_health["error_details"] = error_details
+                
         except Exception as e:
-            tracking_health = {"status": "error", "error": str(e)}
+            tracking_health = {
+                "status": "error", 
+                "error": str(e),
+                "tracking_active": False,
+                "config_enabled": False,
+            }
 
         # Check MQTT integration
         mqtt_health = {"status": "unknown"}
@@ -491,17 +550,24 @@ async def health_check():
         except Exception as e:
             mqtt_health = {"status": "error", "error": str(e)}
 
-        # Overall health determination
-        component_statuses = [
-            db_health.get("database_connected", False),
-            tracking_health.get("status") != "error",
-            mqtt_health.get("status") != "error",
-        ]
-
-        if all(component_statuses):
+        # Overall health determination with enhanced logic
+        db_healthy = db_health.get("database_connected", False)
+        tracking_status_value = tracking_health.get("status", "unknown")
+        mqtt_status_value = mqtt_health.get("status", "unknown")
+        
+        # Determine component health levels
+        tracking_healthy = tracking_status_value == "healthy"
+        tracking_functional = tracking_status_value in ["healthy", "inactive", "disabled"]
+        mqtt_healthy = mqtt_status_value == "healthy"
+        mqtt_functional = mqtt_status_value in ["healthy", "degraded"]
+        
+        # System is healthy if all core components are healthy
+        if db_healthy and tracking_healthy and mqtt_healthy:
             overall_status = "healthy"
-        elif any(component_statuses):
+        # System is degraded if core components are functional but not optimal
+        elif db_healthy and tracking_functional and mqtt_functional:
             overall_status = "degraded"
+        # System is unhealthy if any critical component has errors
         else:
             overall_status = "unhealthy"
 
@@ -518,13 +584,17 @@ async def health_check():
             performance_metrics={
                 "response_time_seconds": response_time,
                 "memory_usage": "N/A",  # Could add memory monitoring
+                "tracking_predictions_recorded": tracking_health.get("total_predictions_recorded", 0),
+                "tracking_validations_performed": tracking_health.get("total_validations_performed", 0),
+                "tracking_drift_checks_performed": tracking_health.get("total_drift_checks_performed", 0),
+                "tracking_background_tasks": tracking_health.get("background_tasks", 0),
             },
             error_count=sum(
                 1
-                for c in [tracking_health, mqtt_health]
-                if c.get("status") == "error"
+                for c in [db_health, tracking_health, mqtt_health]
+                if c.get("status") == "error" or not c.get("database_connected", True)
             ),
-            uptime_seconds=0,  # Could track actual uptime
+            uptime_seconds=tracking_health.get("system_uptime_seconds", 0)
         )
 
     except Exception as e:

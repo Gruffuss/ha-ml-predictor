@@ -856,6 +856,9 @@ class AdaptiveRetrainer:
             retraining_task = asyncio.create_task(
                 self._perform_retraining(request, progress)
             )
+            
+            # Add to task registry for background task management
+            self._background_tasks.append(retraining_task)
 
             # Don't await here - let it run in background
             logger.info(f"Started retraining for {request.request_id}")

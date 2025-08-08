@@ -977,14 +977,55 @@ class TrackingManager:
                 minutes=self.config.validation_window_minutes
             )
 
-            # This would require a method in the database manager to get recent state changes
-            # For now, we'll skip this implementation as it requires database integration
-            # In practice, this would be called by the event processing pipeline
-
-            logger.debug("Checked for room state changes")
+            # Query database for recent state changes using cutoff_time
+            try:
+                # Use cutoff_time in database query for recent state changes
+                query = """
+                    SELECT DISTINCT room_id, MAX(timestamp) as last_change
+                    FROM sensor_events 
+                    WHERE timestamp >= %s 
+                    AND state != previous_state
+                    GROUP BY room_id
+                    ORDER BY last_change DESC
+                """
+                
+                result = await self.database_manager.execute_query(
+                    query, (cutoff_time,), fetch_all=True
+                )
+                
+                if result:
+                    logger.debug(
+                        f"Found {len(result)} rooms with state changes since {cutoff_time.isoformat()}"
+                    )
+                    
+                    # Process state changes to trigger validation
+                    for row in result:
+                        room_id = row['room_id']
+                        last_change = row['last_change']
+                        
+                        # Check if validation is needed for this room
+                        await self._check_room_validation_needed(room_id, last_change)
+                else:
+                    logger.debug(f"No state changes found since {cutoff_time.isoformat()}")
+                    
+            except Exception as query_error:
+                logger.warning(
+                    f"Database query failed, falling back to basic time logging: {query_error}"
+                )
+                logger.debug(f"Checked for room state changes since {cutoff_time.isoformat()}")
 
         except Exception as e:
             logger.error(f"Failed to check for room state changes: {e}")
+
+    async def _check_room_validation_needed(self, room_id: str, last_change: datetime) -> None:
+        """Check if validation is needed for a room based on recent state change."""
+        try:
+            # Check if there are pending predictions that need validation
+            if room_id in self._pending_predictions:
+                await self._validate_room_predictions(room_id)
+                logger.debug(f"Triggered validation for room {room_id} due to state change at {last_change}")
+        except Exception as e:
+            logger.error(f"Failed to check validation need for room {room_id}: {e}")
 
     async def _cleanup_loop(self) -> None:
         """Background loop for periodic cleanup."""
@@ -1177,12 +1218,64 @@ class TrackingManager:
                     else "warning"
                 )
 
-                # Create drift alert through accuracy tracker
+                # Use alert_severity to create drift alert with appropriate severity level
                 if self.accuracy_tracker:
-                    # This would require extending AccuracyTracker to handle drift alerts
-                    # For now, we'll log the significant drift
+                    # Import AlertSeverity for proper alert creation
+                    from .tracker import AlertSeverity, AccuracyAlert
+                    
+                    # Map string severity to AlertSeverity enum
+                    severity_mapping = {
+                        "critical": AlertSeverity.CRITICAL,
+                        "warning": AlertSeverity.WARNING,
+                        "info": AlertSeverity.INFO,
+                        "emergency": AlertSeverity.EMERGENCY
+                    }
+                    
+                    # Create drift alert using the determined alert_severity
+                    drift_alert = AccuracyAlert(
+                        alert_id=f"drift_{room_id}_{int(datetime.utcnow().timestamp())}",
+                        room_id=room_id,
+                        model_type="drift_detector",
+                        severity=severity_mapping.get(alert_severity, AlertSeverity.WARNING),
+                        trigger_condition="concept_drift",
+                        current_value=drift_metrics.overall_drift_score,
+                        threshold_value=0.7,  # Default drift threshold
+                        description=(
+                            f"Concept drift detected with {alert_severity} severity: "
+                            f"score={drift_metrics.overall_drift_score:.3f}, "
+                            f"types={[dt.value for dt in drift_metrics.drift_types]}"
+                        ),
+                        affected_metrics={
+                            "drift_score": drift_metrics.overall_drift_score,
+                            "accuracy_degradation": drift_metrics.accuracy_degradation,
+                            "ph_drift_detected": drift_metrics.ph_drift_detected,
+                        },
+                        recent_predictions=0,  # Not applicable for drift alerts
+                        trend_data={
+                            "drift_severity": drift_metrics.drift_severity.value,
+                            "drift_types": [dt.value for dt in drift_metrics.drift_types],
+                            "retraining_recommended": drift_metrics.retraining_recommended,
+                        },
+                    )
+                    
+                    # Add drift alert to accuracy tracker's active alerts
+                    with self.accuracy_tracker._lock:
+                        self.accuracy_tracker._active_alerts[drift_alert.alert_id] = drift_alert
+                        self.accuracy_tracker._alert_history.append(drift_alert)
+                        self.accuracy_tracker._alert_counter += 1
+                    
+                    # Notify callbacks about the drift alert
+                    await self.accuracy_tracker._notify_alert_callbacks(drift_alert)
+                    
                     logger.warning(
-                        f"Significant {drift_metrics.drift_severity.value} drift detected in {room_id}: "
+                        f"Created {alert_severity} drift alert for {room_id}: "
+                        f"score={drift_metrics.overall_drift_score:.3f}, "
+                        f"retraining_recommended={drift_metrics.retraining_recommended}"
+                    )
+                else:
+                    # Fallback logging if accuracy tracker not available
+                    logger.warning(
+                        f"Significant {alert_severity} drift detected in {room_id}: "
                         f"score={drift_metrics.overall_drift_score:.3f}, "
                         f"retraining_recommended={drift_metrics.retraining_recommended}"
                     )

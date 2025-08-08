@@ -1,0 +1,23 @@
+[flake8]
+# Configuration to match Black formatting (88 character line length)
+max-line-length = 88
+extend-ignore = E203,E501,W503
+exclude =
+    .git,
+    __pycache__,
+    venv,
+    .venv,
+    build,
+    dist,
+    *.egg-info,
+    .pytest_cache,
+    logs,
+    performance_reports
+per-file-ignores =
+    # Test files can be more lenient
+    tests/*:F401,F811,F841
+    # Examples and scripts can have unused imports
+    examples/*:F401,F841
+    scripts/*:F401,F841
+max-complexity = 15
+docstring-convention = google

@@ -131,9 +131,9 @@ class HMMPredictor(BasePredictor):
                 X_train_scaled
             )
 
-            # Analyze state characteristics
+            # Analyze state characteristics using state probabilities
             self._analyze_states(
-                X_train_scaled, state_labels, y_train, features.columns
+                X_train_scaled, state_labels, y_train, features.columns, state_probabilities
             )
 
             # Build transition matrix
@@ -434,8 +434,9 @@ class HMMPredictor(BasePredictor):
         state_labels: np.ndarray,
         durations: np.ndarray,
         feature_names: List[str],
+        state_probabilities: np.ndarray,
     ):
-        """Analyze characteristics of identified hidden states."""
+        """Analyze characteristics of identified hidden states using state probabilities."""
         self.state_characteristics = {}
         self.state_labels = {}
         self.state_durations = {}
@@ -456,6 +457,15 @@ class HMMPredictor(BasePredictor):
             # Analyze feature characteristics
             state_features = X[state_mask]
             feature_means = np.mean(state_features, axis=0)
+            
+            # Use state probabilities for enhanced state analysis
+            state_probs = state_probabilities[state_mask, state_id]
+            avg_probability = np.mean(state_probs)
+            confidence_variance = np.var(state_probs)
+            
+            # Calculate certainty metrics using state probabilities
+            high_confidence_samples = np.sum(state_probs > 0.8)
+            low_confidence_samples = np.sum(state_probs < 0.6)
 
             # Assign intuitive labels based on characteristics
             label = self._assign_state_label(
@@ -468,6 +478,11 @@ class HMMPredictor(BasePredictor):
                 "std_duration": std_duration,
                 "sample_count": int(np.sum(state_mask)),
                 "feature_means": feature_means.tolist(),
+                "avg_state_probability": float(avg_probability),
+                "confidence_variance": float(confidence_variance),
+                "high_confidence_samples": int(high_confidence_samples),
+                "low_confidence_samples": int(low_confidence_samples),
+                "prediction_reliability": "high" if avg_probability > 0.75 else "medium" if avg_probability > 0.6 else "low"
             }
 
         logger.info("State analysis complete:")
@@ -475,7 +490,9 @@ class HMMPredictor(BasePredictor):
             characteristics = self.state_characteristics[state_id]
             logger.info(
                 f"  {label}: avg_duration={characteristics['avg_duration']:.0f}s, "
-                f"samples={characteristics['sample_count']}"
+                f"samples={characteristics['sample_count']}, "
+                f"reliability={characteristics['prediction_reliability']}, "
+                f"avg_probability={characteristics['avg_state_probability']:.3f}"
             )
 
     def _assign_state_label(

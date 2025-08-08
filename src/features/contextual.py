@@ -568,6 +568,7 @@ class ContextualFeatureExtractor:
             avg_activity = statistics.mean(room_sensor_counts.values())
 
             features["max_room_activity"] = max_activity
+            features["avg_room_activity"] = avg_activity
             features["room_activity_variance"] = (
                 statistics.variance(room_sensor_counts.values())
                 if len(room_sensor_counts) > 1
@@ -579,6 +580,7 @@ class ContextualFeatureExtractor:
                     "max_room_complexity": 0.0,
                     "avg_room_complexity": 0.0,
                     "max_room_activity": 0.0,
+                    "avg_room_activity": 0.0,
                     "room_activity_variance": 0.0,
                 }
             )

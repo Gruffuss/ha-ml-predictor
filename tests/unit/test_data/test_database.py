@@ -477,7 +477,10 @@ class TestDatabaseManager:
             if "SELECT 1" in str(query):
                 mock_result.scalar.return_value = 1
             elif "get_version_info" in str(query):
-                mock_result.scalar.return_value = "TimescaleDB 2.0"
+                # Mock fetchone() to return version information
+                mock_result.fetchone.return_value = (
+                    "TimescaleDB version 2.8.0 on PostgreSQL 14.6",
+                )
             return mock_result
 
         mock_session.execute.side_effect = mock_execute
@@ -493,6 +496,15 @@ class TestDatabaseManager:
         health = await test_db_manager.health_check()
 
         assert health["timescale_status"] == "available"
+        # Test the new version information functionality
+        assert "timescale_version_info" in health
+        version_info = health["timescale_version_info"]
+        assert "full_version" in version_info
+        assert "timescale_version" in version_info
+        assert "postgresql_version" in version_info
+        assert version_info["full_version"] == "TimescaleDB version 2.8.0 on PostgreSQL 14.6"
+        assert version_info["timescale_version"] == "2.8.0"
+        assert version_info["postgresql_version"] == "14.6"
 
     @pytest.mark.asyncio
     async def test_health_check_timescaledb_unavailable(self, test_db_manager):
@@ -520,6 +532,99 @@ class TestDatabaseManager:
         health = await test_db_manager.health_check()
 
         assert health["timescale_status"] == "unavailable"
+        # Test that version info includes error information
+        assert "timescale_version_info" in health
+        version_info = health["timescale_version_info"]
+        assert "error" in version_info
+        assert "TimescaleDB not available" in version_info["error"]
+
+    @pytest.mark.asyncio
+    async def test_health_check_timescaledb_version_parsing(self, test_db_manager):
+        """Test TimescaleDB version information parsing with various formats."""
+        mock_session = AsyncMock()
+
+        # Test different version string formats
+        test_cases = [
+            # Standard format
+            ("TimescaleDB version 2.8.0 on PostgreSQL 14.6", "2.8.0", "14.6"),
+            # Different PostgreSQL version format
+            ("TimescaleDB version 2.10.1 on PostgreSQL 15.2", "2.10.1", "15.2"),
+            # No PostgreSQL info
+            ("TimescaleDB version 2.5.2", "2.5.2", None),
+            # Unusual format (should still extract full version)
+            ("Some custom TimescaleDB info", None, None),
+        ]
+
+        for version_string, expected_ts_version, expected_pg_version in test_cases:
+            with self.subTest(version_string=version_string):
+                def mock_execute(query):
+                    mock_result = Mock()
+                    if "SELECT 1" in str(query):
+                        mock_result.scalar.return_value = 1
+                    elif "get_version_info" in str(query):
+                        mock_result.fetchone.return_value = (version_string,)
+                    return mock_result
+
+                mock_session.execute.side_effect = mock_execute
+
+                test_db_manager.get_session = AsyncMock()
+                test_db_manager.get_session.return_value.__aenter__.return_value = (
+                    mock_session
+                )
+                test_db_manager.engine = Mock()
+                test_db_manager.engine.pool.size.return_value = 0
+                test_db_manager.engine.pool.checkedout.return_value = 0
+
+                health = await test_db_manager.health_check()
+
+                assert health["timescale_status"] == "available"
+                assert "timescale_version_info" in health
+                version_info = health["timescale_version_info"]
+                
+                # Full version should always be available
+                assert "full_version" in version_info
+                assert version_info["full_version"] == version_string
+                
+                # Check parsed versions
+                if expected_ts_version:
+                    assert "timescale_version" in version_info
+                    assert version_info["timescale_version"] == expected_ts_version
+                    
+                if expected_pg_version:
+                    assert "postgresql_version" in version_info
+                    assert version_info["postgresql_version"] == expected_pg_version
+
+    @pytest.mark.asyncio
+    async def test_health_check_timescaledb_version_parsing_error(self, test_db_manager):
+        """Test TimescaleDB version parsing with fetchone() returning None."""
+        mock_session = AsyncMock()
+
+        def mock_execute(query):
+            mock_result = Mock()
+            if "SELECT 1" in str(query):
+                mock_result.scalar.return_value = 1
+            elif "get_version_info" in str(query):
+                # Simulate fetchone() returning None
+                mock_result.fetchone.return_value = None
+            return mock_result
+
+        mock_session.execute.side_effect = mock_execute
+
+        test_db_manager.get_session = AsyncMock()
+        test_db_manager.get_session.return_value.__aenter__.return_value = (
+            mock_session
+        )
+        test_db_manager.engine = Mock()
+        test_db_manager.engine.pool.size.return_value = 0
+        test_db_manager.engine.pool.checkedout.return_value = 0
+
+        health = await test_db_manager.health_check()
+
+        assert health["timescale_status"] == "available"
+        assert "timescale_version_info" in health
+        version_info = health["timescale_version_info"]
+        # Should be empty dict when no version info available
+        assert version_info == {}
 
     @pytest.mark.asyncio
     async def test_health_check_loop(self):

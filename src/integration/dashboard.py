@@ -1618,13 +1618,29 @@ class PerformanceDashboard:
             )
 
             logger.info(f"Alert {alert_id} acknowledged by {user_id}")
-            return {
+            
+            # Use result to provide detailed response information
+            response = {
                 "success": True,
                 "message": "Alert acknowledged successfully",
                 "alert_id": alert_id,
                 "acknowledged_by": user_id,
                 "acknowledged_at": datetime.utcnow().isoformat(),
             }
+            
+            # Enhance response with detailed information from result
+            if result:
+                if isinstance(result, dict):
+                    response["details"] = result
+                    response["alert_status"] = result.get("status", "acknowledged")
+                    response["previous_status"] = result.get("previous_status", "unknown")
+                    response["acknowledgment_count"] = result.get("acknowledgment_count", 1)
+                elif isinstance(result, bool) and result:
+                    response["details"] = {"acknowledgment_successful": True}
+                else:
+                    response["details"] = {"raw_result": str(result)}
+            
+            return response
 
         except Exception as e:
             logger.error(f"Error acknowledging alert: {e}")
