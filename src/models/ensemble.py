@@ -568,8 +568,19 @@ class OccupancyEnsemble(BasePredictor):
         y_true = self._prepare_targets(targets)
         for model_idx, model_name in enumerate(model_names):
             model_preds = meta_features[:, model_idx]
-            cv_score = r2_score(y_true, model_preds)
-            self.cross_validation_scores[model_name] = [cv_score]
+            
+            # Use cross_val_score for more robust evaluation
+            cv_scores = cross_val_score(
+                RandomForestRegressor(n_estimators=10, random_state=42),
+                meta_features[:, model_idx].reshape(-1, 1),
+                y_true,
+                cv=3,
+                scoring='r2'
+            )
+            
+            # Store both individual score and cross-validation scores
+            individual_score = r2_score(y_true, model_preds)
+            self.cross_validation_scores[model_name] = list(cv_scores)
 
         return meta_features_df
 

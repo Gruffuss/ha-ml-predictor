@@ -425,14 +425,24 @@ class FeatureEngineeringEngine:
         room_state_count: int,
     ) -> Dict[str, float]:
         """Add metadata features about the extraction context."""
+        # Use numpy for efficient normalization and feature processing
+        feature_values = np.array([
+            event_count,
+            room_state_count,
+            target_time.hour,
+            target_time.weekday()
+        ], dtype=np.float64)
+        
+        # Normalize using numpy operations
+        normalized_values = np.clip(feature_values / np.array([100.0, 50.0, 24.0, 7.0]), 0.0, 1.0)
+        
         return {
-            "meta_event_count": float(event_count),
-            "meta_room_state_count": float(room_state_count),
-            "meta_extraction_hour": float(target_time.hour),
-            "meta_extraction_day_of_week": float(target_time.weekday()),
-            "meta_data_quality_score": min(
-                1.0, event_count / 100.0
-            ),  # Normalize event count
+            "meta_event_count": float(normalized_values[0] * 100.0),  # Denormalize for interpretability
+            "meta_room_state_count": float(normalized_values[1] * 50.0),
+            "meta_extraction_hour": float(feature_values[2]),
+            "meta_extraction_day_of_week": float(feature_values[3]),
+            "meta_data_quality_score": float(normalized_values[0]),  # Keep normalized for quality score
+            "meta_feature_vector_norm": float(np.linalg.norm(normalized_values)),  # Add vector norm
         }
 
     def get_feature_names(

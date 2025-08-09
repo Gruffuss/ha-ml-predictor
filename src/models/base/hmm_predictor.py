@@ -108,6 +108,18 @@ class HMMPredictor(BasePredictor):
             # Scale features
             X_train_scaled = self.feature_scaler.fit_transform(features)
 
+            # Use KMeans for better initial state clustering
+            logger.info(
+                f"Pre-clustering with KMeans ({self.model_params['n_components']} clusters)"
+            )
+            kmeans = KMeans(
+                n_clusters=self.model_params["n_components"],
+                random_state=self.model_params["random_state"],
+                n_init=10
+            )
+            kmeans_labels = kmeans.fit_predict(X_train_scaled)
+            kmeans_centers = kmeans.cluster_centers_
+
             # Train Gaussian Mixture Model to identify hidden states
             logger.info(
                 f"Training GMM with {self.model_params['n_components']} components"
@@ -120,9 +132,10 @@ class HMMPredictor(BasePredictor):
                 random_state=self.model_params["random_state"],
                 init_params=self.model_params["init_params"],
                 tol=self.model_params["tol"],
+                means_init=kmeans_centers,  # Initialize with KMeans centers
             )
 
-            # Fit the state model
+            # Fit the state model with KMeans initialization
             self.state_model.fit(X_train_scaled)
 
             # Identify states for each sample

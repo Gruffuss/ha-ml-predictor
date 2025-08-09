@@ -59,7 +59,7 @@ class RealTimeMetrics:
     """
 
     room_id: str
-    model_type: Optional[str] = None
+    model_type: Optional[Union[ModelType, str]] = None
 
     # Time windows for metrics
     window_1h_accuracy: float = 0.0
@@ -89,6 +89,10 @@ class RealTimeMetrics:
     # Alert status
     active_alerts: List[str] = field(default_factory=list)
     last_alert_time: Optional[datetime] = None
+    
+    # Enhanced accuracy analysis using AccuracyLevel and ValidationRecord
+    dominant_accuracy_level: Optional[AccuracyLevel] = None
+    recent_validation_records: List[ValidationRecord] = field(default_factory=list)
 
     # Metadata
     last_updated: datetime = field(default_factory=datetime.utcnow)
@@ -157,7 +161,7 @@ class RealTimeMetrics:
         """Convert real-time metrics to dictionary for API responses."""
         return {
             "room_id": self.room_id,
-            "model_type": self.model_type,
+            "model_type": str(self.model_type) if isinstance(self.model_type, ModelType) else self.model_type,
             "time_windows": {
                 "1h": {
                     "accuracy": self.window_1h_accuracy,
@@ -195,6 +199,12 @@ class RealTimeMetrics:
                     else None
                 ),
             },
+            "accuracy_analysis": {
+                "dominant_accuracy_level": (
+                    self.dominant_accuracy_level.value if self.dominant_accuracy_level else None
+                ),
+                "recent_validation_records_count": len(self.recent_validation_records),
+            },
             "metadata": {
                 "last_updated": self.last_updated.isoformat(),
                 "measurement_start": (
@@ -217,7 +227,7 @@ class AccuracyAlert:
 
     alert_id: str
     room_id: str
-    model_type: Optional[str]
+    model_type: Optional[Union[ModelType, str]]
     severity: AlertSeverity
 
     # Alert details
@@ -306,7 +316,7 @@ class AccuracyAlert:
         return {
             "alert_id": self.alert_id,
             "room_id": self.room_id,
-            "model_type": self.model_type,
+            "model_type": str(self.model_type) if isinstance(self.model_type, ModelType) else self.model_type,
             "severity": self.severity.value,
             "trigger_condition": self.trigger_condition,
             "current_value": self.current_value,
@@ -467,14 +477,14 @@ class AccuracyTracker:
             logger.error(f"Error stopping monitoring: {e}")
 
     async def get_real_time_metrics(
-        self, room_id: Optional[str] = None, model_type: Optional[str] = None
+        self, room_id: Optional[str] = None, model_type: Optional[Union[ModelType, str]] = None
     ) -> Union[RealTimeMetrics, Dict[str, RealTimeMetrics], None]:
         """
         Get current real-time metrics for room, model, or global.
 
         Args:
             room_id: Filter by specific room (None for all rooms)
-            model_type: Filter by specific model (None for all models)
+            model_type: Filter by specific model type (None for all models)
 
         Returns:
             Real-time metrics or dictionary of metrics
@@ -499,8 +509,10 @@ class AccuracyTracker:
                 elif model_type:
                     # All metrics for specific model
                     model_metrics = {}
+                    model_type_str = str(model_type) if isinstance(model_type, ModelType) else model_type
                     for key, metrics in self._metrics_by_model.items():
-                        if metrics.model_type == model_type:
+                        metrics_model_type_str = str(metrics.model_type) if isinstance(metrics.model_type, ModelType) else metrics.model_type
+                        if metrics_model_type_str == model_type_str:
                             model_metrics[key] = metrics
                     return model_metrics if model_metrics else None
 
@@ -878,7 +890,7 @@ class AccuracyTracker:
     async def _calculate_real_time_metrics(
         self,
         room_id: Optional[str],
-        model_type: Optional[str],
+        model_type: Optional[Union[ModelType, str]],
         current_time: datetime,
     ) -> Optional[RealTimeMetrics]:
         """Calculate real-time metrics for specific entity."""
@@ -933,6 +945,13 @@ class AccuracyTracker:
             real_time_metrics.validation_lag_minutes = (
                 self._calculate_validation_lag(room_id, model_type)
             )
+            
+            # Enhance with AccuracyMetrics analysis
+            detailed_accuracy_metrics = window_metrics["6h"]  # Use 6h window for detailed analysis
+            self.update_from_accuracy_metrics(real_time_metrics, detailed_accuracy_metrics)
+            
+            # Extract recent ValidationRecord objects for analysis
+            self.extract_recent_validation_records(real_time_metrics, hours_back=6)
 
             # Check for active alerts
             active_alerts = []
@@ -941,7 +960,7 @@ class AccuracyTracker:
                     if (
                         (alert.room_id == room_id or room_id is None)
                         and (
-                            alert.model_type == model_type
+                            self._model_types_match(alert.model_type, model_type)
                             or model_type is None
                         )
                         and not alert.resolved
@@ -1104,7 +1123,7 @@ class AccuracyTracker:
             }
 
     def _calculate_validation_lag(
-        self, room_id: Optional[str], model_type: Optional[str]
+        self, room_id: Optional[str], model_type: Optional[Union[ModelType, str]]
     ) -> float:
         """Calculate average validation lag for entity."""
         try:
@@ -1119,8 +1138,11 @@ class AccuracyTracker:
                     ):
                         if room_id and record.room_id != room_id:
                             continue
-                        if model_type and record.model_type != model_type:
-                            continue
+                        if model_type:
+                            model_type_str = str(model_type) if isinstance(model_type, ModelType) else model_type
+                            record_model_type_str = str(record.model_type) if isinstance(record.model_type, ModelType) else record.model_type
+                            if record_model_type_str != model_type_str:
+                                continue
 
                         # Calculate lag from prediction time to validation
                         lag = (
@@ -1133,6 +1155,90 @@ class AccuracyTracker:
         except Exception as e:
             logger.error(f"Failed to calculate validation lag: {e}")
             return 0.0
+
+    def _model_types_match(
+        self, 
+        model_type1: Optional[Union[ModelType, str]], 
+        model_type2: Optional[Union[ModelType, str]]
+    ) -> bool:
+        """Helper method to compare model types handling both enum and string values."""
+        if model_type1 is None and model_type2 is None:
+            return True
+        if model_type1 is None or model_type2 is None:
+            return False
+            
+        # Convert both to strings for comparison
+        str1 = str(model_type1) if isinstance(model_type1, ModelType) else model_type1
+        str2 = str(model_type2) if isinstance(model_type2, ModelType) else model_type2
+        
+        return str1 == str2
+
+    def update_from_accuracy_metrics(
+        self, 
+        metrics: RealTimeMetrics, 
+        accuracy_metrics: AccuracyMetrics
+    ) -> None:
+        """Update real-time metrics using comprehensive AccuracyMetrics data."""
+        try:
+            # Update accuracy levels analysis
+            if accuracy_metrics.accuracy_by_level:
+                # Find dominant accuracy level
+                max_count = 0
+                dominant_level = None
+                for level_str, count in accuracy_metrics.accuracy_by_level.items():
+                    if count > max_count:
+                        max_count = count
+                        try:
+                            dominant_level = AccuracyLevel(level_str)
+                        except ValueError:
+                            # Handle unknown accuracy levels
+                            logger.warning(f"Unknown accuracy level: {level_str}")
+                            continue
+                
+                metrics.dominant_accuracy_level = dominant_level
+                logger.debug(f"Updated dominant accuracy level to {dominant_level}")
+            
+            # Additional metrics integration
+            metrics.confidence_calibration = accuracy_metrics.confidence_calibration_score
+            
+        except Exception as e:
+            logger.error(f"Failed to update from accuracy metrics: {e}")
+
+    def extract_recent_validation_records(
+        self,
+        metrics: RealTimeMetrics,
+        hours_back: int = 6
+    ) -> None:
+        """Extract recent ValidationRecord objects for enhanced analysis."""
+        try:
+            cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+            recent_records = []
+            
+            # Get recent validation records from the validator
+            with self.validator._lock:
+                for record in self.validator._validation_records.values():
+                    # Filter by time, room, and model type
+                    if record.validation_time and record.validation_time >= cutoff_time:
+                        # Check room match
+                        if metrics.room_id != "global" and record.room_id != metrics.room_id:
+                            continue
+                        
+                        # Check model type match
+                        if metrics.model_type and not self._model_types_match(record.model_type, metrics.model_type):
+                            continue
+                        
+                        recent_records.append(record)
+            
+            # Sort by validation time (most recent first)
+            recent_records.sort(key=lambda r: r.validation_time or datetime.min, reverse=True)
+            
+            # Store up to 50 most recent records
+            metrics.recent_validation_records = recent_records[:50]
+            
+            logger.debug(f"Extracted {len(metrics.recent_validation_records)} recent validation records")
+            
+        except Exception as e:
+            logger.error(f"Failed to extract recent validation records: {e}")
 
     async def _check_alert_conditions(self) -> None:
         """Check for conditions that should trigger alerts."""

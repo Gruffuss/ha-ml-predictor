@@ -3,7 +3,6 @@ Constants used throughout the Occupancy Prediction System.
 """
 
 from enum import Enum
-from typing import Dict, List
 
 
 class SensorType(Enum):

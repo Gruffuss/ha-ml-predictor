@@ -25,10 +25,16 @@ from datetime import datetime, timedelta
 from enum import Enum
 import json
 import logging
+from typing import Any, Dict, List, Optional, Set
 import uuid
 import weakref
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
+try:
+    from pydantic import validator
+except ImportError:
+    # For Pydantic v2 compatibility
+    from pydantic import field_validator as validator
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
@@ -132,6 +138,13 @@ class ClientAuthRequest(BaseModel):
     client_name: Optional[str] = Field(None, max_length=100)
     capabilities: List[str] = Field(default_factory=list)
     room_filters: List[str] = Field(default_factory=list)
+    
+    @validator('api_key')
+    def validate_api_key(cls, v):
+        """Validate API key format."""
+        if v and len(v) < 10:
+            raise ValueError('API key must be at least 10 characters long')
+        return v
 
 
 class ClientSubscription(BaseModel):
@@ -289,6 +302,9 @@ class WebSocketConnectionManager:
         self.connections: Dict[str, ClientConnection] = {}
         self.stats = WebSocketStats()
         self._lock = asyncio.Lock()
+        
+        # Use weakref to track connection managers to avoid circular references
+        self._manager_registry = weakref.WeakSet()
 
         # Configuration
         self.max_connections = self.config.get("max_connections", 1000)
@@ -1412,3 +1428,149 @@ class WebSocketValidationError(WebSocketAPIError):
             severity=ErrorSeverity.LOW,
             **kwargs,
         )
+
+
+# Starlette Application Setup for WebSocket API
+
+async def websocket_endpoint(websocket):
+    """Handle WebSocket connections for all endpoints."""
+    from starlette.websockets import WebSocket
+    
+    # Validate websocket is proper WebSocket instance
+    if not isinstance(websocket, WebSocket):
+        logger.error("Invalid WebSocket connection provided")
+        return
+    
+    ws_api = None
+    connection_id = None
+    
+    try:
+        # Accept connection
+        await websocket.accept()
+        
+        # Get the WebSocket API instance (this would typically be passed as a dependency)
+        ws_api = WebSocketAPIServer()
+        
+        # Determine endpoint from path
+        endpoint_path = websocket.url.path
+        
+        # Register connection
+        connection_id = await ws_api.connection_manager.connect(
+            websocket=websocket, 
+            endpoint=endpoint_path
+        )
+        
+        logger.info(f"WebSocket client {connection_id} connected to {endpoint_path}")
+        
+        # Handle messages
+        while True:
+            try:
+                # Receive message
+                raw_message = await websocket.receive_text()
+                
+                # Process message through WebSocket API
+                response = await ws_api._handle_websocket_message(
+                    connection_id, raw_message
+                )
+                
+                # Send response if any
+                if response:
+                    await websocket.send_text(response)
+                    
+            except Exception as e:
+                logger.error(f"Error handling WebSocket message: {e}")
+                await websocket.send_text(json.dumps({
+                    "error": str(e),
+                    "timestamp": datetime.utcnow().isoformat()
+                }))
+                break
+                
+    except Exception as e:
+        logger.error(f"WebSocket connection error: {e}")
+    finally:
+        # Clean up connection
+        if ws_api and connection_id:
+            await ws_api.connection_manager.disconnect(connection_id)
+
+
+async def health_endpoint(request):
+    """Health check endpoint for WebSocket API."""
+    # Use JSONResponse for structured health information
+    return JSONResponse({
+        "status": "healthy",
+        "service": "websocket_api",
+        "timestamp": datetime.utcnow().isoformat(),
+        "connections": "API not initialized"
+    })
+
+
+def create_websocket_app() -> Starlette:
+    """Create Starlette application with WebSocket support."""
+    
+    async def simple_health_endpoint(request):
+        """Simple health check endpoint returning plain text."""
+        return PlainTextResponse("WebSocket API is healthy")
+
+    # Define routes
+    routes = [
+        Route("/health", health_endpoint, methods=["GET"]),
+        Route("/health/simple", simple_health_endpoint, methods=["GET"]),
+        WebSocketRoute("/ws/predictions", websocket_endpoint),
+        WebSocketRoute("/ws/system-status", websocket_endpoint),
+        WebSocketRoute("/ws/alerts", websocket_endpoint),
+        WebSocketRoute("/ws/room/{room_id}", websocket_endpoint),
+    ]
+    
+    # Create application
+    app = Starlette(routes=routes, debug=False)
+    
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+    )
+    
+    return app
+
+
+# Factory function to create configured WebSocket API server
+def create_websocket_api_server(
+    config: Optional[Dict[str, Any]] = None,
+    tracking_manager=None
+) -> WebSocketAPIServer:
+    """Create and configure WebSocket API server."""
+    
+    # Get default config if none provided
+    if config is None:
+        system_config = get_config()
+        config = {
+            "host": getattr(system_config, "websocket_host", "0.0.0.0"),
+            "port": getattr(system_config, "websocket_port", 8765),
+            "max_connections": 1000,
+            "max_messages_per_minute": 60,
+            "heartbeat_interval_seconds": 30,
+            "connection_timeout_seconds": 300,
+        }
+    
+    # Create server instance
+    server = WebSocketAPIServer(config=config, tracking_manager=tracking_manager)
+    
+    return server
+
+
+@asynccontextmanager
+async def websocket_api_context(
+    config: Optional[Dict[str, Any]] = None,
+    tracking_manager=None
+):
+    """Context manager for WebSocket API server lifecycle."""
+    server = create_websocket_api_server(config, tracking_manager)
+    
+    try:
+        await server.start()
+        yield server
+    finally:
+        await server.stop()

@@ -752,7 +752,7 @@ class TrackingManager:
             return {"error": str(e)}
 
     async def get_real_time_metrics(
-        self, room_id: Optional[str] = None, model_type: Optional[str] = None
+        self, room_id: Optional[str] = None, model_type: Optional[Union[ModelType, str]] = None
     ) -> Union[RealTimeMetrics, Dict[str, RealTimeMetrics], None]:
         """Get real-time accuracy metrics."""
         try:
@@ -1481,7 +1481,7 @@ class TrackingManager:
     async def request_manual_retraining(
         self,
         room_id: str,
-        model_type: str,
+        model_type: Union[ModelType, str],
         strategy: Optional[str] = None,
         priority: float = 5.0,
     ) -> Optional[str]:
@@ -1490,7 +1490,7 @@ class TrackingManager:
 
         Args:
             room_id: Room to retrain model for
-            model_type: Type of model to retrain
+            model_type: Type of model to retrain (enum or string)
             strategy: Retraining strategy (optional)
             priority: Request priority (0-10, higher = more urgent)
 
@@ -1561,18 +1561,18 @@ class TrackingManager:
             return False
 
     def register_model(
-        self, room_id: str, model_type: str, model_instance
+        self, room_id: str, model_type: Union[ModelType, str], model_instance
     ) -> None:
         """
         Register a model instance for adaptive retraining.
 
         Args:
             room_id: Room the model is for
-            model_type: Type of model
+            model_type: Type of model (enum or string)
             model_instance: The actual model instance
         """
         try:
-            model_key = f"{room_id}_{model_type}"
+            model_key = f"{room_id}_{str(model_type) if isinstance(model_type, ModelType) else model_type}"
             self.model_registry[model_key] = model_instance
 
             logger.info(
@@ -1584,16 +1584,16 @@ class TrackingManager:
                 f"Failed to register model {room_id}_{model_type}: {e}"
             )
 
-    def unregister_model(self, room_id: str, model_type: str) -> None:
+    def unregister_model(self, room_id: str, model_type: Union[ModelType, str]) -> None:
         """
         Unregister a model from adaptive retraining.
 
         Args:
             room_id: Room the model is for
-            model_type: Type of model
+            model_type: Type of model (enum or string)
         """
         try:
-            model_key = f"{room_id}_{model_type}"
+            model_key = f"{room_id}_{str(model_type) if isinstance(model_type, ModelType) else model_type}"
             if model_key in self.model_registry:
                 del self.model_registry[model_key]
                 logger.info(

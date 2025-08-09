@@ -357,9 +357,11 @@ class HATrackingBridge:
             # Override command handlers in enhanced integration manager
             # to delegate to tracking manager
 
+            # Store original handlers for potential rollback
             original_handlers = (
                 self.enhanced_integration_manager.command_handlers.copy()
             )
+            self._original_handlers = original_handlers
 
             # Wrap handlers to delegate to tracking manager
             self.enhanced_integration_manager.command_handlers.update(

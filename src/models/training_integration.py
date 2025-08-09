@@ -485,17 +485,16 @@ class TrainingIntegrationManager:
             )
             
             # Pass training type to configuration system for specialized handling
-            self.config_manager.set_current_profile(
-                training_profile, training_type=training_type
-            )
+            self.config_manager.set_current_profile(training_profile)
 
-            # Start training pipeline
+            # Start training pipeline with training type information
             pipeline_task = asyncio.create_task(
                 self.training_pipeline.run_retraining_pipeline(
                     room_id=room_id,
                     trigger_reason=trigger_reason,
                     strategy=strategy,
                     force_full_retrain=force_full,
+                    training_type=training_type.value,  # Pass training type to pipeline
                 )
             )
 
@@ -752,6 +751,10 @@ class TrainingIntegrationManager:
         except Exception as e:
             logger.error(f"Error updating performance baselines: {e}")
 
+    def get_active_training_rooms(self) -> Set[str]:
+        """Get set of rooms currently undergoing training."""
+        return set(self._active_training_requests.keys())
+    
     async def _check_resource_usage(self):
         """Check current system resource usage."""
         try:
@@ -760,6 +763,11 @@ class TrainingIntegrationManager:
             # - Memory usage
             # - Disk space
             # - Training queue length
+            
+            # Track active training rooms for resource monitoring
+            active_rooms = self.get_active_training_rooms()
+            if active_rooms:
+                logger.debug(f"Active training for rooms: {active_rooms}")
 
             logger.debug("Checked system resource usage")
 

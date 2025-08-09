@@ -9,6 +9,7 @@ multi-room occupancy correlations.
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
 import logging
+from typing import Dict, List, Set
 
 import numpy as np
 import statistics
@@ -495,18 +496,24 @@ class ContextualFeatureExtractor:
                 "sensor_type_diversity": 0.0,
             }
 
-        # Time-based sensor correlation
+        # Time-based sensor correlation using efficient sliding window
         correlation_windows = []
         window_size = 300  # 5 minutes
-
+        
+        # Use deque for efficient sliding window operations
+        window_events = deque()
+        
         for event in events:
             window_start = event.timestamp - timedelta(seconds=window_size)
-            window_events = [
-                e
-                for e in events
-                if window_start <= e.timestamp <= event.timestamp
-            ]
-
+            
+            # Remove events outside the window from the left
+            while window_events and window_events[0].timestamp < window_start:
+                window_events.popleft()
+            
+            # Add current event to window
+            window_events.append(event)
+            
+            # Calculate unique sensors in current window
             unique_sensors = len(set(e.sensor_id for e in window_events))
             correlation_windows.append(unique_sensors)
 

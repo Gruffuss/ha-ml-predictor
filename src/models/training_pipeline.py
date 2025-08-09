@@ -14,7 +14,6 @@ from enum import Enum
 import logging
 from pathlib import Path
 import pickle
-import shutil
 import uuid
 
 import numpy as np
@@ -399,6 +398,7 @@ class ModelTrainingPipeline:
         trigger_reason: str,
         strategy: str = "adaptive",
         force_full_retrain: bool = False,
+        training_type: Optional[str] = None,
     ) -> TrainingProgress:
         """
         Run adaptive retraining pipeline triggered by accuracy degradation or drift.
@@ -408,6 +408,7 @@ class ModelTrainingPipeline:
             trigger_reason: Reason for retraining
             strategy: Retraining strategy
             force_full_retrain: Force complete retraining vs incremental
+            training_type: Explicit training type (overrides strategy-based determination)
 
         Returns:
             Training progress object
@@ -417,15 +418,19 @@ class ModelTrainingPipeline:
         )
 
         try:
-            training_type = (
-                TrainingType.FULL_RETRAIN
-                if force_full_retrain
-                else TrainingType.ADAPTATION
-            )
+            # Use explicit training type if provided, otherwise determine from strategy
+            if training_type:
+                training_type_enum = TrainingType(training_type)
+            else:
+                training_type_enum = (
+                    TrainingType.FULL_RETRAIN
+                    if force_full_retrain
+                    else TrainingType.ADAPTATION
+                )
 
             return await self.train_room_models(
                 room_id=room_id,
-                training_type=training_type,
+                training_type=training_type_enum,
                 lookback_days=self.config.lookback_days,
                 metadata={
                     "trigger_reason": trigger_reason,
@@ -961,13 +966,21 @@ class ModelTrainingPipeline:
             val_size = int(total_samples * self.config.validation_split)
             train_size = total_samples - test_size - val_size
 
-            # Time-series split (chronological order)
-            train_features = features_df.iloc[:train_size]
-            train_targets = targets_df.iloc[:train_size]
-
-            val_features = features_df.iloc[train_size : train_size + val_size]
-            val_targets = targets_df.iloc[train_size : train_size + val_size]
-
+            # Use TimeSeriesSplit for proper temporal validation
+            tscv = TimeSeriesSplit(n_splits=3, test_size=val_size)
+            
+            # Get the last split for training/validation
+            splits = list(tscv.split(features_df))
+            train_idx, val_idx = splits[-1]  # Use the last split
+            
+            # Create training and validation sets using TimeSeriesSplit
+            train_features = features_df.iloc[train_idx]
+            train_targets = targets_df.iloc[train_idx]
+            
+            val_features = features_df.iloc[val_idx]
+            val_targets = targets_df.iloc[val_idx]
+            
+            # Create test set from the end (traditional approach)
             test_features = features_df.iloc[train_size + val_size :]
             test_targets = targets_df.iloc[train_size + val_size :]
 

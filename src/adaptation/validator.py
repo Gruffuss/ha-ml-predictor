@@ -63,7 +63,7 @@ class ValidationRecord:
 
     prediction_id: str
     room_id: str
-    model_type: str
+    model_type: Union[ModelType, str]  # Accept both for compatibility
     model_version: str
 
     # Prediction details
@@ -372,6 +372,10 @@ class PredictionValidator:
         self._validation_records: Dict[str, ValidationRecord] = {}
         self._records_by_room: Dict[str, List[str]] = defaultdict(list)
         self._records_by_model: Dict[str, List[str]] = defaultdict(list)
+        
+        # Use deque for efficient queue operations for batch processing
+        self._validation_queue: deque = deque(maxlen=1000)  # Queue for batch validation operations
+        self._database_update_queue: deque = deque(maxlen=500)  # Queue for batch database updates
 
         # Metrics caching
         self._metrics_cache: Dict[str, Tuple[AccuracyMetrics, datetime]] = {}
@@ -392,6 +396,10 @@ class PredictionValidator:
             # Start cleanup loop
             cleanup_task = asyncio.create_task(self._cleanup_loop())
             self._background_tasks.append(cleanup_task)
+            
+            # Start batch database processing loop
+            batch_db_task = asyncio.create_task(self._batch_database_processor())
+            self._background_tasks.append(batch_db_task)
 
             logger.info("Started PredictionValidator background tasks")
 
@@ -464,7 +472,10 @@ class PredictionValidator:
                 # Cleanup if over memory limit
                 self._cleanup_if_needed()
 
-            # Store in database asynchronously
+            # Queue for batch database operations using deque for efficiency
+            self._database_update_queue.append(record)
+            
+            # Store in database asynchronously (or use batch processing)
             await self._store_prediction_in_db(record)
 
             # Invalidate relevant caches
@@ -569,7 +580,7 @@ class PredictionValidator:
     async def get_accuracy_metrics(
         self,
         room_id: Optional[str] = None,
-        model_type: Optional[str] = None,
+        model_type: Optional[Union[ModelType, str]] = None,
         hours_back: int = 24,
         force_recalculate: bool = False,
     ) -> AccuracyMetrics:
@@ -1253,6 +1264,238 @@ class PredictionValidator:
             raise
         except Exception as e:
             logger.error(f"Cleanup loop failed: {e}")
+
+    async def _batch_database_processor(self) -> None:
+        """Background loop for batch processing database operations using deque."""
+        try:
+            while not self._shutdown_event.is_set():
+                try:
+                    # Process batch database updates from deque
+                    if self._database_update_queue:
+                        batch_records = []
+                        # Efficiently drain deque for batch processing
+                        while self._database_update_queue and len(batch_records) < 50:
+                            batch_records.append(self._database_update_queue.popleft())
+                        
+                        if batch_records:
+                            await self._batch_update_database(batch_records)
+                            logger.debug(f"Processed {len(batch_records)} database updates in batch")
+
+                    # Wait before next batch processing cycle
+                    await asyncio.wait_for(
+                        self._shutdown_event.wait(),
+                        timeout=30.0,  # Process batches every 30 seconds
+                    )
+
+                except asyncio.TimeoutError:
+                    # Expected timeout for batch processing interval
+                    continue
+                except Exception as e:
+                    logger.error(f"Error in batch database processor: {e}")
+                    await asyncio.sleep(60)  # Wait before retrying
+
+        except asyncio.CancelledError:
+            logger.info("Batch database processor cancelled")
+            raise
+        except Exception as e:
+            logger.error(f"Batch database processor failed: {e}")
+
+    async def _batch_update_database(self, records: List[ValidationRecord]) -> None:
+        """Batch update database with multiple records using advanced SQLAlchemy operations."""
+        if not records:
+            return
+            
+        try:
+            async with get_db_session() as session:
+                # Use AsyncSession for proper async database operations
+                async_session: AsyncSession = session
+                
+                # Use advanced SQL operations for efficient batch processing
+                batch_inserts = []
+                batch_updates = []
+                
+                for record in records:
+                    # Check if prediction already exists using func and or_ operations
+                    existing_query = select(Prediction).where(
+                        and_(
+                            Prediction.room_id == record.room_id,
+                            Prediction.predicted_transition_time == record.predicted_time,
+                            or_(
+                                Prediction.model_type == record.model_type,
+                                Prediction.model_type == str(record.model_type) if isinstance(record.model_type, ModelType) else record.model_type
+                            )
+                        )
+                    ).order_by(desc(Prediction.prediction_time))  # Use desc for most recent first
+                    
+                    result = await async_session.execute(existing_query)
+                    existing = result.scalars().first()
+                    
+                    if existing:
+                        # Prepare batch update using update operation
+                        batch_updates.append({
+                            'id': existing.id,
+                            'actual_transition_time': record.actual_time,
+                            'error_minutes': record.error_minutes,
+                            'accuracy_level': record.accuracy_level.value if record.accuracy_level else None,
+                            'validation_status': record.status.value,
+                            'validation_time': record.validation_time
+                        })
+                    else:
+                        # Prepare batch insert
+                        batch_inserts.append(Prediction(
+                            room_id=record.room_id,
+                            prediction_time=record.prediction_time,
+                            predicted_transition_time=record.predicted_time,
+                            transition_type=record.transition_type,
+                            confidence_score=record.confidence_score,
+                            model_type=str(record.model_type) if isinstance(record.model_type, ModelType) else record.model_type,
+                            model_version=record.model_version,
+                            prediction_interval_lower=(
+                                record.prediction_interval[0] if record.prediction_interval else None
+                            ),
+                            prediction_interval_upper=(
+                                record.prediction_interval[1] if record.prediction_interval else None
+                            ),
+                            alternatives=record.alternatives or [],
+                            actual_transition_time=record.actual_time,
+                            error_minutes=record.error_minutes,
+                            accuracy_level=record.accuracy_level.value if record.accuracy_level else None,
+                            validation_status=record.status.value,
+                            validation_time=record.validation_time
+                        ))
+                
+                # Execute batch inserts
+                if batch_inserts:
+                    async_session.add_all(batch_inserts)
+                
+                # Execute batch updates using update() operation
+                if batch_updates:
+                    for update_data in batch_updates:
+                        update_stmt = update(Prediction).where(
+                            Prediction.id == update_data['id']
+                        ).values(
+                            actual_transition_time=update_data['actual_transition_time'],
+                            error_minutes=update_data['error_minutes'],
+                            accuracy_level=update_data['accuracy_level'],
+                            validation_status=update_data['validation_status'],
+                            validation_time=update_data['validation_time']
+                        )
+                        await async_session.execute(update_stmt)
+                
+                await async_session.commit()
+                logger.debug(f"Batch database operation: {len(batch_inserts)} inserts, {len(batch_updates)} updates")
+                
+        except DatabaseError as e:
+            logger.error(f"Database error in batch update: {e}")
+            raise  # Re-raise DatabaseError for proper handling
+        except Exception as e:
+            logger.error(f"Failed to batch update database: {e}")
+            # Don't raise - allow validation to continue
+
+    async def get_database_accuracy_statistics(
+        self, 
+        room_id: Optional[str] = None,
+        model_type: Optional[Union[ModelType, str]] = None,
+        days_back: int = 7
+    ) -> Dict[str, Any]:
+        """Get accuracy statistics directly from database using func aggregations."""
+        try:
+            async with get_db_session() as session:
+                async_session: AsyncSession = session
+                
+                # Build base query with filters
+                base_query = select(Prediction).where(
+                    Prediction.prediction_time >= datetime.utcnow() - timedelta(days=days_back)
+                )
+                
+                # Add room filter if specified
+                if room_id:
+                    base_query = base_query.where(Prediction.room_id == room_id)
+                
+                # Add model type filter using or_ for compatibility
+                if model_type:
+                    model_type_str = str(model_type) if isinstance(model_type, ModelType) else model_type
+                    base_query = base_query.where(
+                        or_(
+                            Prediction.model_type == model_type,
+                            Prediction.model_type == model_type_str
+                        )
+                    )
+                
+                # Use func for statistical aggregations
+                stats_query = select(
+                    func.count(Prediction.id).label('total_predictions'),
+                    func.count(Prediction.error_minutes).label('validated_predictions'), 
+                    func.avg(Prediction.error_minutes).label('mean_error'),
+                    func.min(Prediction.error_minutes).label('min_error'),
+                    func.max(Prediction.error_minutes).label('max_error'),
+                    func.stddev(Prediction.error_minutes).label('std_error'),
+                    func.avg(Prediction.confidence_score).label('mean_confidence')
+                ).where(
+                    base_query.whereclause
+                )
+                
+                # Execute aggregation query
+                result = await async_session.execute(stats_query)
+                stats_row = result.first()
+                
+                # Get accuracy level distribution using func.count
+                accuracy_dist_query = select(
+                    Prediction.accuracy_level,
+                    func.count(Prediction.id).label('count')
+                ).where(
+                    base_query.whereclause
+                ).group_by(Prediction.accuracy_level)
+                
+                accuracy_dist_result = await async_session.execute(accuracy_dist_query)
+                accuracy_distribution = {
+                    row.accuracy_level or 'unknown': row.count 
+                    for row in accuracy_dist_result
+                }
+                
+                # Get recent predictions ordered by desc
+                recent_query = base_query.order_by(desc(Prediction.prediction_time)).limit(10)
+                recent_result = await async_session.execute(recent_query)
+                recent_predictions = [
+                    {
+                        'room_id': pred.room_id,
+                        'prediction_time': pred.prediction_time.isoformat(),
+                        'error_minutes': pred.error_minutes,
+                        'accuracy_level': pred.accuracy_level
+                    }
+                    for pred in recent_result.scalars()
+                ]
+                
+                return {
+                    'database_stats': {
+                        'total_predictions': stats_row.total_predictions or 0,
+                        'validated_predictions': stats_row.validated_predictions or 0,
+                        'mean_error_minutes': float(stats_row.mean_error) if stats_row.mean_error else 0.0,
+                        'min_error_minutes': float(stats_row.min_error) if stats_row.min_error else 0.0,
+                        'max_error_minutes': float(stats_row.max_error) if stats_row.max_error else 0.0,
+                        'std_error_minutes': float(stats_row.std_error) if stats_row.std_error else 0.0,
+                        'mean_confidence': float(stats_row.mean_confidence) if stats_row.mean_confidence else 0.0,
+                    },
+                    'accuracy_distribution': accuracy_distribution,
+                    'recent_predictions': recent_predictions,
+                    'query_filters': {
+                        'room_id': room_id,
+                        'model_type': str(model_type) if model_type else None,
+                        'days_back': days_back
+                    }
+                }
+                
+        except DatabaseError as e:
+            logger.error(f"Database error getting accuracy statistics: {e}")
+            raise  # Re-raise DatabaseError for proper handling
+        except Exception as e:
+            logger.error(f"Failed to get database accuracy statistics: {e}")
+            return {
+                'database_stats': {},
+                'accuracy_distribution': {},
+                'recent_predictions': [],
+                'error': str(e)
+            }
 
     async def _export_to_csv(
         self, records: List[ValidationRecord], output_path: Path

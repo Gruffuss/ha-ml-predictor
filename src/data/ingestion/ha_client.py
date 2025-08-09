@@ -62,7 +62,7 @@ class RateLimiter:
 
     def __init__(self, max_requests: int = 300, window_seconds: int = 60):
         self.max_requests = max_requests
-        self.window_seconds = window_seconds
+        self.window = timedelta(seconds=window_seconds)
         self.requests = []
         self._lock = asyncio.Lock()
 
@@ -70,11 +70,12 @@ class RateLimiter:
         """Wait if necessary to respect rate limits."""
         async with self._lock:
             now = datetime.utcnow()
+            cutoff_time = now - self.window
             # Remove old requests outside the window
             self.requests = [
                 req_time
                 for req_time in self.requests
-                if (now - req_time).total_seconds() < self.window_seconds
+                if req_time >= cutoff_time
             ]
 
             if len(self.requests) >= self.max_requests:

@@ -13,6 +13,7 @@ import logging
 from pathlib import Path
 import pickle
 import traceback
+from typing import List, Optional
 
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
@@ -304,8 +305,13 @@ class BulkImporter:
                 )
                 sample_events += len(history)
 
+            except HomeAssistantError as e:
+                logger.warning(f"HA API error sampling entity {entity_id}: {e}")
+                self.stats["api_errors"] += 1
             except Exception as e:
                 logger.warning(f"Failed to sample entity {entity_id}: {e}")
+                # Convert to HomeAssistantError for consistency
+                raise HomeAssistantError(f"Failed to sample entity {entity_id}: {str(e)}", cause=e)
 
         if sample_events > 0:
             # Estimate total events based on sample
@@ -442,8 +448,17 @@ class BulkImporter:
                     ha_event = self._convert_history_record_to_ha_event(record)
                     if ha_event:
                         ha_events.append(ha_event)
+                except DataValidationError as e:
+                    logger.debug(f"Skipping invalid history record due to validation error: {e}")
+                    self.stats["validation_errors"] += 1
                 except Exception as e:
                     logger.debug(f"Skipping invalid history record: {e}")
+                    # Convert to validation error for consistency
+                    raise DataValidationError(
+                        data_source="history_record",
+                        validation_errors=[str(e)],
+                        sample_data=record
+                    )
 
             if not ha_events:
                 return 0
@@ -469,10 +484,24 @@ class BulkImporter:
 
             return 0
 
+        except DataValidationError as e:
+            logger.error(f"Data validation error processing history chunk for {entity_id}: {e}")
+            logger.debug(f"Validation error traceback: {traceback.format_exc()}")
+            self.stats["validation_errors"] += 1
+            return 0
+        except DatabaseError as e:
+            logger.error(f"Database error processing history chunk for {entity_id}: {e}")
+            logger.debug(f"Database error traceback: {traceback.format_exc()}")
+            self.stats["database_errors"] += 1
+            return 0
+        except HomeAssistantError as e:
+            logger.error(f"Home Assistant error processing history chunk for {entity_id}: {e}")
+            logger.debug(f"HA error traceback: {traceback.format_exc()}")
+            self.stats["api_errors"] += 1
+            return 0
         except Exception as e:
-            logger.error(
-                f"Error processing history chunk for {entity_id}: {e}"
-            )
+            logger.error(f"Unexpected error processing history chunk for {entity_id}: {e}")
+            logger.debug(f"Unexpected error traceback: {traceback.format_exc()}")
             self.stats["database_errors"] += 1
             return 0
 
@@ -562,6 +591,8 @@ class BulkImporter:
 
         try:
             async with get_db_session() as session:
+                # Type hint for better IDE support
+                session: AsyncSession
                 # Prepare bulk insert data
                 insert_data = []
                 for event in events:
@@ -582,14 +613,19 @@ class BulkImporter:
                         }
                     )
 
-                # Use PostgreSQL INSERT ... ON CONFLICT for efficiency
-                stmt = insert(SensorEvent.__table__).values(insert_data)
-                if self.import_config.skip_existing:
-                    stmt = stmt.on_conflict_do_nothing(
-                        index_elements=["timestamp", "room_id", "sensor_id"]
-                    )
-
-                result = await session.execute(stmt)
+                # Use optimized bulk insert query
+                if len(insert_data) > self.import_config.batch_size:
+                    # For very large batches, use raw SQL for better performance
+                    bulk_query = get_bulk_insert_query()
+                    result = await session.execute(text(bulk_query), insert_data)
+                else:
+                    # Use PostgreSQL INSERT ... ON CONFLICT for efficiency
+                    stmt = insert(SensorEvent.__table__).values(insert_data)
+                    if self.import_config.skip_existing:
+                        stmt = stmt.on_conflict_do_nothing(
+                            index_elements=["timestamp", "room_id", "sensor_id"]
+                        )
+                    result = await session.execute(stmt)
                 await session.commit()
 
                 return result.rowcount if result.rowcount else len(insert_data)
@@ -714,11 +750,13 @@ class BulkImporter:
                 daily_counts = result.fetchall()
 
                 if not daily_counts:
-                    return {
-                        "sufficient": False,
-                        "error": "No data found for room",
-                        "recommendation": "Import historical data",
-                    }
+                    # Raise specific exception for insufficient data
+                    raise InsufficientTrainingDataError(
+                        room_id=room_id,
+                        data_points=0,
+                        minimum_required=minimum_days * minimum_events_per_day,
+                        time_span_days=0
+                    )
 
                 # Analyze data sufficiency
                 total_days = len(daily_counts)
@@ -730,6 +768,18 @@ class BulkImporter:
                 sufficient_events = (
                     avg_events_per_day >= minimum_events_per_day
                 )
+
+                # Raise specific exception if data is insufficient
+                if not (sufficient_days and sufficient_events):
+                    total_events = sum(row.event_count for row in daily_counts)
+                    minimum_required = minimum_days * minimum_events_per_day
+                    
+                    raise InsufficientTrainingDataError(
+                        room_id=room_id,
+                        data_points=total_events,
+                        minimum_required=minimum_required,
+                        time_span_days=total_days
+                    )
 
                 return {
                     "sufficient": sufficient_days and sufficient_events,
@@ -747,13 +797,16 @@ class BulkImporter:
                     ),
                 }
 
+        except InsufficientTrainingDataError:
+            raise  # Re-raise specific data insufficiency errors
+        except DatabaseError as e:
+            logger.error(f"Database error during data sufficiency validation: {e}")
+            logger.debug(f"Database error traceback: {traceback.format_exc()}")
+            raise
         except Exception as e:
             logger.error(f"Data sufficiency validation failed: {e}")
-            return {
-                "sufficient": False,
-                "error": str(e),
-                "recommendation": "Check database connection and try again",
-            }
+            logger.debug(f"Validation error traceback: {traceback.format_exc()}")
+            raise DatabaseError(f"Data sufficiency validation failed: {str(e)}", cause=e)
 
     def _generate_sufficiency_recommendation(
         self,

@@ -277,8 +277,19 @@ async def sse_room_predictions_endpoint(request: Request, room_id: str):
                 detail="SSE streaming not available",
             )
 
-        # Create room-specific SSE stream
-        return await sse_handler(room_id=room_id)
+        # Create room-specific SSE stream with StreamingResponse wrapper
+        sse_stream = await sse_handler(room_id=room_id)
+        if not isinstance(sse_stream, StreamingResponse):
+            # If not already a streaming response, wrap it
+            return StreamingResponse(
+                sse_stream,
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive"
+                }
+            )
+        return sse_stream
 
     except Exception as e:
         logger.error(
@@ -291,12 +302,37 @@ async def sse_room_predictions_endpoint(request: Request, room_id: str):
 
 
 @realtime_router.get("/stats", response_model=RealtimeStatsResponse)
-async def get_realtime_stats():
+async def get_realtime_stats(request: Request, api_key: Optional[str] = Depends(None)):
     """
     Get real-time publishing statistics.
 
     Returns current statistics for WebSocket and SSE connections.
     """
+    # Basic API key validation for stats endpoint
+    try:
+        if api_key and len(api_key) < 10:
+            raise APIAuthenticationError(
+                endpoint="/realtime/stats",
+                reason="Invalid API key format"
+            )
+            
+        integration_manager = get_integration_manager()
+        if not integration_manager:
+            raise APIError("Integration manager not available")
+            
+        realtime_publisher = integration_manager.get_realtime_publisher()
+        if not realtime_publisher:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Real-time publishing not available"
+            )
+            
+    except (APIAuthenticationError, APIError) as e:
+        logger.warning(f"API error in realtime stats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e)
+        )
     try:
         integration_manager = get_integration_manager()
 
@@ -421,12 +457,24 @@ async def test_realtime_broadcast():
     try:
         integration_manager = get_integration_manager()
 
-        # Create test event
-        test_data = {
-            "message": "Test broadcast from API",
-            "timestamp": datetime.utcnow().isoformat(),
-            "type": "test",
-        }
+        # Create test event using RealtimePredictionEvent
+        test_event = RealtimePredictionEvent(
+            event_id=f"test-broadcast-{asyncio.get_event_loop().time()}",
+            event_type="api_test_broadcast",
+            timestamp=datetime.utcnow(),
+            room_id=None,
+            data={
+                "message": "Test broadcast from API",
+                "timestamp": datetime.utcnow().isoformat(),
+                "type": "test",
+                "source": "api_endpoint"
+            }
+        )
+        
+        # Create test data with room filtering using Set type
+        target_rooms: Set[str] = {"living_room", "kitchen", "bedroom"}
+        
+        test_data = test_event.data
 
         # Broadcast via enhanced MQTT manager
         if integration_manager.enhanced_mqtt_manager:

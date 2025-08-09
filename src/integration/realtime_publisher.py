@@ -28,7 +28,7 @@ import weakref
 
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import StreamingResponse
+from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Route, WebSocketRoute
 import websockets
 from websockets.server import WebSocketServerProtocol
@@ -545,6 +545,22 @@ class RealtimePublishingSystem:
                 and self.prediction_publisher is not None
             ):
                 try:
+                    # Create standardized prediction payload
+                    prediction_payload = PredictionPayload(
+                        room_id=room_id,
+                        predicted_time=prediction_result.predicted_time,
+                        transition_type=prediction_result.transition_type,
+                        confidence_score=prediction_result.confidence_score,
+                        model_type=prediction_result.model_type,
+                        current_state=current_state
+                    )
+
+                    # Use dedicated MQTT publisher for enhanced functionality
+                    mqtt_publisher = MQTTPublisher(
+                        mqtt_config=self.config.get("mqtt_config"),
+                        room_configs=self.rooms
+                    )
+                    
                     mqtt_result = (
                         await self.prediction_publisher.publish_prediction(
                             prediction_result, room_id, current_state
@@ -599,14 +615,21 @@ class RealtimePublishingSystem:
             self.metrics.total_predictions_published += 1
 
             # Call broadcast callbacks
-            for callback in self._broadcast_callbacks:
-                try:
-                    if asyncio.iscoroutinefunction(callback):
-                        await callback(event, results)
-                    else:
-                        callback(event, results)
-                except Exception as e:
-                    logger.error(f"Error in broadcast callback: {e}")
+            valid_callbacks = []
+            for weak_callback in self._broadcast_callbacks:
+                callback = weak_callback() if hasattr(weak_callback, '__call__') else weak_callback
+                if callback is not None:
+                    valid_callbacks.append(callback)
+                    try:
+                        if asyncio.iscoroutinefunction(callback):
+                            await callback(event, results)
+                        else:
+                            callback(event, results)
+                    except Exception as e:
+                        logger.error(f"Error in broadcast callback: {e}")
+                        
+            # Update callback list to remove stale weak references
+            self._broadcast_callbacks = [weakref.ref(cb) for cb in valid_callbacks]
 
             logger.debug(
                 f"Published prediction for {room_id} across {len(results)} channels"
@@ -782,7 +805,9 @@ class RealtimePublishingSystem:
     def add_broadcast_callback(self, callback: Callable) -> None:
         """Add callback to be called when events are broadcast."""
         if callback not in self._broadcast_callbacks:
-            self._broadcast_callbacks.append(callback)
+            # Store callback as weak reference to prevent memory leaks
+            weak_callback = weakref.ref(callback)
+            self._broadcast_callbacks.append(weak_callback)
             logger.debug("Added broadcast callback")
 
     def remove_broadcast_callback(self, callback: Callable) -> None:
@@ -1047,3 +1072,94 @@ class RealtimePublishingError(OccupancyPredictionError):
             severity=kwargs.get("severity", ErrorSeverity.MEDIUM),
             **kwargs,
         )
+
+
+# Factory functions and utilities
+
+@asynccontextmanager
+async def realtime_publisher_context(
+    config: Optional[Dict[str, Any]] = None,
+    tracking_manager=None,
+) -> RealtimePublishingSystem:
+    """Context manager for real-time publishing system."""
+    publisher = RealtimePublishingSystem(config=config, tracking_manager=tracking_manager)
+    
+    try:
+        await publisher.start()
+        yield publisher
+    finally:
+        await publisher.stop()
+
+
+def create_realtime_app(publisher: RealtimePublishingSystem) -> Starlette:
+    """Create Starlette application with real-time endpoints."""
+    
+    async def sse_predictions(request):
+        """Server-Sent Events endpoint for predictions."""
+        return await publisher.create_sse_stream()
+    
+    async def sse_room_predictions(request):
+        """Server-Sent Events endpoint for specific room predictions."""
+        room_id = request.path_params.get("room_id")
+        return await publisher.create_sse_stream(room_id=room_id)
+    
+    async def sse_health(request):
+        """Health check for SSE endpoints."""
+        stats = publisher.get_publishing_stats()
+        return JSONResponse({
+            "status": "healthy",
+            "active_connections": stats.get("metrics", {}).get("active_sse_connections", 0),
+            "uptime_seconds": stats.get("uptime_seconds", 0)
+        })
+    
+    async def websocket_predictions(websocket):
+        """WebSocket endpoint for real-time predictions."""
+        await publisher.handle_websocket_connection(websocket, "/ws/predictions")
+    
+    async def websocket_room_predictions(websocket):
+        """WebSocket endpoint for room-specific predictions."""
+        # Extract room_id from path
+        room_id = websocket.path_params.get("room_id", "unknown")
+        await publisher.handle_websocket_connection(websocket, f"/ws/room/{room_id}")
+    
+    # Define routes including WebSocket routes
+    routes = [
+        Route("/sse/predictions", sse_predictions, methods=["GET"]),
+        Route("/sse/room/{room_id}", sse_room_predictions, methods=["GET"]),
+        Route("/sse/health", sse_health, methods=["GET"]),
+        WebSocketRoute("/ws/predictions", websocket_predictions),
+        WebSocketRoute("/ws/room/{room_id}", websocket_room_predictions),
+    ]
+    
+    # Create application
+    app = Starlette(routes=routes)
+    
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["GET"],
+        allow_headers=["*"],
+    )
+    
+    return app
+
+
+def create_realtime_publishing_system(
+    config: Optional[Dict[str, Any]] = None,
+    tracking_manager=None
+) -> RealtimePublishingSystem:
+    """Create and configure real-time publishing system."""
+    
+    # Get default config if none provided
+    if config is None:
+        system_config = get_config()
+        config = {
+            "mqtt_config": system_config.mqtt if hasattr(system_config, 'mqtt') else None,
+            "rooms": system_config.rooms if hasattr(system_config, 'rooms') else {},
+            "enabled_channels": [PublishingChannel.MQTT, PublishingChannel.WEBSOCKET, PublishingChannel.SSE]
+        }
+    
+    # Create publisher instance
+    return RealtimePublishingSystem(config=config, tracking_manager=tracking_manager)
