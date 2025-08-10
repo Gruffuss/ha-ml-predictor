@@ -1,0 +1,1694 @@
+examples/deprecated\comprehensive_ha_integration_example.py:149:25: F541 f-string is missing placeholders
+examples/deprecated\comprehensive_ha_integration_example.py:190:89: E501 line too long (93 > 88 characters)
+examples/deprecated\enhanced_ha_integration_example.py:38:35: F821 undefined name 'Optional'
+examples/deprecated\enhanced_ha_integration_example.py:122:89: E501 line too long (98 > 88 characters)
+examples/deprecated\enhanced_ha_integration_example.py:207:89: E501 line too long (107 > 88 characters)
+examples/deprecated\example_database_usage.py:23:1: E402 module level import not at top of file
+examples/deprecated\example_database_usage.py:155:89: E501 line too long (101 > 88 characters)
+examples/deprecated\example_database_usage.py:243:23: W291 trailing whitespace
+examples/deprecated\example_database_usage.py:249:35: W291 trailing whitespace
+examples/deprecated\example_integrated_tracking.py:204:89: E501 line too long (90 > 88 characters)
+examples/deprecated\example_integrated_tracking.py:221:89: E501 line too long (90 > 88 characters)
+examples/deprecated\example_integrated_tracking.py:224:89: E501 line too long (92 > 88 characters)
+examples/deprecated\example_integrated_tracking.py:259:89: E501 line too long (102 > 88 characters)
+examples/deprecated\example_integrated_tracking.py:262:89: E501 line too long (104 > 88 characters)
+examples/deprecated\example_realtime_integration.py:225:89: E501 line too long (112 > 88 characters)
+examples/deprecated\example_realtime_integration.py:251:29: F541 f-string is missing placeholders
+examples/deprecated\example_realtime_integration.py:259:89: E501 line too long (91 > 88 characters)
+examples/deprecated\example_realtime_integration.py:266:89: E501 line too long (94 > 88 characters)
+examples/deprecated\example_realtime_integration.py:269:89: E501 line too long (100 > 88 characters)
+examples/deprecated\example_realtime_integration.py:272:89: E501 line too long (93 > 88 characters)
+examples/deprecated\example_realtime_integration.py:279:89: E501 line too long (101 > 88 characters)
+examples/deprecated\example_realtime_integration.py:365:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:368:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:376:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:381:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:390:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:393:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:401:1: W293 blank line contains whitespace
+examples/deprecated\system_integration_example.py:148:21: F541 f-string is missing placeholders
+examples/deprecated\system_integration_example.py:209:89: E501 line too long (120 > 88 characters)
+examples/deprecated\system_integration_example.py:212:89: E501 line too long (120 > 88 characters)
+examples/deprecated\system_integration_example.py:215:89: E501 line too long (120 > 88 characters)
+examples/drift_detection_example.py:18:1: E402 module level import not at top of file
+examples/drift_detection_example.py:19:1: E402 module level import not at top of file
+examples/drift_detection_example.py:20:1: E402 module level import not at top of file
+examples/drift_detection_example.py:75:89: E501 line too long (92 > 88 characters)
+examples/drift_detection_example.py:81:89: E501 line too long (95 > 88 characters)
+examples/drift_detection_example.py:116:89: E501 line too long (96 > 88 characters)
+examples/drift_detection_example.py:153:89: E501 line too long (102 > 88 characters)
+examples/drift_detection_example.py:156:89: E501 line too long (97 > 88 characters)
+examples/drift_detection_example.py:160:11: F541 f-string is missing placeholders
+examples/drift_detection_example.py:162:89: E501 line too long (107 > 88 characters)
+examples/drift_detection_example.py:165:89: E501 line too long (103 > 88 characters)
+examples/drift_detection_example.py:169:89: E501 line too long (107 > 88 characters)
+examples/drift_detection_example.py:174:15: F541 f-string is missing placeholders
+examples/drift_detection_example.py:178:15: F541 f-string is missing placeholders
+examples/drift_detection_example.py:182:15: F541 f-string is missing placeholders
+examples/drift_detection_example.py:188:11: F541 f-string is missing placeholders
+examples/drift_detection_example.py:192:89: E501 line too long (89 > 88 characters)
+examples/drift_detection_example.py:196:11: F541 f-string is missing placeholders
+examples/drift_detection_example.py:201:11: F541 f-string is missing placeholders
+examples/drift_detection_example.py:203:89: E501 line too long (92 > 88 characters)
+examples/drift_detection_example.py:206:89: E501 line too long (104 > 88 characters)
+examples/drift_detection_example.py:250:21: F541 f-string is missing placeholders
+examples/drift_detection_example.py:250:89: E501 line too long (90 > 88 characters)
+examples/drift_detection_example.py:257:21: F541 f-string is missing placeholders
+examples/drift_detection_example.py:257:89: E501 line too long (98 > 88 characters)
+examples/monitoring_system_integration.py:17:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:19:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:22:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:23:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:24:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:25:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:26:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:27:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:147:89: E501 line too long (122 > 88 characters)
+examples/websocket_api_client.py:9:1: W293 blank line contains whitespace
+examples/websocket_api_client.py:258:89: E501 line too long (104 > 88 characters)
+examples/websocket_api_client.py:365:25: F541 f-string is missing placeholders
+examples/websocket_api_client.py:368:89: E501 line too long (94 > 88 characters)
+examples/websocket_api_client.py:374:21: F541 f-string is missing placeholders
+examples/websocket_api_client.py:391:13: F541 f-string is missing placeholders
+examples/websocket_api_client.py:407:89: E501 line too long (89 > 88 characters)
+examples/websocket_api_client.py:444:24: F541 f-string is missing placeholders
+examples/websocket_api_client.py:463:89: E501 line too long (89 > 88 characters)
+scripts/environment-manager.py:17:1: E402 module level import not at top of file
+scripts/environment-manager.py:18:1: E402 module level import not at top of file
+scripts/environment-manager.py:19:1: E402 module level import not at top of file
+scripts/setup_database.py:23:1: E402 module level import not at top of file
+scripts/setup_database.py:24:1: E402 module level import not at top of file
+scripts/setup_database.py:25:1: E402 module level import not at top of file
+scripts/setup_database.py:26:1: E402 module level import not at top of file
+scripts/setup_database.py:158:89: E501 line too long (91 > 88 characters)
+scripts/setup_database.py:188:64: W291 trailing whitespace
+scripts/setup_database.py:198:86: W291 trailing whitespace
+scripts/setup_database.py:316:89: E501 line too long (89 > 88 characters)
+scripts/setup_database.py:412:71: W291 trailing whitespace
+scripts/setup_database.py:425:74: W291 trailing whitespace
+scripts/setup_database.py:454:46: W291 trailing whitespace
+scripts/setup_database.py:483:13: F811 redefinition of unused 'datetime' from line 11
+scripts/start_monitoring.py:21:1: E402 module level import not at top of file
+scripts/start_monitoring.py:22:1: E402 module level import not at top of file
+scripts/start_monitoring.py:23:1: E402 module level import not at top of file
+scripts/start_monitoring.py:24:1: E402 module level import not at top of file
+scripts/start_monitoring.py:78:89: E501 line too long (93 > 88 characters)
+scripts/training_automation.py:20:1: E402 module level import not at top of file
+scripts/training_automation.py:21:1: E402 module level import not at top of file
+scripts/training_automation.py:22:1: E402 module level import not at top of file
+scripts/training_automation.py:23:1: E402 module level import not at top of file
+scripts/training_automation.py:24:1: E402 module level import not at top of file
+scripts/training_automation.py:25:1: E402 module level import not at top of file
+scripts/training_automation.py:26:1: E402 module level import not at top of file
+scripts/training_automation.py:27:1: E402 module level import not at top of file
+scripts/training_automation.py:264:89: E501 line too long (111 > 88 characters)
+scripts/training_automation.py:331:89: E501 line too long (90 > 88 characters)
+scripts/training_automation.py:345:89: E501 line too long (129 > 88 characters)
+scripts/training_automation.py:372:89: E501 line too long (89 > 88 characters)
+scripts/training_automation.py:376:89: E501 line too long (91 > 88 characters)
+scripts/training_automation.py:379:89: E501 line too long (104 > 88 characters)
+scripts/training_automation.py:387:1: C901 'validate_training_setup' is too complex (23)
+scripts/training_automation.py:474:15: F541 f-string is missing placeholders
+scripts/training_scheduler.py:22:1: E402 module level import not at top of file
+scripts/training_scheduler.py:23:1: E402 module level import not at top of file
+scripts/training_scheduler.py:24:1: E402 module level import not at top of file
+scripts/training_scheduler.py:25:1: E402 module level import not at top of file
+scripts/training_scheduler.py:26:1: E402 module level import not at top of file
+scripts/training_scheduler.py:27:1: E402 module level import not at top of file
+scripts/training_scheduler.py:28:1: E402 module level import not at top of file
+scripts/training_scheduler.py:29:1: E402 module level import not at top of file
+scripts/training_scheduler.py:381:89: E501 line too long (103 > 88 characters)
+scripts/training_scheduler.py:425:89: E501 line too long (100 > 88 characters)
+scripts/training_scheduler.py:455:89: E501 line too long (111 > 88 characters)
+scripts/training_scheduler.py:496:89: E501 line too long (93 > 88 characters)
+scripts/training_scheduler.py:616:89: E501 line too long (91 > 88 characters)
+scripts/training_scheduler.py:717:89: E501 line too long (98 > 88 characters)
+scripts/training_scheduler.py:762:89: E501 line too long (89 > 88 characters)
+scripts/validation\debug_api.py:75:89: E501 line too long (98 > 88 characters)
+scripts/validation\test_api_integration.py:51:89: E501 line too long (96 > 88 characters)
+scripts/validation\test_drift_integration.py:52:43: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\test_drift_integration.py:77:89: E501 line too long (92 > 88 characters)
+scripts/validation\test_drift_integration.py:98:49: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\test_drift_integration.py:101:50: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\test_drift_integration.py:171:49: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\test_drift_integration.py:174:50: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\test_optimizer_import.py:48:89: E501 line too long (103 > 88 characters)
+scripts/validation\test_optimizer_import.py:77:89: E501 line too long (89 > 88 characters)
+scripts/validation\test_optimizer_import.py:101:89: E501 line too long (97 > 88 characters)
+scripts/validation\test_optimizer_import.py:113:89: E501 line too long (90 > 88 characters)
+scripts/validation\validate_dashboard_integration.py:90:89: E501 line too long (107 > 88 characters)
+scripts/validation\validate_dashboard_integration.py:93:89: E501 line too long (118 > 88 characters)
+scripts/validation\validate_dashboard_integration.py:100:89: E501 line too long (91 > 88 characters)
+scripts/validation\validate_dashboard_integration.py:156:89: E501 line too long (90 > 88 characters)
+scripts/validation\validate_dashboard_integration.py:241:89: E501 line too long (93 > 88 characters)
+scripts/validation\validate_drift_detection.py:13:1: C901 'validate_drift_detector_structure' is too complex (17)
+scripts/validation\validate_drift_detection.py:256:89: E501 line too long (95 > 88 characters)
+scripts/validation\validate_optimizer_basic.py:36:89: E501 line too long (93 > 88 characters)
+scripts/validation\validate_optimizer_basic.py:142:89: E501 line too long (93 > 88 characters)
+scripts/validation\validate_optimizer_basic.py:208:89: E501 line too long (89 > 88 characters)
+scripts/validation\validate_realtime_integration.py:72:89: E501 line too long (92 > 88 characters)
+scripts/validation\validate_realtime_integration.py:84:40: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\validate_realtime_integration.py:87:89: E501 line too long (90 > 88 characters)
+scripts/validation\validate_realtime_integration.py:118:89: E501 line too long (97 > 88 characters)
+scripts/validation\validate_realtime_integration.py:122:89: E501 line too long (93 > 88 characters)
+scripts/validation\validate_realtime_integration.py:148:39: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_realtime_integration.py:172:89: E501 line too long (90 > 88 characters)
+scripts/validation\validate_requirements.py:100:89: E501 line too long (112 > 88 characters)
+scripts/validation\validate_sprint3.py:5:89: E501 line too long (89 > 88 characters)
+scripts/validation\validate_sprint3.py:67:36: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:126:31: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\validate_sprint3.py:168:35: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:243:9: F811 redefinition of unused 'os' from line 10
+scripts/validation\validate_sprint3.py:360:23: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:403:35: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:494:11: F541 f-string is missing placeholders
+scripts/validation\validate_sprint3_simple.py:140:89: E501 line too long (92 > 88 characters)
+scripts/validation\validate_sprint3_simple.py:182:19: F541 f-string is missing placeholders
+scripts/validation\validate_sprint3_standalone.py:5:89: E501 line too long (96 > 88 characters)
+scripts/validation\validate_sprint3_standalone.py:84:36: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3_standalone.py:143:31: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\validate_sprint3_standalone.py:185:35: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3_standalone.py:260:9: F811 redefinition of unused 'os' from line 10
+scripts/validation\validate_sprint3_standalone.py:361:23: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3_standalone.py:404:35: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3_standalone.py:523:11: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:5:89: E501 line too long (92 > 88 characters)
+scripts/validation\validate_sprint4_complete.py:1241:89: E501 line too long (89 > 88 characters)
+scripts/validation\validate_sprint4_complete.py:1296:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1301:89: E501 line too long (114 > 88 characters)
+scripts/validation\validate_sprint4_complete.py:1303:89: E501 line too long (89 > 88 characters)
+scripts/validation\validate_sprint4_complete.py:1305:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1308:89: E501 line too long (90 > 88 characters)
+scripts/validation\validate_sprint4_complete.py:1311:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1314:89: E501 line too long (92 > 88 characters)
+scripts/validation\validate_sprint4_complete.py:1317:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1321:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1331:89: E501 line too long (111 > 88 characters)
+scripts/validation\validate_sprint4_complete.py:1335:19: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1337:17: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1337:89: E501 line too long (122 > 88 characters)
+scripts/validation\validate_sprint4_complete.py:1339:19: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1341:19: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1343:89: E501 line too long (106 > 88 characters)
+scripts/validation\validate_sprint4_task6.py:5:74: W291 trailing whitespace
+scripts/validation\validate_sprint4_task6.py:16:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:18:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:19:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:21:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:24:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:31:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:37:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:38:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:133:89: E501 line too long (117 > 88 characters)
+scripts/validation\validate_sprint4_task6.py:225:89: E501 line too long (96 > 88 characters)
+src/adaptation\drift_detector.py:1097:89: E501 line too long (93 > 88 characters)
+src/adaptation\monitoring_enhanced_tracking.py:6:1: F401 'asyncio' imported but unused
+src/adaptation\monitoring_enhanced_tracking.py:9:1: F401 'typing.Optional' imported but unused
+src/adaptation\monitoring_enhanced_tracking.py:171:9: F841 local variable 'e' is assigned to but never used
+src/adaptation\monitoring_enhanced_tracking.py:175:13: E722 do not use bare 'except'
+src/adaptation\monitoring_enhanced_tracking.py:236:13: E722 do not use bare 'except'
+src/adaptation\optimizer.py:312:89: E501 line too long (96 > 88 characters)
+src/adaptation\optimizer.py:373:89: E501 line too long (95 > 88 characters)
+src/adaptation\optimizer.py:403:89: E501 line too long (106 > 88 characters)
+src/adaptation\optimizer.py:412:89: E501 line too long (100 > 88 characters)
+src/adaptation\optimizer.py:424:89: E501 line too long (96 > 88 characters)
+src/adaptation\retrainer.py:61:2: F821 undefined name 'dataclass'
+src/adaptation\retrainer.py:128:2: F821 undefined name 'dataclass'
+src/adaptation\retrainer.py:246:89: E501 line too long (111 > 88 characters)
+src/adaptation\retrainer.py:286:5: C901 'AdaptiveRetrainer.evaluate_retraining_need' is too complex (16)
+src/adaptation\retrainer.py:313:89: E501 line too long (94 > 88 characters)
+src/adaptation\retrainer.py:332:89: E501 line too long (125 > 88 characters)
+src/adaptation\retrainer.py:346:89: E501 line too long (128 > 88 characters)
+src/adaptation\retrainer.py:358:89: E501 line too long (126 > 88 characters)
+src/adaptation\retrainer.py:388:89: E501 line too long (100 > 88 characters)
+src/adaptation\retrainer.py:708:89: E501 line too long (109 > 88 characters)
+src/adaptation\retrainer.py:712:89: E501 line too long (90 > 88 characters)
+src/adaptation\retrainer.py:718:89: E501 line too long (105 > 88 characters)
+src/adaptation\retrainer.py:819:89: E501 line too long (93 > 88 characters)
+src/adaptation\retrainer.py:959:89: E501 line too long (89 > 88 characters)
+src/adaptation\retrainer.py:961:89: E501 line too long (105 > 88 characters)
+src/adaptation\retrainer.py:967:13: F841 local variable 'start_date' is assigned to but never used
+src/adaptation\retrainer.py:969:89: E501 line too long (89 > 88 characters)
+src/adaptation\retrainer.py:979:89: E501 line too long (89 > 88 characters)
+src/adaptation\retrainer.py:998:89: E501 line too long (93 > 88 characters)
+src/adaptation\retrainer.py:1015:89: E501 line too long (102 > 88 characters)
+src/adaptation\retrainer.py:1033:89: E501 line too long (108 > 88 characters)
+src/adaptation\retrainer.py:1043:89: E501 line too long (90 > 88 characters)
+src/adaptation\retrainer.py:1052:89: E501 line too long (89 > 88 characters)
+src/adaptation\retrainer.py:1102:89: E501 line too long (95 > 88 characters)
+src/adaptation\retrainer.py:1113:89: E501 line too long (91 > 88 characters)
+src/adaptation\retrainer.py:1115:89: E501 line too long (105 > 88 characters)
+src/adaptation\retrainer.py:1124:89: E501 line too long (98 > 88 characters)
+src/adaptation\retrainer.py:1128:89: E501 line too long (106 > 88 characters)
+src/adaptation\retrainer.py:1133:89: E501 line too long (93 > 88 characters)
+src/adaptation\retrainer.py:1246:89: E501 line too long (112 > 88 characters)
+src/adaptation\retrainer.py:1252:89: E501 line too long (107 > 88 characters)
+src/adaptation\retrainer.py:1334:89: E501 line too long (91 > 88 characters)
+src/adaptation\retrainer.py:1485:89: E501 line too long (90 > 88 characters)
+src/adaptation\tracker.py:381:89: E501 line too long (92 > 88 characters)
+src/adaptation\tracker.py:429:89: E501 line too long (100 > 88 characters)
+src/adaptation\tracker.py:755:89: E501 line too long (96 > 88 characters)
+src/adaptation\tracker.py:958:89: E501 line too long (89 > 88 characters)
+src/adaptation\tracker.py:1223:89: E501 line too long (95 > 88 characters)
+src/adaptation\tracker.py:1248:5: C901 'AccuracyTracker._check_entity_alerts' is too complex (16)
+src/adaptation\tracker.py:1267:89: E501 line too long (105 > 88 characters)
+src/adaptation\tracker.py:1280:89: E501 line too long (114 > 88 characters)
+src/adaptation\tracker.py:1292:89: E501 line too long (113 > 88 characters)
+src/adaptation\tracker.py:1302:89: E501 line too long (121 > 88 characters)
+src/adaptation\tracker.py:1318:89: E501 line too long (100 > 88 characters)
+src/adaptation\tracker.py:1333:89: E501 line too long (119 > 88 characters)
+src/adaptation\tracker.py:1346:89: E501 line too long (119 > 88 characters)
+src/adaptation\tracker.py:1354:89: E501 line too long (102 > 88 characters)
+src/adaptation\tracker.py:1357:89: E501 line too long (122 > 88 characters)
+src/adaptation\tracker.py:1363:89: E501 line too long (97 > 88 characters)
+src/adaptation\tracker.py:1365:89: E501 line too long (93 > 88 characters)
+src/adaptation\tracker.py:1371:89: E501 line too long (103 > 88 characters)
+src/adaptation\tracker.py:1473:89: E501 line too long (97 > 88 characters)
+src/adaptation\tracker.py:1495:89: E501 line too long (95 > 88 characters)
+src/adaptation\tracker.py:1505:89: E501 line too long (95 > 88 characters)
+src/adaptation\tracker.py:1514:89: E501 line too long (91 > 88 characters)
+src/adaptation\tracker.py:1525:89: E501 line too long (95 > 88 characters)
+src/adaptation\tracking_manager.py:18:1: F401 '..data.storage.models.RoomState' imported but unused
+src/adaptation\tracking_manager.py:18:1: F401 '..data.storage.models.SensorEvent' imported but unused
+src/adaptation\tracking_manager.py:26:1: F401 '.optimizer.OptimizationObjective' imported but unused
+src/adaptation\tracking_manager.py:32:1: F401 '.retrainer.RetrainingStatus' imported but unused
+src/adaptation\tracking_manager.py:207:89: E501 line too long (99 > 88 characters)
+src/adaptation\tracking_manager.py:208:89: E501 line too long (89 > 88 characters)
+src/adaptation\tracking_manager.py:300:89: E501 line too long (92 > 88 characters)
+src/adaptation\tracking_manager.py:311:89: E501 line too long (100 > 88 characters)
+src/adaptation\tracking_manager.py:436:5: C901 'TrackingManager.record_prediction' is too complex (20)
+src/adaptation\tracking_manager.py:441:89: E501 line too long (91 > 88 characters)
+src/adaptation\tracking_manager.py:477:89: E501 line too long (116 > 88 characters)
+src/adaptation\tracking_manager.py:480:89: E501 line too long (93 > 88 characters)
+src/adaptation\tracking_manager.py:483:89: E501 line too long (95 > 88 characters)
+src/adaptation\tracking_manager.py:506:89: E501 line too long (126 > 88 characters)
+src/adaptation\tracking_manager.py:514:89: E501 line too long (106 > 88 characters)
+src/adaptation\tracking_manager.py:518:89: E501 line too long (96 > 88 characters)
+src/adaptation\tracking_manager.py:524:89: E501 line too long (98 > 88 characters)
+src/adaptation\tracking_manager.py:527:89: E501 line too long (95 > 88 characters)
+src/adaptation\tracking_manager.py:533:89: E501 line too long (118 > 88 characters)
+src/adaptation\tracking_manager.py:537:89: E501 line too long (147 > 88 characters)
+src/adaptation\tracking_manager.py:541:89: E501 line too long (111 > 88 characters)
+src/adaptation\tracking_manager.py:548:89: E501 line too long (102 > 88 characters)
+src/adaptation\tracking_manager.py:555:89: E501 line too long (92 > 88 characters)
+src/adaptation\tracking_manager.py:561:89: E501 line too long (91 > 88 characters)
+src/adaptation\tracking_manager.py:624:89: E501 line too long (91 > 88 characters)
+src/adaptation\tracking_manager.py:918:39: W291 trailing whitespace
+src/adaptation\tracking_manager.py:919:42: W291 trailing whitespace
+src/adaptation\tracking_manager.py:931:89: E501 line too long (103 > 88 characters)
+src/adaptation\tracking_manager.py:948:89: E501 line too long (95 > 88 characters)
+src/adaptation\tracking_manager.py:966:89: E501 line too long (99 > 88 characters)
+src/adaptation\tracking_manager.py:1062:89: E501 line too long (89 > 88 characters)
+src/adaptation\tracking_manager.py:1109:89: E501 line too long (102 > 88 characters)
+src/adaptation\tracking_manager.py:1151:89: E501 line too long (90 > 88 characters)
+src/adaptation\tracking_manager.py:1166:89: E501 line too long (89 > 88 characters)
+src/adaptation\tracking_manager.py:1191:89: E501 line too long (91 > 88 characters)
+src/adaptation\tracking_manager.py:1222:89: E501 line too long (95 > 88 characters)
+src/adaptation\tracking_manager.py:1223:89: E501 line too long (95 > 88 characters)
+src/adaptation\tracking_manager.py:1230:89: E501 line too long (92 > 88 characters)
+src/adaptation\tracking_manager.py:1497:89: E501 line too long (107 > 88 characters)
+src/adaptation\tracking_manager.py:1514:89: E501 line too long (107 > 88 characters)
+src/adaptation\tracking_manager.py:1528:89: E501 line too long (104 > 88 characters)
+src/adaptation\tracking_manager.py:1850:89: E501 line too long (96 > 88 characters)
+src/adaptation\tracking_manager.py:1916:89: E501 line too long (91 > 88 characters)
+src/adaptation\tracking_manager.py:1927:89: E501 line too long (91 > 88 characters)
+src/adaptation\tracking_manager.py:2009:89: E501 line too long (93 > 88 characters)
+src/adaptation\tracking_manager.py:2010:89: E501 line too long (99 > 88 characters)
+src/adaptation\tracking_manager.py:2011:89: E501 line too long (99 > 88 characters)
+src/adaptation\tracking_manager.py:2012:89: E501 line too long (115 > 88 characters)
+src/adaptation\tracking_manager.py:2025:89: E501 line too long (122 > 88 characters)
+src/adaptation\tracking_manager.py:2178:89: E501 line too long (90 > 88 characters)
+src/adaptation\tracking_manager.py:2183:89: E501 line too long (92 > 88 characters)
+src/adaptation\tracking_manager.py:2186:89: E501 line too long (92 > 88 characters)
+src/adaptation\tracking_manager.py:2199:89: E501 line too long (119 > 88 characters)
+src/adaptation\validator.py:106:89: E501 line too long (95 > 88 characters)
+src/adaptation\validator.py:212:89: E501 line too long (89 > 88 characters)
+src/adaptation\validator.py:383:89: E501 line too long (95 > 88 characters)
+src/adaptation\validator.py:439:89: E501 line too long (109 > 88 characters)
+src/adaptation\validator.py:538:89: E501 line too long (94 > 88 characters)
+src/adaptation\validator.py:606:89: E501 line too long (89 > 88 characters)
+src/adaptation\validator.py:607:89: E501 line too long (103 > 88 characters)
+src/adaptation\validator.py:1087:89: E501 line too long (90 > 88 characters)
+src/adaptation\validator.py:1225:89: E501 line too long (91 > 88 characters)
+src/adaptation\validator.py:1248:89: E501 line too long (95 > 88 characters)
+src/adaptation\validator.py:1364:89: E501 line too long (107 > 88 characters)
+src/core\backup_manager.py:19:1: F401 'yaml' imported but unused
+src/core\backup_manager.py:185:89: E501 line too long (106 > 88 characters)
+src/core\backup_manager.py:241:21: F841 local variable 'dbname' is assigned to but never used
+src/core\backup_manager.py:369:89: E501 line too long (104 > 88 characters)
+src/core\backup_manager.py:494:89: E501 line too long (104 > 88 characters)
+src/core\backup_manager.py:585:89: E501 line too long (89 > 88 characters)
+src/core\backup_manager.py:637:89: E501 line too long (123 > 88 characters)
+src/core\backup_manager.py:709:89: E501 line too long (116 > 88 characters)
+src/core\config_validator.py:10:1: F401 'socket' imported but unused
+src/core\config_validator.py:11:1: F401 'typing.Optional' imported but unused
+src/core\config_validator.py:11:1: F401 'typing.Tuple' imported but unused
+src/core\config_validator.py:11:1: F401 'typing.Union' imported but unused
+src/core\config_validator.py:14:1: F401 'pydantic.BaseModel' imported but unused
+src/core\config_validator.py:14:1: F401 'pydantic.ValidationError' imported but unused
+src/core\config_validator.py:14:1: F401 'pydantic.validator' imported but unused
+src/core\config_validator.py:127:9: E722 do not use bare 'except'
+src/core\config_validator.py:204:25: F541 f-string is missing placeholders
+src/core\config_validator.py:260:89: E501 line too long (94 > 88 characters)
+src/core\config_validator.py:268:21: E722 do not use bare 'except'
+src/core\config_validator.py:500:89: E501 line too long (91 > 88 characters)
+src/core\config_validator.py:517:89: E501 line too long (155 > 88 characters)
+src/core\config_validator.py:524:5: C901 'SystemRequirementsValidator.validate' is too complex (17)
+src/core\config_validator.py:531:89: E501 line too long (102 > 88 characters)
+src/core\config_validator.py:578:9: E722 do not use bare 'except'
+src/core\config_validator.py:603:9: E722 do not use bare 'except'
+src/core\config_validator.py:693:89: E501 line too long (94 > 88 characters)
+src/core\environment.py:7:1: F401 'dataclasses.field' imported but unused
+src/core\environment.py:13:1: F401 'typing.Set' imported but unused
+src/core\environment.py:201:89: E501 line too long (90 > 88 characters)
+src/core\environment.py:480:89: E501 line too long (101 > 88 characters)
+src/core\environment.py:544:23: F541 f-string is missing placeholders
+src/core\environment.py:565:89: E501 line too long (91 > 88 characters)
+src/core\exceptions.py:523:89: E501 line too long (98 > 88 characters)
+src/core\exceptions.py:705:89: E501 line too long (113 > 88 characters)
+src/data\ingestion\bulk_importer.py:78:26: F821 undefined name 'Dict'
+src/data\ingestion\bulk_importer.py:78:36: F821 undefined name 'Any'
+src/data\ingestion\bulk_importer.py:139:28: F821 undefined name 'Dict'
+src/data\ingestion\bulk_importer.py:139:38: F821 undefined name 'Any'
+src/data\ingestion\bulk_importer.py:182:89: E501 line too long (97 > 88 characters)
+src/data\ingestion\bulk_importer.py:252:89: E501 line too long (97 > 88 characters)
+src/data\ingestion\bulk_importer.py:430:50: F821 undefined name 'Dict'
+src/data\ingestion\bulk_importer.py:430:60: F821 undefined name 'Any'
+src/data\ingestion\bulk_importer.py:510:23: F821 undefined name 'Dict'
+src/data\ingestion\bulk_importer.py:510:33: F821 undefined name 'Any'
+src/data\ingestion\bulk_importer.py:701:35: F821 undefined name 'Dict'
+src/data\ingestion\bulk_importer.py:701:45: F821 undefined name 'Any'
+src/data\ingestion\bulk_importer.py:713:10: F821 undefined name 'Dict'
+src/data\ingestion\bulk_importer.py:713:20: F821 undefined name 'Any'
+src/data\ingestion\bulk_importer.py:816:89: E501 line too long (107 > 88 characters)
+src/data\ingestion\event_processor.py:4:89: E501 line too long (89 > 88 characters)
+src/data\ingestion\event_processor.py:5:89: E501 line too long (92 > 88 characters)
+src/data\ingestion\event_processor.py:13:1: F401 'math' imported but unused
+src/data\ingestion\event_processor.py:14:1: F401 'typing.Tuple' imported but unused
+src/data\ingestion\event_processor.py:19:1: F401 '...core.constants.ABSENCE_STATES' imported but unused
+src/data\ingestion\event_processor.py:19:1: F401 '...core.constants.PRESENCE_STATES' imported but unused
+src/data\ingestion\event_processor.py:19:1: F401 '...core.constants.SensorState' imported but unused
+src/data\ingestion\event_processor.py:30:1: F401 '...core.exceptions.ConfigurationError' imported but unused
+src/data\ingestion\event_processor.py:30:1: F401 '...core.exceptions.DataValidationError' imported but unused
+src/data\ingestion\event_processor.py:30:1: F401 '...core.exceptions.FeatureExtractionError' imported but unused
+src/data\ingestion\event_processor.py:418:89: E501 line too long (111 > 88 characters)
+src/data\ingestion\event_processor.py:696:89: E501 line too long (97 > 88 characters)
+src/data\ingestion\ha_client.py:15:1: F401 'urllib.parse.urljoin' imported but unused
+src/data\ingestion\ha_client.py:26:1: F401 '...core.constants.SensorState' imported but unused
+src/data\ingestion\ha_client.py:27:1: F401 '...core.exceptions.RateLimitExceededError' imported but unused
+src/data\ingestion\ha_client.py:365:89: E501 line too long (125 > 88 characters)
+src/data\ingestion\ha_client.py:487:89: E501 line too long (101 > 88 characters)
+src/data\storage\database.py:10:1: F401 'datetime.timedelta' imported but unused
+src/data\storage\database.py:16:1: F401 'sqlalchemy.exc.SQLAlchemyError' imported but unused
+src/data\storage\database.py:31:1: F401 'src.core.exceptions.ErrorSeverity' imported but unused
+src/data\storage\database.py:137:89: E501 line too long (91 > 88 characters)
+src/data\storage\database.py:328:5: C901 'DatabaseManager.health_check' is too complex (17)
+src/data\storage\database.py:362:89: E501 line too long (110 > 88 characters)
+src/data\storage\database.py:368:89: E501 line too long (109 > 88 characters)
+src/data\storage\models.py:11:1: F401 'decimal.Decimal' imported but unused
+src/data\storage\models.py:12:1: F401 'sqlalchemy.JSON' imported but unused
+src/data\storage\models.py:12:1: F401 'sqlalchemy.ForeignKey' imported but unused
+src/data\storage\models.py:12:1: F401 'sqlalchemy.Text' imported but unused
+src/data\storage\models.py:33:1: F401 'sqlalchemy.dialects.postgresql.UUID' imported but unused
+src/data\storage\models.py:35:1: F401 'sqlalchemy.orm.relationship' imported but unused
+src/data\storage\models.py:35:1: F401 'sqlalchemy.orm.selectinload' imported but unused
+src/data\storage\models.py:36:1: F401 'sqlalchemy.sql.func as sql_func' imported but unused
+src/data\storage\models.py:227:89: E501 line too long (100 > 88 characters)
+src/data\storage\models.py:309:89: E501 line too long (91 > 88 characters)
+src/data\storage\models.py:487:89: E501 line too long (89 > 88 characters)
+src/data\storage\models.py:680:89: E501 line too long (124 > 88 characters)
+src/data\storage\models.py:721:89: E501 line too long (97 > 88 characters)
+src/data\storage\models.py:730:89: E501 line too long (96 > 88 characters)
+src/features\contextual.py:12:1: F401 'typing.Set' imported but unused
+src/features\contextual.py:18:1: F401 '..core.constants.SensorType' imported but unused
+src/features\contextual.py:37:32: F821 undefined name 'Optional'
+src/features\contextual.py:69:22: F821 undefined name 'Optional'
+src/features\contextual.py:71:23: F821 undefined name 'Optional'
+src/features\contextual.py:380:89: E501 line too long (92 > 88 characters)
+src/features\engineering.py:17:1: F401 '..core.exceptions.ConfigurationError' imported but unused
+src/features\engineering.py:36:17: F821 undefined name 'Optional'
+src/features\engineering.py:80:17: F821 undefined name 'Optional'
+src/features\engineering.py:80:26: F821 undefined name 'List'
+src/features\engineering.py:81:22: F821 undefined name 'Optional'
+src/features\engineering.py:81:31: F821 undefined name 'List'
+src/features\engineering.py:83:24: F821 undefined name 'Optional'
+src/features\engineering.py:83:33: F821 undefined name 'List'
+src/features\engineering.py:84:10: F821 undefined name 'Dict'
+src/features\engineering.py:94:89: E501 line too long (98 > 88 characters)
+src/features\engineering.py:178:89: E501 line too long (98 > 88 characters)
+src/features\engineering.py:191:30: F821 undefined name 'List'
+src/features\engineering.py:192:13: F821 undefined name 'Tuple'
+src/features\engineering.py:192:34: F821 undefined name 'List'
+src/features\engineering.py:192:53: F821 undefined name 'List'
+src/features\engineering.py:195:24: F821 undefined name 'Optional'
+src/features\engineering.py:195:33: F821 undefined name 'List'
+src/features\engineering.py:196:10: F821 undefined name 'List'
+src/features\engineering.py:196:15: F821 undefined name 'Dict'
+src/features\engineering.py:201:89: E501 line too long (91 > 88 characters)
+src/features\engineering.py:262:17: F821 undefined name 'List'
+src/features\engineering.py:263:22: F821 undefined name 'List'
+src/features\engineering.py:265:22: F821 undefined name 'Optional'
+src/features\engineering.py:266:24: F821 undefined name 'List'
+src/features\engineering.py:268:10: F821 undefined name 'Dict'
+src/features\engineering.py:333:17: F821 undefined name 'List'
+src/features\engineering.py:334:22: F821 undefined name 'List'
+src/features\engineering.py:336:22: F821 undefined name 'Optional'
+src/features\engineering.py:337:24: F821 undefined name 'List'
+src/features\engineering.py:339:10: F821 undefined name 'Dict'
+src/features\engineering.py:396:10: F821 undefined name 'Dict'
+src/features\engineering.py:424:48: F821 undefined name 'Optional'
+src/features\engineering.py:424:57: F821 undefined name 'List'
+src/features\engineering.py:424:79: F821 undefined name 'List'
+src/features\engineering.py:466:24: F821 undefined name 'List'
+src/features\engineering.py:466:29: F821 undefined name 'Dict'
+src/features\engineering.py:467:24: F821 undefined name 'Optional'
+src/features\engineering.py:467:33: F821 undefined name 'List'
+src/features\engineering.py:495:40: F821 undefined name 'Dict'
+src/features\engineering.py:512:39: F821 undefined name 'Dict'
+src/features\engineering.py:512:49: F821 undefined name 'Any'
+src/features\engineering.py:536:47: F821 undefined name 'Dict'
+src/features\engineering.py:536:57: F821 undefined name 'Any'
+src/features\sequential.py:12:1: F401 'typing.Set' imported but unused
+src/features\sequential.py:18:1: F401 '..core.constants.CAT_MOVEMENT_PATTERNS' imported but unused
+src/features\sequential.py:18:1: F401 '..core.constants.HUMAN_MOVEMENT_PATTERNS' imported but unused
+src/features\sequential.py:18:1: F401 '..core.constants.MIN_EVENT_SEPARATION' imported but unused
+src/features\sequential.py:18:1: F401 '..core.constants.SensorType' imported but unused
+src/features\sequential.py:47:32: F821 undefined name 'Optional'
+src/features\sequential.py:62:23: F821 undefined name 'Optional'
+src/features\sequential.py:544:10: F821 undefined name 'Optional'
+src/features\store.py:9:1: F401 'collections.defaultdict' imported but unused
+src/features\store.py:14:1: F401 'pickle' imported but unused
+src/features\store.py:16:1: F401 'numpy as np' imported but unused
+src/features\store.py:20:1: F401 '..core.exceptions.DatabaseConnectionError' imported but unused
+src/features\store.py:20:1: F401 '..core.exceptions.FeatureExtractionError' imported but unused
+src/features\store.py:34:15: F821 undefined name 'Dict'
+src/features\store.py:37:20: F821 undefined name 'List'
+src/features\store.py:40:26: F821 undefined name 'Dict'
+src/features\store.py:40:36: F821 undefined name 'Any'
+src/features\store.py:48:30: F821 undefined name 'Dict'
+src/features\store.py:48:40: F821 undefined name 'Any'
+src/features\store.py:80:24: F821 undefined name 'List'
+src/features\store.py:83:89: E501 line too long (108 > 88 characters)
+src/features\store.py:91:24: F821 undefined name 'List'
+src/features\store.py:93:10: F821 undefined name 'Optional'
+src/features\store.py:93:19: F821 undefined name 'Dict'
+src/features\store.py:128:24: F821 undefined name 'List'
+src/features\store.py:129:19: F821 undefined name 'Dict'
+src/features\store.py:167:28: F821 undefined name 'Dict'
+src/features\store.py:167:38: F821 undefined name 'Any'
+src/features\store.py:194:17: F821 undefined name 'Optional'
+src/features\store.py:214:26: F821 undefined name 'Optional'
+src/features\store.py:241:24: F821 undefined name 'Optional'
+src/features\store.py:241:33: F821 undefined name 'List'
+src/features\store.py:244:10: F821 undefined name 'Dict'
+src/features\store.py:329:19: F821 undefined name 'List'
+src/features\store.py:329:24: F821 undefined name 'Tuple'
+src/features\store.py:331:24: F821 undefined name 'Optional'
+src/features\store.py:331:33: F821 undefined name 'List'
+src/features\store.py:333:10: F821 undefined name 'List'
+src/features\store.py:333:15: F821 undefined name 'Dict'
+src/features\store.py:386:24: F821 undefined name 'Optional'
+src/features\store.py:386:33: F821 undefined name 'List'
+src/features\store.py:387:10: F821 undefined name 'Tuple'
+src/features\store.py:442:89: E501 line too long (101 > 88 characters)
+src/features\store.py:451:24: F821 undefined name 'List'
+src/features\store.py:452:10: F821 undefined name 'Dict'
+src/features\store.py:475:10: F821 undefined name 'Tuple'
+src/features\store.py:475:16: F821 undefined name 'List'
+src/features\store.py:475:35: F821 undefined name 'List'
+src/features\store.py:530:24: F821 undefined name 'List'
+src/features\store.py:531:10: F821 undefined name 'Optional'
+src/features\store.py:531:19: F821 undefined name 'Dict'
+src/features\store.py:542:24: F821 undefined name 'List'
+src/features\store.py:543:19: F821 undefined name 'Dict'
+src/features\store.py:558:28: F821 undefined name 'Dict'
+src/features\store.py:558:38: F821 undefined name 'Any'
+src/features\store.py:586:37: F821 undefined name 'Dict'
+src/features\store.py:586:47: F821 undefined name 'Any'
+src/features\temporal.py:12:1: F401 'typing.Any' imported but unused
+src/features\temporal.py:14:1: F401 'numpy as np' imported but unused
+src/features\temporal.py:15:1: F401 'pandas as pd' imported but unused
+src/features\temporal.py:18:1: F401 '..core.constants.TEMPORAL_FEATURE_NAMES' imported but unused
+src/integration\__init__.py:25:89: E501 line too long (92 > 88 characters)
+src/integration\api_server.py:23:1: F401 'traceback' imported but unused
+src/integration\api_server.py:38:1: F401 'pydantic.validator' imported but unused
+src/integration\api_server.py:44:1: F401 '..core.config.APIConfig' imported but unused
+src/integration\api_server.py:45:1: F401 '..core.exceptions.APIValidationError' imported but unused
+src/integration\api_server.py:57:1: F401 '..models.base.predictor.PredictionResult' imported but unused
+src/integration\api_server.py:278:89: E501 line too long (95 > 88 characters)
+src/integration\api_server.py:321:89: E501 line too long (92 > 88 characters)
+src/integration\api_server.py:431:89: E501 line too long (89 > 88 characters)
+src/integration\api_server.py:495:1: C901 'health_check' is too complex (16)
+src/integration\dashboard.py:7:89: E501 line too long (91 > 88 characters)
+src/integration\dashboard.py:17:1: F401 'pathlib.Path' imported but unused
+src/integration\dashboard.py:19:1: F401 'uuid' imported but unused
+src/integration\dashboard.py:22:5: F401 'fastapi.Depends' imported but unused
+src/integration\dashboard.py:54:1: F401 '..adaptation.drift_detector.ConceptDriftDetector' imported but unused
+src/integration\dashboard.py:54:1: F401 '..adaptation.drift_detector.DriftMetrics' imported but unused
+src/integration\dashboard.py:54:1: F401 '..adaptation.drift_detector.DriftSeverity' imported but unused
+src/integration\dashboard.py:54:1: F401 '..adaptation.drift_detector.DriftType' imported but unused
+src/integration\dashboard.py:60:1: F401 '..adaptation.retrainer.AdaptiveRetrainer' imported but unused
+src/integration\dashboard.py:60:1: F401 '..adaptation.retrainer.RetrainingRequest' imported but unused
+src/integration\dashboard.py:60:1: F401 '..adaptation.retrainer.RetrainingStatus' imported but unused
+src/integration\dashboard.py:60:1: F401 '..adaptation.retrainer.RetrainingTrigger' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.AccuracyAlert' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.AccuracyTracker' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.AlertSeverity' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.RealTimeMetrics' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.TrendDirection' imported but unused
+src/integration\dashboard.py:75:5: F401 '..adaptation.tracking_manager.TrackingConfig' imported but unused
+src/integration\dashboard.py:77:1: F401 '..adaptation.validator.AccuracyLevel' imported but unused
+src/integration\dashboard.py:77:1: F401 '..adaptation.validator.AccuracyMetrics' imported but unused
+src/integration\dashboard.py:78:1: F401 '..core.constants.ModelType' imported but unused
+src/integration\dashboard.py:125:22: F821 undefined name 'List'
+src/integration\dashboard.py:127:14: F821 undefined name 'Optional'
+src/integration\dashboard.py:179:26: F821 undefined name 'Dict'
+src/integration\dashboard.py:179:36: F821 undefined name 'Any'
+src/integration\dashboard.py:214:34: F821 undefined name 'Set'
+src/integration\dashboard.py:215:35: F821 undefined name 'Dict'
+src/integration\dashboard.py:215:51: F821 undefined name 'Dict'
+src/integration\dashboard.py:215:61: F821 undefined name 'Any'
+src/integration\dashboard.py:225:22: F821 undefined name 'Optional'
+src/integration\dashboard.py:225:31: F821 undefined name 'Dict'
+src/integration\dashboard.py:225:41: F821 undefined name 'Any'
+src/integration\dashboard.py:241:89: E501 line too long (106 > 88 characters)
+src/integration\dashboard.py:255:89: E501 line too long (99 > 88 characters)
+src/integration\dashboard.py:271:89: E501 line too long (92 > 88 characters)
+src/integration\dashboard.py:278:24: F821 undefined name 'Dict'
+src/integration\dashboard.py:278:34: F821 undefined name 'Any'
+src/integration\dashboard.py:312:40: F821 undefined name 'Dict'
+src/integration\dashboard.py:312:50: F821 undefined name 'Any'
+src/integration\dashboard.py:347:39: F821 undefined name 'Dict'
+src/integration\dashboard.py:347:49: F821 undefined name 'Any'
+src/integration\dashboard.py:395:89: E501 line too long (95 > 88 characters)
+src/integration\dashboard.py:404:28: F821 undefined name 'Optional'
+src/integration\dashboard.py:405:28: F821 undefined name 'Optional'
+src/integration\dashboard.py:409:22: F821 undefined name 'Dict'
+src/integration\dashboard.py:409:32: F821 undefined name 'Tuple'
+src/integration\dashboard.py:409:38: F821 undefined name 'Any'
+src/integration\dashboard.py:424:89: E501 line too long (90 > 88 characters)
+src/integration\dashboard.py:433:89: E501 line too long (89 > 88 characters)
+src/integration\dashboard.py:453:5: C901 'PerformanceDashboard._register_routes' is too complex (42)
+src/integration\dashboard.py:470:22: F821 undefined name 'Optional'
+src/integration\dashboard.py:471:25: F821 undefined name 'Optional'
+src/integration\dashboard.py:487:22: F821 undefined name 'Optional'
+src/integration\dashboard.py:522:23: F821 undefined name 'Optional'
+src/integration\dashboard.py:525:22: F821 undefined name 'Optional'
+src/integration\dashboard.py:538:22: F821 undefined name 'Optional'
+src/integration\dashboard.py:670:89: E501 line too long (96 > 88 characters)
+src/integration\dashboard.py:740:89: E501 line too long (90 > 88 characters)
+src/integration\dashboard.py:845:18: F821 undefined name 'Optional'
+src/integration\dashboard.py:846:21: F821 undefined name 'Optional'
+src/integration\dashboard.py:848:10: F821 undefined name 'Dict'
+src/integration\dashboard.py:848:20: F821 undefined name 'Any'
+src/integration\dashboard.py:955:56: F821 undefined name 'Optional'
+src/integration\dashboard.py:955:74: F821 undefined name 'Dict'
+src/integration\dashboard.py:955:84: F821 undefined name 'Any'
+src/integration\dashboard.py:1028:55: F821 undefined name 'Dict'
+src/integration\dashboard.py:1028:65: F821 undefined name 'Any'
+src/integration\dashboard.py:1102:48: F821 undefined name 'Dict'
+src/integration\dashboard.py:1102:58: F821 undefined name 'Any'
+src/integration\dashboard.py:1211:25: F821 undefined name 'Optional'
+src/integration\dashboard.py:1211:49: F821 undefined name 'Optional'
+src/integration\dashboard.py:1212:10: F821 undefined name 'Dict'
+src/integration\dashboard.py:1212:20: F821 undefined name 'Any'
+src/integration\dashboard.py:1305:24: F821 undefined name 'Optional'
+src/integration\dashboard.py:1306:10: F821 undefined name 'Dict'
+src/integration\dashboard.py:1306:20: F821 undefined name 'Any'
+src/integration\dashboard.py:1352:39: F821 undefined name 'Dict'
+src/integration\dashboard.py:1352:49: F821 undefined name 'Any'
+src/integration\dashboard.py:1395:52: F821 undefined name 'Dict'
+src/integration\dashboard.py:1395:62: F821 undefined name 'Any'
+src/integration\dashboard.py:1408:89: E501 line too long (90 > 88 characters)
+src/integration\dashboard.py:1423:51: F821 undefined name 'Dict'
+src/integration\dashboard.py:1423:61: F821 undefined name 'Any'
+src/integration\dashboard.py:1485:60: F821 undefined name 'Dict'
+src/integration\dashboard.py:1485:70: F821 undefined name 'Any'
+src/integration\dashboard.py:1505:71: F821 undefined name 'Dict'
+src/integration\dashboard.py:1505:81: F821 undefined name 'Any'
+src/integration\dashboard.py:1534:61: F821 undefined name 'Dict'
+src/integration\dashboard.py:1534:71: F821 undefined name 'Any'
+src/integration\dashboard.py:1579:51: F821 undefined name 'Optional'
+src/integration\dashboard.py:1579:60: F821 undefined name 'Any'
+src/integration\dashboard.py:1593:49: F821 undefined name 'Any'
+src/integration\dashboard.py:1612:24: F821 undefined name 'Optional'
+src/integration\dashboard.py:1612:33: F821 undefined name 'Dict'
+src/integration\dashboard.py:1612:43: F821 undefined name 'Any'
+src/integration\dashboard.py:1654:23: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:21:1: F401 'datetime.timedelta' imported but unused
+src/integration\discovery_publisher.py:69:21: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:79:23: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:90:19: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:91:22: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:92:19: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:93:15: F821 undefined name 'List'
+src/integration\discovery_publisher.py:94:17: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:94:27: F821 undefined name 'Any'
+src/integration\discovery_publisher.py:96:16: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:103:18: F821 undefined name 'List'
+src/integration\discovery_publisher.py:108:24: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:109:21: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:110:17: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:111:18: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:111:27: F821 undefined name 'List'
+src/integration\discovery_publisher.py:111:32: F821 undefined name 'List'
+src/integration\discovery_publisher.py:112:17: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:115:19: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:116:25: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:117:16: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:118:19: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:118:29: F821 undefined name 'Any'
+src/integration\discovery_publisher.py:119:22: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:119:32: F821 undefined name 'Any'
+src/integration\discovery_publisher.py:133:28: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:134:21: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:135:31: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:136:26: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:137:19: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:138:18: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:139:11: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:140:22: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:142:19: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:145:25: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:146:28: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:151:23: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:152:32: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:153:34: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:154:21: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:157:20: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:158:23: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:163:15: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:164:24: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:164:33: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:164:43: F821 undefined name 'Any'
+src/integration\discovery_publisher.py:187:16: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:188:38: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:188:47: F821 undefined name 'Callable'
+src/integration\discovery_publisher.py:189:32: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:189:41: F821 undefined name 'Callable'
+src/integration\discovery_publisher.py:198:89: E501 line too long (89 > 88 characters)
+src/integration\discovery_publisher.py:236:34: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:237:31: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:242:34: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:243:32: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:243:42: F821 undefined name 'Callable'
+src/integration\discovery_publisher.py:256:89: E501 line too long (92 > 88 characters)
+src/integration\discovery_publisher.py:263:46: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:314:89: E501 line too long (110 > 88 characters)
+src/integration\discovery_publisher.py:329:10: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:380:49: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:476:42: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:488:38: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:488:48: F821 undefined name 'Any'
+src/integration\discovery_publisher.py:572:89: E501 line too long (89 > 88 characters)
+src/integration\discovery_publisher.py:591:50: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:620:89: E501 line too long (94 > 88 characters)
+src/integration\discovery_publisher.py:636:89: E501 line too long (93 > 88 characters)
+src/integration\discovery_publisher.py:666:21: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:666:30: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:666:40: F821 undefined name 'Any'
+src/integration\discovery_publisher.py:711:27: F821 undefined name 'Optional'
+src/integration\discovery_publisher.py:711:36: F821 undefined name 'List'
+src/integration\discovery_publisher.py:712:10: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:751:24: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:779:24: F821 undefined name 'Dict'
+src/integration\discovery_publisher.py:779:34: F821 undefined name 'Any'
+src/integration\discovery_publisher.py:801:89: E501 line too long (90 > 88 characters)
+src/integration\discovery_publisher.py:813:89: E501 line too long (106 > 88 characters)
+src/integration\discovery_publisher.py:839:89: E501 line too long (106 > 88 characters)
+src/integration\discovery_publisher.py:1000:89: E501 line too long (110 > 88 characters)
+src/integration\discovery_publisher.py:1012:89: E501 line too long (100 > 88 characters)
+src/integration\discovery_publisher.py:1097:89: E501 line too long (95 > 88 characters)
+src/integration\discovery_publisher.py:1112:89: E501 line too long (103 > 88 characters)
+src/integration\enhanced_integration_manager.py:22:1: F401 '..core.config.MQTTConfig' imported but unused
+src/integration\enhanced_integration_manager.py:22:1: F401 '..core.config.RoomConfig' imported but unused
+src/integration\enhanced_integration_manager.py:25:1: F401 '.discovery_publisher.DiscoveryPublisher' imported but unused
+src/integration\enhanced_integration_manager.py:26:1: F401 '.ha_entity_definitions.HAEntityConfig' imported but unused
+src/integration\enhanced_integration_manager.py:26:1: F401 '.ha_entity_definitions.HAServiceDefinition' imported but unused
+src/integration\enhanced_integration_manager.py:32:1: F401 '.mqtt_publisher.MQTTPublisher' imported but unused
+src/integration\enhanced_integration_manager.py:32:1: F401 '.mqtt_publisher.MQTTPublishResult' imported but unused
+src/integration\enhanced_integration_manager.py:47:25: F821 undefined name 'Optional'
+src/integration\enhanced_integration_manager.py:48:29: F821 undefined name 'Optional'
+src/integration\enhanced_integration_manager.py:50:17: F821 undefined name 'Optional'
+src/integration\enhanced_integration_manager.py:58:17: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:58:27: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:60:21: F821 undefined name 'Optional'
+src/integration\enhanced_integration_manager.py:61:21: F821 undefined name 'Optional'
+src/integration\enhanced_integration_manager.py:69:13: F821 undefined name 'Optional'
+src/integration\enhanced_integration_manager.py:69:22: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:69:32: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:70:20: F821 undefined name 'Optional'
+src/integration\enhanced_integration_manager.py:72:21: F821 undefined name 'Optional'
+src/integration\enhanced_integration_manager.py:86:35: F821 undefined name 'Optional'
+src/integration\enhanced_integration_manager.py:87:27: F821 undefined name 'Optional'
+src/integration\enhanced_integration_manager.py:88:13: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:90:33: F821 undefined name 'Optional'
+src/integration\enhanced_integration_manager.py:90:42: F821 undefined name 'List'
+src/integration\enhanced_integration_manager.py:90:47: F821 undefined name 'Callable'
+src/integration\enhanced_integration_manager.py:112:37: F821 undefined name 'Optional'
+src/integration\enhanced_integration_manager.py:115:32: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:115:42: F821 undefined name 'Callable'
+src/integration\enhanced_integration_manager.py:117:33: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:120:29: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:120:39: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:121:33: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:124:33: F821 undefined name 'List'
+src/integration\enhanced_integration_manager.py:152:89: E501 line too long (90 > 88 characters)
+src/integration\enhanced_integration_manager.py:207:16: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:208:21: F821 undefined name 'Optional'
+src/integration\enhanced_integration_manager.py:208:30: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:208:40: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:245:89: E501 line too long (97 > 88 characters)
+src/integration\enhanced_integration_manager.py:379:64: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:379:74: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:416:40: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:416:50: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:457:89: E501 line too long (99 > 88 characters)
+src/integration\enhanced_integration_manager.py:482:89: E501 line too long (99 > 88 characters)
+src/integration\enhanced_integration_manager.py:611:89: E501 line too long (100 > 88 characters)
+src/integration\enhanced_integration_manager.py:641:55: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:641:65: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:641:74: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:641:84: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:664:27: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:664:37: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:665:10: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:665:20: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:688:27: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:688:37: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:689:10: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:689:20: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:703:27: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:703:37: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:704:10: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:704:20: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:712:89: E501 line too long (95 > 88 characters)
+src/integration\enhanced_integration_manager.py:729:27: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:729:37: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:730:10: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:730:20: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:752:27: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:752:37: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:753:10: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:753:20: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:799:47: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:799:57: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:810:46: F821 undefined name 'List'
+src/integration\enhanced_integration_manager.py:810:51: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:810:61: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:817:27: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:817:37: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:818:10: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:818:20: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:832:27: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:832:37: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:833:10: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:833:20: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:857:27: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:857:37: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:858:10: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:858:20: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:873:53: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:873:63: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:873:72: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:873:82: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:888:54: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:888:64: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:888:73: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:888:83: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:903:55: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:903:65: F821 undefined name 'Any'
+src/integration\enhanced_integration_manager.py:903:74: F821 undefined name 'Dict'
+src/integration\enhanced_integration_manager.py:903:84: F821 undefined name 'Any'
+src/integration\enhanced_mqtt_manager.py:24:1: F401 '.discovery_publisher.DiscoveryPublisher' imported but unused
+src/integration\enhanced_mqtt_manager.py:29:1: F401 '.mqtt_publisher.MQTTPublisher' imported but unused
+src/integration\enhanced_mqtt_manager.py:30:1: F401 '.prediction_publisher.PredictionPublisher' imported but unused
+src/integration\enhanced_mqtt_manager.py:31:1: F401 '.realtime_publisher.RealtimePredictionEvent' imported but unused
+src/integration\enhanced_mqtt_manager.py:59:30: F821 undefined name 'Optional'
+src/integration\enhanced_mqtt_manager.py:73:22: F821 undefined name 'Optional'
+src/integration\enhanced_mqtt_manager.py:74:16: F821 undefined name 'Optional'
+src/integration\enhanced_mqtt_manager.py:74:25: F821 undefined name 'Dict'
+src/integration\enhanced_mqtt_manager.py:75:33: F821 undefined name 'Optional'
+src/integration\enhanced_mqtt_manager.py:75:42: F821 undefined name 'List'
+src/integration\enhanced_mqtt_manager.py:75:47: F821 undefined name 'Callable'
+src/integration\enhanced_mqtt_manager.py:76:36: F821 undefined name 'Optional'
+src/integration\enhanced_mqtt_manager.py:76:45: F821 undefined name 'List'
+src/integration\enhanced_mqtt_manager.py:123:30: F821 undefined name 'List'
+src/integration\enhanced_mqtt_manager.py:124:34: F821 undefined name 'List'
+src/integration\enhanced_mqtt_manager.py:129:33: F821 undefined name 'List'
+src/integration\enhanced_mqtt_manager.py:190:24: F821 undefined name 'Optional'
+src/integration\enhanced_mqtt_manager.py:191:10: F821 undefined name 'Dict'
+src/integration\enhanced_mqtt_manager.py:191:20: F821 undefined name 'Any'
+src/integration\enhanced_mqtt_manager.py:242:25: F821 undefined name 'Optional'
+src/integration\enhanced_mqtt_manager.py:242:34: F821 undefined name 'Dict'
+src/integration\enhanced_mqtt_manager.py:242:44: F821 undefined name 'Any'
+src/integration\enhanced_mqtt_manager.py:243:22: F821 undefined name 'Optional'
+src/integration\enhanced_mqtt_manager.py:243:31: F821 undefined name 'Dict'
+src/integration\enhanced_mqtt_manager.py:243:41: F821 undefined name 'Any'
+src/integration\enhanced_mqtt_manager.py:246:21: F821 undefined name 'Optional'
+src/integration\enhanced_mqtt_manager.py:247:10: F821 undefined name 'Dict'
+src/integration\enhanced_mqtt_manager.py:247:20: F821 undefined name 'Any'
+src/integration\enhanced_mqtt_manager.py:316:48: F821 undefined name 'Optional'
+src/integration\enhanced_mqtt_manager.py:320:47: F821 undefined name 'Callable'
+src/integration\enhanced_mqtt_manager.py:324:50: F821 undefined name 'Callable'
+src/integration\enhanced_mqtt_manager.py:328:40: F821 undefined name 'Dict'
+src/integration\enhanced_mqtt_manager.py:328:50: F821 undefined name 'Any'
+src/integration\enhanced_mqtt_manager.py:345:89: E501 line too long (89 > 88 characters)
+src/integration\enhanced_mqtt_manager.py:346:89: E501 line too long (97 > 88 characters)
+src/integration\enhanced_mqtt_manager.py:371:38: F821 undefined name 'Dict'
+src/integration\enhanced_mqtt_manager.py:371:48: F821 undefined name 'Any'
+src/integration\enhanced_mqtt_manager.py:413:22: F821 undefined name 'Dict'
+src/integration\enhanced_mqtt_manager.py:414:25: F821 undefined name 'Optional'
+src/integration\enhanced_mqtt_manager.py:414:34: F821 undefined name 'Dict'
+src/integration\enhanced_mqtt_manager.py:415:10: F821 undefined name 'Dict'
+src/integration\enhanced_mqtt_manager.py:415:20: F821 undefined name 'Any'
+src/integration\enhanced_mqtt_manager.py:445:43: F821 undefined name 'Dict'
+src/integration\enhanced_mqtt_manager.py:445:53: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:19:1: F401 'datetime.timedelta' imported but unused
+src/integration\ha_entity_definitions.py:20:1: F401 'enum.auto' imported but unused
+src/integration\ha_entity_definitions.py:26:1: F401 '.discovery_publisher.EntityMetadata' imported but unused
+src/integration\ha_entity_definitions.py:26:1: F401 '.discovery_publisher.EntityState' imported but unused
+src/integration\ha_entity_definitions.py:26:1: F401 '.discovery_publisher.SensorConfig' imported but unused
+src/integration\ha_entity_definitions.py:33:1: F401 '.mqtt_publisher.MQTTPublisher' imported but unused
+src/integration\ha_entity_definitions.py:122:11: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:123:22: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:125:25: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:126:28: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:127:19: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:130:23: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:130:33: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:133:18: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:144:21: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:145:28: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:146:31: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:147:26: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:148:19: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:149:18: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:150:34: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:152:23: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:153:32: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:163:21: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:166:19: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:167:16: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:178:23: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:179:20: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:180:19: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:197:21: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:198:27: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:212:23: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:217:26: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:218:19: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:229:23: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:230:14: F821 undefined name 'List'
+src/integration\ha_entity_definitions.py:231:21: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:243:23: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:244:21: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:248:14: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:271:23: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:272:21: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:287:13: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:287:23: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:287:33: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:291:23: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:292:21: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:295:22: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:295:31: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:295:41: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:312:16: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:313:26: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:330:34: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:331:35: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:334:29: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:334:39: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:335:35: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:349:38: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:391:38: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:431:45: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:488:45: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:521:56: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:527:10: F821 undefined name 'Optional'
+src/integration\ha_entity_definitions.py:531:35: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:531:45: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:561:10: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:574:89: E501 line too long (90 > 88 characters)
+src/integration\ha_entity_definitions.py:732:42: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:809:46: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:966:43: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:993:89: E501 line too long (89 > 88 characters)
+src/integration\ha_entity_definitions.py:1038:89: E501 line too long (93 > 88 characters)
+src/integration\ha_entity_definitions.py:1056:89: E501 line too long (89 > 88 characters)
+src/integration\ha_entity_definitions.py:1105:89: E501 line too long (89 > 88 characters)
+src/integration\ha_entity_definitions.py:1130:41: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:1139:89: E501 line too long (91 > 88 characters)
+src/integration\ha_entity_definitions.py:1142:89: E501 line too long (115 > 88 characters)
+src/integration\ha_entity_definitions.py:1230:42: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:1242:89: E501 line too long (100 > 88 characters)
+src/integration\ha_entity_definitions.py:1253:89: E501 line too long (110 > 88 characters)
+src/integration\ha_entity_definitions.py:1358:46: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:1398:40: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:1430:89: E501 line too long (89 > 88 characters)
+src/integration\ha_entity_definitions.py:1446:5: C901 'HAEntityDefinitions._publish_entity_discovery' is too complex (21)
+src/integration\ha_entity_definitions.py:1518:89: E501 line too long (103 > 88 characters)
+src/integration\ha_entity_definitions.py:1535:89: E501 line too long (101 > 88 characters)
+src/integration\ha_entity_definitions.py:1551:24: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:1551:34: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:1576:24: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:1576:34: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:1591:24: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:1591:34: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:1607:24: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:1607:34: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:1631:24: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:1631:34: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:1648:24: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:1648:34: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:1661:24: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:1661:34: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:1677:24: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:1677:34: F821 undefined name 'Any'
+src/integration\ha_entity_definitions.py:1687:24: F821 undefined name 'Dict'
+src/integration\ha_entity_definitions.py:1687:34: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:18:1: F401 'datetime.timedelta' imported but unused
+src/integration\ha_tracking_bridge.py:38:25: F821 undefined name 'Optional'
+src/integration\ha_tracking_bridge.py:39:30: F821 undefined name 'Optional'
+src/integration\ha_tracking_bridge.py:41:17: F821 undefined name 'Optional'
+src/integration\ha_tracking_bridge.py:71:33: F821 undefined name 'List'
+src/integration\ha_tracking_bridge.py:75:40: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:75:50: F821 undefined name 'Callable'
+src/integration\ha_tracking_bridge.py:161:50: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:193:58: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:217:89: E501 line too long (90 > 88 characters)
+src/integration\ha_tracking_bridge.py:226:46: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:226:56: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:258:48: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:258:58: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:296:35: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:296:45: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:390:89: E501 line too long (92 > 88 characters)
+src/integration\ha_tracking_bridge.py:423:89: E501 line too long (96 > 88 characters)
+src/integration\ha_tracking_bridge.py:440:61: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:440:71: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:454:61: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:454:71: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:468:27: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:468:37: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:469:10: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:469:20: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:495:27: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:495:37: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:496:10: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:496:20: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:522:27: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:522:37: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:523:10: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:523:20: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:546:27: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:546:37: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:547:10: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:547:20: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:568:27: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:568:37: F821 undefined name 'Any'
+src/integration\ha_tracking_bridge.py:569:10: F821 undefined name 'Dict'
+src/integration\ha_tracking_bridge.py:569:20: F821 undefined name 'Any'
+src/integration\monitoring_api.py:295:89: E501 line too long (105 > 88 characters)
+src/integration\mqtt_integration_manager.py:18:1: F401 'datetime.timedelta' imported but unused
+src/integration\mqtt_integration_manager.py:26:1: F401 '.mqtt_publisher.MQTTPublisherError' imported but unused
+src/integration\mqtt_integration_manager.py:146:89: E501 line too long (92 > 88 characters)
+src/integration\mqtt_integration_manager.py:151:89: E501 line too long (120 > 88 characters)
+src/integration\mqtt_integration_manager.py:259:89: E501 line too long (89 > 88 characters)
+src/integration\mqtt_integration_manager.py:341:89: E501 line too long (90 > 88 characters)
+src/integration\mqtt_integration_manager.py:482:89: E501 line too long (89 > 88 characters)
+src/integration\mqtt_integration_manager.py:609:89: E501 line too long (89 > 88 characters)
+src/integration\mqtt_publisher.py:17:1: F401 'datetime.timedelta' imported but unused
+src/integration\mqtt_publisher.py:25:1: F401 'paho.mqtt.enums as mqtt_enums' imported but unused
+src/integration\mqtt_publisher.py:29:1: F401 '..models.base.predictor.PredictionResult' imported but unused
+src/integration\mqtt_publisher.py:275:89: E501 line too long (103 > 88 characters)
+src/integration\mqtt_publisher.py:282:89: E501 line too long (91 > 88 characters)
+src/integration\mqtt_publisher.py:414:89: E501 line too long (112 > 88 characters)
+src/integration\mqtt_publisher.py:552:89: E501 line too long (109 > 88 characters)
+src/integration\mqtt_publisher.py:611:89: E501 line too long (92 > 88 characters)
+src/integration\prediction_publisher.py:16:1: F401 'datetime.timedelta' imported but unused
+src/integration\prediction_publisher.py:20:1: F401 '..core.constants.ModelType' imported but unused
+src/integration\prediction_publisher.py:46:23: F821 undefined name 'Dict'
+src/integration\prediction_publisher.py:47:20: F821 undefined name 'Dict'
+src/integration\prediction_publisher.py:48:19: F821 undefined name 'List'
+src/integration\prediction_publisher.py:48:24: F821 undefined name 'Dict'
+src/integration\prediction_publisher.py:48:34: F821 undefined name 'Any'
+src/integration\prediction_publisher.py:66:27: F821 undefined name 'Optional'
+src/integration\prediction_publisher.py:75:20: F821 undefined name 'List'
+src/integration\prediction_publisher.py:86:17: F821 undefined name 'Optional'
+src/integration\prediction_publisher.py:106:16: F821 undefined name 'Dict'
+src/integration\prediction_publisher.py:123:36: F821 undefined name 'Optional'
+src/integration\prediction_publisher.py:137:24: F821 undefined name 'Optional'
+src/integration\prediction_publisher.py:226:89: E501 line too long (97 > 88 characters)
+src/integration\prediction_publisher.py:227:89: E501 line too long (99 > 88 characters)
+src/integration\prediction_publisher.py:234:89: E501 line too long (89 > 88 characters)
+src/integration\prediction_publisher.py:251:25: F821 undefined name 'Optional'
+src/integration\prediction_publisher.py:251:34: F821 undefined name 'Dict'
+src/integration\prediction_publisher.py:251:44: F821 undefined name 'Any'
+src/integration\prediction_publisher.py:252:22: F821 undefined name 'Optional'
+src/integration\prediction_publisher.py:252:31: F821 undefined name 'Dict'
+src/integration\prediction_publisher.py:252:41: F821 undefined name 'Any'
+src/integration\prediction_publisher.py:255:21: F821 undefined name 'Optional'
+src/integration\prediction_publisher.py:370:22: F821 undefined name 'Dict'
+src/integration\prediction_publisher.py:371:25: F821 undefined name 'Optional'
+src/integration\prediction_publisher.py:371:34: F821 undefined name 'Dict'
+src/integration\prediction_publisher.py:372:10: F821 undefined name 'Dict'
+src/integration\prediction_publisher.py:397:38: F821 undefined name 'Dict'
+src/integration\prediction_publisher.py:397:48: F821 undefined name 'Any'
+src/integration\realtime_api_endpoints.py:122:1: C901 'websocket_room_predictions_endpoint' is too complex (17)
+src/integration\realtime_api_endpoints.py:169:89: E501 line too long (98 > 88 characters)
+src/integration\realtime_api_endpoints.py:425:89: E501 line too long (89 > 88 characters)
+src/integration\realtime_api_endpoints.py:462:9: F841 local variable 'target_rooms' is assigned to but never used
+src/integration\realtime_publisher.py:481:5: C901 'RealtimePublishingSystem.publish_prediction' is too complex (18)
+src/integration\realtime_publisher.py:490:89: E501 line too long (89 > 88 characters)
+src/integration\realtime_publisher.py:521:21: F841 local variable 'prediction_payload' is assigned to but never used
+src/integration\realtime_publisher.py:531:21: F841 local variable 'mqtt_publisher' is assigned to but never used
+src/integration\realtime_publisher.py:734:89: E501 line too long (120 > 88 characters)
+src/integration\realtime_publisher.py:745:89: E501 line too long (122 > 88 characters)
+src/integration\realtime_publisher.py:941:89: E501 line too long (96 > 88 characters)
+src/integration\realtime_publisher.py:952:89: E501 line too long (90 > 88 characters)
+src/integration\tracking_integration.py:27:1: F401 '..core.config.MQTTConfig' imported but unused
+src/integration\tracking_integration.py:27:1: F401 '..core.config.RoomConfig' imported but unused
+src/integration\tracking_integration.py:127:89: E501 line too long (89 > 88 characters)
+src/integration\tracking_integration.py:173:89: E501 line too long (102 > 88 characters)
+src/integration\tracking_integration.py:174:89: E501 line too long (89 > 88 characters)
+src/integration\tracking_integration.py:273:89: E501 line too long (95 > 88 characters)
+src/integration\tracking_integration.py:321:89: E501 line too long (92 > 88 characters)
+src/integration\websocket_api.py:2:89: E501 line too long (100 > 88 characters)
+src/integration\websocket_api.py:4:89: E501 line too long (92 > 88 characters)
+src/integration\websocket_api.py:5:89: E501 line too long (93 > 88 characters)
+src/integration\websocket_api.py:10:89: E501 line too long (99 > 88 characters)
+src/integration\websocket_api.py:757:89: E501 line too long (102 > 88 characters)
+src/integration\websocket_api.py:1237:89: E501 line too long (99 > 88 characters)
+src/integration\websocket_api.py:1244:89: E501 line too long (112 > 88 characters)
+src/integration\websocket_api.py:1309:1: F811 redefinition of unused 'WebSocketAuthenticationError' from line 47
+src/integration\websocket_api.py:1321:1: F811 redefinition of unused 'WebSocketConnectionError' from line 47
+src/integration\websocket_api.py:1333:1: F811 redefinition of unused 'WebSocketRateLimitError' from line 47
+src/integration\websocket_api.py:1347:1: F811 redefinition of unused 'WebSocketValidationError' from line 47
+src/integration\websocket_api.py:1378:89: E501 line too long (89 > 88 characters)
+src/main_system.py:66:89: E501 line too long (109 > 88 characters)
+src/main_system.py:69:89: E501 line too long (97 > 88 characters)
+src/main_system.py:72:89: E501 line too long (89 > 88 characters)
+src/main_system.py:78:89: E501 line too long (93 > 88 characters)
+src/models\base\gp_predictor.py:269:89: E501 line too long (93 > 88 characters)
+src/models\base\gp_predictor.py:501:89: E501 line too long (90 > 88 characters)
+src/models\base\gp_predictor.py:544:89: E501 line too long (90 > 88 characters)
+src/models\base\gp_predictor.py:876:89: E501 line too long (90 > 88 characters)
+src/models\base\gp_predictor.py:894:89: E501 line too long (93 > 88 characters)
+src/models\base\hmm_predictor.py:33:33: F821 undefined name 'Optional'
+src/models\base\hmm_predictor.py:57:27: F821 undefined name 'Optional'
+src/models\base\hmm_predictor.py:60:33: F821 undefined name 'Dict'
+src/models\base\hmm_predictor.py:60:43: F821 undefined name 'Any'
+src/models\base\hmm_predictor.py:64:28: F821 undefined name 'Dict'
+src/models\base\hmm_predictor.py:65:37: F821 undefined name 'Dict'
+src/models\base\hmm_predictor.py:65:47: F821 undefined name 'Dict'
+src/models\base\hmm_predictor.py:68:33: F821 undefined name 'Optional'
+src/models\base\hmm_predictor.py:69:31: F821 undefined name 'Dict'
+src/models\base\hmm_predictor.py:69:41: F821 undefined name 'List'
+src/models\base\hmm_predictor.py:75:30: F821 undefined name 'Optional'
+src/models\base\hmm_predictor.py:76:29: F821 undefined name 'Optional'
+src/models\base\hmm_predictor.py:101:89: E501 line too long (96 > 88 characters)
+src/models\base\hmm_predictor.py:109:89: E501 line too long (92 > 88 characters)
+src/models\base\hmm_predictor.py:116:13: F841 local variable 'kmeans_labels' is assigned to but never used
+src/models\base\hmm_predictor.py:251:10: F821 undefined name 'List'
+src/models\base\hmm_predictor.py:345:41: F821 undefined name 'Dict'
+src/models\base\hmm_predictor.py:426:24: F821 undefined name 'List'
+src/models\base\hmm_predictor.py:429:89: E501 line too long (92 > 88 characters)
+src/models\base\hmm_predictor.py:497:24: F821 undefined name 'List'
+src/models\base\hmm_predictor.py:535:71: E231 missing whitespace after ','
+src/models\base\hmm_predictor.py:543:24: F821 undefined name 'List'
+src/models\base\hmm_predictor.py:609:27: F821 undefined name 'Optional'
+src/models\base\hmm_predictor.py:652:33: F821 undefined name 'Dict'
+src/models\base\hmm_predictor.py:652:43: F821 undefined name 'Any'
+src/models\base\lstm_predictor.py:115:89: E501 line too long (98 > 88 characters)
+src/models\base\lstm_predictor.py:120:89: E501 line too long (90 > 88 characters)
+src/models\base\lstm_predictor.py:380:89: E501 line too long (90 > 88 characters)
+src/models\base\predictor.py:16:1: F401 'numpy as np' imported but unused
+src/models\base\predictor.py:20:1: F401 '...core.constants.PredictionType' imported but unused
+src/models\base\predictor.py:21:1: F401 '...core.exceptions.ModelTrainingError' imported but unused
+src/models\base\xgboost_predictor.py:104:89: E501 line too long (106 > 88 characters)
+src/models\ensemble.py:8:1: F401 'asyncio' imported but unused
+src/models\ensemble.py:40:33: F821 undefined name 'Optional'
+src/models\ensemble.py:65:27: F821 undefined name 'Dict'
+src/models\ensemble.py:73:28: F821 undefined name 'Optional'
+src/models\ensemble.py:73:37: F821 undefined name 'Any'
+src/models\ensemble.py:77:29: F821 undefined name 'Dict'
+src/models\ensemble.py:78:33: F821 undefined name 'Dict'
+src/models\ensemble.py:78:43: F821 undefined name 'Dict'
+src/models\ensemble.py:79:39: F821 undefined name 'Dict'
+src/models\ensemble.py:79:49: F821 undefined name 'List'
+src/models\ensemble.py:98:30: F821 undefined name 'Optional'
+src/models\ensemble.py:99:29: F821 undefined name 'Optional'
+src/models\ensemble.py:121:89: E501 line too long (92 > 88 characters)
+src/models\ensemble.py:237:10: F821 undefined name 'List'
+src/models\ensemble.py:297:41: F821 undefined name 'Dict'
+src/models\ensemble.py:367:89: E501 line too long (93 > 88 characters)
+src/models\ensemble.py:551:13: F841 local variable 'individual_score' is assigned to but never used
+src/models\ensemble.py:603:30: F821 undefined name 'Optional'
+src/models\ensemble.py:604:29: F821 undefined name 'Optional'
+src/models\ensemble.py:662:27: F821 undefined name 'Dict'
+src/models\ensemble.py:662:37: F821 undefined name 'List'
+src/models\ensemble.py:730:23: F821 undefined name 'Dict'
+src/models\ensemble.py:730:33: F821 undefined name 'List'
+src/models\ensemble.py:734:10: F821 undefined name 'List'
+src/models\ensemble.py:736:89: E501 line too long (92 > 88 characters)
+src/models\ensemble.py:829:23: F821 undefined name 'Dict'
+src/models\ensemble.py:829:33: F821 undefined name 'List'
+src/models\ensemble.py:833:89: E501 line too long (94 > 88 characters)
+src/models\ensemble.py:881:89: E501 line too long (98 > 88 characters)
+src/models\ensemble.py:911:36: F821 undefined name 'Dict'
+src/models\ensemble.py:911:46: F821 undefined name 'Any'
+src/models\training_config.py:46:20: F821 undefined name 'Optional'
+src/models\training_config.py:47:20: F821 undefined name 'Optional'
+src/models\training_config.py:50:20: F821 undefined name 'Optional'
+src/models\training_config.py:52:27: F821 undefined name 'List'
+src/models\training_config.py:82:27: F821 undefined name 'List'
+src/models\training_config.py:117:28: F821 undefined name 'Dict'
+src/models\training_config.py:117:38: F821 undefined name 'Any'
+src/models\training_config.py:125:24: F821 undefined name 'Dict'
+src/models\training_config.py:125:34: F821 undefined name 'Any'
+src/models\training_config.py:134:27: F821 undefined name 'Dict'
+src/models\training_config.py:134:37: F821 undefined name 'Any'
+src/models\training_config.py:154:32: F821 undefined name 'Optional'
+src/models\training_config.py:168:27: F821 undefined name 'List'
+src/models\training_config.py:194:37: F821 undefined name 'Optional'
+src/models\training_config.py:197:36: F821 undefined name 'Dict'
+src/models\training_config.py:372:28: F821 undefined name 'Dict'
+src/models\training_config.py:372:38: F821 undefined name 'Any'
+src/models\training_config.py:403:24: F821 undefined name 'Optional'
+src/models\training_config.py:438:89: E501 line too long (91 > 88 characters)
+src/models\training_config.py:457:89: E501 line too long (98 > 88 characters)
+src/models\training_config.py:488:24: F821 undefined name 'Optional'
+src/models\training_config.py:501:24: F821 undefined name 'Optional'
+src/models\training_config.py:502:10: F821 undefined name 'List'
+src/models\training_config.py:514:24: F821 undefined name 'Optional'
+src/models\training_config.py:536:48: F821 undefined name 'Optional'
+src/models\training_config.py:588:41: F821 undefined name 'Dict'
+src/models\training_config.py:588:51: F821 undefined name 'Any'
+src/models\training_config.py:603:89: E501 line too long (98 > 88 characters)
+src/models\training_config.py:604:89: E501 line too long (95 > 88 characters)
+src/models\training_config.py:605:89: E501 line too long (105 > 88 characters)
+src/models\training_config.py:632:25: F821 undefined name 'Optional'
+src/models\training_config.py:646:14: F821 undefined name 'Optional'
+src/models\training_integration.py:194:89: E501 line too long (91 > 88 characters)
+src/models\training_integration.py:281:89: E501 line too long (95 > 88 characters)
+src/models\training_integration.py:379:89: E501 line too long (89 > 88 characters)
+src/models\training_integration.py:515:89: E501 line too long (128 > 88 characters)
+src/models\training_integration.py:562:89: E501 line too long (89 > 88 characters)
+src/models\training_integration.py:578:89: E501 line too long (100 > 88 characters)
+src/models\training_pipeline.py:24:1: F401 '..core.constants.ModelType' imported but unused
+src/models\training_pipeline.py:25:1: F401 '..core.exceptions.OccupancyPredictionError' imported but unused
+src/models\training_pipeline.py:95:26: F821 undefined name 'List'
+src/models\training_pipeline.py:102:22: F821 undefined name 'Optional'
+src/models\training_pipeline.py:103:16: F821 undefined name 'Optional'
+src/models\training_pipeline.py:107:27: F821 undefined name 'Optional'
+src/models\training_pipeline.py:122:14: F821 undefined name 'Optional'
+src/models\training_pipeline.py:128:27: F821 undefined name 'Optional'
+src/models\training_pipeline.py:131:20: F821 undefined name 'Dict'
+src/models\training_pipeline.py:131:30: F821 undefined name 'Any'
+src/models\training_pipeline.py:140:21: F821 undefined name 'List'
+src/models\training_pipeline.py:141:23: F821 undefined name 'Dict'
+src/models\training_pipeline.py:144:17: F821 undefined name 'Optional'
+src/models\training_pipeline.py:145:17: F821 undefined name 'Optional'
+src/models\training_pipeline.py:146:24: F821 undefined name 'Dict'
+src/models\training_pipeline.py:149:15: F821 undefined name 'List'
+src/models\training_pipeline.py:150:13: F821 undefined name 'List'
+src/models\training_pipeline.py:155:18: F821 undefined name 'Optional'
+src/models\training_pipeline.py:155:27: F821 undefined name 'Dict'
+src/models\training_pipeline.py:155:37: F821 undefined name 'Any'
+src/models\training_pipeline.py:200:16: F821 undefined name 'List'
+src/models\training_pipeline.py:200:21: F821 undefined name 'Tuple'
+src/models\training_pipeline.py:203:22: F821 undefined name 'List'
+src/models\training_pipeline.py:233:31: F821 undefined name 'Optional'
+src/models\training_pipeline.py:263:33: F821 undefined name 'Dict'
+src/models\training_pipeline.py:264:31: F821 undefined name 'Dict'
+src/models\training_pipeline.py:265:31: F821 undefined name 'Dict'
+src/models\training_pipeline.py:265:41: F821 undefined name 'List'
+src/models\training_pipeline.py:268:33: F821 undefined name 'List'
+src/models\training_pipeline.py:278:89: E501 line too long (91 > 88 characters)
+src/models\training_pipeline.py:283:19: F821 undefined name 'Optional'
+src/models\training_pipeline.py:283:28: F821 undefined name 'List'
+src/models\training_pipeline.py:285:10: F821 undefined name 'Dict'
+src/models\training_pipeline.py:297:89: E501 line too long (98 > 88 characters)
+src/models\training_pipeline.py:314:51: F821 undefined name 'Tuple'
+src/models\training_pipeline.py:350:89: E501 line too long (95 > 88 characters)
+src/models\training_pipeline.py:361:21: F821 undefined name 'Optional'
+src/models\training_pipeline.py:395:24: F821 undefined name 'Optional'
+src/models\training_pipeline.py:405:89: E501 line too long (90 > 88 characters)
+src/models\training_pipeline.py:444:28: F821 undefined name 'Optional'
+src/models\training_pipeline.py:445:19: F821 undefined name 'Optional'
+src/models\training_pipeline.py:445:28: F821 undefined name 'Dict'
+src/models\training_pipeline.py:445:38: F821 undefined name 'Any'
+src/models\training_pipeline.py:491:89: E501 line too long (104 > 88 characters)
+src/models\training_pipeline.py:503:89: E501 line too long (91 > 88 characters)
+src/models\training_pipeline.py:609:89: E501 line too long (110 > 88 characters)
+src/models\training_pipeline.py:631:10: F821 undefined name 'Optional'
+src/models\training_pipeline.py:635:89: E501 line too long (92 > 88 characters)
+src/models\training_pipeline.py:661:89: E501 line too long (110 > 88 characters)
+src/models\training_pipeline.py:786:89: E501 line too long (97 > 88 characters)
+src/models\training_pipeline.py:851:10: F821 undefined name 'Tuple'
+src/models\training_pipeline.py:860:89: E501 line too long (90 > 88 characters)
+src/models\training_pipeline.py:898:89: E501 line too long (112 > 88 characters)
+src/models\training_pipeline.py:911:10: F821 undefined name 'Tuple'
+src/models\training_pipeline.py:912:9: F821 undefined name 'Tuple'
+src/models\training_pipeline.py:913:9: F821 undefined name 'Tuple'
+src/models\training_pipeline.py:914:9: F821 undefined name 'Tuple'
+src/models\training_pipeline.py:967:21: F821 undefined name 'Tuple'
+src/models\training_pipeline.py:968:19: F821 undefined name 'Tuple'
+src/models\training_pipeline.py:969:28: F821 undefined name 'Optional'
+src/models\training_pipeline.py:971:10: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1000:89: E501 line too long (95 > 88 characters)
+src/models\training_pipeline.py:1020:89: E501 line too long (96 > 88 characters)
+src/models\training_pipeline.py:1023:89: E501 line too long (92 > 88 characters)
+src/models\training_pipeline.py:1046:25: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1047:19: F821 undefined name 'Tuple'
+src/models\training_pipeline.py:1048:20: F821 undefined name 'Tuple'
+src/models\training_pipeline.py:1050:10: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1116:25: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1117:29: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1119:10: F821 undefined name 'Tuple'
+src/models\training_pipeline.py:1119:21: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1178:89: E501 line too long (111 > 88 characters)
+src/models\training_pipeline.py:1186:61: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1201:25: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1204:10: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1204:20: F821 undefined name 'Any'
+src/models\training_pipeline.py:1258:89: E501 line too long (95 > 88 characters)
+src/models\training_pipeline.py:1341:33: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1379:89: E501 line too long (90 > 88 characters)
+src/models\training_pipeline.py:1385:56: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1423:39: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1427:56: F821 undefined name 'List'
+src/models\training_pipeline.py:1431:42: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1431:52: F821 undefined name 'Any'
+src/models\training_pipeline.py:1435:37: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1439:37: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1439:47: F821 undefined name 'List'
+src/models\training_pipeline.py:1445:10: F821 undefined name 'Optional'
+src/models\training_pipeline.py:1445:19: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1445:29: F821 undefined name 'Any'
+src/models\training_pipeline.py:1487:10: F821 undefined name 'Optional'
+src/models\training_pipeline.py:1512:25: F821 undefined name 'List'
+src/models\training_pipeline.py:1514:10: F821 undefined name 'Dict'
+src/models\training_pipeline.py:1514:20: F821 undefined name 'Any'
+src/utils\alerts.py:9:1: F401 'datetime.timedelta' imported but unused
+src/utils\alerts.py:15:1: F401 'typing.Set' imported but unused
+src/utils\alerts.py:187:89: E501 line too long (95 > 88 characters)
+src/utils\alerts.py:189:89: E501 line too long (130 > 88 characters)
+src/utils\alerts.py:193:1: W293 blank line contains whitespace
+src/utils\alerts.py:195:1: W293 blank line contains whitespace
+src/utils\alerts.py:196:89: E501 line too long (101 > 88 characters)
+src/utils\alerts.py:197:89: E501 line too long (105 > 88 characters)
+src/utils\alerts.py:258:89: E501 line too long (100 > 88 characters)
+src/utils\alerts.py:285:13: F841 local variable 'payload' is assigned to but never used
+src/utils\alerts.py:594:89: E501 line too long (101 > 88 characters)
+src/utils\alerts.py:622:89: E501 line too long (99 > 88 characters)
+src/utils\health_monitor.py:4:74: W291 trailing whitespace
+src/utils\health_monitor.py:5:83: W291 trailing whitespace
+src/utils\health_monitor.py:14:1: F401 'json' imported but unused
+src/utils\health_monitor.py:15:1: F401 'logging' imported but unused
+src/utils\health_monitor.py:17:1: F401 'ssl' imported but unused
+src/utils\health_monitor.py:19:1: F401 'typing.Set' imported but unused
+src/utils\health_monitor.py:318:89: E501 line too long (91 > 88 characters)
+src/utils\health_monitor.py:729:89: E501 line too long (100 > 88 characters)
+src/utils\health_monitor.py:794:89: E501 line too long (102 > 88 characters)
+src/utils\health_monitor.py:797:89: E501 line too long (106 > 88 characters)
+src/utils\health_monitor.py:800:89: E501 line too long (104 > 88 characters)
+src/utils\health_monitor.py:842:89: E501 line too long (98 > 88 characters)
+src/utils\health_monitor.py:850:89: E501 line too long (97 > 88 characters)
+src/utils\health_monitor.py:1096:9: E722 do not use bare 'except'
+src/utils\health_monitor.py:1146:89: E501 line too long (103 > 88 characters)
+src/utils\incident_response.py:12:1: F401 'json' imported but unused
+src/utils\incident_response.py:13:1: F401 'logging' imported but unused
+src/utils\incident_response.py:14:1: F401 'typing.Set' imported but unused
+src/utils\incident_response.py:466:89: E501 line too long (104 > 88 characters)
+src/utils\incident_response.py:546:89: E501 line too long (108 > 88 characters)
+src/utils\incident_response.py:565:89: E501 line too long (109 > 88 characters)
+src/utils\incident_response.py:613:89: E501 line too long (94 > 88 characters)
+src/utils\incident_response.py:617:89: E501 line too long (102 > 88 characters)
+src/utils\incident_response.py:627:89: E501 line too long (94 > 88 characters)
+src/utils\incident_response.py:700:89: E501 line too long (115 > 88 characters)
+src/utils\incident_response.py:711:89: E501 line too long (92 > 88 characters)
+src/utils\incident_response.py:715:89: E501 line too long (102 > 88 characters)
+src/utils\logger.py:16:1: F401 'typing.Union' imported but unused
+src/utils\metrics.py:11:1: F401 'typing.Any' imported but unused
+src/utils\metrics.py:11:1: F401 'typing.List' imported but unused
+src/utils\metrics.py:15:1: C901 'TryExcept 15' is too complex (22)
+src/utils\metrics.py:16:5: F401 'prometheus_client.multiprocess' imported but unused
+src/utils\metrics.py:16:5: F401 'prometheus_client.values' imported but unused
+src/utils\metrics.py:458:13: F841 local variable 'memory' is assigned to but never used
+src/utils\metrics.py:501:13: F841 local variable 'duration' is assigned to but never used
+src/utils\metrics.py:605:13: F841 local variable 'e' is assigned to but never used
+src/utils\monitoring.py:10:1: F401 'threading' imported but unused
+src/utils\monitoring.py:166:89: E501 line too long (90 > 88 characters)
+src/utils\monitoring.py:336:89: E501 line too long (102 > 88 characters)
+src/utils\monitoring.py:339:89: E501 line too long (106 > 88 characters)
+src/utils\monitoring.py:342:89: E501 line too long (104 > 88 characters)
+src/utils\monitoring_integration.py:9:1: F401 'typing.Optional' imported but unused
+src/utils\monitoring_integration.py:91:89: E501 line too long (91 > 88 characters)
+src/utils\monitoring_integration.py:140:89: E501 line too long (92 > 88 characters)
+src/utils\monitoring_integration.py:171:89: E501 line too long (92 > 88 characters)
+src/utils\monitoring_integration.py:311:89: E501 line too long (106 > 88 characters)
+tests/__init__.py:4:89: E501 line too long (91 > 88 characters)
+tests/conftest.py:224:89: E501 line too long (107 > 88 characters)
+tests/conftest.py:229:89: E501 line too long (105 > 88 characters)
+tests/conftest.py:234:89: E501 line too long (111 > 88 characters)
+tests/integration\test_ci_cd_integration.py:4:89: E501 line too long (91 > 88 characters)
+tests/integration\test_ci_cd_integration.py:5:89: E501 line too long (99 > 88 characters)
+tests/integration\test_ci_cd_integration.py:90:65: F821 undefined name 'Optional'
+tests/integration\test_ci_cd_integration.py:105:57: F821 undefined name 'Dict'
+tests/integration\test_ci_cd_integration.py:105:67: F821 undefined name 'Any'
+tests/integration\test_ci_cd_integration.py:138:59: F821 undefined name 'Dict'
+tests/integration\test_ci_cd_integration.py:138:69: F821 undefined name 'Any'
+tests/integration\test_ci_cd_integration.py:216:89: E501 line too long (93 > 88 characters)
+tests/integration\test_ci_cd_integration.py:292:89: E501 line too long (101 > 88 characters)
+tests/integration\test_ci_cd_integration.py:371:89: E501 line too long (96 > 88 characters)
+tests/integration\test_ci_cd_integration.py:531:89: E501 line too long (97 > 88 characters)
+tests/integration\test_ci_cd_integration.py:663:89: E501 line too long (95 > 88 characters)
+tests/integration\test_ci_cd_integration.py:667:89: E501 line too long (94 > 88 characters)
+tests/integration\test_ci_cd_integration.py:736:89: E501 line too long (91 > 88 characters)
+tests/integration\test_security_validation.py:4:89: E501 line too long (90 > 88 characters)
+tests/integration\test_security_validation.py:84:46: F821 undefined name 'List'
+tests/integration\test_security_validation.py:106:49: F821 undefined name 'Dict'
+tests/integration\test_security_validation.py:106:59: F821 undefined name 'Any'
+tests/integration\test_security_validation.py:167:89: E501 line too long (98 > 88 characters)
+tests/integration\test_security_validation.py:194:89: E501 line too long (93 > 88 characters)
+tests/integration\test_security_validation.py:213:89: E501 line too long (96 > 88 characters)
+tests/integration\test_security_validation.py:366:89: E501 line too long (101 > 88 characters)
+tests/integration\test_security_validation.py:384:89: E501 line too long (94 > 88 characters)
+tests/integration\test_security_validation.py:420:89: E501 line too long (93 > 88 characters)
+tests/integration\test_security_validation.py:423:89: E501 line too long (89 > 88 characters)
+tests/integration\test_security_validation.py:469:89: E501 line too long (103 > 88 characters)
+tests/integration\test_security_validation.py:600:89: E501 line too long (107 > 88 characters)
+tests/integration\test_security_validation.py:603:89: E501 line too long (92 > 88 characters)
+tests/integration\test_security_validation.py:611:5: C901 'TestAPISecurityBoundaries.test_unauthorized_endpoint_access' is too complex (16)
+tests/integration\test_security_validation.py:684:89: E501 line too long (90 > 88 characters)
+tests/integration\test_security_validation.py:725:89: E501 line too long (92 > 88 characters)
+tests/integration\test_security_validation.py:731:89: E501 line too long (98 > 88 characters)
+tests/integration\test_security_validation.py:740:89: E501 line too long (100 > 88 characters)
+tests/integration\test_security_validation.py:743:89: E501 line too long (102 > 88 characters)
+tests/integration\test_security_validation.py:754:89: E501 line too long (96 > 88 characters)
+tests/integration\test_security_validation.py:799:89: E501 line too long (95 > 88 characters)
+tests/integration\test_security_validation.py:847:89: E501 line too long (96 > 88 characters)
+tests/integration\test_security_validation.py:850:89: E501 line too long (98 > 88 characters)
+tests/integration\test_security_validation.py:902:89: E501 line too long (97 > 88 characters)
+tests/integration\test_security_validation.py:906:89: E501 line too long (91 > 88 characters)
+tests/integration\test_security_validation.py:933:89: E501 line too long (103 > 88 characters)
+tests/integration\test_security_validation.py:939:89: E501 line too long (110 > 88 characters)
+tests/integration\test_security_validation.py:942:89: E501 line too long (102 > 88 characters)
+tests/integration\test_stress_scenarios.py:211:89: E501 line too long (98 > 88 characters)
+tests/integration\test_stress_scenarios.py:293:89: E501 line too long (93 > 88 characters)
+tests/integration\test_stress_scenarios.py:316:53: F821 undefined name 'List'
+tests/integration\test_stress_scenarios.py:316:58: F821 undefined name 'Dict'
+tests/integration\test_stress_scenarios.py:316:68: F821 undefined name 'Any'
+tests/integration\test_stress_scenarios.py:347:51: F821 undefined name 'List'
+tests/integration\test_stress_scenarios.py:347:56: F821 undefined name 'Dict'
+tests/integration\test_stress_scenarios.py:347:66: F821 undefined name 'Any'
+tests/integration\test_stress_scenarios.py:457:89: E501 line too long (90 > 88 characters)
+tests/integration\test_stress_scenarios.py:571:89: E501 line too long (106 > 88 characters)
+tests/integration\test_stress_scenarios.py:640:89: E501 line too long (95 > 88 characters)
+tests/integration\test_stress_scenarios.py:706:89: E501 line too long (101 > 88 characters)
+tests/integration\test_stress_scenarios.py:712:89: E501 line too long (99 > 88 characters)
+tests/integration\test_stress_scenarios.py:789:89: E501 line too long (101 > 88 characters)
+tests/integration\test_stress_scenarios.py:792:89: E501 line too long (101 > 88 characters)
+tests/performance\performance_benchmark_runner.py:50:24: F821 undefined name 'Optional'
+tests/performance\performance_benchmark_runner.py:71:37: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:71:47: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:102:61: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:102:71: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:128:35: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:128:45: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:144:58: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:144:68: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:190:59: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:190:69: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:232:50: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:232:60: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:274:56: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:274:66: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:316:43: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:316:53: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:338:89: E501 line too long (89 > 88 characters)
+tests/performance\performance_benchmark_runner.py:350:10: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:350:20: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:373:49: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:373:59: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:392:47: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:392:57: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:415:24: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:415:34: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:415:50: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:415:60: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:416:10: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:416:20: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:470:48: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:470:58: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:495:89: E501 line too long (91 > 88 characters)
+tests/performance\performance_benchmark_runner.py:516:55: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:516:65: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:525:55: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:525:65: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:534:58: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:534:68: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:539:54: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:539:64: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:550:39: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:550:49: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:564:58: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:564:68: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:580:59: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:580:69: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:593:50: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:593:60: F821 undefined name 'Any'
+tests/performance\performance_benchmark_runner.py:604:56: F821 undefined name 'Dict'
+tests/performance\performance_benchmark_runner.py:604:66: F821 undefined name 'Any'
+tests/performance\test_memory_profiling.py:99:62: F821 undefined name 'List'
+tests/performance\test_memory_profiling.py:99:67: F821 undefined name 'Dict'
+tests/performance\test_memory_profiling.py:99:77: F821 undefined name 'Any'
+tests/performance\test_memory_profiling.py:336:89: E501 line too long (114 > 88 characters)
+tests/performance\test_memory_profiling.py:346:89: E501 line too long (89 > 88 characters)
+tests/performance\test_prediction_latency.py:196:89: E501 line too long (98 > 88 characters)
+tests/performance\test_prediction_latency.py:272:89: E501 line too long (98 > 88 characters)
+tests/performance\test_throughput.py:208:89: E501 line too long (98 > 88 characters)
+tests/run_tests.py:32:1: C901 'main' is too complex (18)
+tests/runners\run_sprint5_tests.py:219:89: E501 line too long (119 > 88 characters)
+tests/runners\run_sprint5_tests.py:220:89: E501 line too long (108 > 88 characters)
+tests/test_drift_detection.py:547:28: F821 undefined name 'OccupancyPredictionError'
+tests/test_end_to_end_validation.py:272:89: E501 line too long (90 > 88 characters)
+tests/test_end_to_end_validation.py:323:89: E501 line too long (97 > 88 characters)
+tests/test_sprint1_validation.py:104:89: E501 line too long (92 > 88 characters)
+tests/test_sprint1_validation.py:442:89: E501 line too long (91 > 88 characters)
+tests/test_sprint3_validation.py:108:31: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/test_sprint3_validation.py:493:31: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:563:56: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:574:58: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/test_sprint3_validation.py:586:56: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:815:40: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:816:49: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:817:50: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint4_integration.py:818:89: E501 line too long (101 > 88 characters)
+tests/test_sprint5_fixtures.py:75:26: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:75:36: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:126:42: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:126:52: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:144:39: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:144:49: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:234:49: F821 undefined name 'List'
+tests/test_sprint5_fixtures.py:234:54: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:234:64: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:238:35: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:238:45: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:393:10: F821 undefined name 'List'
+tests/test_sprint5_fixtures.py:393:15: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:393:25: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:422:10: F821 undefined name 'List'
+tests/test_sprint5_fixtures.py:422:15: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:422:25: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:445:10: F821 undefined name 'List'
+tests/test_sprint5_fixtures.py:445:15: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:445:25: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:537:28: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:537:38: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:560:49: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:560:59: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:569:13: F402 import 'field' from line 10 shadowed by loop variable
+tests/test_sprint5_fixtures.py:580:50: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:580:60: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:584:13: F402 import 'field' from line 10 shadowed by loop variable
+tests/test_sprint5_fixtures.py:591:48: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:591:58: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:595:13: F402 import 'field' from line 10 shadowed by loop variable
+tests/test_sprint5_fixtures.py:608:10: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:608:20: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:646:6: F821 undefined name 'List'
+tests/test_sprint5_fixtures.py:646:11: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:646:21: F821 undefined name 'Any'
+tests/test_sprint5_fixtures.py:685:57: F821 undefined name 'Dict'
+tests/test_sprint5_fixtures.py:685:67: F821 undefined name 'Any'
+tests/test_sprint5_integration.py:321:89: E501 line too long (96 > 88 characters)
+tests/test_sprint5_integration.py:327:89: E501 line too long (99 > 88 characters)
+tests/test_sprint5_integration.py:405:89: E501 line too long (92 > 88 characters)
+tests/test_sprint5_integration.py:857:89: E501 line too long (94 > 88 characters)
+tests/unit\test_adaptation\test_optimizer.py:781:39: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:259:89: E501 line too long (89 > 88 characters)
+tests/unit\test_adaptation\test_tracking_manager.py:558:42: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:559:44: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:636:34: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:638:41: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:654:34: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_core\test_exceptions.py:12:89: E501 line too long (199 > 88 characters)
+tests/unit\test_data\test_models.py:701:89: E501 line too long (91 > 88 characters)
+tests/unit\test_environment_management.py:173:44: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:174:40: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:225:32: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:229:32: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:234:32: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:253:33: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:275:32: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:288:32: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:301:89: E501 line too long (92 > 88 characters)
+tests/unit\test_environment_management.py:308:32: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:320:32: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:373:40: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_features\test_engineering.py:49:32: F821 undefined name 'List'
+tests/unit\test_features\test_engineering.py:66:37: F821 undefined name 'List'
+tests/unit\test_features\test_engineering.py:490:89: E501 line too long (95 > 88 characters)
+tests/unit\test_features\test_sequential.py:572:38: F821 undefined name 'math'
+tests/unit\test_features\test_sequential.py:574:23: F821 undefined name 'math'
+tests/unit\test_features\test_store.py:348:32: F821 undefined name 'List'
+tests/unit\test_features\test_store.py:365:37: F821 undefined name 'List'
+tests/unit\test_ingestion\test_ha_client.py:561:89: E501 line too long (110 > 88 characters)
+tests/unit\test_ingestion\test_ha_client.py:1087:13: F402 import 'call' from line 11 shadowed by loop variable
+tests/unit\test_models\test_base_predictors.py:440:89: E501 line too long (89 > 88 characters)
+tests/unit\test_models\test_base_predictors.py:777:89: E501 line too long (89 > 88 characters)
+tests/unit\test_models\test_base_predictors.py:955:89: E501 line too long (90 > 88 characters)
+tests/unit\test_models\test_ensemble.py:971:89: E501 line too long (96 > 88 characters)
+tests/unit\test_models\test_model_serialization.py:593:89: E501 line too long (93 > 88 characters)
+tests/unit\test_models\test_model_serialization.py:616:89: E501 line too long (92 > 88 characters)
+tests/validation\automated_validation_runner.py:77:24: F821 undefined name 'List'
+tests/validation\automated_validation_runner.py:88:26: F821 undefined name 'Optional'
+tests/validation\automated_validation_runner.py:89:24: F821 undefined name 'Dict'
+tests/validation\automated_validation_runner.py:89:34: F821 undefined name 'Any'
+tests/validation\automated_validation_runner.py:100:19: F821 undefined name 'Optional'
+tests/validation\automated_validation_runner.py:101:23: F821 undefined name 'Optional'
+tests/validation\automated_validation_runner.py:115:19: F821 undefined name 'Dict'
+tests/validation\automated_validation_runner.py:115:29: F821 undefined name 'Dict'
+tests/validation\automated_validation_runner.py:115:39: F821 undefined name 'Any'
+tests/validation\automated_validation_runner.py:118:13: F821 undefined name 'List'
+tests/validation\automated_validation_runner.py:118:18: F821 undefined name 'Dict'
+tests/validation\automated_validation_runner.py:118:28: F821 undefined name 'Any'
+tests/validation\automated_validation_runner.py:119:15: F821 undefined name 'List'
+tests/validation\automated_validation_runner.py:119:20: F821 undefined name 'Dict'
+tests/validation\automated_validation_runner.py:119:30: F821 undefined name 'Any'
+tests/validation\automated_validation_runner.py:122:24: F821 undefined name 'List'
+tests/validation\automated_validation_runner.py:123:22: F821 undefined name 'List'
+tests/validation\automated_validation_runner.py:125:26: F821 undefined name 'Dict'
+tests/validation\automated_validation_runner.py:125:36: F821 undefined name 'Any'
+tests/validation\automated_validation_runner.py:166:20: F821 undefined name 'Optional'
+tests/validation\automated_validation_runner.py:167:25: F821 undefined name 'Optional'
+tests/validation\automated_validation_runner.py:168:30: F821 undefined name 'Optional'
+tests/validation\automated_validation_runner.py:190:27: F821 undefined name 'Dict'
+tests/validation\automated_validation_runner.py:191:30: F821 undefined name 'List'
+tests/validation\automated_validation_runner.py:200:34: F821 undefined name 'List'
+tests/validation\automated_validation_runner.py:200:39: F821 undefined name 'Callable'
+tests/validation\automated_validation_runner.py:201:37: F821 undefined name 'List'
+tests/validation\automated_validation_runner.py:201:42: F821 undefined name 'Callable'
+tests/validation\automated_validation_runner.py:202:30: F821 undefined name 'List'
+tests/validation\automated_validation_runner.py:202:35: F821 undefined name 'Callable'
+tests/validation\automated_validation_runner.py:308:16: F821 undefined name 'List'
+tests/validation\automated_validation_runner.py:328:16: F821 undefined name 'List'
+tests/validation\automated_validation_runner.py:350:16: F821 undefined name 'List'
+tests/validation\automated_validation_runner.py:371:22: F821 undefined name 'List'
+tests/validation\automated_validation_runner.py:371:56: F821 undefined name 'Optional'
+tests/validation\automated_validation_runner.py:434:52: F821 undefined name 'Optional'
+tests/validation\automated_validation_runner.py:447:46: F821 undefined name 'Dict'
+tests/validation\automated_validation_runner.py:447:56: F821 undefined name 'Any'
+tests/validation\automated_validation_runner.py:524:89: E501 line too long (91 > 88 characters)
+tests/validation\automated_validation_runner.py:597:10: F821 undefined name 'Dict'
+tests/validation\automated_validation_runner.py:597:20: F821 undefined name 'Any'
+tests/validation\automated_validation_runner.py:676:89: E501 line too long (125 > 88 characters)
+tests/validation\prediction_validation_framework.py:68:17: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:68:27: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:73:17: F821 undefined name 'Optional'
+tests/validation\prediction_validation_framework.py:74:19: F821 undefined name 'Optional'
+tests/validation\prediction_validation_framework.py:75:20: F821 undefined name 'Optional'
+tests/validation\prediction_validation_framework.py:88:23: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:88:33: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:89:26: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:89:36: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:90:26: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:90:36: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:93:21: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:93:31: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:94:24: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:94:34: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:97:22: F821 undefined name 'List'
+tests/validation\prediction_validation_framework.py:97:27: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:97:37: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:98:19: F821 undefined name 'List'
+tests/validation\prediction_validation_framework.py:98:24: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:98:34: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:105:26: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:105:36: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:148:30: F821 undefined name 'Optional'
+tests/validation\prediction_validation_framework.py:177:32: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:177:42: F821 undefined name 'List'
+tests/validation\prediction_validation_framework.py:178:29: F821 undefined name 'List'
+tests/validation\prediction_validation_framework.py:179:31: F821 undefined name 'List'
+tests/validation\prediction_validation_framework.py:180:28: F821 undefined name 'List'
+tests/validation\prediction_validation_framework.py:185:30: F821 undefined name 'List'
+tests/validation\prediction_validation_framework.py:185:35: F821 undefined name 'Callable'
+tests/validation\prediction_validation_framework.py:186:31: F821 undefined name 'List'
+tests/validation\prediction_validation_framework.py:186:36: F821 undefined name 'Callable'
+tests/validation\prediction_validation_framework.py:198:32: F821 undefined name 'Optional'
+tests/validation\prediction_validation_framework.py:199:28: F821 undefined name 'Optional'
+tests/validation\prediction_validation_framework.py:200:29: F821 undefined name 'Optional'
+tests/validation\prediction_validation_framework.py:320:25: F821 undefined name 'Optional'
+tests/validation\prediction_validation_framework.py:320:34: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:320:44: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:321:10: F821 undefined name 'List'
+tests/validation\prediction_validation_framework.py:440:49: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:440:59: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:586:10: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:586:20: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:611:10: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:611:20: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:626:10: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:626:20: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:643:10: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:643:20: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:658:10: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:658:20: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:676:27: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:676:37: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:677:30: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:677:40: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:678:30: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:678:40: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:679:10: F821 undefined name 'List'
+tests/validation\prediction_validation_framework.py:679:15: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:679:25: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:712:26: F821 undefined name 'List'
+tests/validation\prediction_validation_framework.py:712:31: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:712:41: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:713:25: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:713:35: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:714:10: F821 undefined name 'List'
+tests/validation\prediction_validation_framework.py:714:15: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:714:25: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:726:89: E501 line too long (89 > 88 characters)
+tests/validation\prediction_validation_framework.py:753:27: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:753:37: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:754:30: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:754:40: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:764:27: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:764:37: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:765:30: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:765:40: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:766:30: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:766:40: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:790:41: F821 undefined name 'Dict'
+tests/validation\prediction_validation_framework.py:790:51: F821 undefined name 'Any'
+tests/validation\prediction_validation_framework.py:810:26: F821 undefined name 'Optional'
+tests/validation\test_confidence_calibration.py:450:89: E501 line too long (100 > 88 characters)

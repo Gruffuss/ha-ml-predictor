@@ -18,6 +18,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 import logging
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from ..core.config import MQTTConfig, RoomConfig, TrackingConfig, get_config
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError

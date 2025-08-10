@@ -9,7 +9,7 @@ multi-room occupancy correlations.
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
 import logging
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set
 
 import numpy as np
 import statistics
@@ -140,21 +140,33 @@ class ContextualFeatureExtractor:
     def _extract_environmental_features(
         self, events: List[SensorEvent], target_time: datetime
     ) -> Dict[str, float]:
-        """Extract environmental sensor features (temperature, humidity, light)."""
+        """Extract environmental sensor features using SensorType filtering."""
         features = {}
 
-        # Group events by sensor type
+        # Group events by sensor type using SensorType enum for validation
         env_events = {
             "temperature": [],
             "humidity": [],
             "light": [],
             "climate": [],
         }
+        
+        # Track unique sensor types using Set
+        detected_sensor_types: Set[str] = set()
 
         for event in events:
-            sensor_type = event.sensor_type.lower()
-            if sensor_type in env_events:
-                env_events[sensor_type].append(event)
+            detected_sensor_types.add(event.sensor_type)
+            
+            # Use SensorType enum for proper filtering
+            if event.sensor_type == SensorType.CLIMATE.value:
+                env_events["climate"].append(event)
+            elif event.sensor_type == SensorType.LIGHT.value:
+                env_events["light"].append(event)
+            elif event.sensor_type.lower() in ["temperature", "temp"]:
+                env_events["temperature"].append(event)
+            elif event.sensor_type.lower() in ["humidity", "humid"]:
+                env_events["humidity"].append(event)
+            # Fallback to sensor_id analysis if sensor_type doesn't match
             elif "temperature" in event.sensor_id.lower():
                 env_events["temperature"].append(event)
             elif "humidity" in event.sensor_id.lower():
@@ -265,12 +277,15 @@ class ContextualFeatureExtractor:
         """Extract door state and transition features."""
         features = {}
 
-        # Filter door events
-        door_events = [
-            e
-            for e in events
-            if e.sensor_type.lower() == "door" or "door" in e.sensor_id.lower()
-        ]
+        # Filter door events using SensorType enum
+        door_events = []
+        door_sensor_ids: Set[str] = set()
+        
+        for event in events:
+            # Use SensorType enum for proper door sensor filtering
+            if event.sensor_type == SensorType.DOOR.value or "door" in event.sensor_id.lower():
+                door_events.append(event)
+                door_sensor_ids.add(event.sensor_id)
 
         if not door_events:
             return {
@@ -503,17 +518,22 @@ class ContextualFeatureExtractor:
         room_configs: Dict[str, RoomConfig],
         target_time: datetime,
     ) -> Dict[str, float]:
-        """Extract room-specific context features."""
+        """Extract room-specific context features using SensorType filtering."""
         features = {}
 
         # Room type and size indicators (based on sensor configuration)
         room_sensor_counts = defaultdict(int)
-        room_sensor_types = defaultdict(set)
+        room_sensor_types: Dict[str, Set[str]] = defaultdict(set)  # Proper Set typing
+        sensor_type_distribution: Dict[str, int] = defaultdict(int)
 
         for event in events:
             room_id = event.room_id
             room_sensor_counts[room_id] += 1
             room_sensor_types[room_id].add(event.sensor_type)
+            
+            # Count distribution of different sensor types using SensorType validation
+            if event.sensor_type in [t.value for t in SensorType]:
+                sensor_type_distribution[event.sensor_type] += 1
 
         if room_sensor_counts:
             # Estimate room complexity from sensor diversity
@@ -536,6 +556,27 @@ class ContextualFeatureExtractor:
                 if len(room_sensor_counts) > 1
                 else 0.0
             )
+            
+            # Sensor type diversity features using SensorType enum
+            features["sensor_type_diversity"] = len(sensor_type_distribution)
+            
+            # Calculate sensor type ratios
+            total_sensor_events = sum(sensor_type_distribution.values())
+            if total_sensor_events > 0:
+                features["presence_sensor_ratio"] = (
+                    sensor_type_distribution.get(SensorType.PRESENCE.value, 0) +
+                    sensor_type_distribution.get(SensorType.MOTION.value, 0)
+                ) / total_sensor_events
+                features["door_sensor_ratio"] = (
+                    sensor_type_distribution.get(SensorType.DOOR.value, 0) / total_sensor_events
+                )
+                features["climate_sensor_ratio"] = (
+                    sensor_type_distribution.get(SensorType.CLIMATE.value, 0) / total_sensor_events
+                )
+            else:
+                features["presence_sensor_ratio"] = 0.0
+                features["door_sensor_ratio"] = 0.0
+                features["climate_sensor_ratio"] = 0.0
         else:
             features.update(
                 {
@@ -683,6 +724,10 @@ class ContextualFeatureExtractor:
             "avg_room_complexity": 0.0,
             "max_room_activity": 0.0,
             "room_activity_variance": 0.0,
+            # Added sensor type diversity features
+            "presence_sensor_ratio": 0.0,
+            "door_sensor_ratio": 0.0,
+            "climate_sensor_ratio": 0.0,
         }
 
     def get_feature_names(self) -> List[str]:

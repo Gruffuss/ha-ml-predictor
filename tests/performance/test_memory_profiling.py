@@ -29,6 +29,7 @@ from src.data.storage.models import SensorEvent
 from src.features.store import FeatureStore
 from src.integration.mqtt_publisher import MQTTPublisher
 from src.models.predictor import OccupancyPredictor
+from typing import Any, Dict, List
 
 
 class MemoryProfiler:

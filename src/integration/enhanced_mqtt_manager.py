@@ -29,6 +29,7 @@ from .mqtt_integration_manager import (
 from .mqtt_publisher import MQTTPublisher
 from .prediction_publisher import PredictionPublisher
 from .realtime_publisher import (
+from typing import Any, Callable, Dict, List, Optional
     PublishingChannel,
     PublishingMetrics,
     RealtimePredictionEvent,

@@ -76,6 +76,20 @@ class PredictionResponse(BaseModel):
     alternatives: List[Dict[str, Any]] = []
     model_info: Dict[str, Any] = {}
 
+    @validator("transition_type")
+    def validate_transition_type(cls, v):
+        """Validate transition type is valid."""
+        if v is not None and v not in ["occupied", "vacant"]:
+            raise ValueError("Transition type must be 'occupied' or 'vacant'")
+        return v
+
+    @validator("confidence")
+    def validate_confidence(cls, v):
+        """Validate confidence is between 0 and 1."""
+        if not (0.0 <= v <= 1.0):
+            raise ValueError("Confidence must be between 0.0 and 1.0")
+        return v
+
 
 class SystemHealthResponse(BaseModel):
     """Response model for system health endpoint."""
@@ -100,6 +114,35 @@ class AccuracyMetricsResponse(BaseModel):
     time_window_hours: int
     trend_direction: str  # 'improving', 'stable', 'degrading'
 
+    @validator("accuracy_rate", "confidence_calibration")
+    def validate_rate(cls, v):
+        """Validate rates are between 0 and 1."""
+        if not (0.0 <= v <= 1.0):
+            raise ValueError("Rate must be between 0.0 and 1.0")
+        return v
+
+    @validator("average_error_minutes")
+    def validate_average_error(cls, v):
+        """Validate average error is non-negative."""
+        if v < 0.0:
+            raise ValueError("Average error minutes must be non-negative")
+        return v
+
+    @validator("total_predictions", "total_validations", "time_window_hours")
+    def validate_counts(cls, v):
+        """Validate counts are non-negative."""
+        if v < 0:
+            raise ValueError("Count values must be non-negative")
+        return v
+
+    @validator("trend_direction")
+    def validate_trend_direction(cls, v):
+        """Validate trend direction is valid."""
+        valid_trends = {"improving", "stable", "degrading"}
+        if v not in valid_trends:
+            raise ValueError(f"Trend direction must be one of: {', '.join(valid_trends)}")
+        return v
+
 
 class ManualRetrainRequest(BaseModel):
     """Request model for manual retraining."""
@@ -110,6 +153,33 @@ class ManualRetrainRequest(BaseModel):
     force: bool = Field(False, description="Force retrain even if not needed")
     strategy: str = Field("auto", pattern="^(auto|incremental|full|feature_refresh)$")
     reason: str = Field("manual_request", description="Reason for retraining")
+
+    @validator("room_id")
+    def validate_room_id(cls, v):
+        """Validate room_id exists in configuration."""
+        if v is not None:
+            # Import here to avoid circular dependency
+            from ..core.config import get_config
+            
+            config = get_config()
+            if v not in config.rooms:
+                raise ValueError(f"Room '{v}' not found in configuration")
+        return v
+
+    @validator("strategy")
+    def validate_strategy(cls, v):
+        """Validate strategy is supported."""
+        valid_strategies = {"auto", "incremental", "full", "feature_refresh"}
+        if v not in valid_strategies:
+            raise ValueError(f"Strategy must be one of: {', '.join(valid_strategies)}")
+        return v
+
+    @validator("reason")
+    def validate_reason(cls, v):
+        """Validate reason is not empty."""
+        if not v or not v.strip():
+            raise ValueError("Reason cannot be empty")
+        return v.strip()
 
 
 class SystemStatsResponse(BaseModel):
@@ -375,6 +445,18 @@ def create_app() -> FastAPI:
     # Exception handlers
     @app.exception_handler(APIError)
     async def api_error_handler(request: Request, exc: APIError):
+        # Log API errors with traceback for debugging
+        logger.error(
+            f"API Error: {exc.message}",
+            exc_info=True,
+            extra={
+                "request_id": getattr(request, "request_id", None),
+                "error_code": exc.error_code,
+                "context": exc.context,
+                "traceback": traceback.format_exc(),
+            },
+        )
+        
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ErrorResponse(
@@ -392,6 +474,19 @@ def create_app() -> FastAPI:
         if exc.severity in [ErrorSeverity.LOW, ErrorSeverity.MEDIUM]:
             status_code = status.HTTP_400_BAD_REQUEST
 
+        # Log system errors with full traceback
+        logger.error(
+            f"System Error: {exc.message}",
+            exc_info=True,
+            extra={
+                "request_id": getattr(request, "request_id", None),
+                "error_code": exc.error_code,
+                "severity": exc.severity.value if exc.severity else "unknown",
+                "context": exc.context,
+                "traceback": traceback.format_exc(),
+            },
+        )
+
         return JSONResponse(
             status_code=status_code,
             content=ErrorResponse(
@@ -405,13 +500,29 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(Exception)
     async def general_exception_handler(request: Request, exc: Exception):
-        logger.error(f"Unhandled exception in API: {exc}", exc_info=True)
+        # Log unhandled exceptions with full traceback
+        logger.error(
+            f"Unhandled exception in API: {exc}",
+            exc_info=True,
+            extra={
+                "request_id": getattr(request, "request_id", None),
+                "exception_type": type(exc).__name__,
+                "traceback": traceback.format_exc(),
+                "request_url": str(request.url),
+                "request_method": request.method,
+            },
+        )
+        
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ErrorResponse(
                 error="Internal server error",
                 error_code="UNHANDLED_EXCEPTION",
-                details={"exception_type": type(exc).__name__},
+                details={
+                    "exception_type": type(exc).__name__,
+                    "request_method": request.method,
+                    "request_url": str(request.url),
+                },
                 timestamp=datetime.now(),
                 request_id=getattr(request, "request_id", None),
             ).dict(),

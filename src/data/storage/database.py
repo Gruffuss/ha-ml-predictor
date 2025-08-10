@@ -10,7 +10,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 import logging
 import time
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 from sqlalchemy import event, text
 from sqlalchemy.exc import (
@@ -66,11 +66,14 @@ class DatabaseManager:
             "retry_count": 0,
         }
 
-        # Retry configuration
+        # Retry configuration with timedelta support
         self.max_retries = 5
         self.base_delay = 1.0  # Base delay in seconds
         self.max_delay = 60.0  # Maximum delay in seconds
         self.backoff_multiplier = 2.0
+        self.connection_timeout = timedelta(seconds=30)  # Connection timeout
+        self.query_timeout = timedelta(seconds=120)  # Query timeout
+        self.health_check_interval = timedelta(minutes=5)  # Health check interval
 
     async def initialize(self) -> None:
         """Initialize database engine and connection pool."""
@@ -97,7 +100,9 @@ class DatabaseManager:
         except Exception as e:
             await self._cleanup()
             raise DatabaseConnectionError(
-                connection_string=self.config.connection_string, cause=e
+                connection_string=self.config.connection_string, 
+                cause=e,
+                severity=ErrorSeverity.CRITICAL
             )
 
     async def _create_engine(self) -> None:
@@ -259,6 +264,7 @@ class DatabaseManager:
                     raise DatabaseConnectionError(
                         connection_string=self.config.connection_string,
                         cause=e,
+                        severity=ErrorSeverity.HIGH
                     )
 
                 # Exponential backoff
@@ -283,7 +289,11 @@ class DatabaseManager:
                     await session.rollback()
                     await session.close()
 
-                raise DatabaseQueryError(query="session_management", cause=e)
+                raise DatabaseQueryError(
+                    query="session_management", 
+                    cause=e,
+                    severity=ErrorSeverity.HIGH
+                )
 
             finally:
                 if session:
@@ -295,15 +305,17 @@ class DatabaseManager:
         parameters: Optional[Dict[str, Any]] = None,
         fetch_one: bool = False,
         fetch_all: bool = False,
+        timeout: Optional[timedelta] = None,
     ) -> Any:
         """
-        Execute a raw SQL query with error handling.
+        Execute a raw SQL query with advanced error handling and timeout.
 
         Args:
             query: SQL query to execute
             parameters: Query parameters
             fetch_one: Return single result
             fetch_all: Return all results
+            timeout: Query timeout (uses default if None)
 
         Returns:
             Query result or None
@@ -311,19 +323,269 @@ class DatabaseManager:
         Raises:
             DatabaseQueryError: If query execution fails
         """
+        query_timeout = timeout or self.query_timeout
+        
+        try:
+            # Execute with timeout using asyncio.wait_for (compatible with all Python versions)
+            async def _execute_query():
+                async with self.get_session() as session:
+                    result = await session.execute(text(query), parameters or {})
+
+                    if fetch_one:
+                        return result.fetchone()
+                    elif fetch_all:
+                        return result.fetchall()
+                    else:
+                        return result
+            
+            return await asyncio.wait_for(_execute_query(), timeout=query_timeout.total_seconds())
+
+        except SQLAlchemyError as e:
+            # Specific SQLAlchemy error handling
+            error_type = type(e).__name__
+            logger.error(f"SQLAlchemy error ({error_type}) in query: {str(e)}")
+            raise DatabaseQueryError(
+                query=query, 
+                parameters=parameters, 
+                cause=e,
+                error_type=error_type,
+                severity=ErrorSeverity.MEDIUM
+            )
+        except asyncio.TimeoutError as e:
+            logger.error(f"Query timeout after {query_timeout.total_seconds()}s: {query[:100]}...")
+            raise DatabaseQueryError(
+                query=query,
+                parameters=parameters,
+                cause=e,
+                error_type="TimeoutError",
+                severity=ErrorSeverity.HIGH
+            )
+        except Exception as e:
+            logger.error(f"Unexpected database error: {str(e)}")
+            raise DatabaseQueryError(
+                query=query, 
+                parameters=parameters, 
+                cause=e,
+                severity=ErrorSeverity.MEDIUM
+            )
+    
+    async def execute_optimized_query(
+        self,
+        query: str,
+        parameters: Optional[Dict[str, Any]] = None,
+        use_prepared_statement: bool = False,
+        enable_query_cache: bool = True,
+    ) -> Any:
+        """
+        Execute query with advanced optimization features.
+        
+        Args:
+            query: SQL query to execute
+            parameters: Query parameters
+            use_prepared_statement: Whether to use prepared statements
+            enable_query_cache: Whether to enable query plan caching
+            
+        Returns:
+            Query result
+        """
         try:
             async with self.get_session() as session:
-                result = await session.execute(text(query), parameters or {})
-
-                if fetch_one:
-                    return result.fetchone()
-                elif fetch_all:
-                    return result.fetchall()
+                # Enable query plan caching if requested
+                if enable_query_cache:
+                    await session.execute(text("SET plan_cache_mode = force_generic_plan"))
+                
+                # Prepare statement if requested (PostgreSQL specific)
+                if use_prepared_statement and parameters:
+                    # Create prepared statement name
+                    import hashlib
+                    statement_name = f"stmt_{hashlib.md5(query.encode()).hexdigest()[:8]}"
+                    
+                    try:
+                        # Prepare the statement
+                        prepare_query = f"PREPARE {statement_name} AS {query}"
+                        await session.execute(text(prepare_query))
+                        
+                        # Execute prepared statement
+                        param_values = [str(v) for v in parameters.values()]
+                        execute_query = f"EXECUTE {statement_name}({', '.join(['%s'] * len(param_values))})"
+                        result = await session.execute(text(execute_query), param_values)
+                        
+                        # Deallocate prepared statement
+                        await session.execute(text(f"DEALLOCATE {statement_name}"))
+                        
+                    except SQLAlchemyError as e:
+                        logger.warning(f"Prepared statement failed, falling back to regular query: {e}")
+                        result = await session.execute(text(query), parameters or {})
                 else:
-                    return result
-
+                    result = await session.execute(text(query), parameters or {})
+                
+                return result
+                
+        except SQLAlchemyError as e:
+            logger.error(f"Optimized query execution failed: {e}")
+            raise DatabaseQueryError(
+                query=query, 
+                parameters=parameters, 
+                cause=e,
+                severity=ErrorSeverity.MEDIUM
+            )
+    
+    async def analyze_query_performance(
+        self,
+        query: str,
+        parameters: Optional[Dict[str, Any]] = None,
+        include_execution_plan: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Analyze query performance and provide optimization suggestions.
+        
+        Args:
+            query: SQL query to analyze
+            parameters: Query parameters
+            include_execution_plan: Whether to include EXPLAIN ANALYZE results
+            
+        Returns:
+            Dictionary with performance analysis
+        """
+        analysis = {
+            "query": query[:200] + "..." if len(query) > 200 else query,
+            "parameters": parameters,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+        
+        try:
+            async with self.get_session() as session:
+                # Get execution plan
+                if include_execution_plan:
+                    explain_query = f"EXPLAIN (ANALYZE true, BUFFERS true, FORMAT json) {query}"
+                    
+                    try:
+                        result = await session.execute(text(explain_query), parameters or {})
+                        plan_data = result.fetchone()
+                        if plan_data:
+                            analysis["execution_plan"] = plan_data[0]
+                    except SQLAlchemyError as e:
+                        analysis["execution_plan_error"] = str(e)
+                
+                # Measure execution time
+                import time
+                start_time = time.time()
+                
+                try:
+                    await session.execute(text(query), parameters or {})
+                    execution_time = time.time() - start_time
+                    analysis["execution_time_seconds"] = execution_time
+                    
+                    # Performance assessment
+                    if execution_time < 0.1:
+                        analysis["performance_rating"] = "excellent"
+                    elif execution_time < 1.0:
+                        analysis["performance_rating"] = "good"
+                    elif execution_time < 5.0:
+                        analysis["performance_rating"] = "acceptable"
+                    else:
+                        analysis["performance_rating"] = "needs_optimization"
+                        
+                except SQLAlchemyError as e:
+                    analysis["execution_error"] = str(e)
+                
+                # Check for common performance issues
+                analysis["optimization_suggestions"] = self._get_optimization_suggestions(query)
+                
         except Exception as e:
-            raise DatabaseQueryError(query=query, parameters=parameters, cause=e)
+            analysis["analysis_error"] = str(e)
+            
+        return analysis
+    
+    def _get_optimization_suggestions(self, query: str) -> List[str]:
+        """Generate query optimization suggestions based on query analysis."""
+        suggestions = []
+        query_upper = query.upper()
+        
+        # Check for missing WHERE clauses on large tables
+        if "FROM SENSOR_EVENTS" in query_upper and "WHERE" not in query_upper:
+            suggestions.append("Add WHERE clause to filter sensor_events table")
+        
+        # Check for inefficient JOINs
+        if "JOIN" in query_upper and "ON" not in query_upper:
+            suggestions.append("Ensure JOINs have proper ON conditions")
+        
+        # Check for SELECT * usage
+        if "SELECT *" in query_upper:
+            suggestions.append("Specify explicit column names instead of SELECT *")
+        
+        # Check for ORDER BY without LIMIT
+        if "ORDER BY" in query_upper and "LIMIT" not in query_upper:
+            suggestions.append("Consider adding LIMIT clause with ORDER BY")
+        
+        # Check for potential N+1 queries
+        if query.count("SELECT") > 1:
+            suggestions.append("Consider using JOINs instead of multiple SELECT statements")
+            
+        return suggestions
+    
+    async def get_connection_pool_metrics(self) -> Dict[str, Any]:
+        """
+        Get detailed connection pool metrics using SQLAlchemy engine introspection.
+        
+        Returns:
+            Dictionary with connection pool statistics
+        """
+        metrics = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "pool_status": "unknown",
+            "connection_stats": self._connection_stats.copy(),
+        }
+        
+        if not self.engine:
+            metrics["error"] = "Database engine not initialized"
+            return metrics
+            
+        try:
+            pool = self.engine.pool
+            
+            # Basic pool metrics
+            metrics.update({
+                "pool_size": getattr(pool, '_pool_size', 0),
+                "checked_out": getattr(pool, '_checked_out', 0),
+                "overflow": getattr(pool, '_overflow', 0),
+                "invalid_count": getattr(pool, '_invalidated', 0),
+            })
+            
+            # Calculate pool utilization
+            total_connections = metrics["checked_out"] + metrics["overflow"]
+            if metrics["pool_size"] > 0:
+                metrics["utilization_percent"] = (total_connections / metrics["pool_size"]) * 100
+            else:
+                metrics["utilization_percent"] = 0
+                
+            # Pool health assessment
+            if metrics["utilization_percent"] < 50:
+                metrics["pool_status"] = "healthy"
+            elif metrics["utilization_percent"] < 80:
+                metrics["pool_status"] = "moderate"
+            else:
+                metrics["pool_status"] = "high_utilization"
+                
+            # Add recommendations
+            if metrics["pool_status"] == "high_utilization":
+                metrics["recommendations"] = [
+                    "Consider increasing pool_size",
+                    "Check for connection leaks",
+                    "Optimize long-running queries"
+                ]
+            elif metrics["invalid_count"] > 0:
+                metrics["recommendations"] = [
+                    "Check database connectivity",
+                    "Review connection timeout settings"
+                ]
+            else:
+                metrics["recommendations"] = ["Pool operating normally"]
+                
+        except Exception as e:
+            metrics["error"] = f"Failed to get pool metrics: {str(e)}"
+            
+        return metrics
 
     async def health_check(self) -> Dict[str, Any]:
         """
@@ -461,16 +723,17 @@ class DatabaseManager:
         return health_status
 
     async def _health_check_loop(self) -> None:
-        """Background task for periodic health checks."""
+        """Background task for periodic health checks using configurable interval."""
         while True:
             try:
-                await asyncio.sleep(300)  # Check every 5 minutes
+                await asyncio.sleep(self.health_check_interval.total_seconds())
                 await self.health_check()
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Health check loop error: {e}")
-                await asyncio.sleep(60)  # Wait 1 minute before retry
+                # Wait 1 minute before retry on error
+                await asyncio.sleep(60)
 
     async def close(self) -> None:
         """Close database connections and cleanup resources."""

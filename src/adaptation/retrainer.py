@@ -7,6 +7,7 @@ degradation, concept drift detection, and predictive performance monitoring.
 
 import asyncio
 from collections import defaultdict, deque
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 import logging
@@ -73,55 +74,110 @@ class RetrainingRequest:
     # Trigger context
     accuracy_metrics: Optional[AccuracyMetrics] = None
     drift_metrics: Optional[DriftMetrics] = None
-    performance_degradation: Optional[Dict[str, float]] = None
+    performance_degradation: Optional[Dict[str, float]] = field(default_factory=dict)
 
-    # Retraining configuration
-    lookback_days: int = 14
-    validation_split: float = 0.2
-    feature_refresh: bool = True
+    # Retraining configuration with complex defaults
+    retraining_parameters: Dict[str, Any] = field(default_factory=lambda: {
+        "lookback_days": 14,
+        "validation_split": 0.2,
+        "feature_refresh": True,
+        "max_training_time_minutes": 60,
+        "early_stopping_patience": 10,
+        "min_improvement_threshold": 0.01
+    })
+    
+    # Advanced configuration options
+    model_hyperparameters: Dict[str, Any] = field(default_factory=dict)
+    feature_engineering_config: Dict[str, Any] = field(default_factory=dict)
+    validation_strategy: List[str] = field(default_factory=lambda: ["time_series_split", "holdout"])
 
     # Status tracking
     status: RetrainingStatus = RetrainingStatus.PENDING
     started_time: Optional[datetime] = None
     completed_time: Optional[datetime] = None
     error_message: Optional[str] = None
+    
+    # Advanced tracking fields
+    execution_log: List[str] = field(default_factory=list)
+    resource_usage_log: List[Dict[str, float]] = field(default_factory=list)
+    checkpoint_data: Dict[str, Any] = field(default_factory=dict)
 
-    # Results
+    # Results with complex structure
     training_result: Optional[TrainingResult] = None
-    performance_improvement: Optional[Dict[str, float]] = None
-    prediction_results: Optional[List[PredictionResult]] = (
-        None  # Store prediction test results
-    )
+    performance_improvement: Optional[Dict[str, float]] = field(default_factory=dict)
+    prediction_results: Optional[List[PredictionResult]] = field(default_factory=list)
+    validation_metrics: Dict[str, float] = field(default_factory=dict)
+    
+    # Legacy compatibility fields
+    lookback_days: int = field(init=False)
+    validation_split: float = field(init=False)
+    feature_refresh: bool = field(init=False)
+    
+    def __post_init__(self):
+        """Initialize legacy fields from retraining_parameters for backward compatibility."""
+        params = self.retraining_parameters
+        self.lookback_days = params.get("lookback_days", 14)
+        self.validation_split = params.get("validation_split", 0.2)
+        self.feature_refresh = params.get("feature_refresh", True)
 
     def __lt__(self, other):
         """Priority queue comparison - higher priority first."""
         return self.priority > other.priority
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
+        """Convert retraining request to dictionary for API responses and serialization."""
         return {
             "request_id": self.request_id,
             "room_id": self.room_id,
-            "model_type": self.model_type.value,
+            "model_type": self.model_type.value if isinstance(self.model_type, ModelType) else str(self.model_type),
             "trigger": self.trigger.value,
             "strategy": self.strategy.value,
             "priority": self.priority,
-            "created_time": self.created_time.isoformat(),
+            "created_time": self.created_time.isoformat() if self.created_time else None,
             "status": self.status.value,
-            "started_time": (
-                self.started_time.isoformat() if self.started_time else None
-            ),
-            "completed_time": (
-                self.completed_time.isoformat() if self.completed_time else None
-            ),
+            "started_time": self.started_time.isoformat() if self.started_time else None,
+            "completed_time": self.completed_time.isoformat() if self.completed_time else None,
             "error_message": self.error_message,
+            
+            # Complex field data
+            "performance_degradation": dict(self.performance_degradation),
+            "retraining_parameters": dict(self.retraining_parameters),
+            "model_hyperparameters": dict(self.model_hyperparameters),
+            "feature_engineering_config": dict(self.feature_engineering_config),
+            "validation_strategy": list(self.validation_strategy),
+            "execution_log": list(self.execution_log),
+            "resource_usage_log": list(self.resource_usage_log),
+            "checkpoint_data": dict(self.checkpoint_data),
+            "performance_improvement": dict(self.performance_improvement),
+            "validation_metrics": dict(self.validation_metrics),
+            
+            # Metadata
+            "accuracy_metrics": self.accuracy_metrics.to_dict() if self.accuracy_metrics else None,
+            "drift_metrics": self.drift_metrics.to_dict() if self.drift_metrics else None,
+            "training_result": (
+                {
+                    "success": self.training_result.success,
+                    "model_path": self.training_result.model_path,
+                    "metrics": self.training_result.metrics,
+                    "training_time_seconds": self.training_result.training_time_seconds,
+                }
+                if self.training_result
+                else None
+            ),
+            "prediction_results": [
+                {
+                    "room_id": result.room_id,
+                    "predicted_time": result.predicted_time.isoformat() if result.predicted_time else None,
+                    "confidence": result.confidence,
+                    "alternatives": result.alternatives,
+                }
+                for result in (self.prediction_results or [])
+            ],
+            
+            # Legacy compatibility
             "lookback_days": self.lookback_days,
             "validation_split": self.validation_split,
             "feature_refresh": self.feature_refresh,
-            "performance_improvement": self.performance_improvement,
-            "prediction_results_count": (
-                len(self.prediction_results) if self.prediction_results else 0
-            ),
         }
 
 

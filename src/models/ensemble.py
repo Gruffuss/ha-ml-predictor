@@ -584,6 +584,7 @@ class OccupancyEnsemble(BasePredictor):
         else:
             # Default to linear regression
             from sklearn.linear_model import LinearRegression
+from typing import Any, Dict, List, Optional
 
             self.meta_learner = LinearRegression()
 

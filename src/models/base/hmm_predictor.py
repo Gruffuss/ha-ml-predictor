@@ -544,6 +544,7 @@ class HMMPredictor(BasePredictor):
     ):
         """Train duration prediction models for each state."""
         from sklearn.linear_model import LinearRegression
+from typing import Any, Dict, List, Optional
 
         self.transition_models = {}
 

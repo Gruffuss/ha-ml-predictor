@@ -12,7 +12,7 @@ Usage:
 import asyncio
 from datetime import datetime
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from ..core.config import get_config
 from .discovery_publisher import EntityCategory, EntityState

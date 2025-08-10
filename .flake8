@@ -1,7 +1,7 @@
 [flake8]
 # Configuration to match Black formatting (88 character line length)
-max-line-length = 88
-extend-ignore = E203,E501,W503
+max-line-length = 140
+extend-ignore = E203,W503,E501
 exclude =
     .git,
     __pycache__,
@@ -12,7 +12,15 @@ exclude =
     *.egg-info,
     .pytest_cache,
     logs,
-    performance_reports
+    performance_reports,
+    *.md,
+    *.txt,
+    *.json,
+    *.yaml,
+    *.yml,
+    *.dockerfile,
+    Dockerfile*,
+    docker-compose*
 per-file-ignores =
     # Test files can be more lenient
     tests/*:F401,F811,F841

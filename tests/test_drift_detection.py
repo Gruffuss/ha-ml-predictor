@@ -24,6 +24,7 @@ from src.adaptation.drift_detector import (
     FeatureDriftResult,
     StatisticalTest,
 )
+from src.core.exceptions import OccupancyPredictionError
 from src.adaptation.validator import (
     AccuracyMetrics,
     PredictionValidator,

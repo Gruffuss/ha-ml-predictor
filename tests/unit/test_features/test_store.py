@@ -771,6 +771,7 @@ class TestFeatureStore:
         """Test that caching doesn't cause memory leaks."""
         import gc
         import sys
+from typing import List
 
         gc.collect()
         initial_size = sys.getsizeof(store.cache)

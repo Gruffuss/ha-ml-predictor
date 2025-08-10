@@ -79,12 +79,18 @@ class RateLimiter:
             if len(self.requests) >= self.max_requests:
                 # Calculate wait time
                 oldest_request = min(self.requests)
-                wait_time = self.window_seconds - (now - oldest_request).total_seconds()
-                if wait_time > 0:
+                wait_time_seconds = self.window.total_seconds() - (now - oldest_request).total_seconds()
+                if wait_time_seconds > 0:
                     logger.warning(
-                        f"Rate limit reached, waiting {wait_time:.2f} seconds"
+                        f"Rate limit reached, waiting {wait_time_seconds:.2f} seconds"
                     )
-                    await asyncio.sleep(wait_time)
+                    # Raise specific rate limit exception for proper error handling
+                    raise RateLimitExceededError(
+                        resource="home_assistant_api",
+                        wait_time=wait_time_seconds,
+                        requests_per_window=self.max_requests,
+                        window_seconds=self.window.total_seconds()
+                    )
 
             self.requests.append(now)
 
@@ -185,9 +191,11 @@ class HomeAssistantClient:
             self.session = None
 
     async def _test_authentication(self):
-        """Test if authentication is working."""
+        """Test if authentication is working using proper URL construction."""
         try:
-            async with self.session.get(f"{self.ha_config.url}/api/") as response:
+            # Use urljoin for proper URL construction
+            api_url = urljoin(self.ha_config.url, "/api/")
+            async with self.session.get(api_url) as response:
                 if response.status == 401:
                     raise HomeAssistantAuthenticationError(
                         self.ha_config.url, len(self.ha_config.token)
@@ -305,11 +313,19 @@ class HomeAssistantClient:
             if self._subscribed_entities and entity_id not in self._subscribed_entities:
                 return
 
-            # Create HAEvent
+            # Extract and validate state using SensorState constants
+            current_state = new_state.get("state", "")
+            previous_state = old_state.get("state") if old_state else None
+            
+            # Validate states using SensorState enum
+            validated_current_state = self._validate_and_normalize_state(current_state)
+            validated_previous_state = self._validate_and_normalize_state(previous_state) if previous_state else None
+            
+            # Create HAEvent with validated states
             ha_event = HAEvent(
                 entity_id=entity_id,
-                state=new_state.get("state", ""),
-                previous_state=old_state.get("state") if old_state else None,
+                state=validated_current_state,
+                previous_state=validated_previous_state,
                 timestamp=datetime.fromisoformat(
                     new_state.get("last_changed", "").replace("Z", "+00:00")
                 ),
@@ -323,6 +339,58 @@ class HomeAssistantClient:
 
         except Exception as e:
             logger.error(f"Error handling event: {e}")
+    
+    def _validate_and_normalize_state(self, state: str) -> str:
+        """
+        Validate and normalize sensor state using SensorState constants.
+        
+        Args:
+            state: Raw state from Home Assistant
+            
+        Returns:
+            Validated and normalized state string
+        """
+        if not state:
+            return ""
+        
+        # Normalize state to lowercase for consistent comparison
+        normalized_state = state.lower().strip()
+        
+        # Map common Home Assistant states to SensorState values
+        state_mapping = {
+            "on": SensorState.ON.value,
+            "off": SensorState.OFF.value,
+            "open": SensorState.OPEN.value,
+            "closed": SensorState.CLOSED.value,
+            "detected": SensorState.DETECTED.value,
+            "clear": SensorState.CLEAR.value,
+            "unavailable": SensorState.UNAVAILABLE.value,
+            "unknown": SensorState.UNKNOWN.value,
+        }
+        
+        # Try exact match first
+        if normalized_state in state_mapping:
+            return state_mapping[normalized_state]
+        
+        # Try partial matches for common variations
+        if "on" in normalized_state or "active" in normalized_state:
+            return SensorState.ON.value
+        elif "off" in normalized_state or "inactive" in normalized_state:
+            return SensorState.OFF.value
+        elif "open" in normalized_state:
+            return SensorState.OPEN.value
+        elif "closed" in normalized_state or "close" in normalized_state:
+            return SensorState.CLOSED.value
+        elif "detect" in normalized_state or "motion" in normalized_state:
+            return SensorState.DETECTED.value
+        elif "clear" in normalized_state or "no" in normalized_state:
+            return SensorState.CLEAR.value
+        elif "unavailable" in normalized_state:
+            return SensorState.UNAVAILABLE.value
+        
+        # If no match found, log warning and return original normalized state
+        logger.debug(f"Unknown sensor state '{state}', using as-is")
+        return normalized_state
 
     def _should_process_event(self, event: HAEvent) -> bool:
         """Check if event should be processed (deduplication)."""
@@ -424,14 +492,30 @@ class HomeAssistantClient:
             self._event_handlers.remove(handler)
 
     async def get_entity_state(self, entity_id: str) -> Optional[Dict[str, Any]]:
-        """Get current state of an entity."""
-        await self.rate_limiter.acquire()
+        """Get current state of an entity with rate limiting and proper URL construction."""
+        try:
+            await self.rate_limiter.acquire()
+        except RateLimitExceededError:
+            # If rate limited, wait and retry once
+            logger.warning("Rate limited, retrying entity state request")
+            await asyncio.sleep(1)
+            await self.rate_limiter.acquire()
 
         try:
-            url = f"{self.ha_config.url}/api/states/{entity_id}"
+            # Use urljoin for proper URL construction
+            url = urljoin(self.ha_config.url, f"/api/states/{entity_id}")
             async with self.session.get(url) as response:
                 if response.status == 404:
                     return None
+                elif response.status == 429:
+                    # Handle rate limiting from HA server
+                    retry_after = int(response.headers.get('Retry-After', 60))
+                    raise RateLimitExceededError(
+                        resource="home_assistant_api",
+                        wait_time=retry_after,
+                        requests_per_window=self.rate_limiter.max_requests,
+                        window_seconds=self.rate_limiter.window.total_seconds()
+                    )
                 elif response.status != 200:
                     raise HomeAssistantAPIError(
                         f"/api/states/{entity_id}",
@@ -439,7 +523,16 @@ class HomeAssistantClient:
                         await response.text(),
                         "GET",
                     )
-                return await response.json()
+                
+                # Validate response data
+                data = await response.json()
+                if data and "state" in data:
+                    # Normalize the state in the response
+                    data["state"] = self._validate_and_normalize_state(data["state"])
+                
+                return data
+        except RateLimitExceededError:
+            raise  # Re-raise rate limit errors
         except aiohttp.ClientError as e:
             raise HomeAssistantConnectionError(self.ha_config.url, cause=e)
 
@@ -471,22 +564,44 @@ class HomeAssistantClient:
         }
 
         try:
-            url = f"{self.ha_config.url}/api/history/period/{start_time.isoformat()}Z"
+            # Use urljoin for proper URL construction
+            history_path = f"/api/history/period/{start_time.isoformat()}Z"
+            url = urljoin(self.ha_config.url, history_path)
+            
             async with self.session.get(url, params=params) as response:
                 if response.status == 404:
                     raise EntityNotFoundError(entity_id)
+                elif response.status == 429:
+                    # Handle rate limiting from HA server
+                    retry_after = int(response.headers.get('Retry-After', 60))
+                    raise RateLimitExceededError(
+                        resource="home_assistant_history_api",
+                        wait_time=retry_after,
+                        requests_per_window=self.rate_limiter.max_requests,
+                        window_seconds=self.rate_limiter.window.total_seconds()
+                    )
                 elif response.status != 200:
                     raise HomeAssistantAPIError(
-                        f"/api/history/period/{start_time.isoformat()}Z",
+                        history_path,
                         response.status,
                         await response.text(),
                         "GET",
                     )
 
                 data = await response.json()
-                # Home Assistant returns a list of lists, we want the first (and typically only) list
-                return data[0] if data and len(data) > 0 else []
+                
+                # Validate and normalize states in historical data
+                if data and isinstance(data, list) and len(data) > 0:
+                    historical_records = data[0]
+                    for record in historical_records:
+                        if "state" in record:
+                            record["state"] = self._validate_and_normalize_state(record["state"])
+                    return historical_records
+                
+                return []
 
+        except RateLimitExceededError:
+            raise  # Re-raise rate limit errors
         except aiohttp.ClientError as e:
             raise HomeAssistantConnectionError(self.ha_config.url, cause=e)
 
@@ -527,6 +642,19 @@ class HomeAssistantClient:
                     # Small delay between requests to be nice to HA
                     await asyncio.sleep(0.1)
 
+                except RateLimitExceededError as e:
+                    # Handle rate limiting gracefully in bulk operations
+                    logger.warning(f"Rate limited during bulk history fetch, waiting {e.wait_time}s")
+                    await asyncio.sleep(e.wait_time)
+                    # Retry the request once
+                    try:
+                        history = await self.get_entity_history(
+                            entity_id, start_time, end_time
+                        )
+                        batch_results.extend(history)
+                    except Exception as retry_e:
+                        logger.error(f"Retry failed for {entity_id}: {retry_e}")
+                        continue
                 except EntityNotFoundError:
                     logger.warning(f"Entity {entity_id} not found, skipping")
                     continue

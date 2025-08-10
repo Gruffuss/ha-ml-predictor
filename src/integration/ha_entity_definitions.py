@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 from enum import Enum, auto
 import json
 import logging
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from ..core.config import MQTTConfig, RoomConfig, TrackingConfig
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError

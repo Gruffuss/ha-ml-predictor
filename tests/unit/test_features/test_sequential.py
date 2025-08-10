@@ -7,6 +7,7 @@ room transitions, velocity analysis, and human vs cat classification.
 
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
+import math
 from typing import Any, Dict, List, Optional
 from unittest.mock import MagicMock, Mock, patch
 
@@ -575,7 +576,6 @@ class TestSequentialFeatureExtractor:
         expected_diversity = expected_entropy / max_entropy
 
         # Check diversity calculation accuracy
-        import math
 
         assert abs(features["sensor_diversity_score"] - expected_diversity) < 0.01
 

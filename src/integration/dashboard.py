@@ -49,7 +49,7 @@ except ImportError:
     uvicorn = None
 
 # Defer imports to prevent circular dependency
-from typing import TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple
 
 from ..adaptation.drift_detector import (
     ConceptDriftDetector,

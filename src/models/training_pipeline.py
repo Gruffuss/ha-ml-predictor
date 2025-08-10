@@ -14,6 +14,7 @@ from enum import Enum
 import logging
 from pathlib import Path
 import pickle
+from typing import Any, Callable, Dict, List, Optional, Tuple
 import uuid
 
 import numpy as np
@@ -22,7 +23,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import TimeSeriesSplit
 
 from ..core.constants import ModelType
-from ..core.exceptions import ModelTrainingError, OccupancyPredictionError
+from ..core.exceptions import ErrorSeverity, ModelTrainingError, OccupancyPredictionError
 from ..features.engineering import FeatureEngineeringEngine
 from ..features.store import FeatureStore
 from .base.predictor import BasePredictor, TrainingResult
@@ -111,6 +112,11 @@ class TrainingConfig:
     min_accuracy_threshold: float = 0.6  # Minimum R² score
     max_error_threshold_minutes: float = 30.0  # Maximum acceptable MAE
     enable_data_quality_checks: bool = True
+    
+    # Callback functions for training progress and optimization
+    optimization_callback: Optional[Callable[[Dict[str, Any]], None]] = None
+    training_progress_callback: Optional[Callable[[TrainingStage, Dict[str, Any]], None]] = None
+    model_validation_callback: Optional[Callable[[str, Dict[str, float]], None]] = None
 
 
 @dataclass
@@ -913,53 +919,233 @@ class ModelTrainingPipeline:
         Tuple[pd.DataFrame, pd.DataFrame],
         Tuple[pd.DataFrame, pd.DataFrame],
     ]:
-        """Split data into training, validation, and test sets."""
+        """Split data into training, validation, and test sets using various strategies."""
         try:
             logger.debug("Splitting data for training, validation, and testing")
 
             total_samples = len(features_df)
-
-            # Calculate split indices (time-aware for temporal data)
-            test_size = int(total_samples * self.config.test_split)
-            val_size = int(total_samples * self.config.validation_split)
-            train_size = total_samples - test_size - val_size
-
-            # Use TimeSeriesSplit for proper temporal validation
-            tscv = TimeSeriesSplit(n_splits=3, test_size=val_size)
-
-            # Get the last split for training/validation
-            splits = list(tscv.split(features_df))
-            train_idx, val_idx = splits[-1]  # Use the last split
-
-            # Create training and validation sets using TimeSeriesSplit
-            train_features = features_df.iloc[train_idx]
-            train_targets = targets_df.iloc[train_idx]
-
-            val_features = features_df.iloc[val_idx]
-            val_targets = targets_df.iloc[val_idx]
-
-            # Create test set from the end (traditional approach)
-            test_features = features_df.iloc[train_size + val_size :]
-            test_targets = targets_df.iloc[train_size + val_size :]
-
-            # Update progress with split information
-            progress.training_samples = len(train_features)
-            progress.validation_samples = len(val_features)
-            progress.test_samples = len(test_features)
-
-            logger.debug(
-                f"Data split: train={train_size}, val={val_size}, test={test_size}"
+            
+            # Validate minimum samples
+            if total_samples < 20:
+                raise OccupancyPredictionError(
+                message=f"Insufficient samples ({total_samples}) for reliable training",
+                error_code="INSUFFICIENT_TRAINING_SAMPLES",
+                context={"total_samples": total_samples, "minimum_required": 20},
+                severity=ErrorSeverity.HIGH
             )
 
-            return (
-                (train_features, train_targets),
-                (val_features, val_targets),
-                (test_features, test_targets),
-            )
+            # Apply validation strategy
+            if self.config.validation_strategy == ValidationStrategy.TIME_SERIES_SPLIT:
+                return await self._time_series_split(features_df, targets_df, progress)
+            elif self.config.validation_strategy == ValidationStrategy.EXPANDING_WINDOW:
+                return await self._expanding_window_split(features_df, targets_df, progress)
+            elif self.config.validation_strategy == ValidationStrategy.ROLLING_WINDOW:
+                return await self._rolling_window_split(features_df, targets_df, progress)
+            elif self.config.validation_strategy == ValidationStrategy.HOLDOUT:
+                return await self._holdout_split(features_df, targets_df, progress)
+            else:
+                # Default to time series split
+                return await self._time_series_split(features_df, targets_df, progress)
 
         except Exception as e:
             logger.error(f"Data splitting failed: {e}")
-            raise ModelTrainingError(f"Data splitting failed: {str(e)}")
+            raise OccupancyPredictionError(
+                message=f"Data splitting failed: {str(e)}",
+                error_code="TRAINING_DATA_SPLIT_ERROR",
+                context={"total_samples": total_samples, "validation_strategy": str(self.config.validation_strategy)},
+                severity=ErrorSeverity.HIGH,
+                cause=e
+            )
+    
+    async def _time_series_split(
+        self,
+        features_df: pd.DataFrame,
+        targets_df: pd.DataFrame,
+        progress: TrainingProgress,
+    ) -> Tuple[
+        Tuple[pd.DataFrame, pd.DataFrame],
+        Tuple[pd.DataFrame, pd.DataFrame],
+        Tuple[pd.DataFrame, pd.DataFrame],
+    ]:
+        """Split data using TimeSeriesSplit for proper temporal validation."""
+        total_samples = len(features_df)
+        
+        # Calculate split sizes
+        test_size = max(1, int(total_samples * self.config.test_split))
+        val_size = max(1, int(total_samples * self.config.validation_split))
+        
+        # Use TimeSeriesSplit for cross-validation setup
+        n_splits = min(self.config.cv_folds, 5)  # Limit to reasonable number
+        tscv = TimeSeriesSplit(n_splits=n_splits, test_size=val_size)
+        
+        # Get the last split for final training/validation
+        splits = list(tscv.split(features_df))
+        if not splits:
+            raise OccupancyPredictionError(
+                message="TimeSeriesSplit produced no splits - data may be too small or improperly formatted",
+                error_code="TIMESERIES_SPLIT_FAILED",
+                context={"n_splits": n_splits, "test_size": val_size, "data_length": total_samples},
+                severity=ErrorSeverity.HIGH
+            )
+            
+        train_idx, val_idx = splits[-1]  # Use the last split
+        
+        # Create training and validation sets
+        train_features = features_df.iloc[train_idx]
+        train_targets = targets_df.iloc[train_idx]
+        val_features = features_df.iloc[val_idx]
+        val_targets = targets_df.iloc[val_idx]
+        
+        # Create test set from the end (most recent data)
+        test_features = features_df.iloc[-test_size:]
+        test_targets = targets_df.iloc[-test_size:]
+        
+        # Update progress
+        progress.training_samples = len(train_features)
+        progress.validation_samples = len(val_features)
+        progress.test_samples = len(test_features)
+        
+        logger.debug(f"TimeSeriesSplit - train: {len(train_features)}, val: {len(val_features)}, test: {len(test_features)}")
+        
+        return (
+            (train_features, train_targets),
+            (val_features, val_targets),
+            (test_features, test_targets),
+        )
+    
+    async def _expanding_window_split(
+        self,
+        features_df: pd.DataFrame,
+        targets_df: pd.DataFrame,
+        progress: TrainingProgress,
+    ) -> Tuple[
+        Tuple[pd.DataFrame, pd.DataFrame],
+        Tuple[pd.DataFrame, pd.DataFrame],
+        Tuple[pd.DataFrame, pd.DataFrame],
+    ]:
+        """Split data using expanding window validation."""
+        total_samples = len(features_df)
+        
+        # Test set is always the last portion
+        test_size = max(1, int(total_samples * self.config.test_split))
+        remaining_samples = total_samples - test_size
+        
+        # Validation set size
+        val_size = max(1, int(remaining_samples * 0.2))  # 20% of remaining
+        train_size = remaining_samples - val_size
+        
+        # Create splits
+        train_features = features_df.iloc[:train_size]
+        train_targets = targets_df.iloc[:train_size]
+        
+        val_features = features_df.iloc[train_size:train_size + val_size]
+        val_targets = targets_df.iloc[train_size:train_size + val_size]
+        
+        test_features = features_df.iloc[-test_size:]
+        test_targets = targets_df.iloc[-test_size:]
+        
+        # Update progress
+        progress.training_samples = len(train_features)
+        progress.validation_samples = len(val_features)
+        progress.test_samples = len(test_features)
+        
+        logger.debug(f"Expanding window split - train: {len(train_features)}, val: {len(val_features)}, test: {len(test_features)}")
+        
+        return (
+            (train_features, train_targets),
+            (val_features, val_targets),
+            (test_features, test_targets),
+        )
+    
+    async def _rolling_window_split(
+        self,
+        features_df: pd.DataFrame,
+        targets_df: pd.DataFrame,
+        progress: TrainingProgress,
+    ) -> Tuple[
+        Tuple[pd.DataFrame, pd.DataFrame],
+        Tuple[pd.DataFrame, pd.DataFrame],
+        Tuple[pd.DataFrame, pd.DataFrame],
+    ]:
+        """Split data using rolling window validation."""
+        total_samples = len(features_df)
+        
+        # Calculate window sizes
+        test_size = max(1, int(total_samples * self.config.test_split))
+        val_size = max(1, int(total_samples * self.config.validation_split))
+        train_size = max(1, int(total_samples * 0.6))  # Fixed training window
+        
+        # Position windows at the end of the data
+        test_start = total_samples - test_size
+        val_start = test_start - val_size
+        train_start = val_start - train_size
+        
+        # Ensure we don't go below 0
+        train_start = max(0, train_start)
+        
+        # Create splits
+        train_features = features_df.iloc[train_start:val_start]
+        train_targets = targets_df.iloc[train_start:val_start]
+        
+        val_features = features_df.iloc[val_start:test_start]
+        val_targets = targets_df.iloc[val_start:test_start]
+        
+        test_features = features_df.iloc[test_start:]
+        test_targets = targets_df.iloc[test_start:]
+        
+        # Update progress
+        progress.training_samples = len(train_features)
+        progress.validation_samples = len(val_features)
+        progress.test_samples = len(test_features)
+        
+        logger.debug(f"Rolling window split - train: {len(train_features)}, val: {len(val_features)}, test: {len(test_features)}")
+        
+        return (
+            (train_features, train_targets),
+            (val_features, val_targets),
+            (test_features, test_targets),
+        )
+    
+    async def _holdout_split(
+        self,
+        features_df: pd.DataFrame,
+        targets_df: pd.DataFrame,
+        progress: TrainingProgress,
+    ) -> Tuple[
+        Tuple[pd.DataFrame, pd.DataFrame],
+        Tuple[pd.DataFrame, pd.DataFrame],
+        Tuple[pd.DataFrame, pd.DataFrame],
+    ]:
+        """Split data using simple holdout validation."""
+        total_samples = len(features_df)
+        
+        # Calculate split indices
+        test_size = max(1, int(total_samples * self.config.test_split))
+        val_size = max(1, int(total_samples * self.config.validation_split))
+        train_size = total_samples - test_size - val_size
+        
+        # Create splits (sequential for temporal data)
+        train_features = features_df.iloc[:train_size]
+        train_targets = targets_df.iloc[:train_size]
+        
+        val_features = features_df.iloc[train_size:train_size + val_size]
+        val_targets = targets_df.iloc[train_size:train_size + val_size]
+        
+        test_features = features_df.iloc[train_size + val_size:]
+        test_targets = targets_df.iloc[train_size + val_size:]
+        
+        # Update progress
+        progress.training_samples = len(train_features)
+        progress.validation_samples = len(val_features)
+        progress.test_samples = len(test_features)
+        
+        logger.debug(f"Holdout split - train: {len(train_features)}, val: {len(val_features)}, test: {len(test_features)}")
+        
+        return (
+            (train_features, train_targets),
+            (val_features, val_targets),
+            (test_features, test_targets),
+        )
 
     async def _train_models(
         self,
@@ -1553,3 +1739,5 @@ class ModelTrainingPipeline:
         except Exception as e:
             logger.error(f"Model comparison failed: {e}")
             return {"error": str(e)}
+    
+    def _is_valid_model_type(self, model_type: str) -> bool:\n        \"\"\"Validate model type using ModelType enum.\"\"\"\n        try:\n            # Check if model_type is a valid ModelType enum value\n            valid_types = [mt.value for mt in ModelType]\n            return model_type.lower() in [vt.lower() for vt in valid_types]\n        except Exception as e:\n            logger.error(f\"Model type validation failed: {e}\")\n            return False\n    \n    async def _create_model_instance(self, model_type: str, room_id: str) -> Optional[BasePredictor]:\n        \"\"\"Create model instance based on model type with validation.\"\"\"\n        try:\n            if model_type == \"ensemble\":\n                return OccupancyEnsemble(\n                    room_id=room_id,\n                    tracking_manager=self.tracking_manager,\n                )\n            else:\n                # Import base model classes dynamically to avoid circular imports\n                if model_type.lower() == \"lstm\":\n                    from .base.lstm_predictor import LSTMPredictor\n                    return LSTMPredictor(room_id=room_id, tracking_manager=self.tracking_manager)\n                elif model_type.lower() == \"xgboost\":\n                    from .base.xgboost_predictor import XGBoostPredictor\n                    return XGBoostPredictor(room_id=room_id, tracking_manager=self.tracking_manager)\n                elif model_type.lower() == \"hmm\":\n                    from .base.hmm_predictor import HMMPredictor\n                    return HMMPredictor(room_id=room_id, tracking_manager=self.tracking_manager)\n                elif model_type.lower() == \"gp\" or model_type.lower() == \"gaussian_process\":\n                    from .base.gp_predictor import GaussianProcessPredictor\n                    return GaussianProcessPredictor(room_id=room_id, tracking_manager=self.tracking_manager)\n                else:\n                    logger.error(f\"Unsupported model type: {model_type}\")\n                    return None\n                    \n        except ImportError as e:\n            logger.error(f\"Failed to import model class for {model_type}: {e}\")\n            return None\n        except Exception as e:\n            logger.error(f\"Failed to create model instance for {model_type}: {e}\")\n            return None\n    \n    def _invoke_callback_if_configured(self, callback_name: str, *args, **kwargs):\n        \"\"\"Invoke callback function if configured in training config.\"\"\"\n        try:\n            callback = getattr(self.config, callback_name, None)\n            if callback and callable(callback):\n                callback(*args, **kwargs)\n        except Exception as e:\n            logger.warning(f\"Callback {callback_name} execution failed: {e}\")

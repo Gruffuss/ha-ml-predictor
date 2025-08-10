@@ -1,0 +1,317 @@
+examples/deprecated\comprehensive_ha_integration_example.py:149:25: F541 f-string is missing placeholders
+examples/deprecated\example_database_usage.py:23:1: E402 module level import not at top of file
+examples/deprecated\example_database_usage.py:243:23: W291 trailing whitespace
+examples/deprecated\example_database_usage.py:249:35: W291 trailing whitespace
+examples/deprecated\example_realtime_integration.py:251:29: F541 f-string is missing placeholders
+examples/deprecated\example_realtime_integration.py:365:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:368:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:376:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:381:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:390:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:393:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:401:1: W293 blank line contains whitespace
+examples/deprecated\system_integration_example.py:148:21: F541 f-string is missing placeholders
+examples/drift_detection_example.py:18:1: E402 module level import not at top of file
+examples/drift_detection_example.py:19:1: E402 module level import not at top of file
+examples/drift_detection_example.py:20:1: E402 module level import not at top of file
+examples/drift_detection_example.py:160:11: F541 f-string is missing placeholders
+examples/drift_detection_example.py:174:15: F541 f-string is missing placeholders
+examples/drift_detection_example.py:178:15: F541 f-string is missing placeholders
+examples/drift_detection_example.py:182:15: F541 f-string is missing placeholders
+examples/drift_detection_example.py:188:11: F541 f-string is missing placeholders
+examples/drift_detection_example.py:196:11: F541 f-string is missing placeholders
+examples/drift_detection_example.py:201:11: F541 f-string is missing placeholders
+examples/drift_detection_example.py:250:21: F541 f-string is missing placeholders
+examples/drift_detection_example.py:257:21: F541 f-string is missing placeholders
+examples/monitoring_system_integration.py:17:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:19:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:22:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:23:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:24:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:25:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:26:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:27:1: E402 module level import not at top of file
+examples/websocket_api_client.py:9:1: W293 blank line contains whitespace
+examples/websocket_api_client.py:365:25: F541 f-string is missing placeholders
+examples/websocket_api_client.py:374:21: F541 f-string is missing placeholders
+examples/websocket_api_client.py:391:13: F541 f-string is missing placeholders
+examples/websocket_api_client.py:444:24: F541 f-string is missing placeholders
+scripts/environment-manager.py:17:1: E402 module level import not at top of file
+scripts/environment-manager.py:18:1: E402 module level import not at top of file
+scripts/environment-manager.py:19:1: E402 module level import not at top of file
+scripts/setup_database.py:23:1: E402 module level import not at top of file
+scripts/setup_database.py:24:1: E402 module level import not at top of file
+scripts/setup_database.py:25:1: E402 module level import not at top of file
+scripts/setup_database.py:26:1: E402 module level import not at top of file
+scripts/setup_database.py:188:64: W291 trailing whitespace
+scripts/setup_database.py:198:86: W291 trailing whitespace
+scripts/setup_database.py:412:71: W291 trailing whitespace
+scripts/setup_database.py:425:74: W291 trailing whitespace
+scripts/setup_database.py:454:46: W291 trailing whitespace
+scripts/setup_database.py:483:13: F811 redefinition of unused 'datetime' from line 11
+scripts/start_monitoring.py:21:1: E402 module level import not at top of file
+scripts/start_monitoring.py:22:1: E402 module level import not at top of file
+scripts/start_monitoring.py:23:1: E402 module level import not at top of file
+scripts/start_monitoring.py:24:1: E402 module level import not at top of file
+scripts/training_automation.py:20:1: E402 module level import not at top of file
+scripts/training_automation.py:21:1: E402 module level import not at top of file
+scripts/training_automation.py:22:1: E402 module level import not at top of file
+scripts/training_automation.py:23:1: E402 module level import not at top of file
+scripts/training_automation.py:24:1: E402 module level import not at top of file
+scripts/training_automation.py:25:1: E402 module level import not at top of file
+scripts/training_automation.py:26:1: E402 module level import not at top of file
+scripts/training_automation.py:27:1: E402 module level import not at top of file
+scripts/training_automation.py:387:1: C901 'validate_training_setup' is too complex (23)
+scripts/training_automation.py:474:15: F541 f-string is missing placeholders
+scripts/training_scheduler.py:22:1: E402 module level import not at top of file
+scripts/training_scheduler.py:23:1: E402 module level import not at top of file
+scripts/training_scheduler.py:24:1: E402 module level import not at top of file
+scripts/training_scheduler.py:25:1: E402 module level import not at top of file
+scripts/training_scheduler.py:26:1: E402 module level import not at top of file
+scripts/training_scheduler.py:27:1: E402 module level import not at top of file
+scripts/training_scheduler.py:28:1: E402 module level import not at top of file
+scripts/training_scheduler.py:29:1: E402 module level import not at top of file
+scripts/validation\test_drift_integration.py:52:43: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\test_drift_integration.py:98:49: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\test_drift_integration.py:101:50: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\test_drift_integration.py:171:49: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\test_drift_integration.py:174:50: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_drift_detection.py:13:1: C901 'validate_drift_detector_structure' is too complex (17)
+scripts/validation\validate_realtime_integration.py:84:40: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\validate_realtime_integration.py:148:39: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:67:36: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:126:31: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\validate_sprint3.py:168:35: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:243:9: F811 redefinition of unused 'os' from line 10
+scripts/validation\validate_sprint3.py:360:23: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:403:35: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:494:11: F541 f-string is missing placeholders
+scripts/validation\validate_sprint3_simple.py:182:19: F541 f-string is missing placeholders
+scripts/validation\validate_sprint3_standalone.py:84:36: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3_standalone.py:143:31: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\validate_sprint3_standalone.py:185:35: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3_standalone.py:260:9: F811 redefinition of unused 'os' from line 10
+scripts/validation\validate_sprint3_standalone.py:361:23: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3_standalone.py:404:35: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3_standalone.py:523:11: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1296:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1305:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1311:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1317:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1321:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1335:19: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1337:17: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1339:19: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1341:19: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_task6.py:5:74: W291 trailing whitespace
+scripts/validation\validate_sprint4_task6.py:16:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:18:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:19:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:21:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:24:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:31:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:37:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:38:1: E402 module level import not at top of file
+src/adaptation\monitoring_enhanced_tracking.py:6:1: F401 'asyncio' imported but unused
+src/adaptation\monitoring_enhanced_tracking.py:9:1: F401 'typing.Optional' imported but unused
+src/adaptation\monitoring_enhanced_tracking.py:171:9: F841 local variable 'e' is assigned to but never used
+src/adaptation\monitoring_enhanced_tracking.py:175:13: E722 do not use bare 'except'
+src/adaptation\monitoring_enhanced_tracking.py:236:13: E722 do not use bare 'except'
+src/adaptation\retrainer.py:10:1: F401 'dataclasses.field' imported but unused
+src/adaptation\retrainer.py:287:5: C901 'AdaptiveRetrainer.evaluate_retraining_need' is too complex (16)
+src/adaptation\retrainer.py:968:13: F841 local variable 'start_date' is assigned to but never used
+src/adaptation\tracker.py:1248:5: C901 'AccuracyTracker._check_entity_alerts' is too complex (16)
+src/adaptation\tracking_manager.py:18:1: F401 '..data.storage.models.RoomState' imported but unused
+src/adaptation\tracking_manager.py:18:1: F401 '..data.storage.models.SensorEvent' imported but unused
+src/adaptation\tracking_manager.py:26:1: F401 '.optimizer.OptimizationObjective' imported but unused
+src/adaptation\tracking_manager.py:32:1: F401 '.retrainer.RetrainingStatus' imported but unused
+src/adaptation\tracking_manager.py:436:5: C901 'TrackingManager.record_prediction' is too complex (20)
+src/adaptation\tracking_manager.py:918:39: W291 trailing whitespace
+src/adaptation\tracking_manager.py:919:42: W291 trailing whitespace
+src/core\backup_manager.py:19:1: F401 'yaml' imported but unused
+src/core\backup_manager.py:241:21: F841 local variable 'dbname' is assigned to but never used
+src/core\config_validator.py:10:1: F401 'socket' imported but unused
+src/core\config_validator.py:11:1: F401 'typing.Optional' imported but unused
+src/core\config_validator.py:11:1: F401 'typing.Tuple' imported but unused
+src/core\config_validator.py:11:1: F401 'typing.Union' imported but unused
+src/core\config_validator.py:14:1: F401 'pydantic.BaseModel' imported but unused
+src/core\config_validator.py:14:1: F401 'pydantic.ValidationError' imported but unused
+src/core\config_validator.py:14:1: F401 'pydantic.validator' imported but unused
+src/core\config_validator.py:127:9: E722 do not use bare 'except'
+src/core\config_validator.py:204:25: F541 f-string is missing placeholders
+src/core\config_validator.py:268:21: E722 do not use bare 'except'
+src/core\config_validator.py:524:5: C901 'SystemRequirementsValidator.validate' is too complex (17)
+src/core\config_validator.py:578:9: E722 do not use bare 'except'
+src/core\config_validator.py:603:9: E722 do not use bare 'except'
+src/core\environment.py:7:1: F401 'dataclasses.field' imported but unused
+src/core\environment.py:13:1: F401 'typing.Set' imported but unused
+src/core\environment.py:544:23: F541 f-string is missing placeholders
+src/data\ingestion\event_processor.py:13:1: F401 'math' imported but unused
+src/data\ingestion\event_processor.py:14:1: F401 'typing.Tuple' imported but unused
+src/data\ingestion\event_processor.py:19:1: F401 '...core.constants.ABSENCE_STATES' imported but unused
+src/data\ingestion\event_processor.py:19:1: F401 '...core.constants.PRESENCE_STATES' imported but unused
+src/data\ingestion\event_processor.py:19:1: F401 '...core.constants.SensorState' imported but unused
+src/data\ingestion\event_processor.py:30:1: F401 '...core.exceptions.ConfigurationError' imported but unused
+src/data\ingestion\event_processor.py:30:1: F401 '...core.exceptions.DataValidationError' imported but unused
+src/data\ingestion\event_processor.py:30:1: F401 '...core.exceptions.FeatureExtractionError' imported but unused
+src/data\ingestion\ha_client.py:15:1: F401 'urllib.parse.urljoin' imported but unused
+src/data\ingestion\ha_client.py:26:1: F401 '...core.constants.SensorState' imported but unused
+src/data\ingestion\ha_client.py:27:1: F401 '...core.exceptions.RateLimitExceededError' imported but unused
+src/data\storage\database.py:10:1: F401 'datetime.timedelta' imported but unused
+src/data\storage\database.py:16:1: F401 'sqlalchemy.exc.SQLAlchemyError' imported but unused
+src/data\storage\database.py:31:1: F401 'src.core.exceptions.ErrorSeverity' imported but unused
+src/data\storage\database.py:328:5: C901 'DatabaseManager.health_check' is too complex (17)
+src/data\storage\models.py:11:1: F401 'decimal.Decimal' imported but unused
+src/data\storage\models.py:12:1: F401 'sqlalchemy.JSON' imported but unused
+src/data\storage\models.py:12:1: F401 'sqlalchemy.ForeignKey' imported but unused
+src/data\storage\models.py:12:1: F401 'sqlalchemy.Text' imported but unused
+src/data\storage\models.py:33:1: F401 'sqlalchemy.dialects.postgresql.UUID' imported but unused
+src/data\storage\models.py:35:1: F401 'sqlalchemy.orm.relationship' imported but unused
+src/data\storage\models.py:35:1: F401 'sqlalchemy.orm.selectinload' imported but unused
+src/data\storage\models.py:36:1: F401 'sqlalchemy.sql.func as sql_func' imported but unused
+src/features\contextual.py:12:1: F401 'typing.Set' imported but unused
+src/features\contextual.py:18:1: F401 '..core.constants.SensorType' imported but unused
+src/features\engineering.py:17:1: F401 '..core.exceptions.ConfigurationError' imported but unused
+src/features\sequential.py:12:1: F401 'typing.Set' imported but unused
+src/features\sequential.py:18:1: F401 '..core.constants.CAT_MOVEMENT_PATTERNS' imported but unused
+src/features\sequential.py:18:1: F401 '..core.constants.HUMAN_MOVEMENT_PATTERNS' imported but unused
+src/features\sequential.py:18:1: F401 '..core.constants.MIN_EVENT_SEPARATION' imported but unused
+src/features\sequential.py:18:1: F401 '..core.constants.SensorType' imported but unused
+src/features\store.py:486:1: E999 SyntaxError: expected 'except' or 'finally' block
+src/features\temporal.py:12:1: F401 'typing.Any' imported but unused
+src/features\temporal.py:14:1: F401 'numpy as np' imported but unused
+src/features\temporal.py:15:1: F401 'pandas as pd' imported but unused
+src/features\temporal.py:18:1: F401 '..core.constants.TEMPORAL_FEATURE_NAMES' imported but unused
+src/integration\api_server.py:23:1: F401 'traceback' imported but unused
+src/integration\api_server.py:38:1: F401 'pydantic.validator' imported but unused
+src/integration\api_server.py:44:1: F401 '..core.config.APIConfig' imported but unused
+src/integration\api_server.py:45:1: F401 '..core.exceptions.APIValidationError' imported but unused
+src/integration\api_server.py:57:1: F401 '..models.base.predictor.PredictionResult' imported but unused
+src/integration\api_server.py:495:1: C901 'health_check' is too complex (16)
+src/integration\dashboard.py:17:1: F401 'pathlib.Path' imported but unused
+src/integration\dashboard.py:19:1: F401 'uuid' imported but unused
+src/integration\dashboard.py:22:5: F401 'fastapi.Depends' imported but unused
+src/integration\dashboard.py:54:1: F401 '..adaptation.drift_detector.ConceptDriftDetector' imported but unused
+src/integration\dashboard.py:54:1: F401 '..adaptation.drift_detector.DriftMetrics' imported but unused
+src/integration\dashboard.py:54:1: F401 '..adaptation.drift_detector.DriftSeverity' imported but unused
+src/integration\dashboard.py:54:1: F401 '..adaptation.drift_detector.DriftType' imported but unused
+src/integration\dashboard.py:60:1: F401 '..adaptation.retrainer.AdaptiveRetrainer' imported but unused
+src/integration\dashboard.py:60:1: F401 '..adaptation.retrainer.RetrainingRequest' imported but unused
+src/integration\dashboard.py:60:1: F401 '..adaptation.retrainer.RetrainingStatus' imported but unused
+src/integration\dashboard.py:60:1: F401 '..adaptation.retrainer.RetrainingTrigger' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.AccuracyAlert' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.AccuracyTracker' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.AlertSeverity' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.RealTimeMetrics' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.TrendDirection' imported but unused
+src/integration\dashboard.py:75:5: F401 '..adaptation.tracking_manager.TrackingConfig' imported but unused
+src/integration\dashboard.py:77:1: F401 '..adaptation.validator.AccuracyLevel' imported but unused
+src/integration\dashboard.py:77:1: F401 '..adaptation.validator.AccuracyMetrics' imported but unused
+src/integration\dashboard.py:78:1: F401 '..core.constants.ModelType' imported but unused
+src/integration\dashboard.py:453:5: C901 'PerformanceDashboard._register_routes' is too complex (42)
+src/integration\discovery_publisher.py:21:1: F401 'datetime.timedelta' imported but unused
+src/integration\enhanced_integration_manager.py:21:1: F401 'typing.Tuple' imported but unused
+src/integration\enhanced_integration_manager.py:23:1: F401 '..core.config.MQTTConfig' imported but unused
+src/integration\enhanced_integration_manager.py:23:1: F401 '..core.config.RoomConfig' imported but unused
+src/integration\enhanced_integration_manager.py:26:1: F401 '.discovery_publisher.DiscoveryPublisher' imported but unused
+src/integration\enhanced_integration_manager.py:27:1: F401 '.ha_entity_definitions.HAEntityConfig' imported but unused
+src/integration\enhanced_integration_manager.py:27:1: F401 '.ha_entity_definitions.HAServiceDefinition' imported but unused
+src/integration\enhanced_integration_manager.py:33:1: F401 '.mqtt_publisher.MQTTPublisher' imported but unused
+src/integration\enhanced_integration_manager.py:33:1: F401 '.mqtt_publisher.MQTTPublishResult' imported but unused
+src/integration\enhanced_mqtt_manager.py:32:2: E999 SyntaxError: invalid syntax
+src/integration\ha_entity_definitions.py:19:1: F401 'datetime.timedelta' imported but unused
+src/integration\ha_entity_definitions.py:20:1: F401 'enum.auto' imported but unused
+src/integration\ha_entity_definitions.py:23:1: F401 'typing.Callable' imported but unused
+src/integration\ha_entity_definitions.py:23:1: F401 'typing.Set' imported but unused
+src/integration\ha_entity_definitions.py:23:1: F401 'typing.Tuple' imported but unused
+src/integration\ha_entity_definitions.py:27:1: F401 '.discovery_publisher.EntityMetadata' imported but unused
+src/integration\ha_entity_definitions.py:27:1: F401 '.discovery_publisher.EntityState' imported but unused
+src/integration\ha_entity_definitions.py:27:1: F401 '.discovery_publisher.SensorConfig' imported but unused
+src/integration\ha_entity_definitions.py:34:1: F401 '.mqtt_publisher.MQTTPublisher' imported but unused
+src/integration\ha_entity_definitions.py:1447:5: C901 'HAEntityDefinitions._publish_entity_discovery' is too complex (21)
+src/integration\ha_tracking_bridge.py:18:1: F401 'datetime.timedelta' imported but unused
+src/integration\mqtt_integration_manager.py:18:1: F401 'datetime.timedelta' imported but unused
+src/integration\mqtt_integration_manager.py:26:1: F401 '.mqtt_publisher.MQTTPublisherError' imported but unused
+src/integration\mqtt_publisher.py:17:1: F401 'datetime.timedelta' imported but unused
+src/integration\mqtt_publisher.py:25:1: F401 'paho.mqtt.enums as mqtt_enums' imported but unused
+src/integration\mqtt_publisher.py:29:1: F401 '..models.base.predictor.PredictionResult' imported but unused
+src/integration\prediction_publisher.py:16:1: F401 'datetime.timedelta' imported but unused
+src/integration\prediction_publisher.py:20:1: F401 '..core.constants.ModelType' imported but unused
+src/integration\realtime_api_endpoints.py:122:1: C901 'websocket_room_predictions_endpoint' is too complex (17)
+src/integration\realtime_api_endpoints.py:462:9: F841 local variable 'target_rooms' is assigned to but never used
+src/integration\realtime_publisher.py:481:5: C901 'RealtimePublishingSystem.publish_prediction' is too complex (18)
+src/integration\realtime_publisher.py:521:21: F841 local variable 'prediction_payload' is assigned to but never used
+src/integration\realtime_publisher.py:531:21: F841 local variable 'mqtt_publisher' is assigned to but never used
+src/integration\tracking_integration.py:27:1: F401 '..core.config.MQTTConfig' imported but unused
+src/integration\tracking_integration.py:27:1: F401 '..core.config.RoomConfig' imported but unused
+src/integration\websocket_api.py:1309:1: F811 redefinition of unused 'WebSocketAuthenticationError' from line 47
+src/integration\websocket_api.py:1321:1: F811 redefinition of unused 'WebSocketConnectionError' from line 47
+src/integration\websocket_api.py:1333:1: F811 redefinition of unused 'WebSocketRateLimitError' from line 47
+src/integration\websocket_api.py:1347:1: F811 redefinition of unused 'WebSocketValidationError' from line 47
+src/models\base\hmm_predictor.py:549:9: E999 IndentationError: unexpected indent
+src/models\base\predictor.py:16:1: F401 'numpy as np' imported but unused
+src/models\base\predictor.py:20:1: F401 '...core.constants.PredictionType' imported but unused
+src/models\base\predictor.py:21:1: F401 '...core.exceptions.ModelTrainingError' imported but unused
+src/models\ensemble.py:589:13: E999 IndentationError: unexpected indent
+src/models\training_pipeline.py:17:1: F401 'typing.Callable' imported but unused
+src/models\training_pipeline.py:25:1: F401 '..core.constants.ModelType' imported but unused
+src/models\training_pipeline.py:26:1: F401 '..core.exceptions.OccupancyPredictionError' imported but unused
+src/utils\alerts.py:9:1: F401 'datetime.timedelta' imported but unused
+src/utils\alerts.py:15:1: F401 'typing.Set' imported but unused
+src/utils\alerts.py:193:1: W293 blank line contains whitespace
+src/utils\alerts.py:195:1: W293 blank line contains whitespace
+src/utils\alerts.py:285:13: F841 local variable 'payload' is assigned to but never used
+src/utils\health_monitor.py:4:74: W291 trailing whitespace
+src/utils\health_monitor.py:5:83: W291 trailing whitespace
+src/utils\health_monitor.py:14:1: F401 'json' imported but unused
+src/utils\health_monitor.py:15:1: F401 'logging' imported but unused
+src/utils\health_monitor.py:17:1: F401 'ssl' imported but unused
+src/utils\health_monitor.py:19:1: F401 'typing.Set' imported but unused
+src/utils\health_monitor.py:1096:9: E722 do not use bare 'except'
+src/utils\incident_response.py:12:1: F401 'json' imported but unused
+src/utils\incident_response.py:13:1: F401 'logging' imported but unused
+src/utils\incident_response.py:14:1: F401 'typing.Set' imported but unused
+src/utils\logger.py:16:1: F401 'typing.Union' imported but unused
+src/utils\metrics.py:11:1: F401 'typing.Any' imported but unused
+src/utils\metrics.py:11:1: F401 'typing.List' imported but unused
+src/utils\metrics.py:15:1: C901 'TryExcept 15' is too complex (22)
+src/utils\metrics.py:16:5: F401 'prometheus_client.multiprocess' imported but unused
+src/utils\metrics.py:16:5: F401 'prometheus_client.values' imported but unused
+src/utils\metrics.py:458:13: F841 local variable 'memory' is assigned to but never used
+src/utils\metrics.py:501:13: F841 local variable 'duration' is assigned to but never used
+src/utils\metrics.py:605:13: F841 local variable 'e' is assigned to but never used
+src/utils\monitoring.py:10:1: F401 'threading' imported but unused
+src/utils\monitoring_integration.py:9:1: F401 'typing.Optional' imported but unused
+tests/integration\test_security_validation.py:612:5: C901 'TestAPISecurityBoundaries.test_unauthorized_endpoint_access' is too complex (16)
+tests/integration\test_stress_scenarios.py:45:2: E999 SyntaxError: invalid syntax
+tests/performance\performance_benchmark_runner.py:622:5: E999 IndentationError: unexpected indent
+tests/run_tests.py:32:1: C901 'main' is too complex (18)
+tests/test_sprint3_validation.py:108:31: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/test_sprint3_validation.py:493:31: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:563:56: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:574:58: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/test_sprint3_validation.py:586:56: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:815:40: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:816:49: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:817:50: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint5_fixtures.py:28:2: E999 SyntaxError: invalid syntax
+tests/unit\test_adaptation\test_optimizer.py:781:39: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:558:42: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:559:44: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:636:34: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:638:41: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:654:34: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:173:44: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:174:40: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:225:32: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:229:32: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:234:32: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:253:33: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:275:32: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:288:32: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:308:32: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:320:32: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:373:40: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_features\test_engineering.py:731:13: E999 IndentationError: unexpected indent
+tests/unit\test_features\test_store.py:776:9: E999 IndentationError: unexpected indent
+tests/unit\test_ingestion\test_ha_client.py:1087:13: F402 import 'call' from line 11 shadowed by loop variable

@@ -9,7 +9,7 @@ and human vs cat movement classification features.
 from collections import Counter, defaultdict, deque
 from datetime import datetime, timedelta
 import logging
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set
 
 import numpy as np
 import statistics
@@ -197,7 +197,7 @@ class SequentialFeatureExtractor:
         return features
 
     def _extract_velocity_features(self, events: List[SensorEvent]) -> Dict[str, float]:
-        """Extract movement velocity and timing features."""
+        """Extract movement velocity and timing features using advanced mathematical analysis."""
         features = {}
 
         if len(events) < 2:
@@ -207,36 +207,69 @@ class SequentialFeatureExtractor:
                 "max_event_interval": 3600.0,
                 "event_interval_variance": 0.0,
                 "movement_velocity_score": 0.5,
+                "burst_ratio": 0.0,
+                "pause_ratio": 0.0,
+                "velocity_acceleration": 0.0,
+                "interval_autocorr": 0.0,
+                "velocity_entropy": 0.0,
+                "movement_regularity": 0.0
             }
 
-        # Calculate intervals between consecutive events
-        intervals = []
-        for i in range(1, len(events)):
-            interval = (events[i].timestamp - events[i - 1].timestamp).total_seconds()
-            intervals.append(interval)
+        # Calculate intervals between consecutive events using numpy
+        timestamps = [event.timestamp.timestamp() for event in events]
+        intervals = np.diff(timestamps)  # More efficient than loop
 
-        # Interval statistics
-        features["avg_event_interval"] = statistics.mean(intervals)
-        features["min_event_interval"] = min(intervals)
-        features["max_event_interval"] = max(intervals)
-        features["event_interval_variance"] = (
-            statistics.variance(intervals) if len(intervals) > 1 else 0.0
-        )
+        # Basic interval statistics using numpy
+        features["avg_event_interval"] = float(np.mean(intervals))
+        features["min_event_interval"] = float(np.min(intervals))
+        features["max_event_interval"] = float(np.max(intervals))
+        features["event_interval_variance"] = float(np.var(intervals))
 
         # Movement velocity score (inverse of average interval, normalized)
         avg_interval = features["avg_event_interval"]
-        # Higher score for faster movement (shorter intervals)
         features["movement_velocity_score"] = min(1.0, 300.0 / max(avg_interval, 30.0))
 
-        # Burst detection (rapid sequence of events)
+        # Burst and pause detection with numpy
         burst_threshold = 30.0  # seconds
-        burst_count = sum(1 for interval in intervals if interval < burst_threshold)
-        features["burst_ratio"] = burst_count / len(intervals) if intervals else 0.0
-
-        # Pause detection (long intervals)
         pause_threshold = 600.0  # 10 minutes
-        pause_count = sum(1 for interval in intervals if interval > pause_threshold)
-        features["pause_ratio"] = pause_count / len(intervals) if intervals else 0.0
+        
+        burst_mask = intervals < burst_threshold
+        pause_mask = intervals > pause_threshold
+        
+        features["burst_ratio"] = float(np.mean(burst_mask))
+        features["pause_ratio"] = float(np.mean(pause_mask))
+
+        # Advanced velocity features
+        if len(intervals) > 2:
+            # Velocity acceleration (second derivative of intervals)
+            velocity_changes = np.diff(intervals)
+            features["velocity_acceleration"] = float(np.std(velocity_changes))
+            
+            # Interval autocorrelation (pattern regularity)
+            if len(intervals) > 3:
+                intervals_norm = (intervals - np.mean(intervals)) / np.std(intervals)
+                autocorr = np.corrcoef(intervals_norm[:-1], intervals_norm[1:])[0, 1]
+                features["interval_autocorr"] = float(autocorr if not np.isnan(autocorr) else 0.0)
+            else:
+                features["interval_autocorr"] = 0.0
+                
+            # Velocity entropy (movement unpredictability)
+            # Discretize intervals into bins for entropy calculation
+            bins = np.linspace(np.min(intervals), np.max(intervals), 10)
+            hist, _ = np.histogram(intervals, bins=bins)
+            hist = hist + 1  # Add pseudocount to avoid log(0)
+            probs = hist / np.sum(hist)
+            entropy = -np.sum(probs * np.log2(probs))
+            features["velocity_entropy"] = float(entropy)
+            
+            # Movement regularity (coefficient of variation)
+            cv = np.std(intervals) / np.mean(intervals) if np.mean(intervals) > 0 else 0.0
+            features["movement_regularity"] = float(1.0 / (1.0 + cv))  # Inverse so higher = more regular
+        else:
+            features["velocity_acceleration"] = 0.0
+            features["interval_autocorr"] = 0.0
+            features["velocity_entropy"] = 0.0
+            features["movement_regularity"] = 0.5
 
         return features
 
@@ -302,7 +335,7 @@ class SequentialFeatureExtractor:
     def _extract_cross_room_features(
         self, events: List[SensorEvent]
     ) -> Dict[str, float]:
-        """Extract cross-room correlation and pattern features."""
+        """Extract cross-room correlation and pattern features using advanced mathematical analysis."""
         features = {}
 
         # Group events by room
@@ -319,25 +352,22 @@ class SequentialFeatureExtractor:
                 "room_correlation_score": 0.0,
                 "multi_room_sequence_ratio": 0.0,
                 "room_switching_frequency": 0.0,
+                "room_activity_entropy": 0.0,
+                "spatial_clustering_score": 0.0,
+                "room_transition_predictability": 0.0
             }
 
-        # Room correlation (events in multiple rooms within short time windows)
+        # Room correlation using efficient sliding window
         correlation_windows = []
         window_size = 300  # 5 minutes
-
-        # Use deque for efficient sliding window operations
         window_events = deque()
 
         for event in events:
             window_start = event.timestamp - timedelta(seconds=window_size)
-
-            # Remove events outside the window from the left
             while window_events and window_events[0].timestamp < window_start:
                 window_events.popleft()
-
-            # Add current event to window
             window_events.append(event)
-
+            
             window_rooms = set(e.room_id for e in window_events)
             if len(window_rooms) > 1:
                 correlation_windows.append(len(window_rooms))
@@ -348,34 +378,96 @@ class SequentialFeatureExtractor:
             else 0.0
         )
 
-        # Multi-room sequence ratio
-        room_sequence = [event.room_id for event in events]
-        multi_room_sequences = 0
-        for i in range(1, len(room_sequence)):
-            if room_sequence[i] != room_sequence[i - 1]:
-                multi_room_sequences += 1
+        # Multi-room sequence analysis using numpy
+        room_sequence = np.array([event.room_id for event in events])
+        
+        # Room transitions (where consecutive events are in different rooms)
+        if len(room_sequence) > 1:
+            transitions = room_sequence[1:] != room_sequence[:-1]
+            multi_room_sequences = np.sum(transitions)
+            features["multi_room_sequence_ratio"] = float(multi_room_sequences / len(room_sequence))
+            
+            # Room switching frequency (switches per hour)
+            if len(events) > 1:
+                duration_hours = (
+                    events[-1].timestamp - events[0].timestamp
+                ).total_seconds() / 3600
+                features["room_switching_frequency"] = (
+                    float(multi_room_sequences) / duration_hours if duration_hours > 0 else 0.0
+                )
+            else:
+                features["room_switching_frequency"] = 0.0
+        else:
+            features["multi_room_sequence_ratio"] = 0.0
+            features["room_switching_frequency"] = 0.0
 
-        features["multi_room_sequence_ratio"] = (
-            multi_room_sequences / len(room_sequence) if room_sequence else 0.0
-        )
-
-        # Room switching frequency (switches per hour)
-        if events and len(events) > 1:
-            duration_hours = (
-                events[-1].timestamp - events[0].timestamp
-            ).total_seconds() / 3600
-            features["room_switching_frequency"] = (
-                multi_room_sequences / duration_hours if duration_hours > 0 else 0.0
+        # Advanced cross-room features using numpy
+        
+        # Room activity entropy (how evenly distributed activity is across rooms)
+        room_activity_counts = np.array([len(events) for events in room_events.values()])
+        if len(room_activity_counts) > 1:
+            room_probs = room_activity_counts / np.sum(room_activity_counts)
+            entropy = -np.sum(room_probs * np.log2(room_probs + 1e-10))  # Add small epsilon
+            max_entropy = np.log2(len(room_activity_counts))
+            features["room_activity_entropy"] = float(entropy / max_entropy if max_entropy > 0 else 0.0)
+        else:
+            features["room_activity_entropy"] = 0.0
+            
+        # Spatial clustering score (how clustered room visits are in time)
+        if len(room_sequence) > 2:
+            # Calculate runs of same room
+            room_runs = []
+            current_room = room_sequence[0]
+            run_length = 1
+            
+            for i in range(1, len(room_sequence)):
+                if room_sequence[i] == current_room:
+                    run_length += 1
+                else:
+                    room_runs.append(run_length)
+                    current_room = room_sequence[i]
+                    run_length = 1
+            room_runs.append(run_length)
+            
+            run_array = np.array(room_runs)
+            avg_run_length = np.mean(run_array)
+            max_possible_run = len(room_sequence) / room_count
+            features["spatial_clustering_score"] = float(
+                avg_run_length / max_possible_run if max_possible_run > 0 else 0.0
             )
         else:
-            features["room_switching_frequency"] = 0.0
+            features["spatial_clustering_score"] = 0.0
+            
+        # Room transition predictability using transition matrix
+        if len(room_sequence) > 3:
+            unique_rooms = list(set(room_sequence))
+            room_to_idx = {room: i for i, room in enumerate(unique_rooms)}
+            n_rooms = len(unique_rooms)
+            
+            # Build transition matrix
+            transition_matrix = np.zeros((n_rooms, n_rooms))
+            for i in range(len(room_sequence) - 1):
+                from_idx = room_to_idx[room_sequence[i]]
+                to_idx = room_to_idx[room_sequence[i + 1]]
+                transition_matrix[from_idx, to_idx] += 1
+                
+            # Normalize rows to get probabilities
+            row_sums = np.sum(transition_matrix, axis=1, keepdims=True)
+            row_sums[row_sums == 0] = 1  # Avoid division by zero
+            transition_probs = transition_matrix / row_sums
+            
+            # Calculate predictability as average maximum transition probability
+            max_probs = np.max(transition_probs, axis=1)
+            features["room_transition_predictability"] = float(np.mean(max_probs))
+        else:
+            features["room_transition_predictability"] = 0.0
 
         return features
 
     def _extract_movement_classification_features(
         self, events: List[SensorEvent], room_configs: Dict[str, RoomConfig]
     ) -> Dict[str, float]:
-        """Extract features for human vs cat movement classification."""
+        """Extract features for human vs cat movement classification using pattern constants."""
         features = {}
 
         if not events or not self.classifier:
@@ -384,6 +476,10 @@ class SequentialFeatureExtractor:
                 "cat_movement_probability": 0.5,
                 "movement_confidence_score": 0.5,
                 "door_interaction_ratio": 0.0,
+                "pattern_matches_human": 0.0,
+                "pattern_matches_cat": 0.0,
+                "velocity_classification": 0.0,
+                "sequence_length_score": 0.0
             }
 
         # Create movement sequences for classification
@@ -395,37 +491,85 @@ class SequentialFeatureExtractor:
                 "cat_movement_probability": 0.5,
                 "movement_confidence_score": 0.5,
                 "door_interaction_ratio": 0.0,
+                "pattern_matches_human": 0.0,
+                "pattern_matches_cat": 0.0,
+                "velocity_classification": 0.0,
+                "sequence_length_score": 0.0
             }
 
-        # Classify each sequence and aggregate results
+        # Track unique patterns using Set for pattern analysis
+        unique_human_patterns: Set[str] = set()
+        unique_cat_patterns: Set[str] = set()
+
+        # Classification results
         human_scores = []
         cat_scores = []
         confidence_scores = []
         door_interactions = 0
         total_events = 0
+        
+        # Pattern matching scores
+        human_pattern_matches = 0
+        cat_pattern_matches = 0
+        velocity_scores = []
+        sequence_lengths = []
 
         for sequence in sequences:
             room_config = room_configs.get(sequence.events[0].room_id)
             if room_config:
+                # Use classifier if available
                 classification = self.classifier.classify_movement(
                     sequence, room_config
                 )
 
                 if classification.is_human_triggered:
                     human_scores.append(classification.confidence_score)
+                    pattern_key = f"human_{len(sequence.events)}_{sequence.duration_seconds:.0f}"
+                    unique_human_patterns.add(pattern_key)
                 else:
                     cat_scores.append(classification.confidence_score)
+                    pattern_key = f"cat_{len(sequence.events)}_{sequence.duration_seconds:.0f}"
+                    unique_cat_patterns.add(pattern_key)
 
                 confidence_scores.append(classification.confidence_score)
 
-                # Count door interactions
-                door_sensors = room_config.get_sensors_by_type("door")
-                door_entity_ids = set(door_sensors.values()) if door_sensors else set()
+                # Count door interactions using SensorType filtering
+                door_sensors = room_config.get_sensors_by_type(SensorType.DOOR.value)
+                door_entity_ids: Set[str] = set(door_sensors.values()) if door_sensors else set()
 
+                sequence_door_interactions = 0
                 for event in sequence.events:
                     total_events += 1
                     if event.sensor_id in door_entity_ids:
                         door_interactions += 1
+                        sequence_door_interactions += 1
+                        
+                # Pattern matching against movement constants
+                duration = sequence.duration_seconds
+                avg_velocity = len(sequence.events) / max(duration, 1.0)  # events per second
+                room_count = len(sequence.rooms_visited)
+                door_ratio = sequence_door_interactions / len(sequence.events)
+                
+                # Compare against HUMAN_MOVEMENT_PATTERNS
+                human_duration_match = duration >= HUMAN_MOVEMENT_PATTERNS["min_duration_seconds"]
+                human_velocity_match = avg_velocity <= HUMAN_MOVEMENT_PATTERNS["max_velocity_ms"]
+                human_sequence_match = room_count <= HUMAN_MOVEMENT_PATTERNS["typical_room_sequence_length"]
+                human_door_match = door_ratio >= (HUMAN_MOVEMENT_PATTERNS["door_interaction_probability"] * 0.5)
+                
+                if sum([human_duration_match, human_velocity_match, human_sequence_match, human_door_match]) >= 3:
+                    human_pattern_matches += 1
+                    
+                # Compare against CAT_MOVEMENT_PATTERNS  
+                cat_duration_match = duration >= CAT_MOVEMENT_PATTERNS["min_duration_seconds"]
+                cat_velocity_match = avg_velocity <= CAT_MOVEMENT_PATTERNS["max_velocity_ms"]
+                cat_sequence_match = room_count <= CAT_MOVEMENT_PATTERNS["typical_room_sequence_length"]
+                cat_door_match = door_ratio <= CAT_MOVEMENT_PATTERNS["door_interaction_probability"]
+                
+                if sum([cat_duration_match, cat_velocity_match, cat_sequence_match, cat_door_match]) >= 3:
+                    cat_pattern_matches += 1
+                    
+                velocity_scores.append(avg_velocity)
+                sequence_lengths.append(room_count)
 
         # Aggregate classification results
         total_sequences = len(sequences)
@@ -444,6 +588,12 @@ class SequentialFeatureExtractor:
         features["door_interaction_ratio"] = (
             door_interactions / total_events if total_events > 0 else 0.0
         )
+        
+        # Advanced pattern matching features
+        features["pattern_matches_human"] = human_pattern_matches / total_sequences if total_sequences > 0 else 0.0
+        features["pattern_matches_cat"] = cat_pattern_matches / total_sequences if total_sequences > 0 else 0.0
+        features["velocity_classification"] = statistics.mean(velocity_scores) if velocity_scores else 0.0
+        features["sequence_length_score"] = statistics.mean(sequence_lengths) if sequence_lengths else 0.0
 
         return features
 
@@ -513,10 +663,15 @@ class SequentialFeatureExtractor:
             if len(room_events) < 2:
                 continue
 
-            # Create sequences with time gaps
+            # Create sequences with time gaps using MIN_EVENT_SEPARATION filtering
             current_sequence = []
 
             for event in room_events:
+                # Filter events too close together using MIN_EVENT_SEPARATION
+                if (current_sequence and 
+                    (event.timestamp - current_sequence[-1].timestamp).total_seconds() < MIN_EVENT_SEPARATION):
+                    continue  # Skip event that's too close to previous one
+                    
                 if (
                     not current_sequence
                     or (
@@ -589,6 +744,20 @@ class SequentialFeatureExtractor:
             "common_bigram_ratio": 0.0,
             "common_trigram_ratio": 0.0,
             "pattern_repetition_score": 0.0,
+            # Advanced velocity features
+            "velocity_acceleration": 0.0,
+            "interval_autocorr": 0.0,
+            "velocity_entropy": 0.0,
+            "movement_regularity": 0.0,
+            # Advanced cross-room features
+            "room_activity_entropy": 0.0,
+            "spatial_clustering_score": 0.0,
+            "room_transition_predictability": 0.0,
+            # Enhanced movement classification features
+            "pattern_matches_human": 0.0,
+            "pattern_matches_cat": 0.0,
+            "velocity_classification": 0.0,
+            "sequence_length_score": 0.0,
         }
 
     def get_feature_names(self) -> List[str]:
