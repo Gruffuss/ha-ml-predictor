@@ -85,9 +85,7 @@ class HATrackingBridge:
             self._setup_tracking_event_handlers()
 
             # Register bridge with enhanced integration manager
-            self.enhanced_integration_manager.tracking_manager = (
-                self.tracking_manager
-            )
+            self.enhanced_integration_manager.tracking_manager = self.tracking_manager
 
             # Setup command delegation
             self._setup_command_delegation()
@@ -122,9 +120,7 @@ class HATrackingBridge:
 
             # Wait for tasks to complete
             if self._background_tasks:
-                await asyncio.gather(
-                    *self._background_tasks, return_exceptions=True
-                )
+                await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
             logger.info("HA tracking bridge shutdown complete")
 
@@ -179,9 +175,7 @@ class HATrackingBridge:
                 "severity": getattr(alert, "severity", "unknown"),
                 "room_id": getattr(alert, "room_id", None),
                 "message": getattr(alert, "message", ""),
-                "timestamp": getattr(
-                    alert, "timestamp", datetime.utcnow()
-                ).isoformat(),
+                "timestamp": getattr(alert, "timestamp", datetime.utcnow()).isoformat(),
             }
 
             # Update system status with alert information
@@ -211,12 +205,8 @@ class HATrackingBridge:
             drift_data = {
                 "drift_detected": True,
                 "drift_score": getattr(drift_metrics, "drift_score", 0.0),
-                "drift_severity": getattr(
-                    drift_metrics, "severity", "unknown"
-                ),
-                "affected_features": getattr(
-                    drift_metrics, "affected_features", []
-                ),
+                "drift_severity": getattr(drift_metrics, "severity", "unknown"),
+                "affected_features": getattr(drift_metrics, "affected_features", []),
                 "timestamp": datetime.utcnow().isoformat(),
             }
 
@@ -253,15 +243,11 @@ class HATrackingBridge:
                 {
                     "room_id": room_id,
                     "training_started": datetime.utcnow().isoformat(),
-                    "training_type": retraining_info.get(
-                        "training_type", "unknown"
-                    ),
+                    "training_type": retraining_info.get("training_type", "unknown"),
                 },
             )
 
-            logger.info(
-                f"Updated HA entities for retraining started: {room_id}"
-            )
+            logger.info(f"Updated HA entities for retraining started: {room_id}")
 
         except Exception as e:
             self.stats.bridge_errors += 1
@@ -289,9 +275,7 @@ class HATrackingBridge:
                 {
                     "room_id": room_id,
                     "training_completed": datetime.utcnow().isoformat(),
-                    "training_success": retraining_result.get(
-                        "success", False
-                    ),
+                    "training_success": retraining_result.get("success", False),
                     "new_accuracy": retraining_result.get("accuracy", 0.0),
                 },
             )
@@ -302,9 +286,7 @@ class HATrackingBridge:
                     f"{room_id}_accuracy", retraining_result["accuracy"]
                 )
 
-            logger.info(
-                f"Updated HA entities for retraining completed: {room_id}"
-            )
+            logger.info(f"Updated HA entities for retraining completed: {room_id}")
 
         except Exception as e:
             self.stats.bridge_errors += 1
@@ -340,9 +322,7 @@ class HATrackingBridge:
                     event_type,
                     handler,
                 ) in self._tracking_event_handlers.items():
-                    self.tracking_manager.register_callback(
-                        event_type, handler
-                    )
+                    self.tracking_manager.register_callback(event_type, handler)
 
             logger.info(
                 f"Setup {len(self._tracking_event_handlers)} tracking event handlers"
@@ -383,18 +363,14 @@ class HATrackingBridge:
         """Start background synchronization tasks."""
         try:
             # System status synchronization task
-            status_sync_task = asyncio.create_task(
-                self._system_status_sync_loop()
-            )
+            status_sync_task = asyncio.create_task(self._system_status_sync_loop())
             self._background_tasks.append(status_sync_task)
 
             # Tracking metrics synchronization task
             metrics_sync_task = asyncio.create_task(self._metrics_sync_loop())
             self._background_tasks.append(metrics_sync_task)
 
-            logger.info(
-                f"Started {len(self._background_tasks)} background sync tasks"
-            )
+            logger.info(f"Started {len(self._background_tasks)} background sync tasks")
 
         except Exception as e:
             logger.error(f"Error starting background tasks: {e}")
@@ -408,9 +384,7 @@ class HATrackingBridge:
                 try:
                     # Get system status from tracking manager
                     if hasattr(self.tracking_manager, "get_system_status"):
-                        system_status = (
-                            await self.tracking_manager.get_system_status()
-                        )
+                        system_status = await self.tracking_manager.get_system_status()
 
                         # Update HA entities with system status
                         await self.enhanced_integration_manager.handle_system_status_update(
@@ -440,16 +414,12 @@ class HATrackingBridge:
                 try:
                     # Get accuracy metrics from tracking manager
                     if hasattr(self.tracking_manager, "get_accuracy_metrics"):
-                        metrics = (
-                            await self.tracking_manager.get_accuracy_metrics()
-                        )
+                        metrics = await self.tracking_manager.get_accuracy_metrics()
 
                         # Update room-specific accuracy entities
                         if isinstance(metrics, dict):
                             for room_id, room_metrics in metrics.items():
-                                if hasattr(
-                                    room_metrics, "accuracy_percentage"
-                                ):
+                                if hasattr(room_metrics, "accuracy_percentage"):
                                     await self.enhanced_integration_manager.update_entity_state(
                                         f"{room_id}_accuracy",
                                         room_metrics.accuracy_percentage,
@@ -467,9 +437,7 @@ class HATrackingBridge:
         finally:
             logger.info("Metrics sync loop stopped")
 
-    async def _update_system_alert_status(
-        self, alert_data: Dict[str, Any]
-    ) -> None:
+    async def _update_system_alert_status(self, alert_data: Dict[str, Any]) -> None:
         """Update system status with alert information."""
         try:
             # Update active alerts count
@@ -483,9 +451,7 @@ class HATrackingBridge:
         except Exception as e:
             logger.error(f"Error updating system alert status: {e}")
 
-    async def _update_system_drift_status(
-        self, drift_data: Dict[str, Any]
-    ) -> None:
+    async def _update_system_drift_status(self, drift_data: Dict[str, Any]) -> None:
         """Update system status with drift information."""
         try:
             # Update system status to indicate drift detected
@@ -535,10 +501,8 @@ class HATrackingBridge:
 
             # Delegate to tracking manager
             if hasattr(self.tracking_manager, "validate_model_performance"):
-                result = (
-                    await self.tracking_manager.validate_model_performance(
-                        room_id=room_id, validation_days=days
-                    )
+                result = await self.tracking_manager.validate_model_performance(
+                    room_id=room_id, validation_days=days
                 )
 
                 self.stats.commands_delegated += 1
@@ -563,9 +527,7 @@ class HATrackingBridge:
 
             # Delegate to tracking manager
             if hasattr(self.tracking_manager, "force_prediction"):
-                result = await self.tracking_manager.force_prediction(
-                    room_id=room_id
-                )
+                result = await self.tracking_manager.force_prediction(room_id=room_id)
 
                 self.stats.commands_delegated += 1
                 self.stats.last_command_delegation = datetime.utcnow()
@@ -612,11 +574,9 @@ class HATrackingBridge:
 
             # Delegate to tracking manager
             if hasattr(self.tracking_manager, "generate_diagnostic_report"):
-                result = (
-                    await self.tracking_manager.generate_diagnostic_report(
-                        include_logs=include_logs,
-                        include_metrics=include_metrics,
-                    )
+                result = await self.tracking_manager.generate_diagnostic_report(
+                    include_logs=include_logs,
+                    include_metrics=include_metrics,
                 )
 
                 self.stats.commands_delegated += 1

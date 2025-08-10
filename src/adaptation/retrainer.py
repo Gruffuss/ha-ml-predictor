@@ -89,7 +89,9 @@ class RetrainingRequest:
     # Results
     training_result: Optional[TrainingResult] = None
     performance_improvement: Optional[Dict[str, float]] = None
-    prediction_results: Optional[List[PredictionResult]] = None  # Store prediction test results
+    prediction_results: Optional[List[PredictionResult]] = (
+        None  # Store prediction test results
+    )
 
     def __lt__(self, other):
         """Priority queue comparison - higher priority first."""
@@ -110,16 +112,16 @@ class RetrainingRequest:
                 self.started_time.isoformat() if self.started_time else None
             ),
             "completed_time": (
-                self.completed_time.isoformat()
-                if self.completed_time
-                else None
+                self.completed_time.isoformat() if self.completed_time else None
             ),
             "error_message": self.error_message,
             "lookback_days": self.lookback_days,
             "validation_split": self.validation_split,
             "feature_refresh": self.feature_refresh,
             "performance_improvement": self.performance_improvement,
-            "prediction_results_count": len(self.prediction_results) if self.prediction_results else 0,
+            "prediction_results_count": (
+                len(self.prediction_results) if self.prediction_results else 0
+            ),
         }
 
 
@@ -231,7 +233,7 @@ class AdaptiveRetrainer:
         # Background tasks
         self._background_tasks: List[asyncio.Task] = []
         self._shutdown_event = asyncio.Event()
-        
+
         # Track active rooms for retraining to prevent duplicates
         self._rooms_being_retrained: Set[str] = set()
 
@@ -252,24 +254,18 @@ class AdaptiveRetrainer:
                 return
 
             # Start background retraining processor
-            processor_task = asyncio.create_task(
-                self._retraining_processor_loop()
-            )
+            processor_task = asyncio.create_task(self._retraining_processor_loop())
             self._background_tasks.append(processor_task)
 
             # Start retraining trigger checker
             trigger_task = asyncio.create_task(self._trigger_checker_loop())
             self._background_tasks.append(trigger_task)
 
-            logger.info(
-                "AdaptiveRetrainer initialized and background tasks started"
-            )
+            logger.info("AdaptiveRetrainer initialized and background tasks started")
 
         except Exception as e:
             logger.error(f"Failed to initialize AdaptiveRetrainer: {e}")
-            raise RetrainingError(
-                "Failed to initialize adaptive retrainer", cause=e
-            )
+            raise RetrainingError("Failed to initialize adaptive retrainer", cause=e)
 
     async def shutdown(self) -> None:
         """Shutdown the retrainer gracefully."""
@@ -279,9 +275,7 @@ class AdaptiveRetrainer:
 
             # Wait for background tasks to complete
             if self._background_tasks:
-                await asyncio.gather(
-                    *self._background_tasks, return_exceptions=True
-                )
+                await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
             self._background_tasks.clear()
             logger.info("AdaptiveRetrainer shutdown completed")
@@ -363,14 +357,18 @@ class AdaptiveRetrainer:
                 logger.info(
                     f"Drift trigger: score={drift_metrics.overall_drift_score:.3f} > {self.config.retraining_drift_threshold}"
                 )
-                
+
                 # Use ConceptDriftDetector for additional drift analysis if available
                 if self.drift_detector:
                     try:
                         # Get enhanced drift severity classification
-                        drift_severity = await self._classify_drift_severity(drift_metrics)
-                        logger.info(f"Drift severity classified as: {drift_severity.value}")
-                        
+                        drift_severity = await self._classify_drift_severity(
+                            drift_metrics
+                        )
+                        logger.info(
+                            f"Drift severity classified as: {drift_severity.value}"
+                        )
+
                         # Adjust priority based on drift severity
                         if drift_severity == DriftSeverity.CRITICAL:
                             priority += 5.0  # Highest priority
@@ -378,16 +376,14 @@ class AdaptiveRetrainer:
                             priority += 3.0
                         elif drift_severity == DriftSeverity.MODERATE:
                             priority += 1.0
-                            
+
                     except Exception as e:
                         logger.warning(f"Failed to classify drift severity: {e}")
 
             # 4. Performance anomaly trigger (significant confidence degradation)
             if accuracy_metrics.confidence_calibration_score < 0.3:
                 triggers.append(RetrainingTrigger.PERFORMANCE_ANOMALY)
-                priority += (
-                    0.3 - accuracy_metrics.confidence_calibration_score
-                ) * 5.0
+                priority += (0.3 - accuracy_metrics.confidence_calibration_score) * 5.0
                 logger.info(
                     f"Confidence trigger: {accuracy_metrics.confidence_calibration_score:.3f} < 0.3"
                 )
@@ -398,9 +394,7 @@ class AdaptiveRetrainer:
                 return None
 
             # Determine retraining strategy
-            strategy = self._select_retraining_strategy(
-                accuracy_metrics, drift_metrics
-            )
+            strategy = self._select_retraining_strategy(accuracy_metrics, drift_metrics)
 
             # Create retraining request
             request = RetrainingRequest(
@@ -457,9 +451,7 @@ class AdaptiveRetrainer:
         """
         try:
             model_key = f"{room_id}_{model_type.value}"
-            request_id = (
-                f"{model_key}_manual_{int(datetime.utcnow().timestamp())}"
-            )
+            request_id = f"{model_key}_manual_{int(datetime.utcnow().timestamp())}"
 
             # Auto-select strategy if not provided
             if strategy is None:
@@ -616,9 +608,7 @@ class AdaptiveRetrainer:
                         if request_id in self._progress_tracker:
                             del self._progress_tracker[request_id]
 
-                    logger.info(
-                        f"Cancelled active retraining request: {request_id}"
-                    )
+                    logger.info(f"Cancelled active retraining request: {request_id}")
                     return True
 
             return False
@@ -635,9 +625,7 @@ class AdaptiveRetrainer:
                 active_count = len(self._active_retrainings)
 
                 # Get queue priorities
-                queue_priorities = [
-                    req.priority for req in self._retraining_queue
-                ]
+                queue_priorities = [req.priority for req in self._retraining_queue]
                 avg_queue_priority = (
                     np.mean(queue_priorities) if queue_priorities else 0.0
                 )
@@ -659,8 +647,7 @@ class AdaptiveRetrainer:
 
             # Calculate success rate
             total_attempts = (
-                self._total_retrainings_completed
-                + self._total_retrainings_failed
+                self._total_retrainings_completed + self._total_retrainings_failed
             )
             success_rate = (
                 self._total_retrainings_completed / max(1, total_attempts)
@@ -698,9 +685,7 @@ class AdaptiveRetrainer:
 
     # Private methods
 
-    async def _queue_retraining_request(
-        self, request: RetrainingRequest
-    ) -> None:
+    async def _queue_retraining_request(self, request: RetrainingRequest) -> None:
         """Add retraining request to priority queue."""
         try:
             with self._queue_lock:
@@ -777,9 +762,7 @@ class AdaptiveRetrainer:
                     return False
 
                 last_retrain = self._last_retrain_times[model_key]
-                cooldown_period = timedelta(
-                    hours=self.config.retraining_cooldown_hours
-                )
+                cooldown_period = timedelta(hours=self.config.retraining_cooldown_hours)
                 return datetime.utcnow() < (last_retrain + cooldown_period)
 
         except Exception as e:
@@ -839,8 +822,7 @@ class AdaptiveRetrainer:
 
                     await asyncio.wait_for(
                         self._shutdown_event.wait(),
-                        timeout=self.config.retraining_check_interval_hours
-                        * 3600,
+                        timeout=self.config.retraining_check_interval_hours * 3600,
                     )
 
                 except asyncio.TimeoutError:
@@ -885,14 +867,14 @@ class AdaptiveRetrainer:
             # Start retraining in background
             retraining_task = asyncio.create_task(
                 self._perform_retraining(request, progress),
-                name=f"retraining_{request.request_id}_{request.room_id}"
+                name=f"retraining_{request.request_id}_{request.room_id}",
             )
-            
+
             # Register task with completion callback for proper lifecycle management
             retraining_task.add_done_callback(
                 lambda task: self._handle_task_completion(request.request_id, task)
             )
-            
+
             # Add to task registry for background task management and monitoring
             self._background_tasks.append(retraining_task)
 
@@ -900,9 +882,7 @@ class AdaptiveRetrainer:
             logger.info(f"Started retraining for {request.request_id}")
 
         except Exception as e:
-            logger.error(
-                f"Failed to start retraining for {request.request_id}: {e}"
-            )
+            logger.error(f"Failed to start retraining for {request.request_id}: {e}")
             await self._handle_retraining_failure(request, str(e))
 
     def _handle_task_completion(self, request_id: str, task: asyncio.Task) -> None:
@@ -911,7 +891,7 @@ class AdaptiveRetrainer:
             # Remove completed task from background tasks registry
             if task in self._background_tasks:
                 self._background_tasks.remove(task)
-                
+
             # Log task completion status
             if task.exception():
                 logger.error(f"Retraining task {request_id} failed: {task.exception()}")
@@ -919,7 +899,7 @@ class AdaptiveRetrainer:
                 logger.warning(f"Retraining task {request_id} was cancelled")
             else:
                 logger.info(f"Retraining task {request_id} completed successfully")
-                
+
         except Exception as e:
             logger.error(f"Error handling task completion for {request_id}: {e}")
 
@@ -937,9 +917,7 @@ class AdaptiveRetrainer:
             train_data, val_data = await self._prepare_retraining_data(request)
 
             # Phase 2: Feature extraction
-            progress.update_progress(
-                "feature_extraction", "Extracting features", 30.0
-            )
+            progress.update_progress("feature_extraction", "Extracting features", 30.0)
             features, targets = await self._extract_features_for_retraining(
                 train_data, request
             )
@@ -956,26 +934,20 @@ class AdaptiveRetrainer:
             )
 
             # Phase 4: Validation and deployment
-            progress.update_progress(
-                "validation", "Validating retrained model", 90.0
-            )
-            
+            progress.update_progress("validation", "Validating retrained model", 90.0)
+
             # Use PredictionValidator for comprehensive validation
             validation_results = await self._validate_retraining_predictions(
                 request, training_result
             )
-            
+
             await self._validate_and_deploy_retrained_model(
                 request, training_result, validation_results
             )
 
             # Complete successfully
-            progress.update_progress(
-                "completed", "Retraining completed", 100.0
-            )
-            await self._handle_retraining_success(
-                request, training_result, start_time
-            )
+            progress.update_progress("completed", "Retraining completed", 100.0)
+            await self._handle_retraining_success(request, training_result, start_time)
 
         except Exception as e:
             logger.error(f"Retraining failed for {request.request_id}: {e}")
@@ -993,15 +965,17 @@ class AdaptiveRetrainer:
             # Get recent data from database (placeholder - would query actual data)
             end_date = datetime.utcnow()
             start_date = end_date - timedelta(days=request.lookback_days)
-            
+
             # In actual implementation, this would query the database for historical data
             # For now, create placeholder data structure
-            full_data = pd.DataFrame()  # Would contain actual historical sensor events and states
-            
+            full_data = (
+                pd.DataFrame()
+            )  # Would contain actual historical sensor events and states
+
             if len(full_data) == 0:
                 logger.warning(f"No data available for retraining {request.room_id}")
                 return pd.DataFrame(), None
-            
+
             # Use train_test_split for proper data splitting with temporal considerations
             if request.validation_split > 0 and len(full_data) > 10:
                 # For time series data, we use shuffle=False to maintain temporal order
@@ -1010,9 +984,9 @@ class AdaptiveRetrainer:
                     full_data,
                     test_size=request.validation_split,
                     shuffle=False,  # Important for time series
-                    random_state=42  # For reproducible splits
+                    random_state=42,  # For reproducible splits
                 )
-                
+
                 logger.info(
                     f"Split data into train ({len(train_data)} samples) and "
                     f"validation ({len(val_data)} samples) sets"
@@ -1020,7 +994,9 @@ class AdaptiveRetrainer:
             else:
                 train_data = full_data
                 val_data = None
-                logger.info(f"Using all {len(train_data)} samples for training (no validation split)")
+                logger.info(
+                    f"Using all {len(train_data)} samples for training (no validation split)"
+                )
 
             return train_data, val_data
 
@@ -1078,14 +1054,18 @@ class AdaptiveRetrainer:
 
             # Create optimization configuration based on request context
             optimization_config = OptimizationConfig(
-                max_trials=getattr(self.config, 'optimization_max_trials', 50),
-                timeout_seconds=getattr(self.config, 'optimization_timeout', 300),
-                optimization_metric='accuracy' if request.trigger == RetrainingTrigger.ACCURACY_DEGRADATION else 'error',
+                max_trials=getattr(self.config, "optimization_max_trials", 50),
+                timeout_seconds=getattr(self.config, "optimization_timeout", 300),
+                optimization_metric=(
+                    "accuracy"
+                    if request.trigger == RetrainingTrigger.ACCURACY_DEGRADATION
+                    else "error"
+                ),
                 cross_validation_folds=3,
-                search_algorithm='tpe',  # Tree-structured Parzen Estimator
-                early_stopping_patience=10
+                search_algorithm="tpe",  # Tree-structured Parzen Estimator
+                early_stopping_patience=10,
             )
-            
+
             # Prepare performance context for optimization
             performance_context = {
                 "accuracy_metrics": request.accuracy_metrics,
@@ -1112,15 +1092,17 @@ class AdaptiveRetrainer:
 
                 # Store optimization result in request for reporting
                 request.performance_improvement = request.performance_improvement or {}
-                request.performance_improvement.update({
-                    "optimization_result": {
-                        "success": optimization_result.success,
-                        "improvement": optimization_result.improvement_over_default,
-                        "best_score": optimization_result.best_score,
-                        "trials_completed": optimization_result.trials_completed,
-                        "optimization_time": optimization_result.optimization_time_seconds
+                request.performance_improvement.update(
+                    {
+                        "optimization_result": {
+                            "success": optimization_result.success,
+                            "improvement": optimization_result.improvement_over_default,
+                            "best_score": optimization_result.best_score,
+                            "trials_completed": optimization_result.trials_completed,
+                            "optimization_time": optimization_result.optimization_time_seconds,
+                        }
                     }
-                })
+                )
 
                 if (
                     optimization_result.success
@@ -1137,9 +1119,7 @@ class AdaptiveRetrainer:
                     if optimization_result.best_parameters and hasattr(
                         model, "set_parameters"
                     ):
-                        model.set_parameters(
-                            optimization_result.best_parameters
-                        )
+                        model.set_parameters(optimization_result.best_parameters)
                         logger.info(
                             f"Applied optimized parameters: {optimization_result.best_parameters}"
                         )
@@ -1167,9 +1147,7 @@ class AdaptiveRetrainer:
         elif request.strategy == RetrainingStrategy.ENSEMBLE_REBALANCE:
             return await self._ensemble_rebalance(model, features, targets)
         else:
-            raise RetrainingError(
-                f"Unknown retraining strategy: {request.strategy}"
-            )
+            raise RetrainingError(f"Unknown retraining strategy: {request.strategy}")
 
     async def _full_retrain_with_optimization(
         self,
@@ -1235,36 +1213,45 @@ class AdaptiveRetrainer:
             return await model.train(features, targets)
 
     async def _validate_and_deploy_retrained_model(
-        self, request: RetrainingRequest, training_result: TrainingResult, validation_results: Optional[Dict[str, Any]] = None
+        self,
+        request: RetrainingRequest,
+        training_result: TrainingResult,
+        validation_results: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Validate retrained model and deploy if successful."""
         if training_result.success:
             validation_passed = True
             validation_summary = {"training_success": True}
-            
+
             # Include PredictionValidator results if available
             if validation_results:
                 validation_summary.update(validation_results)
-                
+
                 # Check if validation meets minimum requirements
-                accuracy_threshold = getattr(self.config, 'min_retrained_accuracy', 70.0)
-                error_threshold = getattr(self.config, 'max_retrained_error_minutes', 20.0)
-                
-                actual_accuracy = validation_results.get('accuracy_rate', 0)
-                actual_error = validation_results.get('mean_error_minutes', float('inf'))
-                
+                accuracy_threshold = getattr(
+                    self.config, "min_retrained_accuracy", 70.0
+                )
+                error_threshold = getattr(
+                    self.config, "max_retrained_error_minutes", 20.0
+                )
+
+                actual_accuracy = validation_results.get("accuracy_rate", 0)
+                actual_error = validation_results.get(
+                    "mean_error_minutes", float("inf")
+                )
+
                 if actual_accuracy < accuracy_threshold:
                     validation_passed = False
                     logger.warning(
                         f"Retrained model accuracy {actual_accuracy:.1f}% below threshold {accuracy_threshold}%"
                     )
-                
+
                 if actual_error > error_threshold:
                     validation_passed = False
                     logger.warning(
                         f"Retrained model error {actual_error:.1f}min above threshold {error_threshold}min"
                     )
-            
+
             if validation_passed:
                 logger.info(
                     f"Retrained model validation successful for {request.request_id}"
@@ -1274,7 +1261,7 @@ class AdaptiveRetrainer:
                 # 2. Compare performance with previous model
                 # 3. Deploy if improvement is significant
                 # 4. Update model registry
-                
+
                 # Store validation summary in request for reporting
                 request.performance_improvement = validation_summary
             else:
@@ -1385,9 +1372,7 @@ class AdaptiveRetrainer:
             # Notify failure
             await self._notify_retraining_event("failed", request)
 
-            logger.error(
-                f"Retraining failed: {request.request_id} - {error_message}"
-            )
+            logger.error(f"Retraining failed: {request.request_id} - {error_message}")
 
         except Exception as e:
             logger.error(f"Error handling retraining failure: {e}")
@@ -1414,14 +1399,14 @@ class AdaptiveRetrainer:
                     else:
                         callback(event_data)
                 except Exception as e:
-                    logger.error(
-                        f"Error in retraining notification callback: {e}"
-                    )
+                    logger.error(f"Error in retraining notification callback: {e}")
 
         except Exception as e:
             logger.error(f"Error notifying retraining event: {e}")
 
-    async def _classify_drift_severity(self, drift_metrics: DriftMetrics) -> DriftSeverity:
+    async def _classify_drift_severity(
+        self, drift_metrics: DriftMetrics
+    ) -> DriftSeverity:
         """Classify drift severity using ConceptDriftDetector if available."""
         try:
             if not self.drift_detector:
@@ -1434,68 +1419,74 @@ class AdaptiveRetrainer:
                     return DriftSeverity.MODERATE
                 else:
                     return DriftSeverity.MINOR
-                    
+
             # Use drift detector for enhanced analysis
             # This would integrate with the actual ConceptDriftDetector methods
             severity = await self.drift_detector.classify_drift_severity(drift_metrics)
             return severity
-            
+
         except Exception as e:
             logger.error(f"Error classifying drift severity: {e}")
             return DriftSeverity.MODERATE
 
     async def _validate_retraining_predictions(
-        self, 
-        request: RetrainingRequest, 
-        training_result: TrainingResult
+        self, request: RetrainingRequest, training_result: TrainingResult
     ) -> Optional[Dict[str, Any]]:
         """Validate retraining results using PredictionValidator if available."""
         try:
             if not self.prediction_validator:
                 logger.debug("No prediction validator available for validation")
                 return None
-                
-            logger.info(f"Validating retrained model predictions for {request.request_id}")
-            
+
+            logger.info(
+                f"Validating retrained model predictions for {request.request_id}"
+            )
+
             # Get recent prediction results for validation
             # This would integrate with the actual PredictionValidator methods
-            validation_results = await self.prediction_validator.validate_model_predictions(
-                room_id=request.room_id,
-                model_type=request.model_type,
-                training_result=training_result,
-                validation_window_hours=24
+            validation_results = (
+                await self.prediction_validator.validate_model_predictions(
+                    room_id=request.room_id,
+                    model_type=request.model_type,
+                    training_result=training_result,
+                    validation_window_hours=24,
+                )
             )
-            
+
             # Generate test predictions for validation using PredictionResult format
-            if validation_results and 'test_predictions' in validation_results:
+            if validation_results and "test_predictions" in validation_results:
                 test_predictions: List[PredictionResult] = []
-                for pred_data in validation_results['test_predictions']:
+                for pred_data in validation_results["test_predictions"]:
                     prediction_result = PredictionResult(
                         room_id=request.room_id,
-                        prediction_time=pred_data.get('prediction_time'),
-                        predicted_occupied_time=pred_data.get('predicted_occupied_time'),
-                        predicted_vacant_time=pred_data.get('predicted_vacant_time'),
-                        confidence=pred_data.get('confidence', 0.5),
+                        prediction_time=pred_data.get("prediction_time"),
+                        predicted_occupied_time=pred_data.get(
+                            "predicted_occupied_time"
+                        ),
+                        predicted_vacant_time=pred_data.get("predicted_vacant_time"),
+                        confidence=pred_data.get("confidence", 0.5),
                         model_version=training_result.model_version,
-                        features_used=pred_data.get('features_used', []),
-                        prediction_metadata=pred_data.get('metadata', {})
+                        features_used=pred_data.get("features_used", []),
+                        prediction_metadata=pred_data.get("metadata", {}),
                     )
                     test_predictions.append(prediction_result)
-                
+
                 # Store test predictions in request for analysis
                 request.prediction_results = test_predictions
-                
-                logger.info(f"Generated {len(test_predictions)} test predictions for validation")
-            
+
+                logger.info(
+                    f"Generated {len(test_predictions)} test predictions for validation"
+                )
+
             if validation_results:
                 logger.info(
                     f"Prediction validation completed: "
                     f"accuracy={validation_results.get('accuracy_rate', 0):.2f}%, "
                     f"mean_error={validation_results.get('mean_error_minutes', 0):.1f}min"
                 )
-                
+
             return validation_results
-            
+
         except Exception as e:
             logger.error(f"Error validating retrained model predictions: {e}")
             return None
@@ -1505,15 +1496,19 @@ class AdaptiveRetrainer:
         try:
             if not self.drift_detector:
                 return {"available": False, "status": "not_configured"}
-                
+
             # This would get status from actual ConceptDriftDetector
             return {
                 "available": True,
                 "status": "active",
-                "last_analysis": self.drift_detector.last_analysis_time if hasattr(self.drift_detector, 'last_analysis_time') else None,
-                "monitored_rooms": getattr(self.drift_detector, 'monitored_rooms', [])
+                "last_analysis": (
+                    self.drift_detector.last_analysis_time
+                    if hasattr(self.drift_detector, "last_analysis_time")
+                    else None
+                ),
+                "monitored_rooms": getattr(self.drift_detector, "monitored_rooms", []),
             }
-            
+
         except Exception as e:
             logger.error(f"Error getting drift detector status: {e}")
             return {"available": False, "status": "error", "error": str(e)}
@@ -1523,15 +1518,19 @@ class AdaptiveRetrainer:
         try:
             if not self.prediction_validator:
                 return {"available": False, "status": "not_configured"}
-                
+
             # This would get status from actual PredictionValidator
             return {
                 "available": True,
                 "status": "active",
-                "validation_queue_size": getattr(self.prediction_validator, 'validation_queue_size', 0),
-                "recent_validations": getattr(self.prediction_validator, 'recent_validation_count', 0)
+                "validation_queue_size": getattr(
+                    self.prediction_validator, "validation_queue_size", 0
+                ),
+                "recent_validations": getattr(
+                    self.prediction_validator, "recent_validation_count", 0
+                ),
             }
-            
+
         except Exception as e:
             logger.error(f"Error getting prediction validator status: {e}")
             return {"available": False, "status": "error", "error": str(e)}

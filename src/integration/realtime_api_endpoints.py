@@ -119,9 +119,7 @@ async def websocket_predictions_endpoint(websocket: WebSocket):
 
 
 @realtime_router.websocket("/predictions/{room_id}")
-async def websocket_room_predictions_endpoint(
-    websocket: WebSocket, room_id: str
-):
+async def websocket_room_predictions_endpoint(websocket: WebSocket, room_id: str):
     """
     WebSocket endpoint for room-specific prediction streaming.
 
@@ -142,7 +140,7 @@ async def websocket_room_predictions_endpoint(
 
         # Generate unique client ID for tracking
         client_id = f"room_{room_id}_{datetime.utcnow().timestamp()}"
-        
+
         # Send initial subscription message
         subscription_message = {
             "type": "subscription_confirmation",
@@ -152,30 +150,35 @@ async def websocket_room_predictions_endpoint(
             "message": f"Successfully subscribed to {room_id} predictions",
             "timestamp": datetime.utcnow().isoformat(),
         }
-        
+
         # Send subscription confirmation to client
         await websocket.send_text(json.dumps(subscription_message))
-        logger.info(f"Sent subscription confirmation to client {client_id} for room {room_id}")
+        logger.info(
+            f"Sent subscription confirmation to client {client_id} for room {room_id}"
+        )
 
         try:
             # Get WebSocket manager for proper connection handling
             if hasattr(
                 integration_manager.enhanced_mqtt_manager, "realtime_publisher"
             ) and hasattr(
-                integration_manager.enhanced_mqtt_manager.realtime_publisher, "websocket_manager"
+                integration_manager.enhanced_mqtt_manager.realtime_publisher,
+                "websocket_manager",
             ):
                 ws_manager = (
                     integration_manager.enhanced_mqtt_manager.realtime_publisher.websocket_manager
                 )
-                
+
                 # Register connection with WebSocket manager using FastAPI websocket
                 await api_websocket_handler.connect(websocket, client_id)
-                
+
                 # Subscribe client to room updates through the manager
                 await ws_manager.subscribe_to_room(client_id, room_id)
-                
-                logger.info(f"Client {client_id} connected and subscribed to room {room_id}")
-                
+
+                logger.info(
+                    f"Client {client_id} connected and subscribed to room {room_id}"
+                )
+
                 # Handle incoming messages from client
                 try:
                     while True:
@@ -183,41 +186,39 @@ async def websocket_room_predictions_endpoint(
                             # Wait for messages from client
                             data = await websocket.receive_text()
                             message = json.loads(data)
-                            
+
                             # Handle client subscription management
                             await _handle_client_websocket_message(
                                 client_id, message, ws_manager, websocket
                             )
-                            
+
                         except json.JSONDecodeError:
                             logger.warning(f"Invalid JSON from client {client_id}")
                             error_msg = {
                                 "type": "error",
                                 "message": "Invalid JSON format",
-                                "timestamp": datetime.utcnow().isoformat()
+                                "timestamp": datetime.utcnow().isoformat(),
                             }
                             await websocket.send_text(json.dumps(error_msg))
-                            
+
                 except Exception as e:
                     if "websocket.disconnect" not in str(e).lower():
-                        logger.error(f"Error handling client messages for {client_id}: {e}")
-                        
+                        logger.error(
+                            f"Error handling client messages for {client_id}: {e}"
+                        )
+
             else:
                 # Fallback to direct websocket handler
                 await websocket_handler(websocket, f"/predictions/{room_id}")
 
         except Exception as e:
-            logger.error(
-                f"Error setting up room-specific WebSocket for {room_id}: {e}"
-            )
+            logger.error(f"Error setting up room-specific WebSocket for {room_id}: {e}")
             await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
 
     except WebSocketDisconnect:
         logger.info(f"Client {client_id} disconnected from room {room_id}")
     except Exception as e:
-        logger.error(
-            f"Error in WebSocket room predictions endpoint for {room_id}: {e}"
-        )
+        logger.error(f"Error in WebSocket room predictions endpoint for {room_id}: {e}")
         try:
             if websocket.client_state == WebSocketState.CONNECTED:
                 await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
@@ -284,17 +285,12 @@ async def sse_room_predictions_endpoint(request: Request, room_id: str):
             return StreamingResponse(
                 sse_stream,
                 media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "Connection": "keep-alive"
-                }
+                headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
             )
         return sse_stream
 
     except Exception as e:
-        logger.error(
-            f"Error in SSE room predictions endpoint for {room_id}: {e}"
-        )
+        logger.error(f"Error in SSE room predictions endpoint for {room_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create room-specific SSE stream",
@@ -312,27 +308,23 @@ async def get_realtime_stats(request: Request, api_key: Optional[str] = Depends(
     try:
         if api_key and len(api_key) < 10:
             raise APIAuthenticationError(
-                endpoint="/realtime/stats",
-                reason="Invalid API key format"
+                endpoint="/realtime/stats", reason="Invalid API key format"
             )
-            
+
         integration_manager = get_integration_manager()
         if not integration_manager:
             raise APIError("Integration manager not available")
-            
+
         realtime_publisher = integration_manager.get_realtime_publisher()
         if not realtime_publisher:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Real-time publishing not available"
+                detail="Real-time publishing not available",
             )
-            
+
     except (APIAuthenticationError, APIError) as e:
         logger.warning(f"API error in realtime stats: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
     try:
         integration_manager = get_integration_manager()
 
@@ -377,18 +369,14 @@ async def get_realtime_connections():
 
         # Get connection information
         stats = integration_manager.get_integration_stats()
-        connection_info = stats.get("enhanced_mqtt_stats", {}).get(
-            "connections", {}
-        )
+        connection_info = stats.get("enhanced_mqtt_stats", {}).get("connections", {})
 
         # Get API WebSocket handler session information
         api_sessions = api_websocket_handler.get_all_sessions()
         api_connection_count = api_websocket_handler.get_connection_count()
 
         return {
-            "websocket_connections": connection_info.get(
-                "websocket_connections", {}
-            ),
+            "websocket_connections": connection_info.get("websocket_connections", {}),
             "sse_connections": connection_info.get("sse_connections", {}),
             "api_websocket_sessions": {
                 "count": api_connection_count,
@@ -397,15 +385,14 @@ async def get_realtime_connections():
                         **session,
                         "connected_at": session["connected_at"].isoformat(),
                         "last_activity": session["last_activity"].isoformat(),
-                        "subscriptions": list(session["subscriptions"])
+                        "subscriptions": list(session["subscriptions"]),
                     }
                     for client_id, session in api_sessions.items()
-                }
+                },
             },
             "summary": {
-                "total_active": connection_info.get(
-                    "total_active_connections", 0
-                ) + api_connection_count,
+                "total_active": connection_info.get("total_active_connections", 0)
+                + api_connection_count,
                 "websocket_count": connection_info.get("websocket_clients", 0),
                 "sse_count": connection_info.get("sse_clients", 0),
                 "api_websocket_count": api_connection_count,
@@ -425,12 +412,12 @@ async def get_realtime_connections():
 async def cleanup_stale_connections():
     """
     Manually trigger cleanup of stale WebSocket connections.
-    
+
     Removes connections that have been idle for more than 30 minutes.
     """
     try:
         cleaned_count = await api_websocket_handler.cleanup_stale_connections()
-        
+
         return {
             "success": True,
             "message": f"Cleaned up {cleaned_count} stale connections",
@@ -438,7 +425,7 @@ async def cleanup_stale_connections():
             "active_connections_remaining": api_websocket_handler.get_connection_count(),
             "timestamp": datetime.utcnow().isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Error during connection cleanup: {e}")
         raise HTTPException(
@@ -467,19 +454,21 @@ async def test_realtime_broadcast():
                 "message": "Test broadcast from API",
                 "timestamp": datetime.utcnow().isoformat(),
                 "type": "test",
-                "source": "api_endpoint"
-            }
+                "source": "api_endpoint",
+            },
         )
-        
+
         # Create test data with room filtering using Set type
         target_rooms: Set[str] = {"living_room", "kitchen", "bedroom"}
-        
+
         test_data = test_event.data
 
         # Broadcast via enhanced MQTT manager
         if integration_manager.enhanced_mqtt_manager:
-            results = await integration_manager.enhanced_mqtt_manager.publish_system_status(
-                {"test_broadcast": test_data}
+            results = (
+                await integration_manager.enhanced_mqtt_manager.publish_system_status(
+                    {"test_broadcast": test_data}
+                )
             )
 
             return {
@@ -520,18 +509,16 @@ async def realtime_health_check():
         enhanced_mqtt_available = "enhanced_mqtt_stats" in stats
 
         health_status = (
-            "healthy"
-            if integration_active and enhanced_mqtt_available
-            else "degraded"
+            "healthy" if integration_active and enhanced_mqtt_available else "degraded"
         )
 
         return {
             "status": health_status,
             "integration_active": integration_active,
             "enhanced_mqtt_available": enhanced_mqtt_available,
-            "realtime_publishing_enabled": stats.get(
-                "integration_config", {}
-            ).get("realtime_publishing_enabled", False),
+            "realtime_publishing_enabled": stats.get("integration_config", {}).get(
+                "realtime_publishing_enabled", False
+            ),
             "websocket_enabled": stats.get("integration_config", {}).get(
                 "websocket_enabled", False
             ),
@@ -555,7 +542,7 @@ async def _handle_client_websocket_message(
 ):
     """
     Handle WebSocket messages from clients for subscription management.
-    
+
     Args:
         client_id: Unique client identifier
         message: Message from client
@@ -565,7 +552,7 @@ async def _handle_client_websocket_message(
     try:
         message_type = message.get("type")
         room_id = message.get("room_id")
-        
+
         if message_type == "subscribe" and room_id:
             # Subscribe to additional room
             await ws_manager.subscribe_to_room(client_id, room_id)
@@ -573,11 +560,11 @@ async def _handle_client_websocket_message(
                 "type": "subscription_success",
                 "room_id": room_id,
                 "message": f"Subscribed to {room_id}",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
             await websocket.send_text(json.dumps(response))
             logger.debug(f"Client {client_id} subscribed to additional room {room_id}")
-            
+
         elif message_type == "unsubscribe" and room_id:
             # Unsubscribe from room
             await ws_manager.unsubscribe_from_room(client_id, room_id)
@@ -585,19 +572,16 @@ async def _handle_client_websocket_message(
                 "type": "unsubscription_success",
                 "room_id": room_id,
                 "message": f"Unsubscribed from {room_id}",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
             await websocket.send_text(json.dumps(response))
             logger.debug(f"Client {client_id} unsubscribed from room {room_id}")
-            
+
         elif message_type == "ping":
             # Handle ping/pong for connection health
-            response = {
-                "type": "pong",
-                "timestamp": datetime.utcnow().isoformat()
-            }
+            response = {"type": "pong", "timestamp": datetime.utcnow().isoformat()}
             await websocket.send_text(json.dumps(response))
-            
+
         elif message_type == "get_subscriptions":
             # Return current subscriptions
             client_meta = ws_manager.client_metadata.get(client_id)
@@ -605,25 +589,25 @@ async def _handle_client_websocket_message(
             response = {
                 "type": "subscription_list",
                 "subscriptions": subscriptions,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
             await websocket.send_text(json.dumps(response))
-            
+
         else:
             # Unknown message type
             response = {
                 "type": "error",
                 "message": f"Unknown message type: {message_type}",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
             await websocket.send_text(json.dumps(response))
-            
+
     except Exception as e:
         logger.error(f"Error handling client message from {client_id}: {e}")
         error_response = {
             "type": "error",
             "message": "Error processing message",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         try:
             await websocket.send_text(json.dumps(error_response))
@@ -642,24 +626,24 @@ class WebSocketConnectionHandler:
 
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
-        self.client_sessions: Dict[str, Dict[str, Any]] = {}  # Track client session data
+        self.client_sessions: Dict[str, Dict[str, Any]] = (
+            {}
+        )  # Track client session data
 
-    async def connect(
-        self, websocket: WebSocket, connection_id: str = None
-    ) -> str:
+    async def connect(self, websocket: WebSocket, connection_id: str = None) -> str:
         """Connect a WebSocket client."""
         if connection_id is None:
             connection_id = f"api_{datetime.utcnow().timestamp()}"
 
         # WebSocket is already accepted in the endpoint, don't accept again
         self.active_connections[connection_id] = websocket
-        
+
         # Initialize client session data
         self.client_sessions[connection_id] = {
             "connected_at": datetime.utcnow(),
             "last_activity": datetime.utcnow(),
             "subscriptions": set(),
-            "message_count": 0
+            "message_count": 0,
         }
 
         logger.debug(f"API WebSocket client connected: {connection_id}")
@@ -673,20 +657,20 @@ class WebSocketConnectionHandler:
             del self.client_sessions[connection_id]
         logger.debug(f"API WebSocket client disconnected: {connection_id}")
 
-    async def send_message(
-        self, connection_id: str, message: Dict[str, Any]
-    ) -> bool:
+    async def send_message(self, connection_id: str, message: Dict[str, Any]) -> bool:
         """Send message to a specific client."""
         if connection_id in self.active_connections:
             try:
                 websocket = self.active_connections[connection_id]
                 await websocket.send_text(json.dumps(message))
-                
+
                 # Update client session data
                 if connection_id in self.client_sessions:
-                    self.client_sessions[connection_id]["last_activity"] = datetime.utcnow()
+                    self.client_sessions[connection_id][
+                        "last_activity"
+                    ] = datetime.utcnow()
                     self.client_sessions[connection_id]["message_count"] += 1
-                    
+
                 return True
             except Exception as e:
                 logger.error(f"Error sending message to {connection_id}: {e}")
@@ -715,28 +699,28 @@ class WebSocketConnectionHandler:
     def get_connection_count(self) -> int:
         """Get the number of active connections."""
         return len(self.active_connections)
-        
+
     def get_client_session_info(self, connection_id: str) -> Optional[Dict[str, Any]]:
         """Get session information for a specific client."""
         return self.client_sessions.get(connection_id)
-        
+
     def get_all_sessions(self) -> Dict[str, Dict[str, Any]]:
         """Get session information for all clients."""
         return self.client_sessions.copy()
-        
+
     async def cleanup_stale_connections(self, max_idle_minutes: int = 30):
         """Clean up connections that have been idle too long."""
         cutoff_time = datetime.utcnow() - timedelta(minutes=max_idle_minutes)
         stale_connections = []
-        
+
         for connection_id, session in self.client_sessions.items():
             if session["last_activity"] < cutoff_time:
                 stale_connections.append(connection_id)
-                
+
         for connection_id in stale_connections:
             await self.disconnect(connection_id)
             logger.debug(f"Cleaned up stale API WebSocket connection: {connection_id}")
-            
+
         return len(stale_connections)
 
 

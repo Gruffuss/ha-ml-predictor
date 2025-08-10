@@ -1,4 +1,4 @@
-# Logging configuration
+# Enhanced logging configuration for production monitoring
 version: 1
 disable_existing_loggers: false
 
@@ -7,6 +7,9 @@ formatters:
     format: '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
   structured:
     format: '%(asctime)s [%(levelname)s] %(name)s: %(funcName)s:%(lineno)d - %(message)s'
+  json:
+    (): 'src.utils.logger.StructuredFormatter'
+    include_extra: true
 
 handlers:
   console:
@@ -18,18 +21,42 @@ handlers:
   file:
     class: logging.handlers.RotatingFileHandler
     level: DEBUG
-    formatter: structured
+    formatter: json
     filename: logs/occupancy_prediction.log
-    maxBytes: 10485760  # 10MB
-    backupCount: 5
+    maxBytes: 52428800  # 50MB
+    backupCount: 10
 
   error_file:
     class: logging.handlers.RotatingFileHandler
     level: ERROR
-    formatter: structured
+    formatter: json
     filename: logs/errors.log
-    maxBytes: 10485760  # 10MB
+    maxBytes: 52428800  # 50MB
+    backupCount: 10
+
+  performance_file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: logs/performance.log
+    maxBytes: 52428800  # 50MB
     backupCount: 5
+
+  ml_ops_file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: logs/ml_operations.log
+    maxBytes: 52428800  # 50MB
+    backupCount: 5
+
+  alerts_file:
+    class: logging.handlers.RotatingFileHandler
+    level: WARNING
+    formatter: json
+    filename: logs/alerts.log
+    maxBytes: 52428800  # 50MB
+    backupCount: 10
 
 loggers:
   occupancy_prediction:
@@ -37,9 +64,65 @@ loggers:
     handlers: [console, file, error_file]
     propagate: false
 
+  occupancy_prediction.performance:
+    level: INFO
+    handlers: [performance_file, console]
+    propagate: false
+
+  occupancy_prediction.ml_ops:
+    level: INFO
+    handlers: [ml_ops_file, console]
+    propagate: false
+
+  occupancy_prediction.errors:
+    level: WARNING
+    handlers: [error_file, alerts_file, console]
+    propagate: false
+
+  occupancy_prediction.alert_manager:
+    level: INFO
+    handlers: [alerts_file, console]
+    propagate: false
+
+  occupancy_prediction.monitoring_manager:
+    level: INFO
+    handlers: [console, file]
+    propagate: false
+
+  occupancy_prediction.performance_monitor:
+    level: INFO
+    handlers: [performance_file, console]
+    propagate: false
+
+  occupancy_prediction.health_monitor:
+    level: INFO
+    handlers: [console, file]
+    propagate: false
+
+  # External library logging
   sqlalchemy.engine:
     level: WARNING
     handlers: [console, file]
+    propagate: false
+
+  aiohttp.access:
+    level: INFO
+    handlers: [console, file]
+    propagate: false
+
+  fastapi:
+    level: INFO
+    handlers: [console, file]
+    propagate: false
+
+  uvicorn:
+    level: INFO
+    handlers: [console, file]
+    propagate: false
+
+  prometheus_client:
+    level: WARNING
+    handlers: [console]
     propagate: false
 
 root:

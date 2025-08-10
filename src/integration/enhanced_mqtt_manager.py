@@ -156,9 +156,7 @@ class EnhancedMQTTIntegrationManager:
             logger.info("Enhanced MQTT integration initialized successfully")
 
         except Exception as e:
-            logger.error(
-                f"Failed to initialize enhanced MQTT integration: {e}"
-            )
+            logger.error(f"Failed to initialize enhanced MQTT integration: {e}")
             raise EnhancedMQTTIntegrationError(
                 "Failed to initialize integration", cause=e
             )
@@ -172,9 +170,7 @@ class EnhancedMQTTIntegrationManager:
             if self._background_tasks:
                 for task in self._background_tasks:
                     task.cancel()
-                await asyncio.gather(
-                    *self._background_tasks, return_exceptions=True
-                )
+                await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
             # Shutdown real-time publisher
             await self.realtime_publisher.shutdown()
@@ -238,9 +234,7 @@ class EnhancedMQTTIntegrationManager:
             return results
 
         except Exception as e:
-            logger.error(
-                f"Error in enhanced prediction publishing for {room_id}: {e}"
-            )
+            logger.error(f"Error in enhanced prediction publishing for {room_id}: {e}")
             return {"error": str(e), "success": False}
 
     async def publish_system_status(
@@ -289,19 +283,15 @@ class EnhancedMQTTIntegrationManager:
             )
 
             # Publish via real-time channels
-            realtime_results = (
-                await self.realtime_publisher.publish_system_status(
-                    status_data=status_data
-                )
+            realtime_results = await self.realtime_publisher.publish_system_status(
+                status_data=status_data
             )
 
             # Combine results
             combined_results = {
                 "mqtt": {
                     "success": (
-                        mqtt_result.success
-                        if hasattr(mqtt_result, "success")
-                        else True
+                        mqtt_result.success if hasattr(mqtt_result, "success") else True
                     ),
                     "error": getattr(mqtt_result, "error_message", None),
                 },
@@ -365,9 +355,9 @@ class EnhancedMQTTIntegrationManager:
                 },
                 "connections": {
                     "total_clients": self.enhanced_stats.total_clients_connected,
-                    "websocket_clients": realtime_stats.get(
-                        "websocket_stats", {}
-                    ).get("total_active_connections", 0),
+                    "websocket_clients": realtime_stats.get("websocket_stats", {}).get(
+                        "total_active_connections", 0
+                    ),
                     "sse_clients": realtime_stats.get("sse_stats", {}).get(
                         "total_active_connections", 0
                     ),
@@ -384,9 +374,7 @@ class EnhancedMQTTIntegrationManager:
             realtime_stats = self.realtime_publisher.get_publishing_stats()
 
             return {
-                "websocket_connections": realtime_stats.get(
-                    "websocket_stats", {}
-                ),
+                "websocket_connections": realtime_stats.get("websocket_stats", {}),
                 "sse_connections": realtime_stats.get("sse_stats", {}),
                 "mqtt_connection": {
                     "connected": getattr(
@@ -429,12 +417,8 @@ class EnhancedMQTTIntegrationManager:
         results = {}
 
         for room_id, prediction in predictions.items():
-            current_state = (
-                current_states.get(room_id) if current_states else None
-            )
-            result = await self.publish_prediction(
-                prediction, room_id, current_state
-            )
+            current_state = current_states.get(room_id) if current_states else None
+            result = await self.publish_prediction(prediction, room_id, current_state)
             results[room_id] = result
 
         return results
@@ -445,9 +429,7 @@ class EnhancedMQTTIntegrationManager:
         """Start enhanced monitoring tasks."""
         try:
             # Performance monitoring task
-            perf_task = asyncio.create_task(
-                self._performance_monitoring_loop()
-            )
+            perf_task = asyncio.create_task(self._performance_monitoring_loop())
             self._background_tasks.append(perf_task)
 
             # Statistics update task
@@ -472,9 +454,7 @@ class EnhancedMQTTIntegrationManager:
 
             # Keep only recent data (last hour)
             cutoff_time = now - timedelta(hours=1)
-            self._publish_times = [
-                t for t in self._publish_times if t > cutoff_time
-            ]
+            self._publish_times = [t for t in self._publish_times if t > cutoff_time]
             self._publish_latencies = [
                 lat
                 for lat, t in zip(self._publish_latencies, self._publish_times)
@@ -498,8 +478,7 @@ class EnhancedMQTTIntegrationManager:
                     alpha = 0.1
                     self.enhanced_stats.publish_success_rate = (
                         alpha * success_rate
-                        + (1 - alpha)
-                        * self.enhanced_stats.publish_success_rate
+                        + (1 - alpha) * self.enhanced_stats.publish_success_rate
                     )
 
         except Exception as e:
@@ -512,9 +491,7 @@ class EnhancedMQTTIntegrationManager:
 
             # Update predictions per minute
             recent_publishes = [
-                t
-                for t in self._publish_times
-                if t > now - timedelta(minutes=1)
+                t for t in self._publish_times if t > now - timedelta(minutes=1)
             ]
             self.enhanced_stats.predictions_per_minute = len(recent_publishes)
 
@@ -543,9 +520,7 @@ class EnhancedMQTTIntegrationManager:
 
             # Update real-time stats from publisher
             if hasattr(self.realtime_publisher, "metrics"):
-                self.enhanced_stats.realtime_stats = (
-                    self.realtime_publisher.metrics
-                )
+                self.enhanced_stats.realtime_stats = self.realtime_publisher.metrics
 
             # Update MQTT stats from base manager
             if hasattr(self.base_mqtt_manager, "stats"):
@@ -562,9 +537,7 @@ class EnhancedMQTTIntegrationManager:
         """Determine overall system status."""
         try:
             # Check MQTT connection
-            mqtt_connected = getattr(
-                self.base_mqtt_manager, "mqtt_connected", False
-            )
+            mqtt_connected = getattr(self.base_mqtt_manager, "mqtt_connected", False)
 
             # Check real-time system
             realtime_active = self.realtime_publisher._publishing_active
@@ -618,9 +591,7 @@ class EnhancedMQTTIntegrationManager:
                     ]
                     self._publish_latencies = [
                         lat
-                        for lat, t in zip(
-                            self._publish_latencies, self._publish_times
-                        )
+                        for lat, t in zip(self._publish_latencies, self._publish_times)
                         if t > cutoff_time
                     ]
 

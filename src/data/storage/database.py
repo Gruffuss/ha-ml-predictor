@@ -84,9 +84,7 @@ class DatabaseManager:
             await self._verify_connection()
 
             # Start background health check
-            self._health_check_task = asyncio.create_task(
-                self._health_check_loop()
-            )
+            self._health_check_task = asyncio.create_task(self._health_check_loop())
 
             logger.info(
                 "Database manager initialized successfully",
@@ -107,9 +105,7 @@ class DatabaseManager:
         # Parse connection string to add async driver
         conn_string = self.config.connection_string
         if conn_string.startswith("postgresql://"):
-            conn_string = conn_string.replace(
-                "postgresql://", "postgresql+asyncpg://"
-            )
+            conn_string = conn_string.replace("postgresql://", "postgresql+asyncpg://")
         elif not conn_string.startswith("postgresql+asyncpg://"):
             raise ValueError(
                 "Connection string must use postgresql:// or postgresql+asyncpg://"
@@ -140,9 +136,7 @@ class DatabaseManager:
     def _setup_connection_events(self) -> None:
         """Setup database connection event listeners for monitoring with SQLAlchemy 2.0."""
         if self.engine is None:
-            raise RuntimeError(
-                "Engine must be created before setting up events"
-            )
+            raise RuntimeError("Engine must be created before setting up events")
 
         @event.listens_for(self.engine.sync_engine, "connect")
         def on_connect(dbapi_connection, connection_record):
@@ -151,9 +145,7 @@ class DatabaseManager:
             logger.debug(
                 "New database connection established",
                 extra={
-                    "total_connections": self._connection_stats[
-                        "total_connections"
-                    ]
+                    "total_connections": self._connection_stats["total_connections"]
                 },
             )
 
@@ -189,12 +181,8 @@ class DatabaseManager:
             logger.warning(
                 "Database connection invalidated",
                 extra={
-                    "exception": (
-                        str(exception) if exception else "Unknown error"
-                    ),
-                    "failed_connections": self._connection_stats[
-                        "failed_connections"
-                    ],
+                    "exception": (str(exception) if exception else "Unknown error"),
+                    "failed_connections": self._connection_stats["failed_connections"],
                 },
             )
 
@@ -223,9 +211,7 @@ class DatabaseManager:
 
             # Verify TimescaleDB extension
             result = await conn.execute(
-                text(
-                    "SELECT COUNT(*) FROM pg_extension WHERE extname = 'timescaledb'"
-                )
+                text("SELECT COUNT(*) FROM pg_extension WHERE extname = 'timescaledb'")
             )
             if result.scalar() == 0:
                 logger.warning(
@@ -277,8 +263,7 @@ class DatabaseManager:
 
                 # Exponential backoff
                 delay = min(
-                    self.base_delay
-                    * (self.backoff_multiplier ** (retry_count - 1)),
+                    self.base_delay * (self.backoff_multiplier ** (retry_count - 1)),
                     self.max_delay,
                 )
 
@@ -338,9 +323,7 @@ class DatabaseManager:
                     return result
 
         except Exception as e:
-            raise DatabaseQueryError(
-                query=query, parameters=parameters, cause=e
-            )
+            raise DatabaseQueryError(query=query, parameters=parameters, cause=e)
 
     async def health_check(self) -> Dict[str, Any]:
         """
@@ -368,11 +351,9 @@ class DatabaseManager:
                 # Check TimescaleDB status and extract version information
                 try:
                     result = await session.execute(
-                        text(
-                            "SELECT timescaledb_information.get_version_info()"
-                        )
+                        text("SELECT timescaledb_information.get_version_info()")
                     )
-                    
+
                     # Extract TimescaleDB version information from the result
                     version_info = {}
                     try:
@@ -381,7 +362,7 @@ class DatabaseManager:
                             # Parse the version info (format: "TimescaleDB version X.Y.Z on PostgreSQL A.B.C")
                             version_string = str(version_row[0])
                             version_info["full_version"] = version_string
-                            
+
                             # Extract TimescaleDB version number
                             if "TimescaleDB version" in version_string:
                                 # Extract version between "TimescaleDB version " and " on" (or end of string)
@@ -390,8 +371,10 @@ class DatabaseManager:
                                 if end == -1:  # No " on" found, use end of string
                                     end = len(version_string)
                                 if end > start:
-                                    version_info["timescale_version"] = version_string[start:end].strip()
-                            
+                                    version_info["timescale_version"] = version_string[
+                                        start:end
+                                    ].strip()
+
                             # Extract PostgreSQL version
                             if "PostgreSQL" in version_string:
                                 pg_start = version_string.find("PostgreSQL ") + 11
@@ -399,15 +382,19 @@ class DatabaseManager:
                                 pg_end = version_string.find(" ", pg_start)
                                 if pg_end == -1:
                                     pg_end = len(version_string)
-                                version_info["postgresql_version"] = version_string[pg_start:pg_end]
-                        
+                                version_info["postgresql_version"] = version_string[
+                                    pg_start:pg_end
+                                ]
+
                     except Exception as parse_error:
-                        logger.debug(f"Failed to parse TimescaleDB version info: {parse_error}")
+                        logger.debug(
+                            f"Failed to parse TimescaleDB version info: {parse_error}"
+                        )
                         version_info["parse_error"] = str(parse_error)
-                    
+
                     health_status["timescale_status"] = "available"
                     health_status["timescale_version_info"] = version_info
-                    
+
                 except Exception as timescale_error:
                     health_status["timescale_status"] = "unavailable"
                     health_status["timescale_version_info"] = {
@@ -436,9 +423,7 @@ class DatabaseManager:
                                     else 0
                                 ),
                                 "overflow_connections": (
-                                    pool.overflow()
-                                    if hasattr(pool, "overflow")
-                                    else 0
+                                    pool.overflow() if hasattr(pool, "overflow") else 0
                                 ),
                             }
                         )
@@ -457,9 +442,7 @@ class DatabaseManager:
                     health_status["errors"].append(
                         {
                             "type": "connection_error",
-                            "message": self._connection_stats[
-                                "last_connection_error"
-                            ],
+                            "message": self._connection_stats["last_connection_error"],
                             "failed_count": self._connection_stats[
                                 "failed_connections"
                             ],
@@ -579,9 +562,7 @@ async def execute_sql_file(file_path: str) -> None:
             sql_content = file.read()
 
         # Split by semicolon and execute each statement
-        statements = [
-            stmt.strip() for stmt in sql_content.split(";") if stmt.strip()
-        ]
+        statements = [stmt.strip() for stmt in sql_content.split(";") if stmt.strip()]
 
         db_manager = await get_database_manager()
 
@@ -633,9 +614,7 @@ async def get_database_version() -> str:
     """
     try:
         db_manager = await get_database_manager()
-        result = await db_manager.execute_query(
-            "SELECT version()", fetch_one=True
-        )
+        result = await db_manager.execute_query("SELECT version()", fetch_one=True)
         return result[0] if result else "Unknown"
 
     except Exception as e:

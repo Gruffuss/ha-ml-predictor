@@ -49,18 +49,14 @@ class OptimizationStrategy(Enum):
     GRID_SEARCH = "grid_search"  # Exhaustive grid search
     RANDOM_SEARCH = "random_search"  # Random parameter sampling
     GRADIENT_BASED = "gradient_based"  # Gradient-based optimization
-    PERFORMANCE_ADAPTIVE = (
-        "performance_adaptive"  # Adapt based on recent performance
-    )
+    PERFORMANCE_ADAPTIVE = "performance_adaptive"  # Adapt based on recent performance
 
 
 class OptimizationObjective(Enum):
     """Optimization objectives."""
 
     ACCURACY = "accuracy"  # Maximize prediction accuracy
-    CONFIDENCE_CALIBRATION = (
-        "confidence_calibration"  # Improve confidence scores
-    )
+    CONFIDENCE_CALIBRATION = "confidence_calibration"  # Improve confidence scores
     PREDICTION_TIME = "prediction_time"  # Minimize prediction latency
     DRIFT_RESISTANCE = "drift_resistance"  # Improve stability over time
     COMPOSITE = "composite"  # Multi-objective optimization
@@ -147,9 +143,7 @@ class OptimizationConfig:
 
     # Performance-based adaptation
     performance_history_window: int = 10
-    min_improvement_threshold: float = (
-        0.01  # Minimum improvement to apply optimization
-    )
+    min_improvement_threshold: float = 0.01  # Minimum improvement to apply optimization
 
     def __post_init__(self):
         """Validate configuration."""
@@ -245,22 +239,14 @@ class ModelOptimizer:
                 return self._create_default_result(model_type)
 
             # Check if optimization is needed based on performance context
-            if not self._should_optimize(
-                model_type, room_id, performance_context
-            ):
-                logger.info(
-                    f"Optimization not needed for {model_type} in {room_id}"
-                )
+            if not self._should_optimize(model_type, room_id, performance_context):
+                logger.info(f"Optimization not needed for {model_type} in {room_id}")
                 return self._create_default_result(model_type)
 
-            logger.info(
-                f"Starting optimization for {model_type} model in {room_id}"
-            )
+            logger.info(f"Starting optimization for {model_type} model in {room_id}")
 
             # Get parameter space for model type
-            param_space = self._get_parameter_space(
-                model_type, performance_context
-            )
+            param_space = self._get_parameter_space(model_type, performance_context)
             if not param_space:
                 logger.warning(f"No parameter space defined for {model_type}")
                 return self._create_default_result(model_type)
@@ -283,10 +269,7 @@ class ModelOptimizer:
                 result = await self._random_search_optimization(
                     objective_func, param_space, model_type
                 )
-            elif (
-                self.config.strategy
-                == OptimizationStrategy.PERFORMANCE_ADAPTIVE
-            ):
+            elif self.config.strategy == OptimizationStrategy.PERFORMANCE_ADAPTIVE:
                 result = await self._performance_adaptive_optimization(
                     objective_func,
                     param_space,
@@ -300,9 +283,7 @@ class ModelOptimizer:
                 )
 
             # Calculate optimization time
-            optimization_time = (
-                datetime.utcnow() - start_time
-            ).total_seconds()
+            optimization_time = (datetime.utcnow() - start_time).total_seconds()
             result.optimization_time_seconds = optimization_time
 
             # Update statistics
@@ -310,9 +291,7 @@ class ModelOptimizer:
                 self._total_optimizations += 1
                 if result.success:
                     self._successful_optimizations += 1
-                    self._update_improvement_average(
-                        result.improvement_over_default
-                    )
+                    self._update_improvement_average(result.improvement_over_default)
 
                 # Cache successful parameters
                 if (
@@ -321,9 +300,7 @@ class ModelOptimizer:
                     > self.config.min_improvement_threshold
                 ):
                     model_key = f"{room_id}_{model_type}"
-                    self._parameter_cache[model_key] = (
-                        result.best_parameters.copy()
-                    )
+                    self._parameter_cache[model_key] = result.best_parameters.copy()
 
                 # Store optimization history
                 if model_type not in self._optimization_history:
@@ -340,9 +317,7 @@ class ModelOptimizer:
 
         except Exception as e:
             logger.error(f"Optimization failed for {model_type}: {e}")
-            optimization_time = (
-                datetime.utcnow() - start_time
-            ).total_seconds()
+            optimization_time = (datetime.utcnow() - start_time).total_seconds()
             return OptimizationResult(
                 success=False,
                 optimization_time_seconds=optimization_time,
@@ -366,16 +341,13 @@ class ModelOptimizer:
         """Get optimization performance statistics."""
         with self._lock:
             success_rate = (
-                self._successful_optimizations
-                / max(1, self._total_optimizations)
+                self._successful_optimizations / max(1, self._total_optimizations)
             ) * 100
 
             # Get recent optimization results
             recent_results = []
             for model_results in self._optimization_history.values():
-                recent_results.extend(
-                    model_results[-5:]
-                )  # Last 5 per model type
+                recent_results.extend(model_results[-5:])  # Last 5 per model type
 
             recent_improvements = [
                 r.improvement_over_default for r in recent_results if r.success
@@ -395,8 +367,7 @@ class ModelOptimizer:
                 "recent_average_improvement": avg_recent_improvement,
                 "cached_parameter_sets": len(self._parameter_cache),
                 "optimization_history_length": sum(
-                    len(results)
-                    for results in self._optimization_history.values()
+                    len(results) for results in self._optimization_history.values()
                 ),
                 "configuration": {
                     "max_optimization_time_minutes": self.config.max_optimization_time_minutes,
@@ -421,9 +392,7 @@ class ModelOptimizer:
                 return True
 
             # Check if model type optimization is enabled
-            if not getattr(
-                self.config, f"optimize_{model_type.lower()}", True
-            ):
+            if not getattr(self.config, f"optimize_{model_type.lower()}", True):
                 return False
 
             # Analyze performance degradation
@@ -438,9 +407,7 @@ class ModelOptimizer:
             # Check drift metrics
             drift_metrics = performance_context.get("drift_metrics")
             if drift_metrics and hasattr(drift_metrics, "overall_drift_score"):
-                if (
-                    drift_metrics.overall_drift_score > 0.3
-                ):  # Significant drift
+                if drift_metrics.overall_drift_score > 0.3:  # Significant drift
                     logger.info(
                         f"Optimization needed due to drift: {drift_metrics.overall_drift_score:.3f}"
                     )
@@ -449,12 +416,9 @@ class ModelOptimizer:
             # Check recent optimization history
             with self._lock:
                 if model_type in self._optimization_history:
-                    recent_results = self._optimization_history[model_type][
-                        -3:
-                    ]
+                    recent_results = self._optimization_history[model_type][-3:]
                     if recent_results and all(
-                        r.improvement_over_default < 0.005
-                        for r in recent_results
+                        r.improvement_over_default < 0.005 for r in recent_results
                     ):
                         logger.info(
                             "Skipping optimization - recent attempts showed minimal improvement"
@@ -515,9 +479,7 @@ class ModelOptimizer:
                 model_copy = self._create_model_with_params(model, params)
 
                 # Train model
-                training_result = model_copy.train(
-                    X_train, y_train, X_val, y_val
-                )
+                training_result = model_copy.train(X_train, y_train, X_val, y_val)
 
                 if not training_result.success:
                     return 1.0  # High penalty for failed training
@@ -566,9 +528,7 @@ class ModelOptimizer:
 
         return objective
 
-    def _create_model_with_params(
-        self, model: BasePredictor, params: Dict[str, Any]
-    ):
+    def _create_model_with_params(self, model: BasePredictor, params: Dict[str, Any]):
         """Create model instance with specified parameters."""
         # This would create a new model instance with the given parameters
         # For now, we'll assume the model has a method to update parameters
@@ -633,17 +593,13 @@ class ModelOptimizer:
                     param_names.append(name)
 
                     if param["type"] == "continuous":
-                        dimensions.append(
-                            Real(param["low"], param["high"], name=name)
-                        )
+                        dimensions.append(Real(param["low"], param["high"], name=name))
                     elif param["type"] == "integer":
                         dimensions.append(
                             Integer(param["low"], param["high"], name=name)
                         )
                     elif param["type"] == "categorical":
-                        dimensions.append(
-                            Categorical(param["categories"], name=name)
-                        )
+                        dimensions.append(Categorical(param["categories"], name=name))
 
             if not dimensions:
                 raise ValueError("No valid dimensions for optimization")
@@ -659,9 +615,7 @@ class ModelOptimizer:
             )
 
             # Extract best parameters
-            best_params = {
-                param_names[i]: result.x[i] for i in range(len(param_names))
-            }
+            best_params = {param_names[i]: result.x[i] for i in range(len(param_names))}
             best_score = -result.fun  # Convert back from minimization
 
             # Calculate improvement (simplified)
@@ -780,9 +734,7 @@ class ModelOptimizer:
                                 param["low"], param["high"] + 1
                             )
                         elif param["type"] == "categorical":
-                            params[name] = np.random.choice(
-                                param["categories"]
-                            )
+                            params[name] = np.random.choice(param["categories"])
 
                 # Evaluate parameters
                 score = -objective_func(params)  # Convert from minimization
@@ -830,23 +782,17 @@ class ModelOptimizer:
     ) -> OptimizationResult:
         """Perform performance-adaptive optimization based on recent history."""
         try:
-            logger.info(
-                f"Running performance-adaptive optimization for {model_type}"
-            )
+            logger.info(f"Running performance-adaptive optimization for {model_type}")
 
             # Get recent performance history for this model
             model_key = f"{room_id}_{model_type}"
 
             with self._lock:
-                recent_performance = self._performance_history.get(
-                    model_key, []
-                )
+                recent_performance = self._performance_history.get(model_key, [])
 
             # Adapt strategy based on performance trends
             if len(recent_performance) > 5:
-                trend = np.mean(
-                    np.diff(recent_performance[-5:])
-                )  # Recent trend
+                trend = np.mean(np.diff(recent_performance[-5:]))  # Recent trend
 
                 if trend < -0.05:  # Declining performance
                     # Use more aggressive optimization
@@ -859,9 +805,7 @@ class ModelOptimizer:
                     # Use lighter optimization
                     adapted_config = self.config
                     adapted_config.n_calls = max(self.config.n_calls // 2, 10)
-                    logger.info(
-                        "Using light optimization due to improving performance"
-                    )
+                    logger.info("Using light optimization due to improving performance")
                 else:
                     adapted_config = self.config
             else:

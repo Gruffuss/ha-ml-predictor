@@ -89,7 +89,7 @@ class RealTimeMetrics:
     # Alert status
     active_alerts: List[str] = field(default_factory=list)
     last_alert_time: Optional[datetime] = None
-    
+
     # Enhanced accuracy analysis using AccuracyLevel and ValidationRecord
     dominant_accuracy_level: Optional[AccuracyLevel] = None
     recent_validation_records: List[ValidationRecord] = field(default_factory=list)
@@ -161,7 +161,11 @@ class RealTimeMetrics:
         """Convert real-time metrics to dictionary for API responses."""
         return {
             "room_id": self.room_id,
-            "model_type": str(self.model_type) if isinstance(self.model_type, ModelType) else self.model_type,
+            "model_type": (
+                str(self.model_type)
+                if isinstance(self.model_type, ModelType)
+                else self.model_type
+            ),
             "time_windows": {
                 "1h": {
                     "accuracy": self.window_1h_accuracy,
@@ -194,14 +198,14 @@ class RealTimeMetrics:
             "alerts": {
                 "active_alerts": self.active_alerts,
                 "last_alert_time": (
-                    self.last_alert_time.isoformat()
-                    if self.last_alert_time
-                    else None
+                    self.last_alert_time.isoformat() if self.last_alert_time else None
                 ),
             },
             "accuracy_analysis": {
                 "dominant_accuracy_level": (
-                    self.dominant_accuracy_level.value if self.dominant_accuracy_level else None
+                    self.dominant_accuracy_level.value
+                    if self.dominant_accuracy_level
+                    else None
                 ),
                 "recent_validation_records_count": len(self.recent_validation_records),
             },
@@ -316,7 +320,11 @@ class AccuracyAlert:
         return {
             "alert_id": self.alert_id,
             "room_id": self.room_id,
-            "model_type": str(self.model_type) if isinstance(self.model_type, ModelType) else self.model_type,
+            "model_type": (
+                str(self.model_type)
+                if isinstance(self.model_type, ModelType)
+                else self.model_type
+            ),
             "severity": self.severity.value,
             "trigger_condition": self.trigger_condition,
             "current_value": self.current_value,
@@ -329,9 +337,7 @@ class AccuracyAlert:
             "age_minutes": self.age_minutes,
             "acknowledged": self.acknowledged,
             "acknowledged_time": (
-                self.acknowledged_time.isoformat()
-                if self.acknowledged_time
-                else None
+                self.acknowledged_time.isoformat() if self.acknowledged_time else None
             ),
             "acknowledged_by": self.acknowledged_by,
             "resolved": self.resolved,
@@ -341,9 +347,7 @@ class AccuracyAlert:
             "escalation_level": self.escalation_level,
             "requires_escalation": self.requires_escalation,
             "last_escalation": (
-                self.last_escalation.isoformat()
-                if self.last_escalation
-                else None
+                self.last_escalation.isoformat() if self.last_escalation else None
             ),
         }
 
@@ -382,9 +386,7 @@ class AccuracyTracker:
             notification_callbacks: List of callback functions for alert notifications
         """
         self.validator = prediction_validator
-        self.monitoring_interval = timedelta(
-            seconds=monitoring_interval_seconds
-        )
+        self.monitoring_interval = timedelta(seconds=monitoring_interval_seconds)
         self.max_stored_alerts = max_stored_alerts
         self.trend_points = trend_analysis_points
 
@@ -449,9 +451,7 @@ class AccuracyTracker:
 
         except Exception as e:
             logger.error(f"Failed to start monitoring: {e}")
-            raise AccuracyTrackingError(
-                "Failed to start real-time monitoring", cause=e
-            )
+            raise AccuracyTrackingError("Failed to start real-time monitoring", cause=e)
 
     async def stop_monitoring(self) -> None:
         """Stop background monitoring tasks gracefully."""
@@ -464,9 +464,7 @@ class AccuracyTracker:
 
             # Wait for tasks to complete
             if self._background_tasks:
-                await asyncio.gather(
-                    *self._background_tasks, return_exceptions=True
-                )
+                await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
             self._background_tasks.clear()
             self._monitoring_active = False
@@ -477,7 +475,9 @@ class AccuracyTracker:
             logger.error(f"Error stopping monitoring: {e}")
 
     async def get_real_time_metrics(
-        self, room_id: Optional[str] = None, model_type: Optional[Union[ModelType, str]] = None
+        self,
+        room_id: Optional[str] = None,
+        model_type: Optional[Union[ModelType, str]] = None,
     ) -> Union[RealTimeMetrics, Dict[str, RealTimeMetrics], None]:
         """
         Get current real-time metrics for room, model, or global.
@@ -494,9 +494,9 @@ class AccuracyTracker:
                 if room_id and model_type:
                     # Specific room and model combination
                     key = f"{room_id}_{model_type}"
-                    return self._metrics_by_room.get(
+                    return self._metrics_by_room.get(key) or self._metrics_by_model.get(
                         key
-                    ) or self._metrics_by_model.get(key)
+                    )
 
                 elif room_id:
                     # All metrics for specific room
@@ -509,9 +509,17 @@ class AccuracyTracker:
                 elif model_type:
                     # All metrics for specific model
                     model_metrics = {}
-                    model_type_str = str(model_type) if isinstance(model_type, ModelType) else model_type
+                    model_type_str = (
+                        str(model_type)
+                        if isinstance(model_type, ModelType)
+                        else model_type
+                    )
                     for key, metrics in self._metrics_by_model.items():
-                        metrics_model_type_str = str(metrics.model_type) if isinstance(metrics.model_type, ModelType) else metrics.model_type
+                        metrics_model_type_str = (
+                            str(metrics.model_type)
+                            if isinstance(metrics.model_type, ModelType)
+                            else metrics.model_type
+                        )
                         if metrics_model_type_str == model_type_str:
                             model_metrics[key] = metrics
                     return model_metrics if model_metrics else None
@@ -522,9 +530,7 @@ class AccuracyTracker:
 
         except Exception as e:
             logger.error(f"Failed to get real-time metrics: {e}")
-            raise AccuracyTrackingError(
-                "Failed to retrieve real-time metrics", cause=e
-            )
+            raise AccuracyTrackingError("Failed to retrieve real-time metrics", cause=e)
 
     async def get_active_alerts(
         self,
@@ -576,13 +582,9 @@ class AccuracyTracker:
 
         except Exception as e:
             logger.error(f"Failed to get active alerts: {e}")
-            raise AccuracyTrackingError(
-                "Failed to retrieve active alerts", cause=e
-            )
+            raise AccuracyTrackingError("Failed to retrieve active alerts", cause=e)
 
-    async def acknowledge_alert(
-        self, alert_id: str, acknowledged_by: str
-    ) -> bool:
+    async def acknowledge_alert(self, alert_id: str, acknowledged_by: str) -> bool:
         """
         Acknowledge an active alert.
 
@@ -641,9 +643,7 @@ class AccuracyTracker:
 
         except Exception as e:
             logger.error(f"Failed to get accuracy trends: {e}")
-            raise AccuracyTrackingError(
-                "Failed to get accuracy trends", cause=e
-            )
+            raise AccuracyTrackingError("Failed to get accuracy trends", cause=e)
 
     async def export_tracking_data(
         self,
@@ -704,16 +704,12 @@ class AccuracyTracker:
                 + len(export_data["trends"])
             )
 
-            logger.info(
-                f"Exported {total_records} tracking records to {output_path}"
-            )
+            logger.info(f"Exported {total_records} tracking records to {output_path}")
             return total_records
 
         except Exception as e:
             logger.error(f"Failed to export tracking data: {e}")
-            raise AccuracyTrackingError(
-                "Failed to export tracking data", cause=e
-            )
+            raise AccuracyTrackingError("Failed to export tracking data", cause=e)
 
     def add_notification_callback(
         self, callback: Callable[[AccuracyAlert], None]
@@ -744,11 +740,7 @@ class AccuracyTracker:
                     },
                     "alerts": {
                         "active": len(
-                            [
-                                a
-                                for a in self._active_alerts.values()
-                                if not a.resolved
-                            ]
+                            [a for a in self._active_alerts.values() if not a.resolved]
                         ),
                         "total_stored": len(self._active_alerts),
                         "history_size": len(self._alert_history),
@@ -764,9 +756,7 @@ class AccuracyTracker:
                         "alert_thresholds": self.alert_thresholds,
                         "max_stored_alerts": self.max_stored_alerts,
                         "trend_analysis_points": self.trend_points,
-                        "notification_callbacks": len(
-                            self.notification_callbacks
-                        ),
+                        "notification_callbacks": len(self.notification_callbacks),
                     },
                     "background_tasks": len(self._background_tasks),
                 }
@@ -850,9 +840,7 @@ class AccuracyTracker:
                 for record in self.validator._validation_records.values():
                     entities.add((record.room_id, record.model_type))
                     entities.add((record.room_id, None))  # Room-only metrics
-                    entities.add(
-                        (None, record.model_type)
-                    )  # Model-only metrics
+                    entities.add((None, record.model_type))  # Model-only metrics
 
             # Update metrics for each entity
             for room_id, model_type in entities:
@@ -880,9 +868,7 @@ class AccuracyTracker:
                             }
                         )
 
-            logger.debug(
-                f"Updated real-time metrics for {len(entities)} entities"
-            )
+            logger.debug(f"Updated real-time metrics for {len(entities)} entities")
 
         except Exception as e:
             logger.error(f"Failed to update real-time metrics: {e}")
@@ -915,18 +901,10 @@ class AccuracyTracker:
                 window_1h_mean_error=window_metrics["1h"].mean_error_minutes,
                 window_6h_mean_error=window_metrics["6h"].mean_error_minutes,
                 window_24h_mean_error=window_metrics["24h"].mean_error_minutes,
-                window_1h_predictions=window_metrics[
-                    "1h"
-                ].validated_predictions,
-                window_6h_predictions=window_metrics[
-                    "6h"
-                ].validated_predictions,
-                window_24h_predictions=window_metrics[
-                    "24h"
-                ].validated_predictions,
-                recent_predictions_rate=window_metrics[
-                    "1h"
-                ].predictions_per_hour,
+                window_1h_predictions=window_metrics["1h"].validated_predictions,
+                window_6h_predictions=window_metrics["6h"].validated_predictions,
+                window_24h_predictions=window_metrics["24h"].validated_predictions,
+                recent_predictions_rate=window_metrics["1h"].predictions_per_hour,
                 confidence_calibration=window_metrics[
                     "24h"
                 ].confidence_calibration_score,
@@ -942,14 +920,18 @@ class AccuracyTracker:
                 real_time_metrics.trend_confidence = trend_data["confidence"]
 
             # Calculate validation lag
-            real_time_metrics.validation_lag_minutes = (
-                self._calculate_validation_lag(room_id, model_type)
+            real_time_metrics.validation_lag_minutes = self._calculate_validation_lag(
+                room_id, model_type
             )
-            
+
             # Enhance with AccuracyMetrics analysis
-            detailed_accuracy_metrics = window_metrics["6h"]  # Use 6h window for detailed analysis
-            self.update_from_accuracy_metrics(real_time_metrics, detailed_accuracy_metrics)
-            
+            detailed_accuracy_metrics = window_metrics[
+                "6h"
+            ]  # Use 6h window for detailed analysis
+            self.update_from_accuracy_metrics(
+                real_time_metrics, detailed_accuracy_metrics
+            )
+
             # Extract recent ValidationRecord objects for analysis
             self.extract_recent_validation_records(real_time_metrics, hours_back=6)
 
@@ -977,9 +959,7 @@ class AccuracyTracker:
             )
             return None
 
-    def _analyze_trend_for_entity(
-        self, entity_key: str
-    ) -> Optional[Dict[str, Any]]:
+    def _analyze_trend_for_entity(self, entity_key: str) -> Optional[Dict[str, Any]]:
         """Analyze accuracy trend for specific entity."""
         try:
             with self._lock:
@@ -994,9 +974,7 @@ class AccuracyTracker:
             logger.error(f"Failed to analyze trend for {entity_key}: {e}")
             return None
 
-    def _analyze_trend(
-        self, data_points: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    def _analyze_trend(self, data_points: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Analyze trend from data points."""
         if len(data_points) < 3:
             return {
@@ -1008,9 +986,7 @@ class AccuracyTracker:
         try:
             # Extract 6h accuracy values for trend analysis
             values = [
-                point["accuracy_6h"]
-                for point in data_points
-                if "accuracy_6h" in point
+                point["accuracy_6h"] for point in data_points if "accuracy_6h" in point
             ]
 
             if len(values) < 3:
@@ -1027,9 +1003,7 @@ class AccuracyTracker:
             x_mean = statistics.mean(x)
             y_mean = statistics.mean(values)
 
-            numerator = sum(
-                (x[i] - x_mean) * (values[i] - y_mean) for i in range(n)
-            )
+            numerator = sum((x[i] - x_mean) * (values[i] - y_mean) for i in range(n))
             denominator = sum((x[i] - x_mean) ** 2 for i in range(n))
 
             if denominator == 0:
@@ -1132,15 +1106,20 @@ class AccuracyTracker:
 
             with self.validator._lock:
                 for record in self.validator._validation_records.values():
-                    if (
-                        record.validation_time
-                        and record.validation_time >= cutoff_time
-                    ):
+                    if record.validation_time and record.validation_time >= cutoff_time:
                         if room_id and record.room_id != room_id:
                             continue
                         if model_type:
-                            model_type_str = str(model_type) if isinstance(model_type, ModelType) else model_type
-                            record_model_type_str = str(record.model_type) if isinstance(record.model_type, ModelType) else record.model_type
+                            model_type_str = (
+                                str(model_type)
+                                if isinstance(model_type, ModelType)
+                                else model_type
+                            )
+                            record_model_type_str = (
+                                str(record.model_type)
+                                if isinstance(record.model_type, ModelType)
+                                else record.model_type
+                            )
                             if record_model_type_str != model_type_str:
                                 continue
 
@@ -1157,26 +1136,24 @@ class AccuracyTracker:
             return 0.0
 
     def _model_types_match(
-        self, 
-        model_type1: Optional[Union[ModelType, str]], 
-        model_type2: Optional[Union[ModelType, str]]
+        self,
+        model_type1: Optional[Union[ModelType, str]],
+        model_type2: Optional[Union[ModelType, str]],
     ) -> bool:
         """Helper method to compare model types handling both enum and string values."""
         if model_type1 is None and model_type2 is None:
             return True
         if model_type1 is None or model_type2 is None:
             return False
-            
+
         # Convert both to strings for comparison
         str1 = str(model_type1) if isinstance(model_type1, ModelType) else model_type1
         str2 = str(model_type2) if isinstance(model_type2, ModelType) else model_type2
-        
+
         return str1 == str2
 
     def update_from_accuracy_metrics(
-        self, 
-        metrics: RealTimeMetrics, 
-        accuracy_metrics: AccuracyMetrics
+        self, metrics: RealTimeMetrics, accuracy_metrics: AccuracyMetrics
     ) -> None:
         """Update real-time metrics using comprehensive AccuracyMetrics data."""
         try:
@@ -1194,49 +1171,58 @@ class AccuracyTracker:
                             # Handle unknown accuracy levels
                             logger.warning(f"Unknown accuracy level: {level_str}")
                             continue
-                
+
                 metrics.dominant_accuracy_level = dominant_level
                 logger.debug(f"Updated dominant accuracy level to {dominant_level}")
-            
+
             # Additional metrics integration
-            metrics.confidence_calibration = accuracy_metrics.confidence_calibration_score
-            
+            metrics.confidence_calibration = (
+                accuracy_metrics.confidence_calibration_score
+            )
+
         except Exception as e:
             logger.error(f"Failed to update from accuracy metrics: {e}")
 
     def extract_recent_validation_records(
-        self,
-        metrics: RealTimeMetrics,
-        hours_back: int = 6
+        self, metrics: RealTimeMetrics, hours_back: int = 6
     ) -> None:
         """Extract recent ValidationRecord objects for enhanced analysis."""
         try:
             cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
             recent_records = []
-            
+
             # Get recent validation records from the validator
             with self.validator._lock:
                 for record in self.validator._validation_records.values():
                     # Filter by time, room, and model type
                     if record.validation_time and record.validation_time >= cutoff_time:
                         # Check room match
-                        if metrics.room_id != "global" and record.room_id != metrics.room_id:
+                        if (
+                            metrics.room_id != "global"
+                            and record.room_id != metrics.room_id
+                        ):
                             continue
-                        
+
                         # Check model type match
-                        if metrics.model_type and not self._model_types_match(record.model_type, metrics.model_type):
+                        if metrics.model_type and not self._model_types_match(
+                            record.model_type, metrics.model_type
+                        ):
                             continue
-                        
+
                         recent_records.append(record)
-            
+
             # Sort by validation time (most recent first)
-            recent_records.sort(key=lambda r: r.validation_time or datetime.min, reverse=True)
-            
+            recent_records.sort(
+                key=lambda r: r.validation_time or datetime.min, reverse=True
+            )
+
             # Store up to 50 most recent records
             metrics.recent_validation_records = recent_records[:50]
-            
-            logger.debug(f"Extracted {len(metrics.recent_validation_records)} recent validation records")
-            
+
+            logger.debug(
+                f"Extracted {len(metrics.recent_validation_records)} recent validation records"
+            )
+
         except Exception as e:
             logger.error(f"Failed to extract recent validation records: {e}")
 
@@ -1267,9 +1253,7 @@ class AccuracyTracker:
             alerts_to_create = []
 
             # Check accuracy thresholds
-            if (
-                metrics.window_6h_predictions >= 5
-            ):  # Only alert if enough predictions
+            if metrics.window_6h_predictions >= 5:  # Only alert if enough predictions
                 if (
                     metrics.window_6h_accuracy
                     < self.alert_thresholds["accuracy_critical"]
@@ -1279,9 +1263,7 @@ class AccuracyTracker:
                             "condition": "accuracy_critical",
                             "severity": AlertSeverity.CRITICAL,
                             "value": metrics.window_6h_accuracy,
-                            "threshold": self.alert_thresholds[
-                                "accuracy_critical"
-                            ],
+                            "threshold": self.alert_thresholds["accuracy_critical"],
                             "description": f"Accuracy critically low: {metrics.window_6h_accuracy:.1f}%",
                         }
                     )
@@ -1294,18 +1276,13 @@ class AccuracyTracker:
                             "condition": "accuracy_warning",
                             "severity": AlertSeverity.WARNING,
                             "value": metrics.window_6h_accuracy,
-                            "threshold": self.alert_thresholds[
-                                "accuracy_warning"
-                            ],
+                            "threshold": self.alert_thresholds["accuracy_warning"],
                             "description": f"Accuracy below warning threshold: {metrics.window_6h_accuracy:.1f}%",
                         }
                     )
 
             # Check error thresholds
-            if (
-                metrics.window_6h_mean_error
-                > self.alert_thresholds["error_critical"]
-            ):
+            if metrics.window_6h_mean_error > self.alert_thresholds["error_critical"]:
                 alerts_to_create.append(
                     {
                         "condition": "error_critical",
@@ -1315,10 +1292,7 @@ class AccuracyTracker:
                         "description": f"Mean error critically high: {metrics.window_6h_mean_error:.1f} minutes",
                     }
                 )
-            elif (
-                metrics.window_6h_mean_error
-                > self.alert_thresholds["error_warning"]
-            ):
+            elif metrics.window_6h_mean_error > self.alert_thresholds["error_warning"]:
                 alerts_to_create.append(
                     {
                         "condition": "error_warning",
@@ -1333,8 +1307,7 @@ class AccuracyTracker:
             if (
                 metrics.accuracy_trend == TrendDirection.DEGRADING
                 and metrics.trend_confidence > 0.5
-                and metrics.trend_slope
-                < self.alert_thresholds["trend_degrading"]
+                and metrics.trend_slope < self.alert_thresholds["trend_degrading"]
             ):
                 alerts_to_create.append(
                     {
@@ -1356,9 +1329,7 @@ class AccuracyTracker:
                         "condition": "validation_lag_critical",
                         "severity": AlertSeverity.CRITICAL,
                         "value": metrics.validation_lag_minutes,
-                        "threshold": self.alert_thresholds[
-                            "validation_lag_critical"
-                        ],
+                        "threshold": self.alert_thresholds["validation_lag_critical"],
                         "description": f"Validation lag critically high: {metrics.validation_lag_minutes:.1f} minutes",
                     }
                 )
@@ -1371,9 +1342,7 @@ class AccuracyTracker:
                         "condition": "validation_lag_warning",
                         "severity": AlertSeverity.WARNING,
                         "value": metrics.validation_lag_minutes,
-                        "threshold": self.alert_thresholds[
-                            "validation_lag_warning"
-                        ],
+                        "threshold": self.alert_thresholds["validation_lag_warning"],
                         "description": f"Validation lag above threshold: {metrics.validation_lag_minutes:.1f} minutes",
                     }
                 )
@@ -1392,8 +1361,11 @@ class AccuracyTracker:
 
                 if not existing_alert:
                     # Use alert_key for deduplication - check if we have this exact alert already
-                    if alert_key not in [f"{a.room_id or 'all'}_{a.model_type or 'all'}_{a.trigger_condition}" 
-                                        for a in self._active_alerts.values() if not a.resolved]:
+                    if alert_key not in [
+                        f"{a.room_id or 'all'}_{a.model_type or 'all'}_{a.trigger_condition}"
+                        for a in self._active_alerts.values()
+                        if not a.resolved
+                    ]:
                         # Create new alert
                         alert = AccuracyAlert(
                             alert_id=f"acc_{self._alert_counter}_{int(datetime.utcnow().timestamp())}",
@@ -1436,9 +1408,7 @@ class AccuracyTracker:
                         )
 
         except Exception as e:
-            logger.error(
-                f"Failed to check entity alerts for {entity_key}: {e}"
-            )
+            logger.error(f"Failed to check entity alerts for {entity_key}: {e}")
 
     async def _check_alert_escalations(self) -> None:
         """Check for alerts that need escalation."""
@@ -1447,9 +1417,7 @@ class AccuracyTracker:
                 for alert in self._active_alerts.values():
                     if alert.escalate():
                         # Notify callbacks about escalation
-                        await self._notify_alert_callbacks(
-                            alert, escalation=True
-                        )
+                        await self._notify_alert_callbacks(alert, escalation=True)
 
         except Exception as e:
             logger.error(f"Failed to check alert escalations: {e}")
@@ -1464,9 +1432,7 @@ class AccuracyTracker:
                         continue
 
                     # Check if alert condition has been resolved
-                    should_resolve = await self._should_auto_resolve_alert(
-                        alert
-                    )
+                    should_resolve = await self._should_auto_resolve_alert(alert)
                     if should_resolve:
                         alert.resolve()
 
@@ -1500,17 +1466,17 @@ class AccuracyTracker:
         """Check if alert should be auto-resolved based on current conditions."""
         try:
             # Get current metrics for the alert's entity
-            metrics = await self.get_real_time_metrics(
-                alert.room_id, alert.model_type
-            )
+            metrics = await self.get_real_time_metrics(alert.room_id, alert.model_type)
             if not metrics:
                 return False
 
             # Check if condition has improved beyond threshold using current_value for comparison
             condition = alert.trigger_condition
-            current_value = alert.current_value  # Use stored value from when alert was created
+            current_value = (
+                alert.current_value
+            )  # Use stored value from when alert was created
             threshold = alert.threshold_value
-            
+
             # Get the current metric value to compare with stored current_value
             if condition.startswith("accuracy_"):
                 current_metric_value = metrics.window_6h_accuracy
@@ -1527,26 +1493,42 @@ class AccuracyTracker:
             if condition.startswith("accuracy_"):
                 # Accuracy improved above threshold + buffer
                 # Compare current metric with the original current_value when alert was created
-                improvement = current_metric_value - current_value  # How much it improved
-                return current_metric_value > (threshold + 5) and improvement > 5  # 5% buffer + improvement
+                improvement = (
+                    current_metric_value - current_value
+                )  # How much it improved
+                return (
+                    current_metric_value > (threshold + 5) and improvement > 5
+                )  # 5% buffer + improvement
 
             elif condition.startswith("error_"):
                 # Error reduced below threshold - buffer
                 # Compare current metric with the original current_value when alert was created
-                improvement = current_value - current_metric_value  # How much error decreased
-                return current_metric_value < (threshold - 2) and improvement > 2  # 2 min buffer + improvement
+                improvement = (
+                    current_value - current_metric_value
+                )  # How much error decreased
+                return (
+                    current_metric_value < (threshold - 2) and improvement > 2
+                )  # 2 min buffer + improvement
 
             elif condition == "trend_degrading":
                 # Trend is no longer degrading and has improved from original current_value
-                trend_improvement = current_metric_value - current_value  # Slope improvement
-                return (metrics.accuracy_trend != TrendDirection.DEGRADING and 
-                       trend_improvement > 1.0)  # Trend slope improved by at least 1%/hour
+                trend_improvement = (
+                    current_metric_value - current_value
+                )  # Slope improvement
+                return (
+                    metrics.accuracy_trend != TrendDirection.DEGRADING
+                    and trend_improvement > 1.0
+                )  # Trend slope improved by at least 1%/hour
 
             elif condition.startswith("validation_lag_"):
                 # Validation lag improved below threshold - buffer
                 # Compare current metric with the original current_value when alert was created
-                improvement = current_value - current_metric_value  # How much lag decreased
-                return current_metric_value < (threshold - 2) and improvement > 2  # 2 min buffer + improvement
+                improvement = (
+                    current_value - current_metric_value
+                )  # How much lag decreased
+                return (
+                    current_metric_value < (threshold - 2) and improvement > 2
+                )  # 2 min buffer + improvement
 
             return False
 

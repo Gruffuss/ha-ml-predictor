@@ -48,9 +48,7 @@ class FeatureRecord:
     def from_dict(cls, data: Dict[str, Any]) -> "FeatureRecord":
         """Create from dictionary."""
         data["target_time"] = datetime.fromisoformat(data["target_time"])
-        data["extraction_time"] = datetime.fromisoformat(
-            data["extraction_time"]
-        )
+        data["extraction_time"] = datetime.fromisoformat(data["extraction_time"])
         return cls(**data)
 
     def is_valid(self, max_age_hours: int = 24) -> bool:
@@ -106,9 +104,7 @@ class FeatureCache:
         Returns:
             Features if available and valid, None otherwise
         """
-        key = self._make_key(
-            room_id, target_time, lookback_hours, feature_types
-        )
+        key = self._make_key(room_id, target_time, lookback_hours, feature_types)
 
         if key in self.cache:
             record = self.cache[key]
@@ -144,9 +140,7 @@ class FeatureCache:
             features: Computed features
             data_hash: Hash of input data
         """
-        key = self._make_key(
-            room_id, target_time, lookback_hours, feature_types
-        )
+        key = self._make_key(room_id, target_time, lookback_hours, feature_types)
 
         record = FeatureRecord(
             room_id=room_id,
@@ -173,9 +167,7 @@ class FeatureCache:
     def get_stats(self) -> Dict[str, Any]:
         """Get cache statistics."""
         total_requests = self.hit_count + self.miss_count
-        hit_rate = (
-            self.hit_count / total_requests if total_requests > 0 else 0.0
-        )
+        hit_rate = self.hit_count / total_requests if total_requests > 0 else 0.0
 
         return {
             "size": len(self.cache),
@@ -236,13 +228,9 @@ class FeatureStore:
         if self.enable_persistence:
             try:
                 self.db_manager = await get_database_manager()
-                logger.info(
-                    "Feature store initialized with database persistence"
-                )
+                logger.info("Feature store initialized with database persistence")
             except Exception as e:
-                logger.warning(
-                    f"Failed to initialize database persistence: {e}"
-                )
+                logger.warning(f"Failed to initialize database persistence: {e}")
                 self.enable_persistence = False
 
     async def get_features(
@@ -314,9 +302,7 @@ class FeatureStore:
         )
 
         # Cache and persist the result
-        data_hash = self._compute_data_hash(
-            room_id, target_time, lookback_hours
-        )
+        data_hash = self._compute_data_hash(room_id, target_time, lookback_hours)
         self.cache.put(
             room_id,
             target_time,
@@ -384,9 +370,7 @@ class FeatureStore:
                 logger.error(
                     f"Failed to get features for {room_id} at {target_time}: {result}"
                 )
-                processed_results.append(
-                    self.feature_engine._get_default_features()
-                )
+                processed_results.append(self.feature_engine._get_default_features())
             else:
                 processed_results.append(result)
 
@@ -605,9 +589,7 @@ class FeatureStore:
 
         # Check feature engine
         try:
-            engine_validation = (
-                await self.feature_engine.validate_configuration()
-            )
+            engine_validation = await self.feature_engine.validate_configuration()
             health["components"]["feature_engine"] = engine_validation
             if not engine_validation["valid"]:
                 health["status"] = "degraded"

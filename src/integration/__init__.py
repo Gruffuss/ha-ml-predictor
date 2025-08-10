@@ -200,12 +200,10 @@ async def create_enhanced_system(
         Tuple of (TrackingManager, TrackingIntegrationManager, APIServer)
     """
     # Create integrated tracking manager
-    tracking_manager, integration_manager = (
-        await create_integrated_tracking_manager(
-            tracking_config=tracking_config,
-            integration_config=integration_config,
-            **kwargs,
-        )
+    tracking_manager, integration_manager = await create_integrated_tracking_manager(
+        tracking_config=tracking_config,
+        integration_config=integration_config,
+        **kwargs,
     )
 
     # Create API server with real-time endpoints

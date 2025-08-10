@@ -59,9 +59,7 @@ class LSTMPredictor(BasePredictor):
             "learning_rate": default_params.get("learning_rate", 0.001),
             "max_iter": default_params.get("max_iter", 1000),
             "early_stopping": default_params.get("early_stopping", True),
-            "validation_fraction": default_params.get(
-                "validation_fraction", 0.2
-            ),
+            "validation_fraction": default_params.get("validation_fraction", 0.2),
             "alpha": default_params.get("alpha", 0.0001),  # L2 regularization
             "dropout": default_params.get(
                 "dropout", 0.2
@@ -107,9 +105,7 @@ class LSTMPredictor(BasePredictor):
             logger.info(f"Training data shape: {features.shape}")
 
             # Prepare sequence data
-            X_sequences, y_sequences = self._create_sequences(
-                features, targets
-            )
+            X_sequences, y_sequences = self._create_sequences(features, targets)
 
             if len(X_sequences) < 10:
                 raise ModelTrainingError(
@@ -133,10 +129,7 @@ class LSTMPredictor(BasePredictor):
             # Prepare validation data if provided
             X_val_scaled = None
             y_val_scaled = None
-            if (
-                validation_features is not None
-                and validation_targets is not None
-            ):
+            if validation_features is not None and validation_targets is not None:
                 X_val_seq, y_val_seq = self._create_sequences(
                     validation_features, validation_targets
                 )
@@ -174,9 +167,7 @@ class LSTMPredictor(BasePredictor):
             ).ravel()
 
             training_score = r2_score(y_train_original, y_pred_train_original)
-            training_mae = mean_absolute_error(
-                y_train_original, y_pred_train_original
-            )
+            training_mae = mean_absolute_error(y_train_original, y_pred_train_original)
             training_rmse = np.sqrt(
                 mean_squared_error(y_train_original, y_pred_train_original)
             )
@@ -195,9 +186,7 @@ class LSTMPredictor(BasePredictor):
                     y_val_scaled.reshape(-1, 1)
                 ).ravel()
 
-                validation_score = r2_score(
-                    y_val_original, y_pred_val_original
-                )
+                validation_score = r2_score(y_val_original, y_pred_val_original)
                 validation_mae = mean_absolute_error(
                     y_val_original, y_pred_val_original
                 )
@@ -266,9 +255,7 @@ class LSTMPredictor(BasePredictor):
             )
 
             self.training_history.append(result)
-            raise ModelTrainingError(
-                model_type="lstm", room_id=self.room_id, cause=e
-            )
+            raise ModelTrainingError(model_type="lstm", room_id=self.room_id, cause=e)
 
     async def predict(
         self,
@@ -349,9 +336,7 @@ class LSTMPredictor(BasePredictor):
                         transition_type = "occupied_to_vacant"
 
                 # Calculate confidence based on prediction consistency
-                confidence = self._calculate_confidence(
-                    X_scaled, y_pred_scaled
-                )
+                confidence = self._calculate_confidence(X_scaled, y_pred_scaled)
 
                 # Create prediction result
                 result = PredictionResult(
@@ -362,9 +347,7 @@ class LSTMPredictor(BasePredictor):
                     model_version=self.model_version,
                     features_used=self.feature_names,
                     prediction_metadata={
-                        "time_until_transition_seconds": float(
-                            time_until_transition
-                        ),
+                        "time_until_transition_seconds": float(time_until_transition),
                         "sequence_length_used": self.sequence_length,
                         "prediction_method": "lstm_neural_network",
                     },
@@ -415,9 +398,7 @@ class LSTMPredictor(BasePredictor):
                     feature_idx = t * n_features_per_timestep + i
                     if feature_idx < input_weights.shape[0]:
                         # Average absolute weight to all hidden units
-                        importance = np.mean(
-                            np.abs(input_weights[feature_idx, :])
-                        )
+                        importance = np.mean(np.abs(input_weights[feature_idx, :]))
                         total_importance += importance
 
                 feature_importance[feature_name] = (
@@ -428,8 +409,7 @@ class LSTMPredictor(BasePredictor):
             total_importance = sum(feature_importance.values())
             if total_importance > 0:
                 feature_importance = {
-                    k: v / total_importance
-                    for k, v in feature_importance.items()
+                    k: v / total_importance for k, v in feature_importance.items()
                 }
 
             return feature_importance
@@ -464,17 +444,13 @@ class LSTMPredictor(BasePredictor):
             # Calculate time differences
             target_times = pd.to_datetime(targets["target_time"])
             next_times = pd.to_datetime(targets["next_transition_time"])
-            target_values = (
-                (next_times - target_times).dt.total_seconds().values
-            )
+            target_values = (next_times - target_times).dt.total_seconds().values
         else:
             # Default: assume targets are already time differences
             target_values = targets.iloc[:, 0].values
 
         # Generate sequences
-        for i in range(
-            self.sequence_length, len(features), self.sequence_step
-        ):
+        for i in range(self.sequence_length, len(features), self.sequence_step):
             # Input sequence: last sequence_length time steps
             X_seq = features.iloc[i - self.sequence_length : i].values
 
@@ -550,8 +526,7 @@ class LSTMPredictor(BasePredictor):
             "hidden_layers": self.model_params["hidden_layers"],
             "sequence_length": self.sequence_length,
             "input_features": len(self.feature_names),
-            "flattened_input_size": len(self.feature_names)
-            * self.sequence_length,
+            "flattened_input_size": len(self.feature_names) * self.sequence_length,
         }
 
         # Calculate total parameters

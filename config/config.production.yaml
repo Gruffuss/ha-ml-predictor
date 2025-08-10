@@ -1,0 +1,171 @@
+# Production Environment Configuration
+# This file contains production-specific overrides for the base config.yaml
+
+home_assistant:
+  url: ${HA_URL}
+  token: ${HA_TOKEN}  # Will be injected from secrets
+  websocket_timeout: 60
+  api_timeout: 30
+
+database:
+  connection_string: postgresql+asyncpg://occupancy_user@timescaledb:5432/occupancy_prediction
+  pool_size: 20
+  max_overflow: 40
+  pool_timeout: 30
+  pool_recycle: 3600  # 1 hour
+
+mqtt:
+  broker: mosquitto
+  port: 1883
+  username: ""
+  password: ""
+  topic_prefix: "occupancy/predictions"
+  
+  # Enhanced production settings
+  keepalive: 120
+  connection_timeout: 60
+  reconnect_delay_seconds: 10
+  max_reconnect_attempts: -1  # Infinite retries
+  
+  # QoS and reliability
+  prediction_qos: 2  # Exactly once delivery
+  system_qos: 1      # At least once delivery
+  retain_predictions: true
+  retain_system_status: true
+  
+  # Discovery configuration
+  discovery_enabled: true
+  discovery_prefix: "homeassistant"
+  device_name: "Occupancy Predictor (Production)"
+  device_identifier: "ha_ml_predictor_prod"
+
+prediction:
+  interval_seconds: 180  # 3 minutes (more frequent in production)
+  accuracy_threshold_minutes: 10  # Stricter accuracy in production
+  confidence_threshold: 0.8      # Higher confidence threshold
+
+features:
+  lookback_hours: 48        # More historical data
+  sequence_length: 100      # Longer sequences for better patterns
+  temporal_features: true
+  sequential_features: true
+  contextual_features: true
+
+logging:
+  level: WARNING  # Reduced verbosity in production
+  format: structured
+  
+  # Production logging enhancements
+  file_logging: true
+  file_path: "/app/logs/haml-predictor.log"
+  file_max_size: 100MB
+  file_backup_count: 10
+  
+  # Structured logging for monitoring
+  enable_json_logging: true
+  include_request_id: true
+  log_sql_queries: false  # Disabled for performance
+
+tracking:
+  enabled: true
+  monitoring_interval_seconds: 30  # More frequent monitoring
+  auto_validation_enabled: true
+  validation_window_minutes: 15   # Faster validation
+  max_stored_alerts: 10000        # More alert history
+  trend_analysis_points: 20       # Better trend analysis
+  cleanup_interval_hours: 12      # More frequent cleanup
+  
+  # Enhanced production alert thresholds
+  alert_thresholds:
+    accuracy_warning: 75.0    # Higher accuracy expectation
+    accuracy_critical: 60.0
+    error_warning: 15.0       # Lower error tolerance
+    error_critical: 25.0
+    trend_degrading: -3.0     # More sensitive to degradation
+    validation_lag_warning: 10.0
+    validation_lag_critical: 20.0
+
+api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8000
+  debug: false  # Must be false in production
+  
+  # Enhanced security
+  enable_cors: true
+  cors_origins: 
+    - "https://your-ha-instance.com"  # Specific origins only
+  api_key_enabled: true
+  api_key: ${API_SECRET_KEY}  # Will be injected from secrets
+  
+  # Rate limiting (stricter in production)
+  rate_limit_enabled: true
+  requests_per_minute: 30      # Lower limit
+  burst_limit: 50              # Lower burst
+  
+  # Performance settings
+  request_timeout_seconds: 15   # Faster timeout
+  max_request_size_mb: 5       # Smaller max size
+  background_tasks_enabled: true
+  health_check_interval_seconds: 30
+  
+  # Documentation (disabled in production)
+  include_docs: false
+  docs_url: null
+  redoc_url: null
+  
+  # Logging
+  access_log: true
+  log_requests: false   # Reduced logging
+  log_responses: false
+
+# Production-specific cache configuration
+redis:
+  host: redis
+  port: 6379
+  password: ${REDIS_PASSWORD}  # Will be injected from secrets
+  db: 0
+  max_connections: 50
+  socket_timeout: 5.0
+  socket_connect_timeout: 5.0
+  retry_on_timeout: true
+  health_check_interval: 30
+
+# Backup configuration
+backup:
+  enabled: true
+  interval_hours: 6           # Every 6 hours
+  retention_days: 30          # Keep backups for 30 days
+  compress: true
+  
+  # Database backup
+  database_backup: true
+  backup_path: "/app/backups"
+  
+  # Model backup
+  model_backup: true
+  model_backup_interval_hours: 24  # Daily model backups
+
+# Performance monitoring
+performance:
+  enabled: true
+  metrics_collection: true
+  profiling_enabled: false    # Disabled by default in production
+  memory_monitoring: true
+  
+  # Alert thresholds
+  max_memory_usage_mb: 1500   # 1.5GB limit
+  max_cpu_usage_percent: 80
+  max_response_time_ms: 100
+  
+# Disaster recovery
+disaster_recovery:
+  enabled: true
+  health_check_interval_seconds: 30
+  auto_restart_on_failure: true
+  max_restart_attempts: 5
+  
+  # Circuit breaker settings
+  circuit_breaker_enabled: true
+  failure_threshold: 10
+  recovery_timeout_seconds: 60

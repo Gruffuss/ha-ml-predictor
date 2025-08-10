@@ -467,15 +467,9 @@ class PerformanceDashboard:
         # Real-time accuracy metrics
         @app.get("/api/dashboard/accuracy")
         async def get_accuracy_metrics(
-            room_id: Optional[str] = Query(
-                None, description="Filter by room ID"
-            ),
-            model_type: Optional[str] = Query(
-                None, description="Filter by model type"
-            ),
-            hours_back: int = Query(
-                24, description="Hours of data to include"
-            ),
+            room_id: Optional[str] = Query(None, description="Filter by room ID"),
+            model_type: Optional[str] = Query(None, description="Filter by model type"),
+            hours_back: int = Query(24, description="Hours of data to include"),
         ):
             """Get real-time accuracy metrics with optional filtering."""
             try:
@@ -490,9 +484,7 @@ class PerformanceDashboard:
         # Drift detection status
         @app.get("/api/dashboard/drift")
         async def get_drift_status(
-            room_id: Optional[str] = Query(
-                None, description="Filter by room ID"
-            )
+            room_id: Optional[str] = Query(None, description="Filter by room ID")
         ):
             """Get drift detection status and recent analysis results."""
             try:
@@ -530,15 +522,11 @@ class PerformanceDashboard:
             severity: Optional[str] = Query(
                 None, description="Filter by alert severity"
             ),
-            room_id: Optional[str] = Query(
-                None, description="Filter by room ID"
-            ),
+            room_id: Optional[str] = Query(None, description="Filter by room ID"),
         ):
             """Get active alerts with optional filtering."""
             try:
-                alerts_data = await self._get_alerts_dashboard_data(
-                    severity, room_id
-                )
+                alerts_data = await self._get_alerts_dashboard_data(severity, room_id)
                 return alerts_data
             except Exception as e:
                 logger.error(f"Error getting alerts: {e}")
@@ -547,16 +535,12 @@ class PerformanceDashboard:
         # Historical trends
         @app.get("/api/dashboard/trends")
         async def get_accuracy_trends(
-            room_id: Optional[str] = Query(
-                None, description="Filter by room ID"
-            ),
+            room_id: Optional[str] = Query(None, description="Filter by room ID"),
             days_back: int = Query(7, description="Days of historical data"),
         ):
             """Get historical accuracy trends for visualization."""
             try:
-                trends_data = await self._get_trends_dashboard_data(
-                    room_id, days_back
-                )
+                trends_data = await self._get_trends_dashboard_data(room_id, days_back)
                 return trends_data
             except Exception as e:
                 logger.error(f"Error getting trends: {e}")
@@ -583,9 +567,7 @@ class PerformanceDashboard:
             async def trigger_manual_retraining(request_data: dict):
                 """Trigger manual retraining for specified room/model."""
                 try:
-                    result = await self._trigger_manual_retraining(
-                        request_data
-                    )
+                    result = await self._trigger_manual_retraining(request_data)
                     return result
                 except Exception as e:
                     logger.error(f"Error triggering retraining: {e}")
@@ -614,22 +596,14 @@ class PerformanceDashboard:
                 """WebSocket endpoint for real-time dashboard updates."""
                 client_info = {
                     "client_host": (
-                        websocket.client.host
-                        if websocket.client
-                        else "unknown"
+                        websocket.client.host if websocket.client else "unknown"
                     ),
-                    "client_port": (
-                        websocket.client.port if websocket.client else 0
-                    ),
+                    "client_port": (websocket.client.port if websocket.client else 0),
                 }
 
-                connected = await self.websocket_manager.connect(
-                    websocket, client_info
-                )
+                connected = await self.websocket_manager.connect(websocket, client_info)
                 if not connected:
-                    await websocket.close(
-                        code=1013, reason="Server at capacity"
-                    )
+                    await websocket.close(code=1013, reason="Server at capacity")
                     return
 
                 try:
@@ -648,9 +622,7 @@ class PerformanceDashboard:
                             )
 
                             # Handle client messages if needed
-                            await self._handle_websocket_message(
-                                message, websocket
-                            )
+                            await self._handle_websocket_message(message, websocket)
 
                         except asyncio.TimeoutError:
                             # Send keepalive ping
@@ -734,9 +706,7 @@ class PerformanceDashboard:
 
             # Disconnect all WebSocket connections
             if self.websocket_manager:
-                for websocket in list(
-                    self.websocket_manager.active_connections
-                ):
+                for websocket in list(self.websocket_manager.active_connections):
                     await self.websocket_manager.disconnect(websocket)
 
             logger.info("Performance dashboard stopped")
@@ -802,9 +772,7 @@ class PerformanceDashboard:
                 overview.system_health_score = tracking_status.get(
                     "overall_health_score", 0.0
                 )
-                overview.system_status = tracking_status.get(
-                    "status", "unknown"
-                )
+                overview.system_status = tracking_status.get("status", "unknown")
 
                 # Prediction metrics
                 accuracy_summary = tracking_status.get("accuracy_summary", {})
@@ -819,12 +787,8 @@ class PerformanceDashboard:
                 )
 
                 # Activity metrics
-                overview.active_rooms = len(
-                    tracking_status.get("tracked_rooms", [])
-                )
-                overview.active_models = len(
-                    tracking_status.get("tracked_models", [])
-                )
+                overview.active_rooms = len(tracking_status.get("tracked_rooms", []))
+                overview.active_models = len(tracking_status.get("tracked_models", []))
                 overview.predictions_per_hour = accuracy_summary.get(
                     "predictions_per_hour", 0.0
                 )
@@ -832,20 +796,14 @@ class PerformanceDashboard:
                 # Alerts
                 alerts_summary = tracking_status.get("alerts_summary", {})
                 overview.active_alerts = alerts_summary.get("total_active", 0)
-                overview.critical_alerts = alerts_summary.get(
-                    "critical_count", 0
-                )
+                overview.critical_alerts = alerts_summary.get("critical_count", 0)
                 overview.warnings = alerts_summary.get("warning_count", 0)
 
                 # Drift and retraining
                 drift_summary = tracking_status.get("drift_summary", {})
-                overview.rooms_with_drift = drift_summary.get(
-                    "rooms_with_drift", 0
-                )
+                overview.rooms_with_drift = drift_summary.get("rooms_with_drift", 0)
 
-                retraining_summary = tracking_status.get(
-                    "retraining_summary", {}
-                )
+                retraining_summary = tracking_status.get("retraining_summary", {})
                 overview.active_retraining_tasks = retraining_summary.get(
                     "active_tasks", 0
                 )
@@ -861,9 +819,7 @@ class PerformanceDashboard:
                 overview.avg_validation_lag_minutes = performance.get(
                     "avg_validation_lag_minutes", 0.0
                 )
-                overview.cache_hit_rate = performance.get(
-                    "cache_hit_rate", 0.0
-                )
+                overview.cache_hit_rate = performance.get("cache_hit_rate", 0.0)
 
             # Dashboard-specific metrics
             overview.uptime_hours = (
@@ -891,19 +847,15 @@ class PerformanceDashboard:
         hours_back: int,
     ) -> Dict[str, Any]:
         """Get accuracy metrics formatted for dashboard display."""
-        cache_key = (
-            f"accuracy_{room_id or 'all'}_{model_type or 'all'}_{hours_back}"
-        )
+        cache_key = f"accuracy_{room_id or 'all'}_{model_type or 'all'}_{hours_back}"
         cached_data = self._get_cached_data(cache_key)
         if cached_data:
             return cached_data
 
         try:
             # Get real-time metrics from tracking manager
-            real_time_metrics = (
-                await self.tracking_manager.get_real_time_metrics(
-                    room_id, model_type
-                )
+            real_time_metrics = await self.tracking_manager.get_real_time_metrics(
+                room_id, model_type
             )
 
             # Get detailed accuracy metrics from validator
@@ -941,11 +893,7 @@ class PerformanceDashboard:
             if real_time_metrics:
                 if isinstance(real_time_metrics, list):
                     dashboard_data["real_time_metrics"] = [
-                        (
-                            metric.to_dict()
-                            if hasattr(metric, "to_dict")
-                            else metric
-                        )
+                        (metric.to_dict() if hasattr(metric, "to_dict") else metric)
                         for metric in real_time_metrics
                     ]
                 else:
@@ -966,31 +914,23 @@ class PerformanceDashboard:
                 )
 
                 dashboard_data["accuracy_summary"] = {
-                    "total_predictions": accuracy_dict.get(
-                        "total_predictions", 0
-                    ),
+                    "total_predictions": accuracy_dict.get("total_predictions", 0),
                     "validated_predictions": accuracy_dict.get(
                         "validated_predictions", 0
                     ),
                     "accuracy_rate": accuracy_dict.get("accuracy_rate", 0.0),
-                    "mean_error_minutes": accuracy_dict.get(
-                        "mean_error_minutes", 0.0
-                    ),
+                    "mean_error_minutes": accuracy_dict.get("mean_error_minutes", 0.0),
                     "median_error_minutes": accuracy_dict.get(
                         "median_error_minutes", 0.0
                     ),
-                    "validation_rate": accuracy_dict.get(
-                        "validation_rate", 0.0
-                    ),
+                    "validation_rate": accuracy_dict.get("validation_rate", 0.0),
                 }
 
                 dashboard_data["error_distribution"] = accuracy_dict.get(
                     "error_percentiles", {}
                 )
                 dashboard_data["confidence_analysis"] = {
-                    "mean_confidence": accuracy_dict.get(
-                        "mean_confidence", 0.0
-                    ),
+                    "mean_confidence": accuracy_dict.get("mean_confidence", 0.0),
                     "confidence_calibration_score": accuracy_dict.get(
                         "confidence_calibration_score", 0.0
                     ),
@@ -1012,9 +952,7 @@ class PerformanceDashboard:
                 "time_period": {"hours_back": hours_back},
             }
 
-    async def _get_drift_dashboard_data(
-        self, room_id: Optional[str]
-    ) -> Dict[str, Any]:
+    async def _get_drift_dashboard_data(self, room_id: Optional[str]) -> Dict[str, Any]:
         """Get drift detection data formatted for dashboard display."""
         cache_key = f"drift_{room_id or 'all'}"
         cached_data = self._get_cached_data(cache_key)
@@ -1044,9 +982,7 @@ class PerformanceDashboard:
                 dashboard_data["drift_summary"] = {
                     "total_rooms_monitored": summary.get("monitored_rooms", 0),
                     "rooms_with_drift": summary.get("rooms_with_drift", 0),
-                    "rooms_with_major_drift": summary.get(
-                        "rooms_with_major_drift", 0
-                    ),
+                    "rooms_with_major_drift": summary.get("rooms_with_major_drift", 0),
                     "last_check_time": summary.get("last_check_time"),
                     "next_check_time": summary.get("next_check_time"),
                 }
@@ -1098,9 +1034,7 @@ class PerformanceDashboard:
 
         try:
             # Get retraining status from tracking manager
-            retraining_status = (
-                await self.tracking_manager.get_retraining_status()
-            )
+            retraining_status = await self.tracking_manager.get_retraining_status()
 
             dashboard_data = {
                 "queue_summary": {
@@ -1128,8 +1062,8 @@ class PerformanceDashboard:
                 }
 
                 # Active tasks
-                dashboard_data["active_retraining_tasks"] = (
-                    retraining_status.get("active_tasks", [])
+                dashboard_data["active_retraining_tasks"] = retraining_status.get(
+                    "active_tasks", []
                 )
 
                 # Recent completions
@@ -1143,13 +1077,13 @@ class PerformanceDashboard:
                 )
 
                 # Performance improvements
-                dashboard_data["performance_improvements"] = (
-                    retraining_status.get("performance_improvements", {})
+                dashboard_data["performance_improvements"] = retraining_status.get(
+                    "performance_improvements", {}
                 )
 
                 # Configuration
-                dashboard_data["retrainer_configuration"] = (
-                    retraining_status.get("configuration", {})
+                dashboard_data["retrainer_configuration"] = retraining_status.get(
+                    "configuration", {}
                 )
 
             # Cache and return
@@ -1247,9 +1181,9 @@ class PerformanceDashboard:
             # Dashboard-specific metrics
             if self.websocket_manager:
                 ws_stats = self.websocket_manager.get_connection_stats()
-                health_data["resource_usage"]["websocket_connections"] = (
-                    ws_stats["active_connections"]
-                )
+                health_data["resource_usage"]["websocket_connections"] = ws_stats[
+                    "active_connections"
+                ]
                 health_data["resource_usage"]["websocket_capacity"] = ws_stats[
                     "max_connections"
                 ]
@@ -1257,9 +1191,7 @@ class PerformanceDashboard:
             # Cache usage
             with self._cache_lock:
                 cache_count = len(self._cache)
-                health_data["resource_usage"][
-                    "dashboard_cache_entries"
-                ] = cache_count
+                health_data["resource_usage"]["dashboard_cache_entries"] = cache_count
 
             # Cache and return
             self._cache_data(cache_key, health_data)
@@ -1320,9 +1252,7 @@ class PerformanceDashboard:
 
                 processed_alerts = []
                 for alert in alerts_list:
-                    alert_dict = (
-                        alert.to_dict() if hasattr(alert, "to_dict") else alert
-                    )
+                    alert_dict = alert.to_dict() if hasattr(alert, "to_dict") else alert
                     processed_alerts.append(alert_dict)
 
                     # Count by severity
@@ -1382,8 +1312,10 @@ class PerformanceDashboard:
 
         try:
             # Get accuracy trends from tracking manager
-            trends_data = await self.tracking_manager.accuracy_tracker.get_accuracy_trends(
-                room_id=room_id, days_back=days_back
+            trends_data = (
+                await self.tracking_manager.accuracy_tracker.get_accuracy_trends(
+                    room_id=room_id, days_back=days_back
+                )
             )
 
             dashboard_data = {
@@ -1546,9 +1478,7 @@ class PerformanceDashboard:
                 )
 
         except json.JSONDecodeError:
-            logger.warning(
-                f"Invalid JSON received from WebSocket client: {message}"
-            )
+            logger.warning(f"Invalid JSON received from WebSocket client: {message}")
         except Exception as e:
             logger.error(f"Error handling WebSocket message: {e}")
 
@@ -1572,9 +1502,7 @@ class PerformanceDashboard:
             logger.error(f"Error getting requested data '{data_type}': {e}")
             return {"error": str(e)}
 
-    async def _trigger_manual_retraining(
-        self, request_data: dict
-    ) -> Dict[str, Any]:
+    async def _trigger_manual_retraining(self, request_data: dict) -> Dict[str, Any]:
         """Trigger manual retraining request."""
         try:
             room_id = request_data.get("room_id")
@@ -1613,12 +1541,10 @@ class PerformanceDashboard:
                 raise ValueError("alert_id is required to acknowledge alert")
 
             # Use tracking manager to acknowledge alert
-            result = await self.tracking_manager.acknowledge_alert(
-                alert_id, user_id
-            )
+            result = await self.tracking_manager.acknowledge_alert(alert_id, user_id)
 
             logger.info(f"Alert {alert_id} acknowledged by {user_id}")
-            
+
             # Use result to provide detailed response information
             response = {
                 "success": True,
@@ -1627,19 +1553,23 @@ class PerformanceDashboard:
                 "acknowledged_by": user_id,
                 "acknowledged_at": datetime.utcnow().isoformat(),
             }
-            
+
             # Enhance response with detailed information from result
             if result:
                 if isinstance(result, dict):
                     response["details"] = result
                     response["alert_status"] = result.get("status", "acknowledged")
-                    response["previous_status"] = result.get("previous_status", "unknown")
-                    response["acknowledgment_count"] = result.get("acknowledgment_count", 1)
+                    response["previous_status"] = result.get(
+                        "previous_status", "unknown"
+                    )
+                    response["acknowledgment_count"] = result.get(
+                        "acknowledgment_count", 1
+                    )
                 elif isinstance(result, bool) and result:
                     response["details"] = {"acknowledgment_successful": True}
                 else:
                     response["details"] = {"raw_result": str(result)}
-            
+
             return response
 
         except Exception as e:
@@ -1668,9 +1598,7 @@ class PerformanceDashboard:
             # Limit cache size
             if len(self._cache) > 100:
                 # Remove oldest entries
-                sorted_cache = sorted(
-                    self._cache.items(), key=lambda x: x[1][1]
-                )
+                sorted_cache = sorted(self._cache.items(), key=lambda x: x[1][1])
                 for key, _ in sorted_cache[:10]:  # Remove oldest 10
                     del self._cache[key]
 

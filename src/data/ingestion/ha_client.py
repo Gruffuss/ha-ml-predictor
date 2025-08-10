@@ -73,18 +73,13 @@ class RateLimiter:
             cutoff_time = now - self.window
             # Remove old requests outside the window
             self.requests = [
-                req_time
-                for req_time in self.requests
-                if req_time >= cutoff_time
+                req_time for req_time in self.requests if req_time >= cutoff_time
             ]
 
             if len(self.requests) >= self.max_requests:
                 # Calculate wait time
                 oldest_request = min(self.requests)
-                wait_time = (
-                    self.window_seconds
-                    - (now - oldest_request).total_seconds()
-                )
+                wait_time = self.window_seconds - (now - oldest_request).total_seconds()
                 if wait_time > 0:
                     logger.warning(
                         f"Rate limit reached, waiting {wait_time:.2f} seconds"
@@ -192,9 +187,7 @@ class HomeAssistantClient:
     async def _test_authentication(self):
         """Test if authentication is working."""
         try:
-            async with self.session.get(
-                f"{self.ha_config.url}/api/"
-            ) as response:
+            async with self.session.get(f"{self.ha_config.url}/api/") as response:
                 if response.status == 401:
                     raise HomeAssistantAuthenticationError(
                         self.ha_config.url, len(self.ha_config.token)
@@ -309,10 +302,7 @@ class HomeAssistantClient:
                 return
 
             # Filter subscribed entities
-            if (
-                self._subscribed_entities
-                and entity_id not in self._subscribed_entities
-            ):
+            if self._subscribed_entities and entity_id not in self._subscribed_entities:
                 return
 
             # Create HAEvent
@@ -433,9 +423,7 @@ class HomeAssistantClient:
         if handler in self._event_handlers:
             self._event_handlers.remove(handler)
 
-    async def get_entity_state(
-        self, entity_id: str
-    ) -> Optional[Dict[str, Any]]:
+    async def get_entity_state(self, entity_id: str) -> Optional[Dict[str, Any]]:
         """Get current state of an entity."""
         await self.rate_limiter.acquire()
 
@@ -543,17 +531,13 @@ class HomeAssistantClient:
                     logger.warning(f"Entity {entity_id} not found, skipping")
                     continue
                 except Exception as e:
-                    logger.error(
-                        f"Error fetching history for {entity_id}: {e}"
-                    )
+                    logger.error(f"Error fetching history for {entity_id}: {e}")
                     continue
 
             if batch_results:
                 yield batch_results
 
-    async def validate_entities(
-        self, entity_ids: List[str]
-    ) -> Dict[str, bool]:
+    async def validate_entities(self, entity_ids: List[str]) -> Dict[str, bool]:
         """
         Validate that entities exist in Home Assistant.
 
@@ -602,18 +586,14 @@ class HomeAssistantClient:
         previous_state = None
 
         for record in history_data:
-            timestamp_str = record.get(
-                "last_changed", record.get("last_updated", "")
-            )
+            timestamp_str = record.get("last_changed", record.get("last_updated", ""))
             if timestamp_str:
                 try:
                     timestamp = datetime.fromisoformat(
                         timestamp_str.replace("Z", "+00:00")
                     )
                 except ValueError:
-                    logger.warning(
-                        f"Invalid timestamp format: {timestamp_str}"
-                    )
+                    logger.warning(f"Invalid timestamp format: {timestamp_str}")
                     continue
             else:
                 continue

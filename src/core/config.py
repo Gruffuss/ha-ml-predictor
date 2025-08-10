@@ -244,14 +244,18 @@ class ConfigLoader:
     def __init__(self, config_dir: str = "config"):
         self.config_dir = Path(config_dir)
         if not self.config_dir.exists():
-            raise FileNotFoundError(
-                f"Configuration directory not found: {config_dir}"
-            )
+            raise FileNotFoundError(f"Configuration directory not found: {config_dir}")
 
-    def load_config(self) -> SystemConfig:
-        """Load complete system configuration."""
-        # Load main config
-        main_config = self._load_yaml("config.yaml")
+    def load_config(self, environment: Optional[str] = None) -> SystemConfig:
+        """Load complete system configuration with environment-specific overrides."""
+        # Try environment-specific config first, fall back to base config
+        if environment:
+            try:
+                main_config = self._load_yaml(f"config.{environment}.yaml")
+            except FileNotFoundError:
+                main_config = self._load_yaml("config.yaml")
+        else:
+            main_config = self._load_yaml("config.yaml")
 
         # Load rooms config
         rooms_config = self._load_yaml("rooms.yaml")
@@ -270,15 +274,10 @@ class ConfigLoader:
         rooms = {}
         for room_id, room_data in rooms_config["rooms"].items():
             # Handle nested room structure (like hallways)
-            if any(
-                isinstance(v, dict) and "name" in v for v in room_data.values()
-            ):
+            if any(isinstance(v, dict) and "name" in v for v in room_data.values()):
                 # This is a nested structure like hallways
                 for sub_room_id, sub_room_data in room_data.items():
-                    if (
-                        isinstance(sub_room_data, dict)
-                        and "name" in sub_room_data
-                    ):
+                    if isinstance(sub_room_data, dict) and "name" in sub_room_data:
                         full_room_id = f"{room_id}_{sub_room_id}"
                         rooms[full_room_id] = RoomConfig(
                             room_id=full_room_id,
@@ -289,9 +288,7 @@ class ConfigLoader:
                 # Regular room structure
                 rooms[room_id] = RoomConfig(
                     room_id=room_id,
-                    name=room_data.get(
-                        "name", room_id.replace("_", " ").title()
-                    ),
+                    name=room_data.get("name", room_id.replace("_", " ").title()),
                     sensors=room_data.get("sensors", {}),
                 )
 
@@ -311,30 +308,98 @@ class ConfigLoader:
         """Load YAML file from config directory."""
         file_path = self.config_dir / filename
         if not file_path.exists():
-            raise FileNotFoundError(
-                f"Configuration file not found: {file_path}"
-            )
+            raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
         with open(file_path, "r", encoding="utf-8") as file:
             return yaml.safe_load(file)
+
+    def _create_system_config(self, config_dict: Dict[str, Any]) -> SystemConfig:
+        """Create SystemConfig from dictionary (used by environment manager)."""
+        # Load rooms config
+        rooms_config = self._load_yaml("rooms.yaml")
+        
+        # Create configuration objects from processed config
+        ha_config = HomeAssistantConfig(**config_dict.get("home_assistant", {}))
+        db_config = DatabaseConfig(**config_dict.get("database", {}))
+        mqtt_config = MQTTConfig(**config_dict.get("mqtt", {}))
+        prediction_config = PredictionConfig(**config_dict.get("prediction", {}))
+        features_config = FeaturesConfig(**config_dict.get("features", {}))
+        logging_config = LoggingConfig(**config_dict.get("logging", {}))
+        tracking_config = TrackingConfig(**config_dict.get("tracking", {}))
+        api_config = APIConfig(**config_dict.get("api", {}))
+
+        # Process rooms configuration
+        rooms = {}
+        for room_id, room_data in rooms_config["rooms"].items():
+            # Handle nested room structure (like hallways)
+            if any(isinstance(v, dict) and "name" in v for v in room_data.values()):
+                # This is a nested structure like hallways
+                for sub_room_id, sub_room_data in room_data.items():
+                    if isinstance(sub_room_data, dict) and "name" in sub_room_data:
+                        full_room_id = f"{room_id}_{sub_room_id}"
+                        rooms[full_room_id] = RoomConfig(
+                            room_id=full_room_id,
+                            name=sub_room_data["name"],
+                            sensors=sub_room_data.get("sensors", {}),
+                        )
+            else:
+                # Regular room structure
+                rooms[room_id] = RoomConfig(
+                    room_id=room_id,
+                    name=room_data.get("name", room_id.replace("_", " ").title()),
+                    sensors=room_data.get("sensors", {}),
+                )
+
+        return SystemConfig(
+            home_assistant=ha_config,
+            database=db_config,
+            mqtt=mqtt_config,
+            prediction=prediction_config,
+            features=features_config,
+            logging=logging_config,
+            tracking=tracking_config,
+            api=api_config,
+            rooms=rooms,
+        )
 
 
 # Global configuration instance
 _config_instance: Optional[SystemConfig] = None
 
 
-def get_config() -> SystemConfig:
+def get_config(environment: Optional[str] = None) -> SystemConfig:
     """Get global configuration instance."""
     global _config_instance
     if _config_instance is None:
-        loader = ConfigLoader()
-        _config_instance = loader.load_config()
+        # Try to use environment manager if available
+        try:
+            from .environment import get_environment_manager
+            env_manager = get_environment_manager()
+            config = env_manager.load_environment_config()
+            
+            # Convert dict back to SystemConfig objects
+            loader = ConfigLoader()
+            # Use the environment manager's processed config
+            _config_instance = loader._create_system_config(config)
+        except ImportError:
+            # Fall back to direct config loading
+            loader = ConfigLoader()
+            _config_instance = loader.load_config(environment)
     return _config_instance
 
 
-def reload_config() -> SystemConfig:
+def reload_config(environment: Optional[str] = None) -> SystemConfig:
     """Reload configuration from files."""
     global _config_instance
-    loader = ConfigLoader()
-    _config_instance = loader.load_config()
+    try:
+        from .environment import get_environment_manager
+        env_manager = get_environment_manager()
+        config = env_manager.load_environment_config()
+        
+        # Convert dict back to SystemConfig objects
+        loader = ConfigLoader()
+        _config_instance = loader._create_system_config(config)
+    except ImportError:
+        loader = ConfigLoader()
+        _config_instance = loader.load_config(environment)
     return _config_instance

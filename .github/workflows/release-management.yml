@@ -1,0 +1,672 @@
+# GitHub Actions Release Management Workflow
+# Sprint 7 Task 3: CI/CD Pipeline Enhancement & Deployment Automation
+#
+# This workflow handles semantic versioning and automated release management
+# with changelog generation, GitHub releases, and notification systems
+
+name: "Release Management & Semantic Versioning"
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+    types: [ closed ]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Type of release'
+        required: true
+        default: 'auto'
+        type: choice
+        options:
+        - auto
+        - patch
+        - minor
+        - major
+        - prerelease
+      custom_version:
+        description: 'Custom version (optional, overrides release_type)'
+        required: false
+        type: string
+      skip_tests:
+        description: 'Skip test execution (emergency releases only)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  # Release configuration
+  RELEASE_BRANCH: master
+  PRERELEASE_BRANCH: develop
+  
+  # Changelog configuration
+  CHANGELOG_SECTIONS: |
+    - title: 🚀 New Features
+      labels: [enhancement, feature]
+    - title: 🐛 Bug Fixes  
+      labels: [bug, fix]
+    - title: 🔧 Improvements
+      labels: [improvement, optimization]
+    - title: 📚 Documentation
+      labels: [documentation, docs]
+    - title: 🏗️ Infrastructure
+      labels: [infrastructure, deployment]
+    - title: ⚠️ Breaking Changes
+      labels: [breaking-change]
+  
+  # Notification configuration
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+jobs:
+  # Job 1: Version Detection & Validation
+  version-detection:
+    name: "Version Detection & Validation"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    outputs:
+      current-version: ${{ steps.current-version.outputs.version }}
+      next-version: ${{ steps.next-version.outputs.version }}
+      version-type: ${{ steps.next-version.outputs.type }}
+      should-release: ${{ steps.should-release.outputs.result }}
+      release-notes: ${{ steps.release-notes.outputs.notes }}
+      changelog: ${{ steps.changelog.outputs.content }}
+    
+    steps:
+    - name: "Checkout code"
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for version detection
+        
+    - name: "Get current version"
+      id: current-version
+      run: |
+        # Check if version file exists
+        if [ -f "VERSION" ]; then
+          CURRENT_VERSION=$(cat VERSION)
+        else
+          # Fallback to git tags
+          CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
+        fi
+        
+        echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        echo "Current version: $CURRENT_VERSION"
+        
+    - name: "Analyze commits for version bump"
+      id: commit-analysis
+      run: |
+        # Get commits since last tag/version
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        
+        if [ -n "$LAST_TAG" ]; then
+          COMMITS=$(git log --oneline "$LAST_TAG..HEAD")
+        else
+          COMMITS=$(git log --oneline)
+        fi
+        
+        echo "Analyzing commits:"
+        echo "$COMMITS"
+        
+        # Analyze commit messages for semantic versioning
+        MAJOR_COUNT=0
+        MINOR_COUNT=0
+        PATCH_COUNT=0
+        
+        while IFS= read -r commit; do
+          if echo "$commit" | grep -qiE "(breaking change|BREAKING CHANGE|!:|major:)"; then
+            MAJOR_COUNT=$((MAJOR_COUNT + 1))
+          elif echo "$commit" | grep -qiE "(feat:|feature:|minor:)"; then
+            MINOR_COUNT=$((MINOR_COUNT + 1))
+          elif echo "$commit" | grep -qiE "(fix:|patch:|bug:)"; then
+            PATCH_COUNT=$((PATCH_COUNT + 1))
+          fi
+        done <<< "$COMMITS"
+        
+        # Determine version bump type
+        if [ $MAJOR_COUNT -gt 0 ]; then
+          BUMP_TYPE="major"
+        elif [ $MINOR_COUNT -gt 0 ]; then
+          BUMP_TYPE="minor"
+        elif [ $PATCH_COUNT -gt 0 ]; then
+          BUMP_TYPE="patch"
+        else
+          BUMP_TYPE="none"
+        fi
+        
+        echo "bump-type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+        echo "major-changes=$MAJOR_COUNT" >> $GITHUB_OUTPUT
+        echo "minor-changes=$MINOR_COUNT" >> $GITHUB_OUTPUT
+        echo "patch-changes=$PATCH_COUNT" >> $GITHUB_OUTPUT
+        
+        echo "Detected version bump type: $BUMP_TYPE"
+        
+    - name: "Calculate next version"
+      id: next-version
+      run: |
+        CURRENT_VERSION="${{ steps.current-version.outputs.version }}"
+        BUMP_TYPE="${{ steps.commit-analysis.outputs.bump-type }}"
+        MANUAL_TYPE="${{ github.event.inputs.release_type }}"
+        CUSTOM_VERSION="${{ github.event.inputs.custom_version }}"
+        
+        # Use custom version if provided
+        if [ -n "$CUSTOM_VERSION" ]; then
+          NEXT_VERSION="$CUSTOM_VERSION"
+          VERSION_TYPE="custom"
+        # Use manual release type if specified
+        elif [ -n "$MANUAL_TYPE" ] && [ "$MANUAL_TYPE" != "auto" ]; then
+          VERSION_TYPE="$MANUAL_TYPE"
+          NEXT_VERSION=$(python3 -c "
+import sys
+current = '$CURRENT_VERSION'.split('.')
+major, minor, patch = int(current[0]), int(current[1]), int(current[2])
+
+if '$VERSION_TYPE' == 'major':
+    major += 1
+    minor, patch = 0, 0
+elif '$VERSION_TYPE' == 'minor':
+    minor += 1
+    patch = 0
+elif '$VERSION_TYPE' == 'patch':
+    patch += 1
+elif '$VERSION_TYPE' == 'prerelease':
+    patch += 1
+    print(f'{major}.{minor}.{patch}-rc.1')
+    sys.exit(0)
+
+print(f'{major}.{minor}.{patch}')
+")
+        # Use automatic detection
+        else
+          VERSION_TYPE="$BUMP_TYPE"
+          if [ "$BUMP_TYPE" == "none" ]; then
+            NEXT_VERSION="$CURRENT_VERSION"
+          else
+            NEXT_VERSION=$(python3 -c "
+import sys
+current = '$CURRENT_VERSION'.split('.')
+major, minor, patch = int(current[0]), int(current[1]), int(current[2])
+
+if '$BUMP_TYPE' == 'major':
+    major += 1
+    minor, patch = 0, 0
+elif '$BUMP_TYPE' == 'minor':
+    minor += 1
+    patch = 0
+elif '$BUMP_TYPE' == 'patch':
+    patch += 1
+
+print(f'{major}.{minor}.{patch}')
+")
+          fi
+        fi
+        
+        echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+        echo "type=$VERSION_TYPE" >> $GITHUB_OUTPUT
+        echo "Next version: $NEXT_VERSION (type: $VERSION_TYPE)"
+        
+    - name: "Determine if release should be created"
+      id: should-release
+      run: |
+        CURRENT_VERSION="${{ steps.current-version.outputs.version }}"
+        NEXT_VERSION="${{ steps.next-version.outputs.version }}"
+        VERSION_TYPE="${{ steps.next-version.outputs.type }}"
+        
+        # Release conditions
+        SHOULD_RELEASE="false"
+        
+        # Release on version changes
+        if [ "$CURRENT_VERSION" != "$NEXT_VERSION" ]; then
+          SHOULD_RELEASE="true"
+        fi
+        
+        # Release on manual trigger
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          SHOULD_RELEASE="true"
+        fi
+        
+        # Release on master/main branch only (unless manual)
+        if [ "${{ github.ref }}" != "refs/heads/master" ] && [ "${{ github.ref }}" != "refs/heads/main" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+          SHOULD_RELEASE="false"
+        fi
+        
+        echo "result=$SHOULD_RELEASE" >> $GITHUB_OUTPUT
+        echo "Should create release: $SHOULD_RELEASE"
+        
+    - name: "Generate release notes"
+      id: release-notes
+      if: steps.should-release.outputs.result == 'true'
+      run: |
+        CURRENT_VERSION="${{ steps.current-version.outputs.version }}"
+        NEXT_VERSION="${{ steps.next-version.outputs.version }}"
+        
+        # Get commits since last version
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        if [ -n "$LAST_TAG" ]; then
+          COMMITS=$(git log --pretty=format:"- %s (%h)" "$LAST_TAG..HEAD")
+        else
+          COMMITS=$(git log --pretty=format:"- %s (%h)" -10)  # Last 10 commits
+        fi
+        
+        # Generate release notes
+        RELEASE_NOTES="## What's Changed in v$NEXT_VERSION
+        
+### 📋 Summary
+This release includes $(echo "$COMMITS" | wc -l) commits with the following changes:
+
+### 🔄 Changes
+$COMMITS
+
+### 📊 Statistics
+- **Major Changes**: ${{ steps.commit-analysis.outputs.major-changes }}
+- **Minor Changes**: ${{ steps.commit-analysis.outputs.minor-changes }}
+- **Patch Changes**: ${{ steps.commit-analysis.outputs.patch-changes }}
+
+### 🚀 Deployment
+This version has been automatically tested and is ready for deployment.
+
+**Full Changelog**: https://github.com/${{ github.repository }}/compare/v$CURRENT_VERSION...v$NEXT_VERSION"
+        
+        # Save to multiline output
+        {
+          echo 'notes<<EOF'
+          echo "$RELEASE_NOTES"
+          echo 'EOF'
+        } >> $GITHUB_OUTPUT
+        
+    - name: "Generate changelog entry"
+      id: changelog
+      if: steps.should-release.outputs.result == 'true'
+      run: |
+        NEXT_VERSION="${{ steps.next-version.outputs.version }}"
+        RELEASE_DATE=$(date +%Y-%m-%d)
+        
+        # Generate changelog entry
+        CHANGELOG_ENTRY="## [v$NEXT_VERSION] - $RELEASE_DATE
+
+### Added
+- New features and enhancements from this release
+
+### Changed  
+- Improvements and modifications
+
+### Fixed
+- Bug fixes and issues resolved
+
+### Security
+- Security improvements and vulnerability fixes
+
+"
+        
+        {
+          echo 'content<<EOF'
+          echo "$CHANGELOG_ENTRY"
+          echo 'EOF'
+        } >> $GITHUB_OUTPUT
+
+  # Job 2: Pre-Release Testing
+  pre-release-testing:
+    name: "Pre-Release Testing"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: version-detection
+    if: needs.version-detection.outputs.should-release == 'true' && github.event.inputs.skip_tests != 'true'
+    
+    steps:
+    - name: "Checkout code"
+      uses: actions/checkout@v4
+      
+    - name: "Set up Python"
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        
+    - name: "Install dependencies"
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov
+        
+    - name: "Run critical tests"
+      run: |
+        # Run a subset of critical tests for release validation
+        pytest tests/unit/test_core/ tests/unit/test_data/ -v --tb=short || exit 1
+        echo "✅ Critical tests passed"
+        
+    - name: "Validate Docker build"
+      run: |
+        cd docker
+        docker build -t ha-ml-predictor:test-${{ needs.version-detection.outputs.next-version }} \
+          --build-arg VERSION=${{ needs.version-detection.outputs.next-version }} \
+          -f Dockerfile \
+          ..
+        echo "✅ Docker build validated"
+
+  # Job 3: Create Release
+  create-release:
+    name: "Create GitHub Release"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [version-detection, pre-release-testing]
+    if: always() && needs.version-detection.outputs.should-release == 'true' && (needs.pre-release-testing.result == 'success' || needs.pre-release-testing.result == 'skipped')
+    
+    outputs:
+      release-id: ${{ steps.create-release.outputs.id }}
+      release-url: ${{ steps.create-release.outputs.html_url }}
+      upload-url: ${{ steps.create-release.outputs.upload_url }}
+    
+    steps:
+    - name: "Checkout code"
+      uses: actions/checkout@v4
+      
+    - name: "Update version file"
+      run: |
+        NEXT_VERSION="${{ needs.version-detection.outputs.next-version }}"
+        echo "$NEXT_VERSION" > VERSION
+        
+        # Update version in Python files
+        find src/ -name "*.py" -type f -exec sed -i "s/__version__ = .*/__version__ = \"$NEXT_VERSION\"/" {} \;
+        
+        echo "✅ Version updated to $NEXT_VERSION"
+        
+    - name: "Update changelog"
+      run: |
+        CHANGELOG_ENTRY="${{ needs.version-detection.outputs.changelog }}"
+        
+        # Prepend to CHANGELOG.md
+        if [ -f "CHANGELOG.md" ]; then
+          {
+            echo "$CHANGELOG_ENTRY"
+            echo ""
+            cat CHANGELOG.md
+          } > CHANGELOG.md.tmp
+          mv CHANGELOG.md.tmp CHANGELOG.md
+        else
+          echo "# Changelog" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "$CHANGELOG_ENTRY" >> CHANGELOG.md
+        fi
+        
+        echo "✅ Changelog updated"
+        
+    - name: "Commit version bump"
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add VERSION CHANGELOG.md src/
+        git commit -m "chore: bump version to v${{ needs.version-detection.outputs.next-version }}"
+        git tag -a "v${{ needs.version-detection.outputs.next-version }}" -m "Release v${{ needs.version-detection.outputs.next-version }}"
+        git push origin HEAD
+        git push origin "v${{ needs.version-detection.outputs.next-version }}"
+        
+    - name: "Create GitHub Release"
+      id: create-release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: "v${{ needs.version-detection.outputs.next-version }}"
+        release_name: "HA ML Predictor v${{ needs.version-detection.outputs.next-version }}"
+        body: ${{ needs.version-detection.outputs.release-notes }}
+        draft: false
+        prerelease: ${{ contains(needs.version-detection.outputs.next-version, 'rc') || contains(needs.version-detection.outputs.next-version, 'beta') || contains(needs.version-detection.outputs.next-version, 'alpha') }}
+        
+    - name: "Generate release artifacts"
+      run: |
+        VERSION="${{ needs.version-detection.outputs.next-version }}"
+        
+        # Create source archive
+        git archive --format=tar.gz --prefix="ha-ml-predictor-$VERSION/" HEAD > "ha-ml-predictor-$VERSION-source.tar.gz"
+        
+        # Create release summary
+        cat > "release-summary-$VERSION.json" << EOF
+        {
+          "version": "$VERSION",
+          "release_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "git_commit": "${{ github.sha }}",
+          "release_url": "${{ steps.create-release.outputs.html_url }}",
+          "docker_image": "ghcr.io/${{ github.repository }}/ha-ml-predictor:$VERSION",
+          "changelog": $(echo '${{ needs.version-detection.outputs.changelog }}' | jq -R -s .)
+        }
+        EOF
+        
+        echo "✅ Release artifacts created"
+        
+    - name: "Upload source archive"
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: "./ha-ml-predictor-${{ needs.version-detection.outputs.next-version }}-source.tar.gz"
+        asset_name: "ha-ml-predictor-${{ needs.version-detection.outputs.next-version }}-source.tar.gz"
+        asset_content_type: application/gzip
+        
+    - name: "Upload release summary"
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: "./release-summary-${{ needs.version-detection.outputs.next-version }}.json"
+        asset_name: "release-summary-${{ needs.version-detection.outputs.next-version }}.json"
+        asset_content_type: application/json
+
+  # Job 4: Trigger Deployment Pipeline
+  trigger-deployment:
+    name: "Trigger Deployment Pipeline"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [version-detection, create-release]
+    if: needs.create-release.result == 'success'
+    
+    steps:
+    - name: "Trigger Docker build and deploy workflow"
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data: workflow } = await github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'docker-build-deploy.yml',
+            ref: 'refs/tags/v${{ needs.version-detection.outputs.next-version }}',
+            inputs: {
+              environment: 'production',
+              deployment_strategy: 'blue-green',
+              force_rebuild: 'true'
+            }
+          });
+          
+          console.log('Deployment workflow triggered successfully');
+
+  # Job 5: Post-Release Notifications
+  post-release-notifications:
+    name: "Post-Release Notifications"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [version-detection, create-release, trigger-deployment]
+    if: always() && needs.create-release.result == 'success'
+    
+    steps:
+    - name: "Send Slack notification"
+      if: env.SLACK_WEBHOOK_URL != ''
+      run: |
+        VERSION="${{ needs.version-detection.outputs.next-version }}"
+        RELEASE_URL="${{ needs.create-release.outputs.release-url }}"
+        
+        curl -X POST -H 'Content-type: application/json' \
+          --data "{
+            \"text\": \"🚀 New release published!\",
+            \"attachments\": [
+              {
+                \"color\": \"good\",
+                \"fields\": [
+                  {
+                    \"title\": \"Version\",
+                    \"value\": \"v$VERSION\",
+                    \"short\": true
+                  },
+                  {
+                    \"title\": \"Release Type\",
+                    \"value\": \"${{ needs.version-detection.outputs.version-type }}\",
+                    \"short\": true
+                  },
+                  {
+                    \"title\": \"Repository\",
+                    \"value\": \"${{ github.repository }}\",
+                    \"short\": true
+                  },
+                  {
+                    \"title\": \"Release Notes\",
+                    \"value\": \"<$RELEASE_URL|View on GitHub>\",
+                    \"short\": true
+                  }
+                ]
+              }
+            ]
+          }" \
+          "${{ env.SLACK_WEBHOOK_URL }}"
+          
+    - name: "Create deployment tracking issue"
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const version = '${{ needs.version-detection.outputs.next-version }}';
+          const releaseUrl = '${{ needs.create-release.outputs.release-url }}';
+          
+          const issue = await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `Track deployment of v${version}`,
+            body: `## Deployment Tracking for v${version}
+            
+            **Release**: [v${version}](${releaseUrl})
+            **Status**: 🔄 In Progress
+            
+            ### Deployment Checklist
+            - [ ] Docker images built and pushed
+            - [ ] Staging deployment completed
+            - [ ] Production deployment completed  
+            - [ ] Health checks passed
+            - [ ] Monitoring confirmed operational
+            - [ ] Rollback capability verified
+            
+            ### Environments
+            - [ ] **Staging**: Pending
+            - [ ] **Production**: Pending
+            
+            This issue will be automatically updated as deployment progresses.
+            `,
+            labels: ['deployment', 'release', `v${version}`]
+          });
+          
+          console.log(`Deployment tracking issue created: ${issue.data.html_url}`);
+          
+    - name: "Update repository topics"
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const version = '${{ needs.version-detection.outputs.next-version }}';
+          
+          // Get current topics
+          const { data: repo } = await github.rest.repos.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo
+          });
+          
+          const currentTopics = repo.topics || [];
+          const versionTopic = `v${version.replace(/\./g, '-')}`;
+          
+          // Add version topic and remove old version topics
+          const newTopics = currentTopics
+            .filter(topic => !topic.startsWith('v'))
+            .concat([versionTopic]);
+          
+          await github.rest.repos.replaceAllTopics({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            names: newTopics
+          });
+          
+          console.log(`Repository topics updated with ${versionTopic}`);
+          
+    - name: "Generate deployment report"
+      run: |
+        VERSION="${{ needs.version-detection.outputs.next-version }}"
+        
+        cat > "deployment-report-$VERSION.md" << EOF
+        # Deployment Report - v$VERSION
+        
+        **Release Date**: $(date -u +%Y-%m-%d\ %H:%M:%S\ UTC)
+        **Version**: v$VERSION
+        **Release Type**: ${{ needs.version-detection.outputs.version-type }}
+        **Git Commit**: ${{ github.sha }}
+        
+        ## Release Summary
+        ${{ needs.version-detection.outputs.release-notes }}
+        
+        ## Deployment Status
+        - ✅ GitHub Release Created
+        - 🔄 Docker Build Pipeline Triggered
+        - ⏳ Deployment Pipeline In Progress
+        
+        ## Links
+        - **GitHub Release**: ${{ needs.create-release.outputs.release-url }}
+        - **Docker Registry**: ghcr.io/${{ github.repository }}/ha-ml-predictor:$VERSION
+        - **Workflow Run**: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        
+        ---
+        *This report was automatically generated by the release management workflow.*
+        EOF
+        
+        echo "✅ Deployment report generated"
+        
+    - name: "Upload deployment report"
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployment-report-${{ needs.version-detection.outputs.next-version }}
+        path: deployment-report-${{ needs.version-detection.outputs.next-version }}.md
+        retention-days: 90
+        
+  # Job 6: Release Quality Gates
+  release-quality-gates:
+    name: "Release Quality Gates"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [version-detection, create-release]
+    if: needs.create-release.result == 'success'
+    
+    steps:
+    - name: "Validate release quality"
+      run: |
+        echo "=== Release Quality Gates ==="
+        
+        VERSION="${{ needs.version-detection.outputs.next-version }}"
+        RELEASE_URL="${{ needs.create-release.outputs.release-url }}"
+        
+        # Check version format
+        if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
+          echo "✅ Version format valid: $VERSION"
+        else
+          echo "❌ Version format invalid: $VERSION"
+          exit 1
+        fi
+        
+        # Check release notes exist
+        if [ -n "${{ needs.version-detection.outputs.release-notes }}" ]; then
+          echo "✅ Release notes present"
+        else
+          echo "❌ Release notes missing"
+          exit 1
+        fi
+        
+        # Check tag was created
+        if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+          echo "✅ Git tag created: v$VERSION"
+        else
+          echo "❌ Git tag missing: v$VERSION"
+          exit 1
+        fi
+        
+        echo "🎉 All release quality gates passed!"

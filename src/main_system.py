@@ -37,9 +37,7 @@ class OccupancyPredictionSystem:
     async def initialize(self) -> None:
         """Initialize all system components with automatic API server startup."""
         try:
-            logger.info(
-                "🚀 Starting Home Assistant Occupancy Prediction System..."
-            )
+            logger.info("🚀 Starting Home Assistant Occupancy Prediction System...")
 
             # Initialize database
             self.database_manager = await get_database_manager()
@@ -71,9 +69,7 @@ class OccupancyPredictionSystem:
                     f"📋 API Documentation: http://{api_status['host']}:{api_status['port']}/docs"
                 )
             elif api_status["enabled"]:
-                logger.warning(
-                    "⚠️ API server enabled but failed to start automatically"
-                )
+                logger.warning("⚠️ API server enabled but failed to start automatically")
             else:
                 logger.info("ℹ️ API server disabled in configuration")
 

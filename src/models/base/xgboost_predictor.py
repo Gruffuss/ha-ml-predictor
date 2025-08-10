@@ -50,16 +50,10 @@ class XGBoostPredictor(BasePredictor):
             "learning_rate": default_params.get("learning_rate", 0.1),
             "subsample": default_params.get("subsample", 0.8),
             "colsample_bytree": default_params.get("colsample_bytree", 0.8),
-            "reg_alpha": default_params.get(
-                "reg_alpha", 0.1
-            ),  # L1 regularization
-            "reg_lambda": default_params.get(
-                "reg_lambda", 1.0
-            ),  # L2 regularization
+            "reg_alpha": default_params.get("reg_alpha", 0.1),  # L1 regularization
+            "reg_lambda": default_params.get("reg_lambda", 1.0),  # L2 regularization
             "random_state": default_params.get("random_state", 42),
-            "early_stopping_rounds": default_params.get(
-                "early_stopping_rounds", 20
-            ),
+            "early_stopping_rounds": default_params.get("early_stopping_rounds", 20),
             "eval_metric": default_params.get("eval_metric", "rmse"),
         }
 
@@ -115,14 +109,9 @@ class XGBoostPredictor(BasePredictor):
 
             # Prepare validation data if provided
             eval_set = None
-            if (
-                validation_features is not None
-                and validation_targets is not None
-            ):
+            if validation_features is not None and validation_targets is not None:
                 y_val = self._prepare_targets(validation_targets)
-                X_val_scaled = self.feature_scaler.transform(
-                    validation_features
-                )
+                X_val_scaled = self.feature_scaler.transform(validation_features)
                 X_val_df = pd.DataFrame(
                     X_val_scaled, columns=validation_features.columns
                 )
@@ -140,17 +129,13 @@ class XGBoostPredictor(BasePredictor):
                 reg_alpha=self.model_params["reg_alpha"],
                 reg_lambda=self.model_params["reg_lambda"],
                 random_state=self.model_params["random_state"],
-                early_stopping_rounds=self.model_params[
-                    "early_stopping_rounds"
-                ],
+                early_stopping_rounds=self.model_params["early_stopping_rounds"],
                 eval_metric=self.model_params["eval_metric"],
                 verbosity=0,  # Reduce XGBoost output
             )
 
             # Train the model
-            self.model.fit(
-                X_train_df, y_train, eval_set=eval_set, verbose=False
-            )
+            self.model.fit(X_train_df, y_train, eval_set=eval_set, verbose=False)
 
             # Store training results
             self.best_iteration_ = getattr(self.model, "best_iteration", None)
@@ -186,9 +171,7 @@ class XGBoostPredictor(BasePredictor):
 
                 validation_score = r2_score(y_val, y_pred_val)
                 validation_mae = mean_absolute_error(y_val, y_pred_val)
-                validation_rmse = np.sqrt(
-                    mean_squared_error(y_val, y_pred_val)
-                )
+                validation_rmse = np.sqrt(mean_squared_error(y_val, y_pred_val))
 
             # Update model state
             self.is_trained = True
@@ -299,9 +282,7 @@ class XGBoostPredictor(BasePredictor):
 
             for idx, time_until_transition in enumerate(y_pred):
                 # Ensure reasonable bounds (between 1 minute and 24 hours)
-                time_until_transition = np.clip(
-                    time_until_transition, 60, 86400
-                )
+                time_until_transition = np.clip(time_until_transition, 60, 86400)
 
                 # Calculate predicted transition time
                 predicted_time = prediction_time + timedelta(
@@ -332,13 +313,9 @@ class XGBoostPredictor(BasePredictor):
                     model_version=self.model_version,
                     features_used=self.feature_names,
                     prediction_metadata={
-                        "time_until_transition_seconds": float(
-                            time_until_transition
-                        ),
+                        "time_until_transition_seconds": float(time_until_transition),
                         "prediction_method": "xgboost_gradient_boosting",
-                        "n_estimators_used": getattr(
-                            self.model, "n_estimators", None
-                        ),
+                        "n_estimators_used": getattr(self.model, "n_estimators", None),
                         "feature_contributions": feature_contributions,
                     },
                 )
@@ -375,9 +352,7 @@ class XGBoostPredictor(BasePredictor):
             List of (feature_name, importance) tuples sorted by importance
         """
         importance_dict = self.get_feature_importance()
-        return sorted(
-            importance_dict.items(), key=lambda x: x[1], reverse=True
-        )
+        return sorted(importance_dict.items(), key=lambda x: x[1], reverse=True)
 
     def _prepare_targets(self, targets: pd.DataFrame) -> np.ndarray:
         """
@@ -398,9 +373,7 @@ class XGBoostPredictor(BasePredictor):
             # Calculate time differences
             target_times = pd.to_datetime(targets["target_time"])
             next_times = pd.to_datetime(targets["next_transition_time"])
-            target_values = (
-                (next_times - target_times).dt.total_seconds().values
-            )
+            target_values = (next_times - target_times).dt.total_seconds().values
         else:
             # Default: assume targets are already time differences
             target_values = targets.iloc[:, 0].values
@@ -463,9 +436,7 @@ class XGBoostPredictor(BasePredictor):
                 else:
                     return "occupied_to_vacant"
 
-    def _calculate_confidence(
-        self, X: pd.DataFrame, y_pred: np.ndarray
-    ) -> float:
+    def _calculate_confidence(self, X: pd.DataFrame, y_pred: np.ndarray) -> float:
         """
         Calculate prediction confidence based on model uncertainty.
 
@@ -507,9 +478,7 @@ class XGBoostPredictor(BasePredictor):
                 np.abs(feature_values) > 2.0
             )  # Beyond 2 std devs
 
-            if (
-                extreme_feature_ratio > 0.3
-            ):  # More than 30% of features are extreme
+            if extreme_feature_ratio > 0.3:  # More than 30% of features are extreme
                 base_confidence *= 0.9
 
             return float(np.clip(base_confidence, 0.1, 0.95))

@@ -160,9 +160,7 @@ class ValidationRecord:
             self.prediction_metadata = {}
         self.prediction_metadata["failure_reason"] = reason
 
-        logger.warning(
-            f"Marked prediction {self.prediction_id} as failed: {reason}"
-        )
+        logger.warning(f"Marked prediction {self.prediction_id} as failed: {reason}")
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert validation record to dictionary for serialization."""
@@ -187,9 +185,7 @@ class ValidationRecord:
                 if self.alternatives
                 else None
             ),
-            "actual_time": (
-                self.actual_time.isoformat() if self.actual_time else None
-            ),
+            "actual_time": (self.actual_time.isoformat() if self.actual_time else None),
             "error_minutes": self.error_minutes,
             "accuracy_level": (
                 self.accuracy_level.value if self.accuracy_level else None
@@ -197,14 +193,10 @@ class ValidationRecord:
             "status": self.status.value,
             "prediction_time": self.prediction_time.isoformat(),
             "validation_time": (
-                self.validation_time.isoformat()
-                if self.validation_time
-                else None
+                self.validation_time.isoformat() if self.validation_time else None
             ),
             "expiration_time": (
-                self.expiration_time.isoformat()
-                if self.expiration_time
-                else None
+                self.expiration_time.isoformat() if self.expiration_time else None
             ),
             "feature_snapshot": self.feature_snapshot,
             "prediction_metadata": self.prediction_metadata,
@@ -242,9 +234,7 @@ class AccuracyMetrics:
     accuracy_by_level: Dict[str, int] = field(default_factory=dict)
 
     # Bias analysis
-    mean_bias_minutes: float = (
-        0.0  # Positive = late predictions, negative = early
-    )
+    mean_bias_minutes: float = 0.0  # Positive = late predictions, negative = early
     bias_std_minutes: float = 0.0
 
     # Confidence analysis
@@ -372,10 +362,14 @@ class PredictionValidator:
         self._validation_records: Dict[str, ValidationRecord] = {}
         self._records_by_room: Dict[str, List[str]] = defaultdict(list)
         self._records_by_model: Dict[str, List[str]] = defaultdict(list)
-        
+
         # Use deque for efficient queue operations for batch processing
-        self._validation_queue: deque = deque(maxlen=1000)  # Queue for batch validation operations
-        self._database_update_queue: deque = deque(maxlen=500)  # Queue for batch database updates
+        self._validation_queue: deque = deque(
+            maxlen=1000
+        )  # Queue for batch validation operations
+        self._database_update_queue: deque = deque(
+            maxlen=500
+        )  # Queue for batch database updates
 
         # Metrics caching
         self._metrics_cache: Dict[str, Tuple[AccuracyMetrics, datetime]] = {}
@@ -396,7 +390,7 @@ class PredictionValidator:
             # Start cleanup loop
             cleanup_task = asyncio.create_task(self._cleanup_loop())
             self._background_tasks.append(cleanup_task)
-            
+
             # Start batch database processing loop
             batch_db_task = asyncio.create_task(self._batch_database_processor())
             self._background_tasks.append(batch_db_task)
@@ -405,9 +399,7 @@ class PredictionValidator:
 
         except Exception as e:
             logger.error(f"Failed to start background tasks: {e}")
-            raise ValidationError(
-                "Failed to start validator background tasks", cause=e
-            )
+            raise ValidationError("Failed to start validator background tasks", cause=e)
 
     async def stop_background_tasks(self) -> None:
         """Stop background tasks gracefully."""
@@ -417,9 +409,7 @@ class PredictionValidator:
 
             # Wait for tasks to complete
             if self._background_tasks:
-                await asyncio.gather(
-                    *self._background_tasks, return_exceptions=True
-                )
+                await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
             self._background_tasks.clear()
             logger.info("Stopped PredictionValidator background tasks")
@@ -474,24 +464,20 @@ class PredictionValidator:
 
             # Queue for batch database operations using deque for efficiency
             self._database_update_queue.append(record)
-            
+
             # Store in database asynchronously (or use batch processing)
             await self._store_prediction_in_db(record)
 
             # Invalidate relevant caches
             self._invalidate_metrics_cache(room_id, record.model_type)
 
-            logger.debug(
-                f"Recorded prediction {prediction_id} for room {room_id}"
-            )
+            logger.debug(f"Recorded prediction {prediction_id} for room {room_id}")
 
             return prediction_id
 
         except Exception as e:
             logger.error(f"Failed to record prediction: {e}")
-            raise ValidationError(
-                "Failed to record prediction for validation", cause=e
-            )
+            raise ValidationError("Failed to record prediction for validation", cause=e)
 
     async def validate_prediction(
         self,
@@ -598,23 +584,17 @@ class PredictionValidator:
         """
         try:
             # Generate cache key
-            cache_key = (
-                f"{room_id or 'all'}_{model_type or 'all'}_{hours_back}"
-            )
+            cache_key = f"{room_id or 'all'}_{model_type or 'all'}_{hours_back}"
 
             # Check cache if not forcing recalculation
-            if not force_recalculate and self._is_metrics_cache_valid(
-                cache_key
-            ):
+            if not force_recalculate and self._is_metrics_cache_valid(cache_key):
                 with self._cache_lock:
                     cached_metrics, _ = self._metrics_cache[cache_key]
                     logger.debug(f"Using cached metrics for {cache_key}")
                     return cached_metrics
 
             # Get filtered records
-            records = self._get_filtered_records(
-                room_id, model_type, hours_back
-            )
+            records = self._get_filtered_records(room_id, model_type, hours_back)
 
             # Calculate metrics
             metrics = self._calculate_metrics_from_records(records, hours_back)
@@ -631,17 +611,13 @@ class PredictionValidator:
 
         except Exception as e:
             logger.error(f"Failed to calculate accuracy metrics: {e}")
-            raise ValidationError(
-                "Failed to calculate accuracy metrics", cause=e
-            )
+            raise ValidationError("Failed to calculate accuracy metrics", cause=e)
 
     async def get_room_accuracy(
         self, room_id: str, hours_back: int = 24
     ) -> AccuracyMetrics:
         """Get accuracy metrics for specific room across all models."""
-        return await self.get_accuracy_metrics(
-            room_id=room_id, hours_back=hours_back
-        )
+        return await self.get_accuracy_metrics(room_id=room_id, hours_back=hours_back)
 
     async def get_model_accuracy(
         self, model_type: str, hours_back: int = 24
@@ -694,9 +670,7 @@ class PredictionValidator:
             logger.error(f"Failed to get pending validations: {e}")
             raise ValidationError("Failed to get pending validations", cause=e)
 
-    async def expire_old_predictions(
-        self, cutoff_hours: Optional[int] = None
-    ) -> int:
+    async def expire_old_predictions(self, cutoff_hours: Optional[int] = None) -> int:
         """
         Mark old predictions as expired if they haven't been validated.
 
@@ -830,10 +804,7 @@ class PredictionValidator:
                 "records_by_model": dict(model_counts),
                 "records_by_status": dict(status_counts),
                 "cache_size": cache_size,
-                "memory_usage_percent": (
-                    total_records / self.max_memory_records
-                )
-                * 100,
+                "memory_usage_percent": (total_records / self.max_memory_records) * 100,
                 "background_tasks_running": len(self._background_tasks),
             }
 
@@ -872,9 +843,7 @@ class PredictionValidator:
 
                     # Remove from indexes
                     self._records_by_room[record.room_id].remove(prediction_id)
-                    self._records_by_model[record.model_type].remove(
-                        prediction_id
-                    )
+                    self._records_by_model[record.model_type].remove(prediction_id)
 
                     removed_count += 1
 
@@ -891,9 +860,7 @@ class PredictionValidator:
                 }
 
             if removed_count > 0:
-                logger.info(
-                    f"Cleaned up {removed_count} old validation records"
-                )
+                logger.info(f"Cleaned up {removed_count} old validation records")
 
             return removed_count
 
@@ -936,9 +903,7 @@ class PredictionValidator:
             logger.error(f"Failed to store prediction in database: {e}")
             # Don't raise exception - validation can continue without DB storage
 
-    async def _update_predictions_in_db(
-        self, records: List[ValidationRecord]
-    ) -> None:
+    async def _update_predictions_in_db(self, records: List[ValidationRecord]) -> None:
         """Update validated predictions in database."""
         try:
             if not records:
@@ -965,18 +930,14 @@ class PredictionValidator:
 
                     if db_prediction:
                         # Update validation results
-                        db_prediction.actual_transition_time = (
-                            record.actual_time
-                        )
+                        db_prediction.actual_transition_time = record.actual_time
                         db_prediction.accuracy_minutes = record.error_minutes
                         db_prediction.is_accurate = (
                             record.error_minutes <= self.accuracy_threshold
                             if record.error_minutes is not None
                             else None
                         )
-                        db_prediction.validation_timestamp = (
-                            record.validation_time
-                        )
+                        db_prediction.validation_timestamp = record.validation_time
 
                 await session.commit()
 
@@ -1007,9 +968,7 @@ class PredictionValidator:
                     continue
 
                 # Check if within time window
-                time_diff = abs(
-                    (actual_time - record.predicted_time).total_seconds()
-                )
+                time_diff = abs((actual_time - record.predicted_time).total_seconds())
                 if time_diff <= time_window.total_seconds():
                     candidates.append(prediction_id)
 
@@ -1058,12 +1017,8 @@ class PredictionValidator:
         validated_records = [
             r for r in records if r.status == ValidationStatus.VALIDATED
         ]
-        expired_records = [
-            r for r in records if r.status == ValidationStatus.EXPIRED
-        ]
-        failed_records = [
-            r for r in records if r.status == ValidationStatus.FAILED
-        ]
+        expired_records = [r for r in records if r.status == ValidationStatus.EXPIRED]
+        failed_records = [r for r in records if r.status == ValidationStatus.FAILED]
 
         metrics.validated_predictions = len(validated_records)
         metrics.expired_predictions = len(expired_records)
@@ -1074,9 +1029,7 @@ class PredictionValidator:
 
         # Calculate error statistics
         errors = [
-            r.error_minutes
-            for r in validated_records
-            if r.error_minutes is not None
+            r.error_minutes for r in validated_records if r.error_minutes is not None
         ]
         biases = [
             (r.actual_time - r.predicted_time).total_seconds() / 60
@@ -1094,9 +1047,7 @@ class PredictionValidator:
             metrics.std_error_minutes = (
                 statistics.stdev(errors) if len(errors) > 1 else 0.0
             )
-            metrics.rmse_minutes = (
-                sum(e**2 for e in errors) / len(errors)
-            ) ** 0.5
+            metrics.rmse_minutes = (sum(e**2 for e in errors) / len(errors)) ** 0.5
             metrics.mae_minutes = statistics.mean(errors)
 
             # Error percentiles
@@ -1109,9 +1060,7 @@ class PredictionValidator:
             }
 
             # Accuracy rate
-            accurate_count = sum(
-                1 for e in errors if e <= self.accuracy_threshold
-            )
+            accurate_count = sum(1 for e in errors if e <= self.accuracy_threshold)
             metrics.accurate_predictions = accurate_count
             metrics.accuracy_rate = (accurate_count / len(errors)) * 100
 
@@ -1153,22 +1102,16 @@ class PredictionValidator:
                 high_conf_wrong = sum(
                     1
                     for conf, err in zip(confidences, errors)
-                    if conf > high_conf_threshold
-                    and err > self.accuracy_threshold
+                    if conf > high_conf_threshold and err > self.accuracy_threshold
                 )
                 low_conf_right = sum(
                     1
                     for conf, err in zip(confidences, errors)
-                    if conf < low_conf_threshold
-                    and err <= self.accuracy_threshold
+                    if conf < low_conf_threshold and err <= self.accuracy_threshold
                 )
 
-                metrics.overconfidence_rate = (
-                    high_conf_wrong / len(confidences)
-                ) * 100
-                metrics.underconfidence_rate = (
-                    low_conf_right / len(confidences)
-                ) * 100
+                metrics.overconfidence_rate = (high_conf_wrong / len(confidences)) * 100
+                metrics.underconfidence_rate = (low_conf_right / len(confidences)) * 100
 
         # Time-based analysis
         if records:
@@ -1177,8 +1120,7 @@ class PredictionValidator:
             metrics.measurement_period_end = max(prediction_times)
 
             period_hours = (
-                metrics.measurement_period_end
-                - metrics.measurement_period_start
+                metrics.measurement_period_end - metrics.measurement_period_start
             ).total_seconds() / 3600
             if period_hours > 0:
                 metrics.predictions_per_hour = len(records) / period_hours
@@ -1276,10 +1218,12 @@ class PredictionValidator:
                         # Efficiently drain deque for batch processing
                         while self._database_update_queue and len(batch_records) < 50:
                             batch_records.append(self._database_update_queue.popleft())
-                        
+
                         if batch_records:
                             await self._batch_update_database(batch_records)
-                            logger.debug(f"Processed {len(batch_records)} database updates in batch")
+                            logger.debug(
+                                f"Processed {len(batch_records)} database updates in batch"
+                            )
 
                     # Wait before next batch processing cycle
                     await asyncio.wait_for(
@@ -1304,87 +1248,122 @@ class PredictionValidator:
         """Batch update database with multiple records using advanced SQLAlchemy operations."""
         if not records:
             return
-            
+
         try:
             async with get_db_session() as session:
                 # Use AsyncSession for proper async database operations
                 async_session: AsyncSession = session
-                
+
                 # Use advanced SQL operations for efficient batch processing
                 batch_inserts = []
                 batch_updates = []
-                
+
                 for record in records:
                     # Check if prediction already exists using func and or_ operations
-                    existing_query = select(Prediction).where(
-                        and_(
-                            Prediction.room_id == record.room_id,
-                            Prediction.predicted_transition_time == record.predicted_time,
-                            or_(
-                                Prediction.model_type == record.model_type,
-                                Prediction.model_type == str(record.model_type) if isinstance(record.model_type, ModelType) else record.model_type
+                    existing_query = (
+                        select(Prediction)
+                        .where(
+                            and_(
+                                Prediction.room_id == record.room_id,
+                                Prediction.predicted_transition_time
+                                == record.predicted_time,
+                                or_(
+                                    Prediction.model_type == record.model_type,
+                                    (
+                                        Prediction.model_type == str(record.model_type)
+                                        if isinstance(record.model_type, ModelType)
+                                        else record.model_type
+                                    ),
+                                ),
                             )
                         )
-                    ).order_by(desc(Prediction.prediction_time))  # Use desc for most recent first
-                    
+                        .order_by(desc(Prediction.prediction_time))
+                    )  # Use desc for most recent first
+
                     result = await async_session.execute(existing_query)
                     existing = result.scalars().first()
-                    
+
                     if existing:
                         # Prepare batch update using update operation
-                        batch_updates.append({
-                            'id': existing.id,
-                            'actual_transition_time': record.actual_time,
-                            'error_minutes': record.error_minutes,
-                            'accuracy_level': record.accuracy_level.value if record.accuracy_level else None,
-                            'validation_status': record.status.value,
-                            'validation_time': record.validation_time
-                        })
+                        batch_updates.append(
+                            {
+                                "id": existing.id,
+                                "actual_transition_time": record.actual_time,
+                                "error_minutes": record.error_minutes,
+                                "accuracy_level": (
+                                    record.accuracy_level.value
+                                    if record.accuracy_level
+                                    else None
+                                ),
+                                "validation_status": record.status.value,
+                                "validation_time": record.validation_time,
+                            }
+                        )
                     else:
                         # Prepare batch insert
-                        batch_inserts.append(Prediction(
-                            room_id=record.room_id,
-                            prediction_time=record.prediction_time,
-                            predicted_transition_time=record.predicted_time,
-                            transition_type=record.transition_type,
-                            confidence_score=record.confidence_score,
-                            model_type=str(record.model_type) if isinstance(record.model_type, ModelType) else record.model_type,
-                            model_version=record.model_version,
-                            prediction_interval_lower=(
-                                record.prediction_interval[0] if record.prediction_interval else None
-                            ),
-                            prediction_interval_upper=(
-                                record.prediction_interval[1] if record.prediction_interval else None
-                            ),
-                            alternatives=record.alternatives or [],
-                            actual_transition_time=record.actual_time,
-                            error_minutes=record.error_minutes,
-                            accuracy_level=record.accuracy_level.value if record.accuracy_level else None,
-                            validation_status=record.status.value,
-                            validation_time=record.validation_time
-                        ))
-                
+                        batch_inserts.append(
+                            Prediction(
+                                room_id=record.room_id,
+                                prediction_time=record.prediction_time,
+                                predicted_transition_time=record.predicted_time,
+                                transition_type=record.transition_type,
+                                confidence_score=record.confidence_score,
+                                model_type=(
+                                    str(record.model_type)
+                                    if isinstance(record.model_type, ModelType)
+                                    else record.model_type
+                                ),
+                                model_version=record.model_version,
+                                prediction_interval_lower=(
+                                    record.prediction_interval[0]
+                                    if record.prediction_interval
+                                    else None
+                                ),
+                                prediction_interval_upper=(
+                                    record.prediction_interval[1]
+                                    if record.prediction_interval
+                                    else None
+                                ),
+                                alternatives=record.alternatives or [],
+                                actual_transition_time=record.actual_time,
+                                error_minutes=record.error_minutes,
+                                accuracy_level=(
+                                    record.accuracy_level.value
+                                    if record.accuracy_level
+                                    else None
+                                ),
+                                validation_status=record.status.value,
+                                validation_time=record.validation_time,
+                            )
+                        )
+
                 # Execute batch inserts
                 if batch_inserts:
                     async_session.add_all(batch_inserts)
-                
+
                 # Execute batch updates using update() operation
                 if batch_updates:
                     for update_data in batch_updates:
-                        update_stmt = update(Prediction).where(
-                            Prediction.id == update_data['id']
-                        ).values(
-                            actual_transition_time=update_data['actual_transition_time'],
-                            error_minutes=update_data['error_minutes'],
-                            accuracy_level=update_data['accuracy_level'],
-                            validation_status=update_data['validation_status'],
-                            validation_time=update_data['validation_time']
+                        update_stmt = (
+                            update(Prediction)
+                            .where(Prediction.id == update_data["id"])
+                            .values(
+                                actual_transition_time=update_data[
+                                    "actual_transition_time"
+                                ],
+                                error_minutes=update_data["error_minutes"],
+                                accuracy_level=update_data["accuracy_level"],
+                                validation_status=update_data["validation_status"],
+                                validation_time=update_data["validation_time"],
+                            )
                         )
                         await async_session.execute(update_stmt)
-                
+
                 await async_session.commit()
-                logger.debug(f"Batch database operation: {len(batch_inserts)} inserts, {len(batch_updates)} updates")
-                
+                logger.debug(
+                    f"Batch database operation: {len(batch_inserts)} inserts, {len(batch_updates)} updates"
+                )
+
         except DatabaseError as e:
             logger.error(f"Database error in batch update: {e}")
             raise  # Re-raise DatabaseError for proper handling
@@ -1393,108 +1372,127 @@ class PredictionValidator:
             # Don't raise - allow validation to continue
 
     async def get_database_accuracy_statistics(
-        self, 
+        self,
         room_id: Optional[str] = None,
         model_type: Optional[Union[ModelType, str]] = None,
-        days_back: int = 7
+        days_back: int = 7,
     ) -> Dict[str, Any]:
         """Get accuracy statistics directly from database using func aggregations."""
         try:
             async with get_db_session() as session:
                 async_session: AsyncSession = session
-                
+
                 # Build base query with filters
                 base_query = select(Prediction).where(
-                    Prediction.prediction_time >= datetime.utcnow() - timedelta(days=days_back)
+                    Prediction.prediction_time
+                    >= datetime.utcnow() - timedelta(days=days_back)
                 )
-                
+
                 # Add room filter if specified
                 if room_id:
                     base_query = base_query.where(Prediction.room_id == room_id)
-                
+
                 # Add model type filter using or_ for compatibility
                 if model_type:
-                    model_type_str = str(model_type) if isinstance(model_type, ModelType) else model_type
+                    model_type_str = (
+                        str(model_type)
+                        if isinstance(model_type, ModelType)
+                        else model_type
+                    )
                     base_query = base_query.where(
                         or_(
                             Prediction.model_type == model_type,
-                            Prediction.model_type == model_type_str
+                            Prediction.model_type == model_type_str,
                         )
                     )
-                
+
                 # Use func for statistical aggregations
                 stats_query = select(
-                    func.count(Prediction.id).label('total_predictions'),
-                    func.count(Prediction.error_minutes).label('validated_predictions'), 
-                    func.avg(Prediction.error_minutes).label('mean_error'),
-                    func.min(Prediction.error_minutes).label('min_error'),
-                    func.max(Prediction.error_minutes).label('max_error'),
-                    func.stddev(Prediction.error_minutes).label('std_error'),
-                    func.avg(Prediction.confidence_score).label('mean_confidence')
-                ).where(
-                    base_query.whereclause
-                )
-                
+                    func.count(Prediction.id).label("total_predictions"),
+                    func.count(Prediction.error_minutes).label("validated_predictions"),
+                    func.avg(Prediction.error_minutes).label("mean_error"),
+                    func.min(Prediction.error_minutes).label("min_error"),
+                    func.max(Prediction.error_minutes).label("max_error"),
+                    func.stddev(Prediction.error_minutes).label("std_error"),
+                    func.avg(Prediction.confidence_score).label("mean_confidence"),
+                ).where(base_query.whereclause)
+
                 # Execute aggregation query
                 result = await async_session.execute(stats_query)
                 stats_row = result.first()
-                
+
                 # Get accuracy level distribution using func.count
-                accuracy_dist_query = select(
-                    Prediction.accuracy_level,
-                    func.count(Prediction.id).label('count')
-                ).where(
-                    base_query.whereclause
-                ).group_by(Prediction.accuracy_level)
-                
+                accuracy_dist_query = (
+                    select(
+                        Prediction.accuracy_level,
+                        func.count(Prediction.id).label("count"),
+                    )
+                    .where(base_query.whereclause)
+                    .group_by(Prediction.accuracy_level)
+                )
+
                 accuracy_dist_result = await async_session.execute(accuracy_dist_query)
                 accuracy_distribution = {
-                    row.accuracy_level or 'unknown': row.count 
+                    row.accuracy_level or "unknown": row.count
                     for row in accuracy_dist_result
                 }
-                
+
                 # Get recent predictions ordered by desc
-                recent_query = base_query.order_by(desc(Prediction.prediction_time)).limit(10)
+                recent_query = base_query.order_by(
+                    desc(Prediction.prediction_time)
+                ).limit(10)
                 recent_result = await async_session.execute(recent_query)
                 recent_predictions = [
                     {
-                        'room_id': pred.room_id,
-                        'prediction_time': pred.prediction_time.isoformat(),
-                        'error_minutes': pred.error_minutes,
-                        'accuracy_level': pred.accuracy_level
+                        "room_id": pred.room_id,
+                        "prediction_time": pred.prediction_time.isoformat(),
+                        "error_minutes": pred.error_minutes,
+                        "accuracy_level": pred.accuracy_level,
                     }
                     for pred in recent_result.scalars()
                 ]
-                
+
                 return {
-                    'database_stats': {
-                        'total_predictions': stats_row.total_predictions or 0,
-                        'validated_predictions': stats_row.validated_predictions or 0,
-                        'mean_error_minutes': float(stats_row.mean_error) if stats_row.mean_error else 0.0,
-                        'min_error_minutes': float(stats_row.min_error) if stats_row.min_error else 0.0,
-                        'max_error_minutes': float(stats_row.max_error) if stats_row.max_error else 0.0,
-                        'std_error_minutes': float(stats_row.std_error) if stats_row.std_error else 0.0,
-                        'mean_confidence': float(stats_row.mean_confidence) if stats_row.mean_confidence else 0.0,
+                    "database_stats": {
+                        "total_predictions": stats_row.total_predictions or 0,
+                        "validated_predictions": stats_row.validated_predictions or 0,
+                        "mean_error_minutes": (
+                            float(stats_row.mean_error) if stats_row.mean_error else 0.0
+                        ),
+                        "min_error_minutes": (
+                            float(stats_row.min_error) if stats_row.min_error else 0.0
+                        ),
+                        "max_error_minutes": (
+                            float(stats_row.max_error) if stats_row.max_error else 0.0
+                        ),
+                        "std_error_minutes": (
+                            float(stats_row.std_error) if stats_row.std_error else 0.0
+                        ),
+                        "mean_confidence": (
+                            float(stats_row.mean_confidence)
+                            if stats_row.mean_confidence
+                            else 0.0
+                        ),
                     },
-                    'accuracy_distribution': accuracy_distribution,
-                    'recent_predictions': recent_predictions,
-                    'query_filters': {
-                        'room_id': room_id,
-                        'model_type': str(model_type) if model_type else None,
-                        'days_back': days_back
-                    }
+                    "accuracy_distribution": accuracy_distribution,
+                    "recent_predictions": recent_predictions,
+                    "query_filters": {
+                        "room_id": room_id,
+                        "model_type": str(model_type) if model_type else None,
+                        "days_back": days_back,
+                    },
                 }
-                
+
         except DatabaseError as e:
             logger.error(f"Database error getting accuracy statistics: {e}")
             raise  # Re-raise DatabaseError for proper handling
         except Exception as e:
             logger.error(f"Failed to get database accuracy statistics: {e}")
             return {
-                'database_stats': {},
-                'accuracy_distribution': {},
-                'recent_predictions': [],
-                'error': str(e)
+                "database_stats": {},
+                "accuracy_distribution": {},
+                "recent_predictions": [],
+                "error": str(e),
             }
 
     async def _export_to_csv(
@@ -1536,15 +1534,11 @@ class PredictionValidator:
                     "transition_type": record.transition_type,
                     "confidence_score": record.confidence_score,
                     "actual_time": (
-                        record.actual_time.isoformat()
-                        if record.actual_time
-                        else ""
+                        record.actual_time.isoformat() if record.actual_time else ""
                     ),
                     "error_minutes": record.error_minutes,
                     "accuracy_level": (
-                        record.accuracy_level.value
-                        if record.accuracy_level
-                        else ""
+                        record.accuracy_level.value if record.accuracy_level else ""
                     ),
                     "status": record.status.value,
                     "prediction_time": record.prediction_time.isoformat(),

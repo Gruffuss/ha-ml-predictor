@@ -1,0 +1,143 @@
+# Staging environment overrides for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+
+version: '3.8'
+
+services:
+  haml-predictor:
+    environment:
+      - ENVIRONMENT=staging
+      - LOG_LEVEL=INFO
+      - DATABASE_PASSWORD=${STAGING_DB_PASSWORD}
+      - REDIS_PASSWORD=${STAGING_REDIS_PASSWORD:-}
+      - API_SECRET_KEY=${STAGING_API_SECRET}
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: '1.5'
+        reservations:
+          memory: 768M
+          cpus: '0.3'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    healthcheck:
+      interval: 45s
+      timeout: 20s
+      retries: 3
+      start_period: 90s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    volumes:
+      # Add staging-specific config
+      - ./config/config.staging.yaml:/app/config/config.yaml:ro
+      - haml_logs_staging:/app/logs
+      - haml_models_staging:/app/models
+      - haml_data_staging:/app/data
+      - haml_backups_staging:/app/backups
+
+  timescaledb:
+    environment:
+      - POSTGRES_DB=occupancy_prediction_staging
+      - POSTGRES_USER=occupancy_user
+      - POSTGRES_PASSWORD=${STAGING_DB_PASSWORD}
+      - POSTGRES_HOST_AUTH_METHOD=md5  # Secure auth
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+          cpus: '0.75'
+        reservations:
+          memory: 384M
+          cpus: '0.2'
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "30m"
+        max-file: "3"
+    volumes:
+      - timescale_data_staging:/var/lib/postgresql/data
+
+  mosquitto:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.15'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "2"
+    volumes:
+      - mosquitto_data_staging:/mosquitto/data
+      - mosquitto_logs_staging:/mosquitto/log
+
+  redis:
+    command: redis-server --appendonly yes --maxmemory 384mb --maxmemory-policy allkeys-lru --requirepass ${STAGING_REDIS_PASSWORD:-changeme}
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.15'
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    volumes:
+      - redis_data_staging:/data
+
+  # Enable monitoring in staging for testing
+  prometheus:
+    profiles: []  # Remove profile restriction to always run
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+          cpus: '0.2'
+
+  grafana:
+    profiles: []  # Remove profile restriction to always run
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${STAGING_GRAFANA_PASSWORD:-admin}
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.2'
+
+volumes:
+  # Staging-specific volumes
+  haml_logs_staging:
+    driver: local
+  haml_models_staging:
+    driver: local
+  haml_data_staging:
+    driver: local
+  haml_backups_staging:
+    driver: local
+  timescale_data_staging:
+    driver: local
+  mosquitto_data_staging:
+    driver: local
+  mosquitto_logs_staging:
+    driver: local
+  redis_data_staging:
+    driver: local
+
+networks:
+  default:
+    name: haml_staging_network

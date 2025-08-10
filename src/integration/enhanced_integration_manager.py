@@ -101,9 +101,7 @@ class EnhancedIntegrationManager:
         self.config = get_config()
         self.mqtt_config = self.config.mqtt
         self.rooms = self.config.rooms
-        self.tracking_config = getattr(
-            self.config, "tracking", TrackingConfig()
-        )
+        self.tracking_config = getattr(self.config, "tracking", TrackingConfig())
 
         # Core integration components
         self.mqtt_integration_manager = mqtt_integration_manager
@@ -172,9 +170,7 @@ class EnhancedIntegrationManager:
             await self._start_background_tasks()
 
             self._enhanced_integration_active = True
-            logger.info(
-                "Enhanced HA integration system initialized successfully"
-            )
+            logger.info("Enhanced HA integration system initialized successfully")
 
         except Exception as e:
             self.stats.integration_errors += 1
@@ -198,9 +194,7 @@ class EnhancedIntegrationManager:
 
             # Wait for tasks to complete
             if self._background_tasks:
-                await asyncio.gather(
-                    *self._background_tasks, return_exceptions=True
-                )
+                await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
             logger.info("Enhanced HA integration system shutdown complete")
 
@@ -234,8 +228,8 @@ class EnhancedIntegrationManager:
 
             # Get entity definition to determine topic
             if self.ha_entity_definitions:
-                entity_config = (
-                    self.ha_entity_definitions.get_entity_definition(entity_id)
+                entity_config = self.ha_entity_definitions.get_entity_definition(
+                    entity_id
                 )
                 if entity_config and entity_config.state_topic:
                     # Create state payload
@@ -266,9 +260,7 @@ class EnhancedIntegrationManager:
             logger.error(f"Error updating entity state for {entity_id}: {e}")
             return False
 
-    async def process_command(
-        self, command_request: CommandRequest
-    ) -> CommandResponse:
+    async def process_command(self, command_request: CommandRequest) -> CommandResponse:
         """
         Process HA service command request.
 
@@ -319,9 +311,7 @@ class EnhancedIntegrationManager:
                 )
 
         except Exception as e:
-            error_msg = (
-                f"Error processing command {command_request.command}: {e}"
-            )
+            error_msg = f"Error processing command {command_request.command}: {e}"
             logger.error(error_msg)
             self.stats.integration_errors += 1
             self.stats.last_error = error_msg
@@ -384,13 +374,9 @@ class EnhancedIntegrationManager:
             logger.debug(f"Updated HA entities for room {room_id} prediction")
 
         except Exception as e:
-            logger.error(
-                f"Error handling prediction update for {room_id}: {e}"
-            )
+            logger.error(f"Error handling prediction update for {room_id}: {e}")
 
-    async def handle_system_status_update(
-        self, system_status: Dict[str, Any]
-    ) -> None:
+    async def handle_system_status_update(self, system_status: Dict[str, Any]) -> None:
         """
         Handle system status updates and update relevant HA entities.
 
@@ -422,9 +408,7 @@ class EnhancedIntegrationManager:
 
             for entity_id, status_key in status_mappings.items():
                 if status_key in system_status:
-                    await self.update_entity_state(
-                        entity_id, system_status[status_key]
-                    )
+                    await self.update_entity_state(entity_id, system_status[status_key])
 
         except Exception as e:
             logger.error(f"Error handling system status update: {e}")
@@ -439,9 +423,7 @@ class EnhancedIntegrationManager:
 
         # Add entity definition stats
         if self.ha_entity_definitions:
-            enhanced_stats.update(
-                self.ha_entity_definitions.get_entity_stats()
-            )
+            enhanced_stats.update(self.ha_entity_definitions.get_entity_stats())
 
         return {
             "enhanced_integration": enhanced_stats,
@@ -510,38 +492,24 @@ class EnhancedIntegrationManager:
 
             # Model management handlers
             self.command_handlers["retrain_model"] = self._handle_retrain_model
-            self.command_handlers["validate_model"] = (
-                self._handle_validate_model
-            )
+            self.command_handlers["validate_model"] = self._handle_validate_model
 
             # System control handlers
-            self.command_handlers["restart_system"] = (
-                self._handle_restart_system
-            )
-            self.command_handlers["refresh_discovery"] = (
-                self._handle_refresh_discovery
-            )
-            self.command_handlers["reset_statistics"] = (
-                self._handle_reset_statistics
-            )
+            self.command_handlers["restart_system"] = self._handle_restart_system
+            self.command_handlers["refresh_discovery"] = self._handle_refresh_discovery
+            self.command_handlers["reset_statistics"] = self._handle_reset_statistics
 
             # Diagnostic handlers
             self.command_handlers["generate_diagnostic"] = (
                 self._handle_generate_diagnostic
             )
-            self.command_handlers["check_database"] = (
-                self._handle_check_database
-            )
+            self.command_handlers["check_database"] = self._handle_check_database
 
             # Room-specific handlers
-            self.command_handlers["force_prediction"] = (
-                self._handle_force_prediction
-            )
+            self.command_handlers["force_prediction"] = self._handle_force_prediction
 
             # Configuration handlers
-            self.command_handlers["prediction_enable"] = (
-                self._handle_prediction_enable
-            )
+            self.command_handlers["prediction_enable"] = self._handle_prediction_enable
             self.command_handlers["mqtt_enable"] = self._handle_mqtt_enable
             self.command_handlers["set_interval"] = self._handle_set_interval
             self.command_handlers["set_log_level"] = self._handle_set_log_level
@@ -559,14 +527,10 @@ class EnhancedIntegrationManager:
             self._background_tasks.append(command_task)
 
             # Entity state monitoring task
-            monitoring_task = asyncio.create_task(
-                self._entity_monitoring_loop()
-            )
+            monitoring_task = asyncio.create_task(self._entity_monitoring_loop())
             self._background_tasks.append(monitoring_task)
 
-            logger.info(
-                f"Started {len(self._background_tasks)} background tasks"
-            )
+            logger.info(f"Started {len(self._background_tasks)} background tasks")
 
         except Exception as e:
             logger.error(f"Error starting background tasks: {e}")
@@ -588,15 +552,12 @@ class EnhancedIntegrationManager:
 
                     # Store response if correlation ID provided
                     if command_request.correlation_id:
-                        self.command_responses[
-                            command_request.correlation_id
-                        ] = response
+                        self.command_responses[command_request.correlation_id] = (
+                            response
+                        )
 
                     # Publish response if response topic provided
-                    if (
-                        command_request.response_topic
-                        and self.mqtt_integration_manager
-                    ):
+                    if command_request.response_topic and self.mqtt_integration_manager:
                         await self.mqtt_integration_manager.mqtt_publisher.publish_json(
                             topic=command_request.response_topic,
                             data=response.__dict__,
@@ -677,9 +638,7 @@ class EnhancedIntegrationManager:
 
     # Command handlers
 
-    async def _handle_retrain_model(
-        self, parameters: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _handle_retrain_model(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Handle model retraining command."""
         try:
             room_id = parameters.get("room_id")
@@ -711,13 +670,9 @@ class EnhancedIntegrationManager:
 
             # Delegate to tracking manager if available
             if self.tracking_manager:
-                if hasattr(
-                    self.tracking_manager, "validate_model_performance"
-                ):
-                    result = (
-                        await self.tracking_manager.validate_model_performance(
-                            room_id=room_id, validation_days=days
-                        )
+                if hasattr(self.tracking_manager, "validate_model_performance"):
+                    result = await self.tracking_manager.validate_model_performance(
+                        room_id=room_id, validation_days=days
                     )
                     return {"status": "success", "result": result}
 
@@ -815,7 +770,7 @@ class EnhancedIntegrationManager:
                     "state_updates_sent": self.stats.state_updates_sent,
                     "integration_errors": self.stats.integration_errors,
                 }
-            
+
             # Conditionally include logs based on include_logs parameter
             if include_logs:
                 try:
@@ -826,11 +781,13 @@ class EnhancedIntegrationManager:
                         "integration_status": self._get_integration_status_logs(),
                         "command_history": self._get_recent_command_history(),
                     }
-                    
+
                     # Add connection status logs
-                    if hasattr(self, '_connection_logs'):
-                        diagnostic_data["recent_logs"]["connection_history"] = self._connection_logs[-10:]
-                        
+                    if hasattr(self, "_connection_logs"):
+                        diagnostic_data["recent_logs"]["connection_history"] = (
+                            self._connection_logs[-10:]
+                        )
+
                 except Exception as log_error:
                     diagnostic_data["log_collection_error"] = str(log_error)
 
@@ -842,15 +799,17 @@ class EnhancedIntegrationManager:
     def _get_integration_status_logs(self) -> Dict[str, Any]:
         """Get integration status logs for diagnostics."""
         return {
-            "is_connected": getattr(self, 'is_connected', False),
-            "last_connection_attempt": getattr(self, '_last_connection_attempt', None),
-            "connection_attempts": getattr(self, '_connection_attempts', 0),
-            "last_successful_command": getattr(self, '_last_successful_command_time', None),
+            "is_connected": getattr(self, "is_connected", False),
+            "last_connection_attempt": getattr(self, "_last_connection_attempt", None),
+            "connection_attempts": getattr(self, "_connection_attempts", 0),
+            "last_successful_command": getattr(
+                self, "_last_successful_command_time", None
+            ),
         }
 
     def _get_recent_command_history(self) -> List[Dict[str, Any]]:
         """Get recent command history for diagnostics."""
-        if hasattr(self, '_command_history'):
+        if hasattr(self, "_command_history"):
             return self._command_history[-5:]  # Last 5 commands
         return []
 
@@ -911,9 +870,7 @@ class EnhancedIntegrationManager:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    async def _handle_mqtt_enable(
-        self, parameters: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _handle_mqtt_enable(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Handle MQTT publishing enable/disable command."""
         try:
             enabled = parameters.get("enabled", True)
@@ -928,9 +885,7 @@ class EnhancedIntegrationManager:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    async def _handle_set_interval(
-        self, parameters: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _handle_set_interval(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Handle prediction interval configuration command."""
         try:
             interval = parameters.get("interval", 300)
@@ -945,17 +900,13 @@ class EnhancedIntegrationManager:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-    async def _handle_set_log_level(
-        self, parameters: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _handle_set_log_level(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Handle log level configuration command."""
         try:
             log_level = parameters.get("log_level", "INFO")
 
             # This would typically update the logging level
-            logging.getLogger().setLevel(
-                getattr(logging, log_level, logging.INFO)
-            )
+            logging.getLogger().setLevel(getattr(logging, log_level, logging.INFO))
 
             return {
                 "status": "success",

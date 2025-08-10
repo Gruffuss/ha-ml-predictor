@@ -94,17 +94,13 @@ class SequentialFeatureExtractor:
             features = {}
 
             # Room transition features
-            features.update(
-                self._extract_room_transition_features(sorted_events)
-            )
+            features.update(self._extract_room_transition_features(sorted_events))
 
             # Movement velocity features
             features.update(self._extract_velocity_features(sorted_events))
 
             # Sensor sequence features
-            features.update(
-                self._extract_sensor_sequence_features(sorted_events)
-            )
+            features.update(self._extract_sensor_sequence_features(sorted_events))
 
             # Cross-room correlation features
             features.update(self._extract_cross_room_features(sorted_events))
@@ -124,9 +120,7 @@ class SequentialFeatureExtractor:
 
         except Exception as e:
             logger.error(f"Failed to extract sequential features: {e}")
-            raise FeatureExtractionError(
-                f"Sequential feature extraction failed: {e}"
-            )
+            raise FeatureExtractionError(f"Sequential feature extraction failed: {e}")
 
     def _extract_room_transition_features(
         self, events: List[SensorEvent]
@@ -153,9 +147,7 @@ class SequentialFeatureExtractor:
             if event.room_id != current_room:
                 # Room transition detected
                 if current_room is not None and room_start_time is not None:
-                    dwell_time = (
-                        event.timestamp - room_start_time
-                    ).total_seconds()
+                    dwell_time = (event.timestamp - room_start_time).total_seconds()
                     room_dwell_times[current_room].append(dwell_time)
 
                 room_sequence.append(event.room_id)
@@ -164,9 +156,7 @@ class SequentialFeatureExtractor:
 
         # Add final room dwell time
         if current_room and room_start_time and events:
-            final_dwell = (
-                events[-1].timestamp - room_start_time
-            ).total_seconds()
+            final_dwell = (events[-1].timestamp - room_start_time).total_seconds()
             room_dwell_times[current_room].append(final_dwell)
 
         # Calculate features
@@ -180,9 +170,7 @@ class SequentialFeatureExtractor:
         # Room revisit ratio
         room_visits = Counter(room_sequence)
         total_visits = sum(room_visits.values())
-        revisits = sum(
-            count - 1 for count in room_visits.values() if count > 1
-        )
+        revisits = sum(count - 1 for count in room_visits.values() if count > 1)
         features["room_revisit_ratio"] = (
             revisits / total_visits if total_visits > 0 else 0.0
         )
@@ -208,9 +196,7 @@ class SequentialFeatureExtractor:
 
         return features
 
-    def _extract_velocity_features(
-        self, events: List[SensorEvent]
-    ) -> Dict[str, float]:
+    def _extract_velocity_features(self, events: List[SensorEvent]) -> Dict[str, float]:
         """Extract movement velocity and timing features."""
         features = {}
 
@@ -226,9 +212,7 @@ class SequentialFeatureExtractor:
         # Calculate intervals between consecutive events
         intervals = []
         for i in range(1, len(events)):
-            interval = (
-                events[i].timestamp - events[i - 1].timestamp
-            ).total_seconds()
+            interval = (events[i].timestamp - events[i - 1].timestamp).total_seconds()
             intervals.append(interval)
 
         # Interval statistics
@@ -242,27 +226,17 @@ class SequentialFeatureExtractor:
         # Movement velocity score (inverse of average interval, normalized)
         avg_interval = features["avg_event_interval"]
         # Higher score for faster movement (shorter intervals)
-        features["movement_velocity_score"] = min(
-            1.0, 300.0 / max(avg_interval, 30.0)
-        )
+        features["movement_velocity_score"] = min(1.0, 300.0 / max(avg_interval, 30.0))
 
         # Burst detection (rapid sequence of events)
         burst_threshold = 30.0  # seconds
-        burst_count = sum(
-            1 for interval in intervals if interval < burst_threshold
-        )
-        features["burst_ratio"] = (
-            burst_count / len(intervals) if intervals else 0.0
-        )
+        burst_count = sum(1 for interval in intervals if interval < burst_threshold)
+        features["burst_ratio"] = burst_count / len(intervals) if intervals else 0.0
 
         # Pause detection (long intervals)
         pause_threshold = 600.0  # 10 minutes
-        pause_count = sum(
-            1 for interval in intervals if interval > pause_threshold
-        )
-        features["pause_ratio"] = (
-            pause_count / len(intervals) if intervals else 0.0
-        )
+        pause_count = sum(1 for interval in intervals if interval > pause_threshold)
+        features["pause_ratio"] = pause_count / len(intervals) if intervals else 0.0
 
         return features
 
@@ -287,18 +261,12 @@ class SequentialFeatureExtractor:
         features["unique_sensors_triggered"] = len(sensor_counts)
 
         # Sensor revisit count
-        revisits = sum(
-            count - 1 for count in sensor_counts.values() if count > 1
-        )
+        revisits = sum(count - 1 for count in sensor_counts.values() if count > 1)
         features["sensor_revisit_count"] = revisits
 
         # Dominant sensor ratio
-        most_common_count = (
-            sensor_counts.most_common(1)[0][1] if sensor_counts else 0
-        )
-        features["dominant_sensor_ratio"] = most_common_count / len(
-            sensor_sequence
-        )
+        most_common_count = sensor_counts.most_common(1)[0][1] if sensor_counts else 0
+        features["dominant_sensor_ratio"] = most_common_count / len(sensor_sequence)
 
         # Sensor diversity score (entropy-based)
         total_events = len(sensor_sequence)
@@ -307,9 +275,7 @@ class SequentialFeatureExtractor:
             p = count / total_events
             entropy -= p * np.log2(p) if p > 0 else 0.0
 
-        max_entropy = (
-            np.log2(len(sensor_counts)) if len(sensor_counts) > 1 else 1.0
-        )
+        max_entropy = np.log2(len(sensor_counts)) if len(sensor_counts) > 1 else 1.0
         features["sensor_diversity_score"] = (
             entropy / max_entropy if max_entropy > 0 else 0.0
         )
@@ -320,9 +286,7 @@ class SequentialFeatureExtractor:
         total_types = len(sensor_types)
 
         # Presence/motion sensor ratio
-        presence_count = type_counts.get("presence", 0) + type_counts.get(
-            "motion", 0
-        )
+        presence_count = type_counts.get("presence", 0) + type_counts.get("motion", 0)
         features["presence_sensor_ratio"] = (
             presence_count / total_types if total_types > 0 else 0.0
         )
@@ -360,17 +324,17 @@ class SequentialFeatureExtractor:
         # Room correlation (events in multiple rooms within short time windows)
         correlation_windows = []
         window_size = 300  # 5 minutes
-        
+
         # Use deque for efficient sliding window operations
         window_events = deque()
 
         for event in events:
             window_start = event.timestamp - timedelta(seconds=window_size)
-            
+
             # Remove events outside the window from the left
             while window_events and window_events[0].timestamp < window_start:
                 window_events.popleft()
-            
+
             # Add current event to window
             window_events.append(event)
 
@@ -401,9 +365,7 @@ class SequentialFeatureExtractor:
                 events[-1].timestamp - events[0].timestamp
             ).total_seconds() / 3600
             features["room_switching_frequency"] = (
-                multi_room_sequences / duration_hours
-                if duration_hours > 0
-                else 0.0
+                multi_room_sequences / duration_hours if duration_hours > 0 else 0.0
             )
         else:
             features["room_switching_frequency"] = 0.0
@@ -425,9 +387,7 @@ class SequentialFeatureExtractor:
             }
 
         # Create movement sequences for classification
-        sequences = self._create_sequences_for_classification(
-            events, room_configs
-        )
+        sequences = self._create_sequences_for_classification(events, room_configs)
 
         if not sequences:
             return {
@@ -460,9 +420,7 @@ class SequentialFeatureExtractor:
 
                 # Count door interactions
                 door_sensors = room_config.get_sensors_by_type("door")
-                door_entity_ids = (
-                    set(door_sensors.values()) if door_sensors else set()
-                )
+                door_entity_ids = set(door_sensors.values()) if door_sensors else set()
 
                 for event in sequence.events:
                     total_events += 1
@@ -489,9 +447,7 @@ class SequentialFeatureExtractor:
 
         return features
 
-    def _extract_ngram_features(
-        self, events: List[SensorEvent]
-    ) -> Dict[str, float]:
+    def _extract_ngram_features(self, events: List[SensorEvent]) -> Dict[str, float]:
         """Extract n-gram pattern features from sensor sequences."""
         features = {}
 
@@ -532,9 +488,7 @@ class SequentialFeatureExtractor:
         if trigrams:
             trigram_counts = Counter(trigrams)
             most_common_trigram = trigram_counts.most_common(1)[0][1]
-            features["common_trigram_ratio"] = most_common_trigram / len(
-                trigrams
-            )
+            features["common_trigram_ratio"] = most_common_trigram / len(trigrams)
         else:
             features["common_trigram_ratio"] = 0.0
 
@@ -581,9 +535,7 @@ class SequentialFeatureExtractor:
 
             # Add final sequence
             if len(current_sequence) >= 2:
-                sequences.append(
-                    self._create_movement_sequence(current_sequence)
-                )
+                sequences.append(self._create_movement_sequence(current_sequence))
 
         return [seq for seq in sequences if seq is not None]
 

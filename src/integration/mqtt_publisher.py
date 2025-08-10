@@ -84,8 +84,7 @@ class MQTTPublisher:
         """
         self.config = config
         self.client_id = (
-            client_id
-            or f"ha_ml_predictor_{int(datetime.utcnow().timestamp())}"
+            client_id or f"ha_ml_predictor_{int(datetime.utcnow().timestamp())}"
         )
 
         # Callbacks
@@ -115,9 +114,7 @@ class MQTTPublisher:
         self.total_bytes_published = 0
         self.last_publish_time: Optional[datetime] = None
 
-        logger.info(
-            f"Initialized MQTTPublisher with client_id: {self.client_id}"
-        )
+        logger.info(f"Initialized MQTTPublisher with client_id: {self.client_id}")
 
     async def initialize(self) -> None:
         """Initialize MQTT client and establish connection."""
@@ -143,9 +140,7 @@ class MQTTPublisher:
 
             # Configure authentication if provided
             if self.config.username and self.config.password:
-                self.client.username_pw_set(
-                    self.config.username, self.config.password
-                )
+                self.client.username_pw_set(self.config.username, self.config.password)
                 logger.info("MQTT authentication configured")
 
             # Configure TLS if needed (for secure connections)
@@ -167,9 +162,7 @@ class MQTTPublisher:
 
         except Exception as e:
             logger.error(f"Failed to initialize MQTT publisher: {e}")
-            raise MQTTPublisherError(
-                "Failed to initialize MQTT publisher", cause=e
-            )
+            raise MQTTPublisherError("Failed to initialize MQTT publisher", cause=e)
 
     async def start_publisher(self) -> None:
         """Start background publisher tasks."""
@@ -179,21 +172,15 @@ class MQTTPublisher:
                 return
 
             if not self.config.publishing_enabled:
-                logger.info(
-                    "MQTT publishing is disabled, not starting publisher"
-                )
+                logger.info("MQTT publishing is disabled, not starting publisher")
                 return
 
             # Start connection monitoring task
-            connection_task = asyncio.create_task(
-                self._connection_monitoring_loop()
-            )
+            connection_task = asyncio.create_task(self._connection_monitoring_loop())
             self._background_tasks.append(connection_task)
 
             # Start message queue processing task
-            queue_task = asyncio.create_task(
-                self._message_queue_processing_loop()
-            )
+            queue_task = asyncio.create_task(self._message_queue_processing_loop())
             self._background_tasks.append(queue_task)
 
             self._publisher_active = True
@@ -218,9 +205,7 @@ class MQTTPublisher:
                     f"Processing {len(self.message_queue)} remaining queued messages"
                 )
                 try:
-                    await asyncio.wait_for(
-                        self._process_message_queue(), timeout=10.0
-                    )
+                    await asyncio.wait_for(self._process_message_queue(), timeout=10.0)
                 except asyncio.TimeoutError:
                     logger.warning(
                         "Timeout processing remaining messages during shutdown"
@@ -232,9 +217,7 @@ class MQTTPublisher:
 
             # Wait for background tasks to complete
             if self._background_tasks:
-                await asyncio.gather(
-                    *self._background_tasks, return_exceptions=True
-                )
+                await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
             self._background_tasks.clear()
             self._publisher_active = False
@@ -309,9 +292,7 @@ class MQTTPublisher:
 
             # Publish message
             try:
-                info = self.client.publish(
-                    topic, payload_str, qos=qos, retain=retain
-                )
+                info = self.client.publish(topic, payload_str, qos=qos, retain=retain)
 
                 if info.rc == mqtt_client.MQTT_ERR_SUCCESS:
                     self.total_messages_published += 1
@@ -330,9 +311,7 @@ class MQTTPublisher:
                         message_id=info.mid,
                     )
                 else:
-                    error_msg = (
-                        f"MQTT publish failed with return code: {info.rc}"
-                    )
+                    error_msg = f"MQTT publish failed with return code: {info.rc}"
                     self.total_messages_failed += 1
                     logger.error(error_msg)
 
@@ -390,10 +369,7 @@ class MQTTPublisher:
 
     def get_connection_status(self) -> MQTTConnectionStatus:
         """Get current MQTT connection status."""
-        if (
-            self.connection_status.connected
-            and self.connection_status.last_connected
-        ):
+        if self.connection_status.connected and self.connection_status.last_connected:
             self.connection_status.uptime_seconds = (
                 datetime.utcnow() - self.connection_status.last_connected
             ).total_seconds()
@@ -409,9 +385,7 @@ class MQTTPublisher:
             "messages_failed": self.total_messages_failed,
             "bytes_published": self.total_bytes_published,
             "last_publish_time": (
-                self.last_publish_time.isoformat()
-                if self.last_publish_time
-                else None
+                self.last_publish_time.isoformat() if self.last_publish_time else None
             ),
             "queued_messages": len(self.message_queue),
             "max_queue_size": self.max_queue_size,
@@ -497,9 +471,7 @@ class MQTTPublisher:
                 try:
                     # Check connection status
                     if not self.connection_status.connected and self.client:
-                        logger.warning(
-                            "MQTT connection lost, attempting to reconnect"
-                        )
+                        logger.warning("MQTT connection lost, attempting to reconnect")
                         await self._connect_to_broker()
 
                     # Wait for next monitoring cycle
@@ -539,9 +511,7 @@ class MQTTPublisher:
                     # Expected timeout for processing interval
                     continue
                 except Exception as e:
-                    logger.error(
-                        f"Error in message queue processing loop: {e}"
-                    )
+                    logger.error(f"Error in message queue processing loop: {e}")
                     await asyncio.sleep(2.0)  # Wait before retrying
 
         except asyncio.CancelledError:
@@ -560,9 +530,7 @@ class MQTTPublisher:
             if not messages_to_process:
                 return
 
-            logger.info(
-                f"Processing {len(messages_to_process)} queued messages"
-            )
+            logger.info(f"Processing {len(messages_to_process)} queued messages")
 
             processed = 0
             failed = 0
@@ -608,9 +576,7 @@ class MQTTPublisher:
 
                 if self.on_connect_callback:
                     try:
-                        if asyncio.iscoroutinefunction(
-                            self.on_connect_callback
-                        ):
+                        if asyncio.iscoroutinefunction(self.on_connect_callback):
                             asyncio.create_task(
                                 self.on_connect_callback(
                                     client, userdata, flags, reason_code
@@ -627,9 +593,7 @@ class MQTTPublisher:
                 self.connection_status.last_error = (
                     f"Connection failed with reason code: {reason_code}"
                 )
-                logger.error(
-                    f"MQTT connection failed with reason code: {reason_code}"
-                )
+                logger.error(f"MQTT connection failed with reason code: {reason_code}")
 
         except Exception as e:
             logger.error(f"Error in MQTT connect callback: {e}")
@@ -649,9 +613,7 @@ class MQTTPublisher:
 
             if self.on_disconnect_callback:
                 try:
-                    if asyncio.iscoroutinefunction(
-                        self.on_disconnect_callback
-                    ):
+                    if asyncio.iscoroutinefunction(self.on_disconnect_callback):
                         asyncio.create_task(
                             self.on_disconnect_callback(
                                 client, userdata, flags, reason_code
@@ -671,9 +633,7 @@ class MQTTPublisher:
         """Callback for MQTT publish events."""
         try:
             if reason_code == 0:
-                logger.debug(
-                    f"MQTT message published successfully (mid: {mid})"
-                )
+                logger.debug(f"MQTT message published successfully (mid: {mid})")
             else:
                 logger.warning(
                     f"MQTT publish failed (mid: {mid}, reason_code: {reason_code})"
@@ -708,9 +668,7 @@ class MQTTPublisher:
             if level == mqtt_client.MQTT_LOG_DEBUG:
                 logger.debug(f"MQTT: {buf}")
             elif level == mqtt_client.MQTT_LOG_INFO:
-                logger.debug(
-                    f"MQTT: {buf}"
-                )  # Use debug for MQTT info to reduce noise
+                logger.debug(f"MQTT: {buf}")  # Use debug for MQTT info to reduce noise
             elif level == mqtt_client.MQTT_LOG_NOTICE:
                 logger.info(f"MQTT: {buf}")
             elif level == mqtt_client.MQTT_LOG_WARNING:

@@ -93,9 +93,7 @@ class MQTTIntegrationManager:
         # Status publishing state
         self._last_system_stats: Optional[Dict[str, Any]] = None
 
-        logger.info(
-            f"Initialized MQTTIntegrationManager with {len(rooms)} rooms"
-        )
+        logger.info(f"Initialized MQTTIntegrationManager with {len(rooms)} rooms")
 
     async def initialize(self) -> None:
         """Initialize all MQTT integration components."""
@@ -132,9 +130,7 @@ class MQTTIntegrationManager:
                 )
 
                 # Publish enhanced discovery messages
-                logger.info(
-                    "Publishing enhanced Home Assistant discovery messages"
-                )
+                logger.info("Publishing enhanced Home Assistant discovery messages")
                 discovery_results = (
                     await self.discovery_publisher.publish_all_discovery()
                 )
@@ -160,9 +156,7 @@ class MQTTIntegrationManager:
             await self.start_integration()
 
             self.stats.initialized = True
-            self.stats.mqtt_connected = (
-                self.mqtt_publisher.connection_status.connected
-            )
+            self.stats.mqtt_connected = self.mqtt_publisher.connection_status.connected
 
             logger.info("MQTT integration initialized successfully")
 
@@ -170,9 +164,7 @@ class MQTTIntegrationManager:
             self.stats.total_errors += 1
             self.stats.last_error = str(e)
             logger.error(f"Failed to initialize MQTT integration: {e}")
-            raise MQTTIntegrationError(
-                "Failed to initialize MQTT integration", cause=e
-            )
+            raise MQTTIntegrationError("Failed to initialize MQTT integration", cause=e)
 
     async def start_integration(self) -> None:
         """Start background integration tasks."""
@@ -182,16 +174,12 @@ class MQTTIntegrationManager:
                 return
 
             if not self.mqtt_config.publishing_enabled:
-                logger.info(
-                    "MQTT publishing is disabled, not starting integration"
-                )
+                logger.info("MQTT publishing is disabled, not starting integration")
                 return
 
             # Start system status publishing task
             if self.mqtt_config.publish_system_status:
-                status_task = asyncio.create_task(
-                    self._system_status_publishing_loop()
-                )
+                status_task = asyncio.create_task(self._system_status_publishing_loop())
                 self._background_tasks.append(status_task)
 
             self._integration_active = True
@@ -199,9 +187,7 @@ class MQTTIntegrationManager:
 
         except Exception as e:
             logger.error(f"Failed to start MQTT integration: {e}")
-            raise MQTTIntegrationError(
-                "Failed to start MQTT integration", cause=e
-            )
+            raise MQTTIntegrationError("Failed to start MQTT integration", cause=e)
 
     async def stop_integration(self) -> None:
         """Stop MQTT integration gracefully."""
@@ -218,9 +204,7 @@ class MQTTIntegrationManager:
 
             # Wait for background tasks to complete
             if self._background_tasks:
-                await asyncio.gather(
-                    *self._background_tasks, return_exceptions=True
-                )
+                await asyncio.gather(*self._background_tasks, return_exceptions=True)
 
             self._background_tasks.clear()
             self._integration_active = False
@@ -266,9 +250,7 @@ class MQTTIntegrationManager:
             if result.success:
                 self.stats.predictions_published += 1
                 self.stats.last_prediction_published = datetime.utcnow()
-                logger.debug(
-                    f"Published prediction for {room_id} to Home Assistant"
-                )
+                logger.debug(f"Published prediction for {room_id} to Home Assistant")
                 return True
             else:
                 self.stats.total_errors += 1
@@ -325,9 +307,7 @@ class MQTTIntegrationManager:
             else:
                 self.stats.total_errors += 1
                 self.stats.last_error = result.error_message
-                logger.error(
-                    f"Failed to publish system status: {result.error_message}"
-                )
+                logger.error(f"Failed to publish system status: {result.error_message}")
                 return False
 
         except Exception as e:
@@ -402,9 +382,7 @@ class MQTTIntegrationManager:
 
         # Add MQTT publisher stats if available
         if self.mqtt_publisher:
-            stats_dict["mqtt_publisher"] = (
-                self.mqtt_publisher.get_publisher_stats()
-            )
+            stats_dict["mqtt_publisher"] = self.mqtt_publisher.get_publisher_stats()
 
         # Add prediction publisher stats if available
         if self.prediction_publisher:
@@ -424,16 +402,10 @@ class MQTTIntegrationManager:
                     if discovery_stats.get("published_entities_count", 0) > 0
                     else "no_entities"
                 ),
-                "device_available": discovery_stats.get(
-                    "device_available", False
-                ),
-                "services_available": discovery_stats.get(
-                    "available_services_count", 0
-                )
+                "device_available": discovery_stats.get("device_available", False),
+                "services_available": discovery_stats.get("available_services_count", 0)
                 > 0,
-                "metadata_complete": discovery_stats.get(
-                    "entity_metadata_count", 0
-                )
+                "metadata_complete": discovery_stats.get("entity_metadata_count", 0)
                 == discovery_stats.get("published_entities_count", 0),
                 "last_availability_update": discovery_stats.get(
                     "last_availability_publish"
@@ -456,9 +428,7 @@ class MQTTIntegrationManager:
             ),
             "component_status": {
                 "mqtt": (
-                    "connected"
-                    if stats_dict["mqtt_connected"]
-                    else "disconnected"
+                    "connected" if stats_dict["mqtt_connected"] else "disconnected"
                 ),
                 "discovery": (
                     "published"
@@ -466,14 +436,10 @@ class MQTTIntegrationManager:
                     else "not_published"
                 ),
                 "predictions": (
-                    "active"
-                    if stats_dict["predictions_published"] > 0
-                    else "inactive"
+                    "active" if stats_dict["predictions_published"] > 0 else "inactive"
                 ),
                 "background_tasks": (
-                    "running"
-                    if stats_dict["background_tasks"] > 0
-                    else "stopped"
+                    "running" if stats_dict["background_tasks"] > 0 else "stopped"
                 ),
             },
             "error_rate": stats_dict["total_errors"]
@@ -527,9 +493,7 @@ class MQTTIntegrationManager:
                     # Expected timeout for status update interval
                     continue
                 except Exception as e:
-                    logger.error(
-                        f"Error in system status publishing loop: {e}"
-                    )
+                    logger.error(f"Error in system status publishing loop: {e}")
                     await asyncio.sleep(30)  # Wait before retrying
 
         except asyncio.CancelledError:
@@ -538,9 +502,7 @@ class MQTTIntegrationManager:
         except Exception as e:
             logger.error(f"System status publishing loop failed: {e}")
 
-    async def _on_mqtt_connect(
-        self, client, userdata, flags, reason_code
-    ) -> None:
+    async def _on_mqtt_connect(self, client, userdata, flags, reason_code) -> None:
         """Callback for MQTT connection events."""
         try:
             self.stats.mqtt_connected = True
@@ -554,16 +516,12 @@ class MQTTIntegrationManager:
                     else:
                         callback("mqtt_connected")
                 except Exception as e:
-                    logger.error(
-                        f"Error in MQTT connect notification callback: {e}"
-                    )
+                    logger.error(f"Error in MQTT connect notification callback: {e}")
 
         except Exception as e:
             logger.error(f"Error in MQTT connect callback: {e}")
 
-    async def _on_mqtt_disconnect(
-        self, client, userdata, flags, reason_code
-    ) -> None:
+    async def _on_mqtt_disconnect(self, client, userdata, flags, reason_code) -> None:
         """Callback for MQTT disconnection events."""
         try:
             self.stats.mqtt_connected = False
@@ -579,9 +537,7 @@ class MQTTIntegrationManager:
                     else:
                         callback("mqtt_disconnected")
                 except Exception as e:
-                    logger.error(
-                        f"Error in MQTT disconnect notification callback: {e}"
-                    )
+                    logger.error(f"Error in MQTT disconnect notification callback: {e}")
 
         except Exception as e:
             logger.error(f"Error in MQTT disconnect callback: {e}")
@@ -609,10 +565,8 @@ class MQTTIntegrationManager:
                 )
                 return False
 
-            result = (
-                await self.discovery_publisher.publish_device_availability(
-                    online=online
-                )
+            result = await self.discovery_publisher.publish_device_availability(
+                online=online
             )
 
             if result.success:
@@ -660,9 +614,7 @@ class MQTTIntegrationManager:
             elif service_name == "refresh_discovery":
                 # Handle discovery refresh request
                 if self.discovery_publisher:
-                    results = (
-                        await self.discovery_publisher.refresh_discovery()
-                    )
+                    results = await self.discovery_publisher.refresh_discovery()
                     successful = sum(1 for r in results.values() if r.success)
                     total = len(results)
 
@@ -682,15 +634,11 @@ class MQTTIntegrationManager:
                 # Handle force prediction request
                 room_id = command_data.get("room_id")
                 if room_id:
-                    logger.info(
-                        f"Force prediction requested for room: {room_id}"
-                    )
+                    logger.info(f"Force prediction requested for room: {room_id}")
                     # This would integrate with the prediction system
                     return True
                 else:
-                    logger.warning(
-                        "Force prediction requested without room_id"
-                    )
+                    logger.warning("Force prediction requested without room_id")
                     return False
 
             else:
@@ -701,9 +649,7 @@ class MQTTIntegrationManager:
             logger.error(f"Error handling service command {service_name}: {e}")
             return False
 
-    async def cleanup_discovery(
-        self, entity_ids: Optional[List[str]] = None
-    ) -> bool:
+    async def cleanup_discovery(self, entity_ids: Optional[List[str]] = None) -> bool:
         """
         Clean up Home Assistant discovery entities.
 
@@ -718,15 +664,11 @@ class MQTTIntegrationManager:
                 logger.warning("Discovery publisher not available for cleanup")
                 return False
 
-            results = await self.discovery_publisher.cleanup_entities(
-                entity_ids
-            )
+            results = await self.discovery_publisher.cleanup_entities(entity_ids)
             successful = sum(1 for r in results.values() if r.success)
             total = len(results)
 
-            logger.info(
-                f"Discovery cleanup completed: {successful}/{total} successful"
-            )
+            logger.info(f"Discovery cleanup completed: {successful}/{total} successful")
             return successful == total
 
         except Exception as e:
@@ -781,13 +723,9 @@ class MQTTIntegrationManager:
             for callback in self.notification_callbacks:
                 try:
                     if asyncio.iscoroutinefunction(callback):
-                        await callback(
-                            f"entity_state_change:{entity_id}:{state.value}"
-                        )
+                        await callback(f"entity_state_change:{entity_id}:{state.value}")
                     else:
-                        callback(
-                            f"entity_state_change:{entity_id}:{state.value}"
-                        )
+                        callback(f"entity_state_change:{entity_id}:{state.value}")
                 except Exception as e:
                     logger.error(f"Error in entity state change callback: {e}")
 

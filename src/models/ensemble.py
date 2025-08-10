@@ -37,9 +37,7 @@ class OccupancyEnsemble(BasePredictor):
     that optimally combines predictions from LSTM, XGBoost, and HMM models.
     """
 
-    def __init__(
-        self, room_id: Optional[str] = None, tracking_manager=None, **kwargs
-    ):
+    def __init__(self, room_id: Optional[str] = None, tracking_manager=None, **kwargs):
         """
         Initialize the ensemble predictor.
 
@@ -55,16 +53,12 @@ class OccupancyEnsemble(BasePredictor):
         default_params.update(kwargs)
 
         self.model_params = {
-            "meta_learner": default_params.get(
-                "meta_learner", "random_forest"
-            ),
+            "meta_learner": default_params.get("meta_learner", "random_forest"),
             "cv_folds": default_params.get("cv_folds", 5),
             "stacking_method": default_params.get("stacking_method", "linear"),
             "blend_weights": default_params.get("blend_weights", "auto"),
             "use_base_features": default_params.get("use_base_features", True),
-            "meta_features_only": default_params.get(
-                "meta_features_only", False
-            ),
+            "meta_features_only": default_params.get("meta_features_only", False),
         }
 
         # Base models including Gaussian Process for uncertainty quantification
@@ -128,9 +122,7 @@ class OccupancyEnsemble(BasePredictor):
                 )
 
             # Phase 1: Train base models with cross-validation for meta-features
-            logger.info(
-                "Phase 1: Training base models and generating meta-features"
-            )
+            logger.info("Phase 1: Training base models and generating meta-features")
             meta_features = await self._train_base_models_cv(features, targets)
 
             # Phase 2: Train meta-learner on meta-features
@@ -149,28 +141,19 @@ class OccupancyEnsemble(BasePredictor):
 
             training_score = r2_score(y_true, ensemble_predictions)
             training_mae = mean_absolute_error(y_true, ensemble_predictions)
-            training_rmse = np.sqrt(
-                mean_squared_error(y_true, ensemble_predictions)
-            )
+            training_rmse = np.sqrt(mean_squared_error(y_true, ensemble_predictions))
 
             # Validation performance
             validation_score = None
             validation_mae = None
             validation_rmse = None
 
-            if (
-                validation_features is not None
-                and validation_targets is not None
-            ):
-                val_predictions = await self._predict_ensemble(
-                    validation_features
-                )
+            if validation_features is not None and validation_targets is not None:
+                val_predictions = await self._predict_ensemble(validation_features)
                 y_val_true = self._prepare_targets(validation_targets)
 
                 validation_score = r2_score(y_val_true, val_predictions)
-                validation_mae = mean_absolute_error(
-                    y_val_true, val_predictions
-                )
+                validation_mae = mean_absolute_error(y_val_true, val_predictions)
                 validation_rmse = np.sqrt(
                     mean_squared_error(y_val_true, val_predictions)
                 )
@@ -288,14 +271,10 @@ class OccupancyEnsemble(BasePredictor):
                     ]
 
             if not base_predictions:
-                raise ModelPredictionError(
-                    "No base models available for prediction"
-                )
+                raise ModelPredictionError("No base models available for prediction")
 
             # Create meta-features
-            meta_features_df = self._create_meta_features(
-                base_predictions, features
-            )
+            meta_features_df = self._create_meta_features(base_predictions, features)
 
             # Get ensemble predictions from meta-learner
             ensemble_predictions = self.meta_learner.predict(meta_features_df)
@@ -397,9 +376,7 @@ class OccupancyEnsemble(BasePredictor):
                             features, targets, learning_rate
                         )
                         base_update_results[model_name] = result
-                        logger.debug(
-                            f"Incremental update completed for {model_name}"
-                        )
+                        logger.debug(f"Incremental update completed for {model_name}")
                     except Exception as e:
                         logger.warning(
                             f"Incremental update failed for {model_name}: {e}"
@@ -510,18 +487,14 @@ class OccupancyEnsemble(BasePredictor):
 
         # Cross-validation for each base model
         for fold, (train_idx, val_idx) in enumerate(cv.split(features)):
-            logger.info(
-                f"Processing fold {fold + 1}/{self.model_params['cv_folds']}"
-            )
+            logger.info(f"Processing fold {fold + 1}/{self.model_params['cv_folds']}")
 
             X_train_fold = features.iloc[train_idx]
             y_train_fold = targets.iloc[train_idx]
             X_val_fold = features.iloc[val_idx]
 
             # Train each base model on this fold
-            for model_idx, (model_name, model) in enumerate(
-                self.base_models.items()
-            ):
+            for model_idx, (model_name, model) in enumerate(self.base_models.items()):
                 try:
                     # Create fresh model instance for this fold
                     if model_name == "lstm":
@@ -552,14 +525,10 @@ class OccupancyEnsemble(BasePredictor):
                         meta_features[original_idx, model_idx] = time_until
 
                 except Exception as e:
-                    logger.warning(
-                        f"Model {model_name} failed on fold {fold}: {e}"
-                    )
+                    logger.warning(f"Model {model_name} failed on fold {fold}: {e}")
                     # Fill with default predictions
                     for i in val_idx:
-                        meta_features[i, model_idx] = (
-                            1800.0  # 30 minutes default
-                        )
+                        meta_features[i, model_idx] = 1800.0  # 30 minutes default
 
         # Convert to DataFrame
         meta_features_df = pd.DataFrame(meta_features, columns=model_names)
@@ -568,16 +537,16 @@ class OccupancyEnsemble(BasePredictor):
         y_true = self._prepare_targets(targets)
         for model_idx, model_name in enumerate(model_names):
             model_preds = meta_features[:, model_idx]
-            
+
             # Use cross_val_score for more robust evaluation
             cv_scores = cross_val_score(
                 RandomForestRegressor(n_estimators=10, random_state=42),
                 meta_features[:, model_idx].reshape(-1, 1),
                 y_true,
                 cv=3,
-                scoring='r2'
+                scoring="r2",
             )
-            
+
             # Store both individual score and cross-validation scores
             individual_score = r2_score(y_true, model_preds)
             self.cross_validation_scores[model_name] = list(cv_scores)
@@ -599,9 +568,7 @@ class OccupancyEnsemble(BasePredictor):
             and not self.model_params["meta_features_only"]
         ):
             # Add subset of original features
-            important_features = original_features.iloc[
-                :, :20
-            ]  # First 20 features
+            important_features = original_features.iloc[:, :20]  # First 20 features
             X_meta = pd.concat([meta_features, important_features], axis=1)
         else:
             X_meta = meta_features
@@ -669,9 +636,7 @@ class OccupancyEnsemble(BasePredictor):
 
         self.base_models_trained = True
 
-    def _calculate_model_weights(
-        self, meta_features: pd.DataFrame, y_true: np.ndarray
-    ):
+    def _calculate_model_weights(self, meta_features: pd.DataFrame, y_true: np.ndarray):
         """Calculate model weights based on individual performance."""
         self.model_weights = {}
 
@@ -744,17 +709,13 @@ class OccupancyEnsemble(BasePredictor):
                         for r in results
                     ]
                 except Exception as e:
-                    logger.warning(
-                        f"Base model {model_name} prediction failed: {e}"
-                    )
+                    logger.warning(f"Base model {model_name} prediction failed: {e}")
                     # Use default predictions
                     base_predictions[model_name] = [1800.0] * len(features)
 
         # Create meta-features and predict
         if base_predictions and self.meta_learner_trained:
-            meta_features_df = self._create_meta_features(
-                base_predictions, features
-            )
+            meta_features_df = self._create_meta_features(base_predictions, features)
             return self.meta_learner.predict(meta_features_df)
         else:
             # Fallback: simple average
@@ -790,14 +751,10 @@ class OccupancyEnsemble(BasePredictor):
             ensemble_time_until = np.clip(ensemble_time_until, 60, 86400)
 
             # Calculate predicted time
-            predicted_time = prediction_time + timedelta(
-                seconds=ensemble_time_until
-            )
+            predicted_time = prediction_time + timedelta(seconds=ensemble_time_until)
 
             # Determine transition type (use XGBoost if available, otherwise heuristic)
-            if "xgboost" in base_results and idx < len(
-                base_results["xgboost"]
-            ):
+            if "xgboost" in base_results and idx < len(base_results["xgboost"]):
                 transition_type = base_results["xgboost"][idx].transition_type
             else:
                 # Fallback logic
@@ -848,9 +805,7 @@ class OccupancyEnsemble(BasePredictor):
                 model_version=self.model_version,
                 features_used=self.feature_names,
                 prediction_metadata={
-                    "time_until_transition_seconds": float(
-                        ensemble_time_until
-                    ),
+                    "time_until_transition_seconds": float(ensemble_time_until),
                     "prediction_method": "stacking_ensemble",
                     "base_model_predictions": base_predictions,
                     "model_weights": self.model_weights.copy(),
@@ -892,9 +847,7 @@ class OccupancyEnsemble(BasePredictor):
                 if model_name == "gp" and results[idx].prediction_metadata:
                     metadata = results[idx].prediction_metadata
                     if "uncertainty_quantification" in metadata:
-                        uncertainty_info = metadata[
-                            "uncertainty_quantification"
-                        ]
+                        uncertainty_info = metadata["uncertainty_quantification"]
                         gp_uncertainty = {
                             "aleatoric": uncertainty_info.get(
                                 "aleatoric_uncertainty", 0
@@ -902,26 +855,20 @@ class OccupancyEnsemble(BasePredictor):
                             "epistemic": uncertainty_info.get(
                                 "epistemic_uncertainty", 0
                             ),
-                            "prediction_std": metadata.get(
-                                "prediction_std", 0
-                            ),
+                            "prediction_std": metadata.get("prediction_std", 0),
                         }
 
         if not confidences:
             return 0.7
 
         # Weighted average confidence
-        weights = [
-            self.model_weights.get(name, 1.0) for name in base_results.keys()
-        ]
+        weights = [self.model_weights.get(name, 1.0) for name in base_results.keys()]
         weighted_confidence = np.average(confidences, weights=weights)
 
         # Adjust confidence based on prediction agreement
         if len(predictions) > 1:
             pred_std = np.std(predictions)
-            agreement_factor = 1.0 / (
-                1.0 + pred_std / 3600.0
-            )  # Normalize by 1 hour
+            agreement_factor = 1.0 / (1.0 + pred_std / 3600.0)  # Normalize by 1 hour
             weighted_confidence *= agreement_factor
 
         # Incorporate GP uncertainty quantification if available
@@ -955,9 +902,7 @@ class OccupancyEnsemble(BasePredictor):
         ):
             target_times = pd.to_datetime(targets["target_time"])
             next_times = pd.to_datetime(targets["next_transition_time"])
-            target_values = (
-                (next_times - target_times).dt.total_seconds().values
-            )
+            target_values = (next_times - target_times).dt.total_seconds().values
         else:
             target_values = targets.iloc[:, 0].values
 

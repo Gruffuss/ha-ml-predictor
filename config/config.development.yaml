@@ -1,0 +1,151 @@
+# Development Environment Configuration  
+# This file contains development-specific overrides for the base config.yaml
+
+home_assistant:
+  url: ${HA_URL:-http://localhost:8123}
+  token: ${HA_TOKEN:-dev_token}  # Default token for development
+  websocket_timeout: 30
+  api_timeout: 10
+
+database:
+  connection_string: postgresql+asyncpg://occupancy_user:dev_pass@localhost:5432/occupancy_prediction_dev
+  pool_size: 5
+  max_overflow: 10
+  pool_timeout: 10
+  pool_recycle: 600  # 10 minutes
+
+mqtt:
+  broker: ${MQTT_BROKER:-localhost}
+  port: 1883
+  username: ""
+  password: ""
+  topic_prefix: "occupancy/predictions/dev"
+  
+  # Relaxed development settings
+  keepalive: 60
+  connection_timeout: 30
+  reconnect_delay_seconds: 1
+  max_reconnect_attempts: 3
+  
+  # QoS settings (minimal for development)
+  prediction_qos: 0
+  system_qos: 0
+  retain_predictions: false
+  retain_system_status: false
+  
+  # Discovery configuration
+  discovery_enabled: true
+  discovery_prefix: "homeassistant"
+  device_name: "Occupancy Predictor (Development)"
+  device_identifier: "ha_ml_predictor_dev"
+
+prediction:
+  interval_seconds: 300  # 5 minutes (default)
+  accuracy_threshold_minutes: 20  # More lenient
+  confidence_threshold: 0.6      # Lower threshold
+
+features:
+  lookback_hours: 24
+  sequence_length: 50
+  temporal_features: true
+  sequential_features: true
+  contextual_features: true
+
+logging:
+  level: DEBUG  # Verbose logging for development
+  format: human_readable  # More readable format
+  
+  # Development logging settings
+  file_logging: false  # Console only for development
+  enable_json_logging: false
+  include_request_id: false
+  log_sql_queries: true   # Show SQL queries for debugging
+
+tracking:
+  enabled: true
+  monitoring_interval_seconds: 120  # Less frequent
+  auto_validation_enabled: true
+  validation_window_minutes: 30
+  max_stored_alerts: 1000
+  trend_analysis_points: 5
+  cleanup_interval_hours: 48  # Less frequent cleanup
+  
+  # Lenient development alert thresholds
+  alert_thresholds:
+    accuracy_warning: 60.0
+    accuracy_critical: 40.0
+    error_warning: 25.0
+    error_critical: 40.0
+    trend_degrading: -10.0
+    validation_lag_warning: 20.0
+    validation_lag_critical: 40.0
+
+api:
+  enabled: true
+  host: "127.0.0.1"  # Localhost only
+  port: 8000
+  debug: true  # Enable debug mode
+  
+  # Minimal security for development
+  enable_cors: true
+  cors_origins: ["*"]  # Allow all origins
+  api_key_enabled: false  # No API key required
+  
+  # No rate limiting in development
+  rate_limit_enabled: false
+  
+  # Performance settings (relaxed)
+  request_timeout_seconds: 60
+  max_request_size_mb: 50
+  background_tasks_enabled: true
+  health_check_interval_seconds: 120
+  
+  # Documentation (enabled for development)
+  include_docs: true
+  docs_url: "/docs"
+  redoc_url: "/redoc"
+  
+  # Verbose logging for debugging
+  access_log: true
+  log_requests: true
+  log_responses: true
+
+# Development cache configuration (optional)
+redis:
+  host: ${REDIS_HOST:-localhost}
+  port: 6379
+  password: ""  # No password in development
+  db: 2  # Different database
+  max_connections: 5
+  socket_timeout: 30.0
+  socket_connect_timeout: 30.0
+  retry_on_timeout: false  # Fail fast in development
+  health_check_interval: 120
+
+# Backup configuration (minimal)
+backup:
+  enabled: false  # Usually disabled in development
+  interval_hours: 24
+  retention_days: 3
+  compress: false
+  
+  # Minimal backup settings
+  database_backup: false
+  model_backup: false
+
+# Performance monitoring (basic)
+performance:
+  enabled: false  # Usually disabled in development
+  metrics_collection: false
+  profiling_enabled: false
+  memory_monitoring: false
+
+# Disaster recovery (minimal)
+disaster_recovery:
+  enabled: false  # Usually disabled in development
+  health_check_interval_seconds: 300
+  auto_restart_on_failure: false
+  max_restart_attempts: 1
+  
+  # Circuit breaker (disabled)
+  circuit_breaker_enabled: false

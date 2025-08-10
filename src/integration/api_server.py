@@ -21,7 +21,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 import logging
 import traceback
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Dict, Any, Optional
 
 from fastapi import (
     BackgroundTasks,
@@ -55,6 +55,8 @@ from ..core.exceptions import (
 from ..data.storage.database import get_database_manager
 from ..integration.mqtt_integration_manager import MQTTIntegrationManager
 from ..models.base.predictor import PredictionResult
+from ..utils.health_monitor import get_health_monitor, HealthStatus
+from ..utils.incident_response import get_incident_response_manager
 
 logger = logging.getLogger(__name__)
 
@@ -106,9 +108,7 @@ class ManualRetrainRequest(BaseModel):
         None, description="Specific room to retrain (all if None)"
     )
     force: bool = Field(False, description="Force retrain even if not needed")
-    strategy: str = Field(
-        "auto", pattern="^(auto|incremental|full|feature_refresh)$"
-    )
+    strategy: str = Field("auto", pattern="^(auto|incremental|full|feature_refresh)$")
     reason: str = Field("manual_request", description="Reason for retraining")
 
 
@@ -142,9 +142,7 @@ class RateLimitTracker:
     def __init__(self):
         self.requests = {}
 
-    def is_allowed(
-        self, client_ip: str, limit: int, window_minutes: int = 1
-    ) -> bool:
+    def is_allowed(self, client_ip: str, limit: int, window_minutes: int = 1) -> bool:
         """Check if request is within rate limits."""
         now = datetime.now()
         window_start = now - timedelta(minutes=window_minutes)
@@ -226,9 +224,7 @@ async def verify_api_key(
         return True
 
     if not credentials:
-        raise APIAuthenticationError(
-            "API Key required", "Missing authorization header"
-        )
+        raise APIAuthenticationError("API Key required", "Missing authorization header")
 
     if credentials.credentials != config.api.api_key:
         raise APIAuthenticationError("Invalid API key", "Key does not match")
@@ -245,9 +241,7 @@ async def check_rate_limit(request: Request) -> bool:
 
     client_ip = request.client.host
     if not rate_limiter.is_allowed(client_ip, config.api.requests_per_minute):
-        raise APIRateLimitError(
-            client_ip, config.api.requests_per_minute, "minute"
-        )
+        raise APIRateLimitError(client_ip, config.api.requests_per_minute, "minute")
 
     return True
 
@@ -281,26 +275,63 @@ async def lifespan(app: FastAPI):
 
 
 async def background_health_check():
-    """Background task for periodic health checks."""
+    """Background task for periodic health checks, health monitoring, and incident response."""
     config = get_config()
+    health_monitor = get_health_monitor()
+    incident_manager = get_incident_response_manager()
 
-    while True:
-        try:
-            await asyncio.sleep(config.api.health_check_interval_seconds)
+    try:
+        # Start comprehensive health monitoring
+        await health_monitor.start_monitoring()
+        logger.info("Comprehensive health monitoring started")
+        
+        # Start automated incident response
+        await incident_manager.start_incident_response()
+        logger.info("Automated incident response started")
 
-            # Perform health checks
-            db_manager = await get_database_manager()
-            health = await db_manager.health_check()
+        while True:
+            try:
+                await asyncio.sleep(config.api.health_check_interval_seconds)
 
-            if not health.get("database_connected", False):
-                logger.warning(
-                    "Database connection lost in background health check"
-                )
+                # Get system health from comprehensive monitor
+                system_health = health_monitor.get_system_health()
+                
+                # Log critical health issues
+                if system_health.overall_status in [HealthStatus.CRITICAL, HealthStatus.DEGRADED]:
+                    logger.warning(
+                        f"System health status: {system_health.overall_status.value}",
+                        extra={
+                            'health_score': system_health.health_score(),
+                            'critical_components': system_health.critical_components,
+                            'degraded_components': system_health.degraded_components,
+                            'active_incidents': len(incident_manager.get_active_incidents())
+                        }
+                    )
+                
+                # Log incident statistics periodically
+                if config.api.health_check_interval_seconds >= 300:  # Every 5+ minutes
+                    incident_stats = incident_manager.get_incident_statistics()
+                    if incident_stats["active_incidents_count"] > 0:
+                        logger.info(
+                            f"Active incidents: {incident_stats['active_incidents_count']}",
+                            extra={
+                                'incident_statistics': incident_stats,
+                                'auto_recovery_enabled': incident_stats['auto_recovery_enabled']
+                            }
+                        )
 
-        except asyncio.CancelledError:
-            break
-        except Exception as e:
-            logger.error(f"Background health check failed: {e}")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Background health check failed: {e}")
+
+    finally:
+        # Stop monitoring systems on shutdown
+        await incident_manager.stop_incident_response()
+        logger.info("Incident response stopped")
+        
+        await health_monitor.stop_monitoring()
+        logger.info("Health monitoring stopped")
 
 
 def create_app() -> FastAPI:
@@ -349,9 +380,7 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(OccupancyPredictionError)
-    async def system_error_handler(
-        request: Request, exc: OccupancyPredictionError
-    ):
+    async def system_error_handler(request: Request, exc: OccupancyPredictionError):
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         if exc.severity in [ErrorSeverity.LOW, ErrorSeverity.MEDIUM]:
             status_code = status.HTTP_400_BAD_REQUEST
@@ -469,36 +498,40 @@ async def health_check():
         tracking_health = {"status": "unknown"}
         try:
             tracking_manager = await get_tracking_manager()
-            
+
             # Get comprehensive tracking status
             tracking_status = await tracking_manager.get_tracking_status()
-            
+
             # Determine overall tracking health based on components
             tracking_active = tracking_status.get("tracking_active", False)
             config_enabled = tracking_status.get("config", {}).get("enabled", False)
             performance_metrics = tracking_status.get("performance", {})
-            
+
             # Check for any error conditions
             has_errors = False
             error_details = []
-            
+
             # Check validator status
             validator_status = tracking_status.get("validator", {})
             if "error" in validator_status:
                 has_errors = True
                 error_details.append(f"Validator error: {validator_status['error']}")
-            
+
             # Check accuracy tracker status
             accuracy_tracker_status = tracking_status.get("accuracy_tracker", {})
             if "error" in accuracy_tracker_status:
                 has_errors = True
-                error_details.append(f"Accuracy tracker error: {accuracy_tracker_status['error']}")
-            
+                error_details.append(
+                    f"Accuracy tracker error: {accuracy_tracker_status['error']}"
+                )
+
             # Check background tasks
             background_tasks = performance_metrics.get("background_tasks", 0)
             if background_tasks == 0 and tracking_active:
-                error_details.append("No background tasks running despite tracking being active")
-            
+                error_details.append(
+                    "No background tasks running despite tracking being active"
+                )
+
             # Determine status
             if has_errors:
                 status = "error"
@@ -508,28 +541,46 @@ async def health_check():
                 status = "inactive"
             else:
                 status = "healthy"
-            
+
             tracking_health = {
                 "status": status,
                 "tracking_active": tracking_active,
                 "config_enabled": config_enabled,
                 "background_tasks": background_tasks,
-                "total_predictions_recorded": performance_metrics.get("total_predictions_recorded", 0),
-                "total_validations_performed": performance_metrics.get("total_validations_performed", 0),
-                "total_drift_checks_performed": performance_metrics.get("total_drift_checks_performed", 0),
-                "system_uptime_seconds": performance_metrics.get("system_uptime_seconds", 0),
-                "validator_available": validator_status.get("total_predictions", 0) >= 0 if validator_status else False,
-                "accuracy_tracker_available": accuracy_tracker_status.get("total_predictions", 0) >= 0 if accuracy_tracker_status else False,
-                "drift_detector_available": "drift_detector" in tracking_status and tracking_status["drift_detector"] is not None,
-                "adaptive_retrainer_available": "adaptive_retrainer" in tracking_status and tracking_status["adaptive_retrainer"] is not None,
+                "total_predictions_recorded": performance_metrics.get(
+                    "total_predictions_recorded", 0
+                ),
+                "total_validations_performed": performance_metrics.get(
+                    "total_validations_performed", 0
+                ),
+                "total_drift_checks_performed": performance_metrics.get(
+                    "total_drift_checks_performed", 0
+                ),
+                "system_uptime_seconds": performance_metrics.get(
+                    "system_uptime_seconds", 0
+                ),
+                "validator_available": (
+                    validator_status.get("total_predictions", 0) >= 0
+                    if validator_status
+                    else False
+                ),
+                "accuracy_tracker_available": (
+                    accuracy_tracker_status.get("total_predictions", 0) >= 0
+                    if accuracy_tracker_status
+                    else False
+                ),
+                "drift_detector_available": "drift_detector" in tracking_status
+                and tracking_status["drift_detector"] is not None,
+                "adaptive_retrainer_available": "adaptive_retrainer" in tracking_status
+                and tracking_status["adaptive_retrainer"] is not None,
             }
-            
+
             if error_details:
                 tracking_health["error_details"] = error_details
-                
+
         except Exception as e:
             tracking_health = {
-                "status": "error", 
+                "status": "error",
                 "error": str(e),
                 "tracking_active": False,
                 "config_enabled": False,
@@ -541,9 +592,7 @@ async def health_check():
             mqtt_manager = await get_mqtt_manager()
             mqtt_stats = await mqtt_manager.get_integration_stats()
             mqtt_health = {
-                "status": (
-                    "healthy" if mqtt_stats.mqtt_connected else "degraded"
-                ),
+                "status": ("healthy" if mqtt_stats.mqtt_connected else "degraded"),
                 "connected": mqtt_stats.mqtt_connected,
                 "predictions_published": mqtt_stats.predictions_published,
             }
@@ -554,13 +603,17 @@ async def health_check():
         db_healthy = db_health.get("database_connected", False)
         tracking_status_value = tracking_health.get("status", "unknown")
         mqtt_status_value = mqtt_health.get("status", "unknown")
-        
+
         # Determine component health levels
         tracking_healthy = tracking_status_value == "healthy"
-        tracking_functional = tracking_status_value in ["healthy", "inactive", "disabled"]
+        tracking_functional = tracking_status_value in [
+            "healthy",
+            "inactive",
+            "disabled",
+        ]
         mqtt_healthy = mqtt_status_value == "healthy"
         mqtt_functional = mqtt_status_value in ["healthy", "degraded"]
-        
+
         # System is healthy if all core components are healthy
         if db_healthy and tracking_healthy and mqtt_healthy:
             overall_status = "healthy"
@@ -584,9 +637,15 @@ async def health_check():
             performance_metrics={
                 "response_time_seconds": response_time,
                 "memory_usage": "N/A",  # Could add memory monitoring
-                "tracking_predictions_recorded": tracking_health.get("total_predictions_recorded", 0),
-                "tracking_validations_performed": tracking_health.get("total_validations_performed", 0),
-                "tracking_drift_checks_performed": tracking_health.get("total_drift_checks_performed", 0),
+                "tracking_predictions_recorded": tracking_health.get(
+                    "total_predictions_recorded", 0
+                ),
+                "tracking_validations_performed": tracking_health.get(
+                    "total_validations_performed", 0
+                ),
+                "tracking_drift_checks_performed": tracking_health.get(
+                    "total_drift_checks_performed", 0
+                ),
                 "tracking_background_tasks": tracking_health.get("background_tasks", 0),
             },
             error_count=sum(
@@ -594,12 +653,362 @@ async def health_check():
                 for c in [db_health, tracking_health, mqtt_health]
                 if c.get("status") == "error" or not c.get("database_connected", True)
             ),
-            uptime_seconds=tracking_health.get("system_uptime_seconds", 0)
+            uptime_seconds=tracking_health.get("system_uptime_seconds", 0),
         )
 
     except Exception as e:
         logger.error(f"Health check failed: {e}", exc_info=True)
         raise APIServerError("health_check", e)
+
+
+@app.get("/health/comprehensive")
+async def comprehensive_health_check():
+    """Comprehensive system health check using integrated health monitoring system."""
+    try:
+        start_time = datetime.now()
+        health_monitor = get_health_monitor()
+
+        # Get comprehensive system health
+        system_health = health_monitor.get_system_health()
+        component_health = health_monitor.get_component_health()
+        monitoring_stats = health_monitor.get_monitoring_stats()
+
+        # Convert component health to API format
+        components = {}
+        for name, health in component_health.items():
+            components[name] = health.to_dict()
+
+        # Calculate performance metrics
+        response_time = (datetime.now() - start_time).total_seconds()
+
+        # Map health status to API format
+        status_map = {
+            HealthStatus.HEALTHY: "healthy",
+            HealthStatus.WARNING: "healthy",  # Warning is still healthy
+            HealthStatus.DEGRADED: "degraded",
+            HealthStatus.CRITICAL: "unhealthy",
+            HealthStatus.UNKNOWN: "unhealthy"
+        }
+
+        return {
+            "status": status_map.get(system_health.overall_status, "unhealthy"),
+            "timestamp": system_health.last_updated.isoformat(),
+            "system_health": system_health.to_dict(),
+            "components": components,
+            "monitoring_stats": monitoring_stats,
+            "response_time_seconds": response_time
+        }
+
+    except Exception as e:
+        logger.error(f"Comprehensive health check failed: {e}", exc_info=True)
+        
+        # Fallback health response if monitoring system fails
+        return {
+            "status": "unhealthy",
+            "timestamp": datetime.now().isoformat(),
+            "system_health": {
+                "overall_status": "critical",
+                "health_score": 0.0,
+                "message": f"Health monitoring system failed: {e}"
+            },
+            "components": {
+                "health_monitor": {
+                    "component_name": "health_monitor",
+                    "status": "critical",
+                    "message": f"Health monitoring system failed: {e}",
+                    "error": str(e)
+                }
+            },
+            "error": str(e),
+            "response_time_seconds": (datetime.now() - start_time).total_seconds()
+        }
+
+
+@app.get("/health/components/{component_name}")
+async def get_component_health(component_name: str):
+    """Get health status for a specific component."""
+    try:
+        health_monitor = get_health_monitor()
+        component_health = health_monitor.get_component_health(component_name)
+        
+        if not component_health:
+            raise APIResourceNotFoundError("Component", component_name)
+        
+        # Get health history
+        health_history = health_monitor.get_health_history(component_name, hours=24)
+        
+        return {
+            "component": component_health[component_name].to_dict(),
+            "history_24h": [
+                {
+                    "timestamp": timestamp.isoformat(),
+                    "status": status.value
+                }
+                for timestamp, status in health_history
+            ]
+        }
+        
+    except APIResourceNotFoundError:
+        raise
+    except Exception as e:
+        logger.error(f"Component health check failed for {component_name}: {e}")
+        raise APIServerError("component_health_check", e)
+
+
+@app.get("/health/system")
+async def get_system_health_summary():
+    """Get system health summary with key metrics."""
+    try:
+        health_monitor = get_health_monitor()
+        system_health = health_monitor.get_system_health()
+        
+        return system_health.to_dict()
+        
+    except Exception as e:
+        logger.error(f"System health summary failed: {e}")
+        raise APIServerError("system_health_summary", e)
+
+
+@app.get("/health/monitoring")
+async def get_health_monitoring_status():
+    """Get health monitoring system status and statistics."""
+    try:
+        health_monitor = get_health_monitor()
+        monitoring_stats = health_monitor.get_monitoring_stats()
+        
+        return {
+            "monitoring_system": monitoring_stats,
+            "registered_checks": list(health_monitor.health_checks.keys()),
+            "monitoring_active": health_monitor.is_monitoring_active()
+        }
+        
+    except Exception as e:
+        logger.error(f"Health monitoring status failed: {e}")
+        raise APIServerError("health_monitoring_status", e)
+
+
+@app.post("/health/monitoring/start")
+async def start_health_monitoring():
+    """Start health monitoring system."""
+    try:
+        health_monitor = get_health_monitor()
+        
+        if health_monitor.is_monitoring_active():
+            return {
+                "status": "success",
+                "message": "Health monitoring is already active",
+                "monitoring_active": True
+            }
+        
+        await health_monitor.start_monitoring()
+        
+        return {
+            "status": "success",
+            "message": "Health monitoring started successfully",
+            "monitoring_active": True,
+            "registered_checks": len(health_monitor.health_checks)
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to start health monitoring: {e}")
+        raise APIServerError("start_health_monitoring", e)
+
+
+@app.post("/health/monitoring/stop")
+async def stop_health_monitoring():
+    """Stop health monitoring system."""
+    try:
+        health_monitor = get_health_monitor()
+        
+        if not health_monitor.is_monitoring_active():
+            return {
+                "status": "success",
+                "message": "Health monitoring is already stopped",
+                "monitoring_active": False
+            }
+        
+        await health_monitor.stop_monitoring()
+        
+        return {
+            "status": "success",
+            "message": "Health monitoring stopped successfully",
+            "monitoring_active": False
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to stop health monitoring: {e}")
+        raise APIServerError("stop_health_monitoring", e)
+
+
+@app.get("/incidents")
+async def get_active_incidents():
+    """Get all active incidents."""
+    try:
+        incident_manager = get_incident_response_manager()
+        active_incidents = incident_manager.get_active_incidents()
+        
+        return {
+            "active_incidents_count": len(active_incidents),
+            "incidents": {
+                incident_id: incident.to_dict() 
+                for incident_id, incident in active_incidents.items()
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get active incidents: {e}")
+        raise APIServerError("get_active_incidents", e)
+
+
+@app.get("/incidents/{incident_id}")
+async def get_incident_details(incident_id: str):
+    """Get detailed information about a specific incident."""
+    try:
+        incident_manager = get_incident_response_manager()
+        incident = incident_manager.get_incident(incident_id)
+        
+        if not incident:
+            raise APIResourceNotFoundError("Incident", incident_id)
+        
+        return incident.to_dict()
+        
+    except APIResourceNotFoundError:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get incident {incident_id}: {e}")
+        raise APIServerError("get_incident_details", e)
+
+
+@app.get("/incidents/history")
+async def get_incident_history(hours: int = 24):
+    """Get incident history for specified time period."""
+    try:
+        if hours < 1 or hours > 168:  # 1 week max
+            raise HTTPException(status_code=400, detail="Hours must be between 1 and 168")
+        
+        incident_manager = get_incident_response_manager()
+        incident_history = incident_manager.get_incident_history(hours=hours)
+        
+        return {
+            "time_window_hours": hours,
+            "incidents_count": len(incident_history),
+            "incidents": [incident.to_dict() for incident in incident_history],
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get incident history: {e}")
+        raise APIServerError("get_incident_history", e)
+
+
+@app.get("/incidents/statistics")
+async def get_incident_statistics():
+    """Get incident response system statistics."""
+    try:
+        incident_manager = get_incident_response_manager()
+        stats = incident_manager.get_incident_statistics()
+        
+        return {
+            "statistics": stats,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get incident statistics: {e}")
+        raise APIServerError("get_incident_statistics", e)
+
+
+@app.post("/incidents/{incident_id}/acknowledge")
+async def acknowledge_incident(incident_id: str, acknowledged_by: str = "API_User"):
+    """Acknowledge an active incident."""
+    try:
+        incident_manager = get_incident_response_manager()
+        
+        success = await incident_manager.acknowledge_incident(incident_id, acknowledged_by)
+        
+        if not success:
+            raise APIResourceNotFoundError("Incident", incident_id)
+        
+        return {
+            "status": "success",
+            "message": f"Incident {incident_id} acknowledged successfully",
+            "incident_id": incident_id,
+            "acknowledged_by": acknowledged_by,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except APIResourceNotFoundError:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to acknowledge incident {incident_id}: {e}")
+        raise APIServerError("acknowledge_incident", e)
+
+
+@app.post("/incidents/{incident_id}/resolve")
+async def resolve_incident(incident_id: str, resolution_notes: str = "Manually resolved via API"):
+    """Manually resolve an active incident."""
+    try:
+        incident_manager = get_incident_response_manager()
+        
+        success = await incident_manager.resolve_incident(incident_id, resolution_notes)
+        
+        if not success:
+            raise APIResourceNotFoundError("Incident", incident_id)
+        
+        return {
+            "status": "success",
+            "message": f"Incident {incident_id} resolved successfully",
+            "incident_id": incident_id,
+            "resolution_notes": resolution_notes,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except APIResourceNotFoundError:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to resolve incident {incident_id}: {e}")
+        raise APIServerError("resolve_incident", e)
+
+
+@app.post("/incidents/response/start")
+async def start_incident_response():
+    """Start automated incident response system."""
+    try:
+        incident_manager = get_incident_response_manager()
+        await incident_manager.start_incident_response()
+        
+        return {
+            "status": "success",
+            "message": "Incident response system started successfully",
+            "response_active": True,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to start incident response: {e}")
+        raise APIServerError("start_incident_response", e)
+
+
+@app.post("/incidents/response/stop")
+async def stop_incident_response():
+    """Stop automated incident response system."""
+    try:
+        incident_manager = get_incident_response_manager()
+        await incident_manager.stop_incident_response()
+        
+        return {
+            "status": "success",
+            "message": "Incident response system stopped successfully",
+            "response_active": False,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to stop incident response: {e}")
+        raise APIServerError("stop_incident_response", e)
 
 
 @app.get("/predictions/{room_id}", response_model=PredictionResponse)
@@ -632,9 +1041,7 @@ async def get_room_prediction(
             ),
             next_transition_time=(
                 datetime.fromisoformat(
-                    prediction_data["next_transition_time"].replace(
-                        "Z", "+00:00"
-                    )
+                    prediction_data["next_transition_time"].replace("Z", "+00:00")
                 )
                 if prediction_data.get("next_transition_time")
                 else None
@@ -649,9 +1056,7 @@ async def get_room_prediction(
     except APIResourceNotFoundError:
         raise
     except Exception as e:
-        logger.error(
-            f"Failed to get prediction for room {room_id}: {e}", exc_info=True
-        )
+        logger.error(f"Failed to get prediction for room {room_id}: {e}", exc_info=True)
         raise APIServerError(f"get_prediction_for_{room_id}", e)
 
 
@@ -670,9 +1075,7 @@ async def get_all_predictions(
                 prediction = await get_room_prediction(room_id)
                 predictions.append(prediction)
             except Exception as e:
-                logger.warning(
-                    f"Failed to get prediction for room {room_id}: {e}"
-                )
+                logger.warning(f"Failed to get prediction for room {room_id}: {e}")
                 # Continue with other rooms
 
         return predictions
@@ -698,9 +1101,7 @@ async def get_accuracy_metrics(
 
         # Get metrics from tracking manager
         tracking_manager = await get_tracking_manager()
-        metrics_data = await tracking_manager.get_accuracy_metrics(
-            room_id, hours
-        )
+        metrics_data = await tracking_manager.get_accuracy_metrics(room_id, hours)
 
         return AccuracyMetricsResponse(
             room_id=metrics_data["room_id"],
@@ -845,9 +1246,7 @@ class APIServer:
             logger.info("API server disabled in configuration")
             return
 
-        logger.info(
-            f"Starting API server on {self.config.host}:{self.config.port}"
-        )
+        logger.info(f"Starting API server on {self.config.host}:{self.config.port}")
 
         # Configure uvicorn
         config = uvicorn.Config(

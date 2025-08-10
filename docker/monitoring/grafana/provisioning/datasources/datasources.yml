@@ -1,0 +1,33 @@
+# Grafana datasources configuration for Home Assistant ML Predictor
+
+apiVersion: 1
+
+datasources:
+  # Prometheus for metrics
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: '30s'
+      queryTimeout: '60s'
+      httpMethod: 'POST'
+
+  # TimescaleDB for time-series data
+  - name: TimescaleDB
+    type: postgres
+    access: proxy
+    url: timescaledb:5432
+    database: occupancy_prediction
+    user: occupancy_user
+    secureJsonData:
+      password: occupancy_pass
+    jsonData:
+      sslmode: 'disable'
+      maxOpenConns: 0
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+      timescaledb: true
+    editable: true

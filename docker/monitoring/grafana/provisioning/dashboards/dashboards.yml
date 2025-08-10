@@ -1,0 +1,24 @@
+# Grafana dashboards configuration for Home Assistant ML Predictor
+
+apiVersion: 1
+
+providers:
+  - name: 'ml-predictor-main'
+    orgId: 1
+    folder: 'Home Assistant ML Predictor'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+  
+  - name: 'ml-predictor-legacy'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json

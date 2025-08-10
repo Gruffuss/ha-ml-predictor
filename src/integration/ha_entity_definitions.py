@@ -361,9 +361,7 @@ class HAEntityDefinitions:
 
             # Define room-specific entities
             for room_id, room_config in self.rooms.items():
-                room_entities = self._define_room_entities(
-                    room_id, room_config
-                )
+                room_entities = self._define_room_entities(room_id, room_config)
                 self.entity_definitions.update(room_entities)
 
             # Define system-wide entities
@@ -479,9 +477,7 @@ class HAEntityDefinitions:
                             self.stats["entities_published"] += 1
 
             successful = sum(1 for r in results.values() if r.success)
-            logger.info(
-                f"Published {successful}/{len(results)} entities successfully"
-            )
+            logger.info(f"Published {successful}/{len(results)} entities successfully")
 
             return results
 
@@ -522,9 +518,7 @@ class HAEntityDefinitions:
             logger.error(f"Error publishing HA services: {e}")
             return {}
 
-    def get_entity_definition(
-        self, entity_id: str
-    ) -> Optional[HAEntityConfig]:
+    def get_entity_definition(self, entity_id: str) -> Optional[HAEntityConfig]:
         """Get entity definition by ID."""
         return self.entity_definitions.get(entity_id)
 
@@ -1179,9 +1173,7 @@ class HAEntityDefinitions:
                 "days": {
                     "description": "Number of days to validate against",
                     "default": 7,
-                    "selector": {
-                        "number": {"min": 1, "max": 30, "mode": "box"}
-                    },
+                    "selector": {"number": {"min": 1, "max": 30, "mode": "box"}},
                 },
             },
         )
@@ -1203,9 +1195,7 @@ class HAEntityDefinitions:
                 "format": {
                     "description": "Export format",
                     "default": "pickle",
-                    "selector": {
-                        "select": {"options": ["pickle", "joblib", "onnx"]}
-                    },
+                    "selector": {"select": {"options": ["pickle", "joblib", "onnx"]}},
                 },
             },
             supports_response=True,
@@ -1485,13 +1475,9 @@ class HAEntityDefinitions:
             if config.entity_category:
                 discovery_payload["entity_category"] = config.entity_category
             if not config.enabled_by_default:
-                discovery_payload["enabled_by_default"] = (
-                    config.enabled_by_default
-                )
+                discovery_payload["enabled_by_default"] = config.enabled_by_default
             if config.availability_topic:
-                discovery_payload["availability_topic"] = (
-                    config.availability_topic
-                )
+                discovery_payload["availability_topic"] = config.availability_topic
             if config.availability_template:
                 discovery_payload["availability_template"] = (
                     config.availability_template
@@ -1533,13 +1519,11 @@ class HAEntityDefinitions:
                 }
 
             # Publish discovery message
-            result = (
-                await self.discovery_publisher.mqtt_publisher.publish_json(
-                    topic=discovery_topic,
-                    data=discovery_payload,
-                    qos=1,
-                    retain=True,
-                )
+            result = await self.discovery_publisher.mqtt_publisher.publish_json(
+                topic=discovery_topic,
+                data=discovery_payload,
+                qos=1,
+                retain=True,
             )
 
             if result.success:
@@ -1572,9 +1556,7 @@ class HAEntityDefinitions:
         if config.json_attributes_topic:
             payload["json_attributes_topic"] = config.json_attributes_topic
         if config.json_attributes_template:
-            payload["json_attributes_template"] = (
-                config.json_attributes_template
-            )
+            payload["json_attributes_template"] = config.json_attributes_template
         if config.unit_of_measurement:
             payload["unit_of_measurement"] = config.unit_of_measurement
         if config.device_class:
@@ -1582,17 +1564,13 @@ class HAEntityDefinitions:
         if config.state_class:
             payload["state_class"] = config.state_class
         if config.suggested_display_precision is not None:
-            payload["suggested_display_precision"] = (
-                config.suggested_display_precision
-            )
+            payload["suggested_display_precision"] = config.suggested_display_precision
         if config.force_update:
             payload["force_update"] = config.force_update
         if config.last_reset_topic:
             payload["last_reset_topic"] = config.last_reset_topic
         if config.last_reset_value_template:
-            payload["last_reset_value_template"] = (
-                config.last_reset_value_template
-            )
+            payload["last_reset_value_template"] = config.last_reset_value_template
 
     def _add_binary_sensor_attributes(
         self, payload: Dict[str, Any], config: HABinarySensorEntityConfig

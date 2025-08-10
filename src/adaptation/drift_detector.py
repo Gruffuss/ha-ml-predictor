@@ -133,15 +133,12 @@ class DriftMetrics:
 
         # Performance degradation weight
         perf_weight = 0.4
-        perf_score = min(
-            self.accuracy_degradation / 30.0, 1.0
-        )  # 30 min threshold
+        perf_score = min(self.accuracy_degradation / 30.0, 1.0)  # 30 min threshold
 
         # Pattern change weight
         pattern_weight = 0.3
         pattern_score = (
-            self.temporal_pattern_drift * 0.5
-            + self.frequency_pattern_drift * 0.5
+            self.temporal_pattern_drift * 0.5 + self.frequency_pattern_drift * 0.5
         )
 
         self.overall_drift_score = (
@@ -411,9 +408,7 @@ class ConceptDriftDetector:
                 # Calculate accuracy degradation
                 baseline_error = baseline_metrics.mean_absolute_error_minutes
                 current_error = current_metrics.mean_absolute_error_minutes
-                drift_metrics.accuracy_degradation = (
-                    current_error - baseline_error
-                )
+                drift_metrics.accuracy_degradation = current_error - baseline_error
 
                 # Analyze error distribution changes using KS test
                 baseline_errors = [
@@ -424,32 +419,22 @@ class ConceptDriftDetector:
                 ]
 
                 if len(baseline_errors) >= 10 and len(current_errors) >= 10:
-                    ks_stat, ks_p = stats.ks_2samp(
-                        baseline_errors, current_errors
-                    )
+                    ks_stat, ks_p = stats.ks_2samp(baseline_errors, current_errors)
                     drift_metrics.error_distribution_change = ks_stat
 
                 # Analyze confidence calibration drift
-                baseline_conf = (
-                    baseline_metrics.confidence_vs_accuracy_correlation
-                )
-                current_conf = (
-                    current_metrics.confidence_vs_accuracy_correlation
-                )
+                baseline_conf = baseline_metrics.confidence_vs_accuracy_correlation
+                current_conf = current_metrics.confidence_vs_accuracy_correlation
                 drift_metrics.confidence_calibration_drift = abs(
                     current_conf - baseline_conf
                 )
 
                 # Mark prediction drift if significant
                 if drift_metrics.accuracy_degradation > 10:
-                    drift_metrics.drift_types.append(
-                        DriftType.PREDICTION_DRIFT
-                    )
+                    drift_metrics.drift_types.append(DriftType.PREDICTION_DRIFT)
 
         except Exception as e:
-            logger.warning(
-                f"Error analyzing prediction drift for {room_id}: {e}"
-            )
+            logger.warning(f"Error analyzing prediction drift for {room_id}: {e}")
 
     async def _analyze_feature_drift(
         self, drift_metrics: DriftMetrics, feature_engine, room_id: str
@@ -552,9 +537,7 @@ class ConceptDriftDetector:
                 )
 
         except Exception as e:
-            logger.warning(
-                f"Error testing feature drift for {feature_name}: {e}"
-            )
+            logger.warning(f"Error testing feature drift for {feature_name}: {e}")
             return FeatureDriftResult(
                 feature_name=feature_name,
                 drift_detected=False,
@@ -614,15 +597,9 @@ class ConceptDriftDetector:
             current_counts = current.value_counts()
 
             # Align categories
-            all_categories = set(baseline_counts.index) | set(
-                current_counts.index
-            )
-            baseline_aligned = [
-                baseline_counts.get(cat, 0) for cat in all_categories
-            ]
-            current_aligned = [
-                current_counts.get(cat, 0) for cat in all_categories
-            ]
+            all_categories = set(baseline_counts.index) | set(current_counts.index)
+            baseline_aligned = [baseline_counts.get(cat, 0) for cat in all_categories]
+            current_aligned = [current_counts.get(cat, 0) for cat in all_categories]
 
             # Chi-square test
             chi2_stat, chi2_p, _, _ = stats.chi2_contingency(
@@ -631,11 +608,7 @@ class ConceptDriftDetector:
 
             # Calculate basic statistics
             baseline_stats = {
-                "mode": (
-                    baseline.mode().iloc[0]
-                    if len(baseline.mode()) > 0
-                    else None
-                ),
+                "mode": (baseline.mode().iloc[0] if len(baseline.mode()) > 0 else None),
                 "unique_count": baseline.nunique(),
                 "most_frequent_pct": (
                     baseline_counts.iloc[0] / len(baseline)
@@ -645,9 +618,7 @@ class ConceptDriftDetector:
             }
 
             current_stats = {
-                "mode": (
-                    current.mode().iloc[0] if len(current.mode()) > 0 else None
-                ),
+                "mode": (current.mode().iloc[0] if len(current.mode()) > 0 else None),
                 "unique_count": current.nunique(),
                 "most_frequent_pct": (
                     current_counts.iloc[0] / len(current)
@@ -657,9 +628,7 @@ class ConceptDriftDetector:
             }
 
             # Calculate drift score
-            drift_score = min(
-                chi2_stat / max(len(all_categories) * 10, 1), 1.0
-            )
+            drift_score = min(chi2_stat / max(len(all_categories) * 10, 1), 1.0)
 
             return FeatureDriftResult(
                 feature_name=feature_name,
@@ -673,9 +642,7 @@ class ConceptDriftDetector:
             )
 
         except Exception as e:
-            logger.warning(
-                f"Error in categorical drift test for {feature_name}: {e}"
-            )
+            logger.warning(f"Error in categorical drift test for {feature_name}: {e}")
             # Fallback to simple comparison
             return FeatureDriftResult(
                 feature_name=feature_name,
@@ -710,13 +677,9 @@ class ConceptDriftDetector:
 
                 # Calculate PSI for this feature
                 if baseline_data.dtype in ["object", "category"]:
-                    psi = self._calculate_categorical_psi(
-                        baseline_data, current_data
-                    )
+                    psi = self._calculate_categorical_psi(baseline_data, current_data)
                 else:
-                    psi = self._calculate_numerical_psi(
-                        baseline_data, current_data
-                    )
+                    psi = self._calculate_numerical_psi(baseline_data, current_data)
 
                 psi_scores.append(psi)
 
@@ -861,9 +824,7 @@ class ConceptDriftDetector:
 
                 for error in errors:
                     # Update cumulative sum
-                    self._ph_sum[room_id] += (
-                        error - error_mean - 1.0
-                    )  # delta = 1.0
+                    self._ph_sum[room_id] += error - error_mean - 1.0  # delta = 1.0
 
                     # Update minimum
                     self._ph_min[room_id] = min(
@@ -890,17 +851,12 @@ class ConceptDriftDetector:
         except Exception as e:
             logger.warning(f"Error in Page-Hinkley test for {room_id}: {e}")
 
-    def _calculate_statistical_confidence(
-        self, drift_metrics: DriftMetrics
-    ) -> None:
+    def _calculate_statistical_confidence(self, drift_metrics: DriftMetrics) -> None:
         """Calculate overall statistical confidence in drift detection."""
         try:
             # Factors affecting confidence
             sample_size_factor = min(
-                (
-                    drift_metrics.sample_size_baseline
-                    + drift_metrics.sample_size_current
-                )
+                (drift_metrics.sample_size_baseline + drift_metrics.sample_size_current)
                 / 200,
                 1.0,
             )
@@ -938,9 +894,7 @@ class ConceptDriftDetector:
 
         except Exception as e:
             logger.warning(f"Error calculating statistical confidence: {e}")
-            drift_metrics.statistical_confidence = (
-                0.5  # Default moderate confidence
-            )
+            drift_metrics.statistical_confidence = 0.5  # Default moderate confidence
 
     async def _get_feature_data(
         self,
@@ -975,9 +929,7 @@ class ConceptDriftDetector:
                             SensorEvent.room_id == room_id,
                             SensorEvent.timestamp >= start_time,
                             SensorEvent.timestamp <= end_time,
-                            SensorEvent.sensor_type.in_(
-                                ["motion", "presence"]
-                            ),
+                            SensorEvent.sensor_type.in_(["motion", "presence"]),
                         )
                     )
                     .order_by(SensorEvent.timestamp)
@@ -1033,9 +985,7 @@ class ConceptDriftDetector:
                 current_prob = current_hourly.get(hour, 1) / current_total
 
                 if current_prob > 0:
-                    kl_div += current_prob * np.log(
-                        current_prob / baseline_prob
-                    )
+                    kl_div += current_prob * np.log(current_prob / baseline_prob)
 
             # Normalize to 0-1 scale
             return min(kl_div / 3.0, 1.0)
@@ -1051,9 +1001,7 @@ class ConceptDriftDetector:
     ) -> float:
         """Compare frequency (daily count) patterns."""
         try:
-            baseline_daily = list(
-                baseline_patterns["daily_frequency"].values()
-            )
+            baseline_daily = list(baseline_patterns["daily_frequency"].values())
             current_daily = list(current_patterns["daily_frequency"].values())
 
             if len(baseline_daily) < 3 or len(current_daily) < 3:
@@ -1098,9 +1046,7 @@ class ConceptDriftDetector:
                 for pred in predictions:
                     if pred.actual_time and pred.predicted_time:
                         error_minutes = abs(
-                            (
-                                pred.actual_time - pred.predicted_time
-                            ).total_seconds()
+                            (pred.actual_time - pred.predicted_time).total_seconds()
                             / 60
                         )
                         errors.append(error_minutes)
@@ -1159,9 +1105,7 @@ class FeatureDriftDetector:
             return
 
         self._monitoring_active = True
-        self._monitoring_task = asyncio.create_task(
-            self._monitoring_loop(room_ids)
-        )
+        self._monitoring_task = asyncio.create_task(self._monitoring_loop(room_ids))
 
         logger.info(f"Started feature drift monitoring for rooms: {room_ids}")
 
@@ -1196,12 +1140,8 @@ class FeatureDriftDetector:
 
         # Split data into comparison windows
         current_time = datetime.now()
-        monitor_start = current_time - timedelta(
-            hours=self.monitor_window_hours
-        )
-        comparison_start = monitor_start - timedelta(
-            hours=self.comparison_window_hours
-        )
+        monitor_start = current_time - timedelta(hours=self.monitor_window_hours)
+        comparison_start = monitor_start - timedelta(hours=self.comparison_window_hours)
 
         # Filter data by time windows
         if "timestamp" in feature_data.columns:
@@ -1209,9 +1149,7 @@ class FeatureDriftDetector:
                 (feature_data["timestamp"] >= comparison_start)
                 & (feature_data["timestamp"] < monitor_start)
             ]
-            monitor_data = feature_data[
-                feature_data["timestamp"] >= monitor_start
-            ]
+            monitor_data = feature_data[feature_data["timestamp"] >= monitor_start]
         else:
             # If no timestamp, use recent vs older data split
             split_point = len(feature_data) // 2
@@ -1247,9 +1185,7 @@ class FeatureDriftDetector:
                     await self._notify_drift_callbacks(room_id, drift_result)
 
             except Exception as e:
-                logger.warning(
-                    f"Error testing drift for feature {feature}: {e}"
-                )
+                logger.warning(f"Error testing drift for feature {feature}: {e}")
 
         return drift_results
 
@@ -1338,15 +1274,9 @@ class FeatureDriftDetector:
             current_counts = current.value_counts()
 
             # Create contingency table
-            all_values = sorted(
-                set(baseline_counts.index) | set(current_counts.index)
-            )
-            baseline_aligned = [
-                baseline_counts.get(val, 0) for val in all_values
-            ]
-            current_aligned = [
-                current_counts.get(val, 0) for val in all_values
-            ]
+            all_values = sorted(set(baseline_counts.index) | set(current_counts.index))
+            baseline_aligned = [baseline_counts.get(val, 0) for val in all_values]
+            current_aligned = [current_counts.get(val, 0) for val in all_values]
 
             # Chi-square test
             chi2_stat, chi2_p, dof, expected = stats.chi2_contingency(
@@ -1355,11 +1285,7 @@ class FeatureDriftDetector:
 
             # Calculate statistics
             baseline_stats = {
-                "mode": (
-                    baseline.mode().iloc[0]
-                    if len(baseline.mode()) > 0
-                    else None
-                ),
+                "mode": (baseline.mode().iloc[0] if len(baseline.mode()) > 0 else None),
                 "unique_values": baseline.nunique(),
                 "entropy": -sum(
                     p * np.log2(p)
@@ -1369,9 +1295,7 @@ class FeatureDriftDetector:
             }
 
             current_stats = {
-                "mode": (
-                    current.mode().iloc[0] if len(current.mode()) > 0 else None
-                ),
+                "mode": (current.mode().iloc[0] if len(current.mode()) > 0 else None),
                 "unique_values": current.nunique(),
                 "entropy": -sum(
                     p * np.log2(p)
@@ -1443,18 +1367,14 @@ class FeatureDriftDetector:
                 logger.error(f"Error in feature monitoring loop: {e}")
                 await asyncio.sleep(60)  # Wait before retrying
 
-    async def _get_recent_feature_data(
-        self, room_id: str
-    ) -> Optional[pd.DataFrame]:
+    async def _get_recent_feature_data(self, room_id: str) -> Optional[pd.DataFrame]:
         """Get recent feature data for monitoring."""
         try:
             # This would integrate with the feature store to get recent features
             # For now, return None to indicate no data available
             return None
         except Exception as e:
-            logger.warning(
-                f"Error getting recent feature data for {room_id}: {e}"
-            )
+            logger.warning(f"Error getting recent feature data for {room_id}: {e}")
             return None
 
     def add_drift_callback(

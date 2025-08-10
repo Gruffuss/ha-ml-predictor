@@ -212,9 +212,7 @@ class DiscoveryPublisher:
             manufacturer=self.config.device_manufacturer,
             model=self.config.device_model,
             sw_version=self.config.device_sw_version,
-            configuration_url=getattr(
-                self.config, "device_configuration_url", None
-            ),
+            configuration_url=getattr(self.config, "device_configuration_url", None),
             suggested_area="Home Assistant ML Predictor",
             device_class="connectivity",
             availability_topic=availability_topic,
@@ -235,12 +233,8 @@ class DiscoveryPublisher:
 
         # Enhanced discovery state tracking
         self.discovery_published = False
-        self.published_entities: Dict[str, str] = (
-            {}
-        )  # entity_id -> discovery_topic
-        self.entity_metadata: Dict[str, EntityMetadata] = (
-            {}
-        )  # entity_id -> metadata
+        self.published_entities: Dict[str, str] = {}  # entity_id -> discovery_topic
+        self.entity_metadata: Dict[str, EntityMetadata] = {}  # entity_id -> metadata
         self.device_available = True
         self.last_availability_publish = None
 
@@ -287,9 +281,7 @@ class DiscoveryPublisher:
             # Step 2: Publish room prediction sensors with enhanced metadata
             logger.info(f"Publishing discovery for {len(self.rooms)} rooms")
             for room_id, room_config in self.rooms.items():
-                room_results = await self.publish_room_discovery(
-                    room_id, room_config
-                )
+                room_results = await self.publish_room_discovery(room_id, room_config)
                 results.update(room_results)
 
             # Step 3: Publish system sensors with enhanced diagnostics
@@ -350,9 +342,7 @@ class DiscoveryPublisher:
 
         try:
             # Main prediction sensor
-            prediction_sensor = self._create_prediction_sensor(
-                room_id, room_name
-            )
+            prediction_sensor = self._create_prediction_sensor(room_id, room_name)
             result = await self._publish_sensor_discovery(prediction_sensor)
             results[f"{room_id}_prediction"] = result
 
@@ -360,29 +350,21 @@ class DiscoveryPublisher:
             next_transition_sensor = self._create_next_transition_sensor(
                 room_id, room_name
             )
-            result = await self._publish_sensor_discovery(
-                next_transition_sensor
-            )
+            result = await self._publish_sensor_discovery(next_transition_sensor)
             results[f"{room_id}_next_transition"] = result
 
             # Confidence sensor
-            confidence_sensor = self._create_confidence_sensor(
-                room_id, room_name
-            )
+            confidence_sensor = self._create_confidence_sensor(room_id, room_name)
             result = await self._publish_sensor_discovery(confidence_sensor)
             results[f"{room_id}_confidence"] = result
 
             # Time until sensor
-            time_until_sensor = self._create_time_until_sensor(
-                room_id, room_name
-            )
+            time_until_sensor = self._create_time_until_sensor(room_id, room_name)
             result = await self._publish_sensor_discovery(time_until_sensor)
             results[f"{room_id}_time_until"] = result
 
             # Reliability sensor
-            reliability_sensor = self._create_reliability_sensor(
-                room_id, room_name
-            )
+            reliability_sensor = self._create_reliability_sensor(room_id, room_name)
             result = await self._publish_sensor_discovery(reliability_sensor)
             results[f"{room_id}_reliability"] = result
 
@@ -472,9 +454,7 @@ class DiscoveryPublisher:
 
                 return result
             else:
-                logger.warning(
-                    f"Entity {entity_name} not found in published entities"
-                )
+                logger.warning(f"Entity {entity_name} not found in published entities")
                 return MQTTPublishResult(
                     success=False,
                     topic="",
@@ -670,13 +650,9 @@ class DiscoveryPublisher:
                         service_topic=service["command_topic"],
                         command_template=service["command_template"],
                     )
-                    self.available_services[service["service_name"]] = (
-                        service_config
-                    )
+                    self.available_services[service["service_name"]] = service_config
 
-            logger.info(
-                f"Published service discovery for {len(services)} services"
-            )
+            logger.info(f"Published service discovery for {len(services)} services")
             return results
 
         except Exception as e:
@@ -718,13 +694,9 @@ class DiscoveryPublisher:
             if self.state_change_callback:
                 try:
                     if asyncio.iscoroutinefunction(self.state_change_callback):
-                        await self.state_change_callback(
-                            entity_id, state, attributes
-                        )
+                        await self.state_change_callback(entity_id, state, attributes)
                     else:
-                        self.state_change_callback(
-                            entity_id, state, attributes
-                        )
+                        self.state_change_callback(entity_id, state, attributes)
                 except Exception as e:
                     logger.error(f"Error in state change callback: {e}")
 
@@ -748,9 +720,7 @@ class DiscoveryPublisher:
             Dictionary mapping entity names to cleanup results
         """
         try:
-            cleanup_entities = entity_ids or list(
-                self.published_entities.keys()
-            )
+            cleanup_entities = entity_ids or list(self.published_entities.keys())
             results = {}
 
             logger.info(f"Cleaning up {len(cleanup_entities)} entities")
@@ -767,9 +737,7 @@ class DiscoveryPublisher:
                     self.discovery_stats["entities_removed"] += 1
 
             successful = sum(1 for r in results.values() if r.success)
-            logger.info(
-                f"Cleaned up {successful}/{len(cleanup_entities)} entities"
-            )
+            logger.info(f"Cleaned up {successful}/{len(cleanup_entities)} entities")
 
             return results
 
@@ -853,9 +821,7 @@ class DiscoveryPublisher:
 
             # Add command template if provided
             if service.get("command_template"):
-                discovery_payload["command_template"] = service[
-                    "command_template"
-                ]
+                discovery_payload["command_template"] = service["command_template"]
 
             # Publish button discovery
             result = await self.mqtt_publisher.publish_json(
@@ -866,12 +832,8 @@ class DiscoveryPublisher:
             )
 
             if result.success:
-                self.published_entities[service["service_name"]] = (
-                    discovery_topic
-                )
-                logger.debug(
-                    f"Published service button: {service['friendly_name']}"
-                )
+                self.published_entities[service["service_name"]] = discovery_topic
+                logger.debug(f"Published service button: {service['friendly_name']}")
             else:
                 logger.error(
                     f"Failed to publish service button {service['friendly_name']}: {result.error_message}"
@@ -891,9 +853,7 @@ class DiscoveryPublisher:
 
     # Private methods - Sensor configuration creators
 
-    def _create_prediction_sensor(
-        self, room_id: str, room_name: str
-    ) -> SensorConfig:
+    def _create_prediction_sensor(self, room_id: str, room_name: str) -> SensorConfig:
         """Create main prediction sensor configuration."""
         return SensorConfig(
             name=f"{room_name} Occupancy Prediction",
@@ -923,9 +883,7 @@ class DiscoveryPublisher:
             expire_after=600,
         )
 
-    def _create_confidence_sensor(
-        self, room_id: str, room_name: str
-    ) -> SensorConfig:
+    def _create_confidence_sensor(self, room_id: str, room_name: str) -> SensorConfig:
         """Create confidence sensor configuration."""
         return SensorConfig(
             name=f"{room_name} Confidence",
@@ -939,9 +897,7 @@ class DiscoveryPublisher:
             expire_after=600,
         )
 
-    def _create_time_until_sensor(
-        self, room_id: str, room_name: str
-    ) -> SensorConfig:
+    def _create_time_until_sensor(self, room_id: str, room_name: str) -> SensorConfig:
         """Create time until sensor configuration."""
         return SensorConfig(
             name=f"{room_name} Time Until",
@@ -953,9 +909,7 @@ class DiscoveryPublisher:
             expire_after=600,
         )
 
-    def _create_reliability_sensor(
-        self, room_id: str, room_name: str
-    ) -> SensorConfig:
+    def _create_reliability_sensor(self, room_id: str, room_name: str) -> SensorConfig:
         """Create reliability sensor configuration."""
         return SensorConfig(
             name=f"{room_name} Reliability",
@@ -1142,8 +1096,7 @@ class DiscoveryPublisher:
                 if value is not None:
                     # Skip boolean attributes that are False (except for explicit False values)
                     if (
-                        attr
-                        in ["enabled_by_default", "force_update", "retain"]
+                        attr in ["enabled_by_default", "force_update", "retain"]
                         and value is False
                     ):
                         discovery_payload[attr] = value
@@ -1168,9 +1121,7 @@ class DiscoveryPublisher:
             )
 
             if result.success:
-                self.published_entities[sensor_config.unique_id] = (
-                    discovery_topic
-                )
+                self.published_entities[sensor_config.unique_id] = discovery_topic
 
                 # Create entity metadata if not exists
                 if sensor_config.unique_id not in self.entity_metadata:
@@ -1188,9 +1139,7 @@ class DiscoveryPublisher:
                     )
 
                     if sensor_config.metadata:
-                        metadata.attributes.update(
-                            sensor_config.metadata.attributes
-                        )
+                        metadata.attributes.update(sensor_config.metadata.attributes)
 
                     self.entity_metadata[sensor_config.unique_id] = metadata
 

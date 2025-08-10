@@ -1,0 +1,169 @@
+# Staging Environment Configuration
+# This file contains staging-specific overrides for the base config.yaml
+
+home_assistant:
+  url: ${HA_URL:-http://192.168.51.247:8123}
+  token: ${HA_TOKEN}  # Will be injected from secrets
+  websocket_timeout: 45
+  api_timeout: 20
+
+database:
+  connection_string: postgresql+asyncpg://occupancy_user@timescaledb:5432/occupancy_prediction
+  pool_size: 10
+  max_overflow: 20
+  pool_timeout: 20
+  pool_recycle: 1800  # 30 minutes
+
+mqtt:
+  broker: mosquitto
+  port: 1883
+  username: ""
+  password: ""
+  topic_prefix: "occupancy/predictions/staging"
+  
+  # Staging-specific settings
+  keepalive: 90
+  connection_timeout: 45
+  reconnect_delay_seconds: 5
+  max_reconnect_attempts: 10
+  
+  # QoS settings (less strict than production)
+  prediction_qos: 1
+  system_qos: 0
+  retain_predictions: true
+  retain_system_status: true
+  
+  # Discovery configuration
+  discovery_enabled: true
+  discovery_prefix: "homeassistant"
+  device_name: "Occupancy Predictor (Staging)"
+  device_identifier: "ha_ml_predictor_staging"
+
+prediction:
+  interval_seconds: 240  # 4 minutes
+  accuracy_threshold_minutes: 12
+  confidence_threshold: 0.75
+
+features:
+  lookback_hours: 36
+  sequence_length: 75
+  temporal_features: true
+  sequential_features: true
+  contextual_features: true
+
+logging:
+  level: INFO
+  format: structured
+  
+  # Staging logging settings
+  file_logging: true
+  file_path: "/app/logs/haml-predictor-staging.log"
+  file_max_size: 50MB
+  file_backup_count: 5
+  
+  # Enable detailed logging for testing
+  enable_json_logging: true
+  include_request_id: true
+  log_sql_queries: false
+
+tracking:
+  enabled: true
+  monitoring_interval_seconds: 60
+  auto_validation_enabled: true
+  validation_window_minutes: 20
+  max_stored_alerts: 5000
+  trend_analysis_points: 15
+  cleanup_interval_hours: 24
+  
+  # Staging alert thresholds (slightly more lenient)
+  alert_thresholds:
+    accuracy_warning: 70.0
+    accuracy_critical: 55.0
+    error_warning: 18.0
+    error_critical: 28.0
+    trend_degrading: -4.0
+    validation_lag_warning: 12.0
+    validation_lag_critical: 25.0
+
+api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8000
+  debug: false  # Should be false in staging too
+  
+  # Security (less restrictive than production)
+  enable_cors: true
+  cors_origins: ["*"]  # Allow all for testing
+  api_key_enabled: false  # Disabled for easier testing
+  
+  # Rate limiting (more lenient than production)
+  rate_limit_enabled: true
+  requests_per_minute: 120
+  burst_limit: 200
+  
+  # Performance settings
+  request_timeout_seconds: 30
+  max_request_size_mb: 10
+  background_tasks_enabled: true
+  health_check_interval_seconds: 60
+  
+  # Documentation (enabled for testing)
+  include_docs: true
+  docs_url: "/docs"
+  redoc_url: "/redoc"
+  
+  # Logging (more verbose for debugging)
+  access_log: true
+  log_requests: true
+  log_responses: false
+
+# Staging cache configuration
+redis:
+  host: redis
+  port: 6379
+  password: ${REDIS_PASSWORD}  # Optional in staging
+  db: 1  # Different database than production
+  max_connections: 20
+  socket_timeout: 10.0
+  socket_connect_timeout: 10.0
+  retry_on_timeout: true
+  health_check_interval: 60
+
+# Backup configuration (less frequent)
+backup:
+  enabled: true
+  interval_hours: 12          # Every 12 hours
+  retention_days: 14          # Keep backups for 2 weeks
+  compress: true
+  
+  # Database backup
+  database_backup: true
+  backup_path: "/app/backups"
+  
+  # Model backup
+  model_backup: true
+  model_backup_interval_hours: 48  # Every 2 days
+
+# Performance monitoring (enabled for testing)
+performance:
+  enabled: true
+  metrics_collection: true
+  profiling_enabled: true     # Enabled for performance testing
+  memory_monitoring: true
+  
+  # More lenient alert thresholds
+  max_memory_usage_mb: 2000   # 2GB limit
+  max_cpu_usage_percent: 90
+  max_response_time_ms: 200
+
+# Disaster recovery (similar to production)
+disaster_recovery:
+  enabled: true
+  health_check_interval_seconds: 60
+  auto_restart_on_failure: true
+  max_restart_attempts: 3
+  
+  # Circuit breaker settings
+  circuit_breaker_enabled: true
+  failure_threshold: 15
+  recovery_timeout_seconds: 120

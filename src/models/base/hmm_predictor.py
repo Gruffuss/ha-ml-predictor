@@ -57,15 +57,11 @@ class HMMPredictor(BasePredictor):
         self.state_model: Optional[GaussianMixture] = (
             None  # Hidden state identification
         )
-        self.transition_models: Dict[int, Any] = (
-            {}
-        )  # Duration prediction per state
+        self.transition_models: Dict[int, Any] = {}  # Duration prediction per state
         self.feature_scaler = StandardScaler()
 
         # State interpretation
-        self.state_labels: Dict[int, str] = (
-            {}
-        )  # State ID to description mapping
+        self.state_labels: Dict[int, str] = {}  # State ID to description mapping
         self.state_characteristics: Dict[int, Dict[str, float]] = {}
 
         # Transition matrix (estimated from data)
@@ -115,7 +111,7 @@ class HMMPredictor(BasePredictor):
             kmeans = KMeans(
                 n_clusters=self.model_params["n_components"],
                 random_state=self.model_params["random_state"],
-                n_init=10
+                n_init=10,
             )
             kmeans_labels = kmeans.fit_predict(X_train_scaled)
             kmeans_centers = kmeans.cluster_centers_
@@ -140,13 +136,15 @@ class HMMPredictor(BasePredictor):
 
             # Identify states for each sample
             state_labels = self.state_model.predict(X_train_scaled)
-            state_probabilities = self.state_model.predict_proba(
-                X_train_scaled
-            )
+            state_probabilities = self.state_model.predict_proba(X_train_scaled)
 
             # Analyze state characteristics using state probabilities
             self._analyze_states(
-                X_train_scaled, state_labels, y_train, features.columns, state_probabilities
+                X_train_scaled,
+                state_labels,
+                y_train,
+                features.columns,
+                state_probabilities,
             )
 
             # Build transition matrix
@@ -174,21 +172,14 @@ class HMMPredictor(BasePredictor):
             validation_mae = None
             validation_rmse = None
 
-            if (
-                validation_features is not None
-                and validation_targets is not None
-            ):
+            if validation_features is not None and validation_targets is not None:
                 y_val = self._prepare_targets(validation_targets)
-                X_val_scaled = self.feature_scaler.transform(
-                    validation_features
-                )
+                X_val_scaled = self.feature_scaler.transform(validation_features)
                 y_pred_val = self._predict_durations(X_val_scaled)
 
                 validation_score = r2_score(y_val, y_pred_val)
                 validation_mae = mean_absolute_error(y_val, y_pred_val)
-                validation_rmse = np.sqrt(
-                    mean_squared_error(y_val, y_pred_val)
-                )
+                validation_rmse = np.sqrt(mean_squared_error(y_val, y_pred_val))
 
             # Calculate training time
             training_time = (datetime.utcnow() - start_time).total_seconds()
@@ -200,9 +191,7 @@ class HMMPredictor(BasePredictor):
                 "training_r2": training_score,
                 "n_states": self.model_params["n_components"],
                 "convergence_iter": getattr(self.state_model, "n_iter_", None),
-                "log_likelihood": getattr(
-                    self.state_model, "lower_bound_", None
-                ),
+                "log_likelihood": getattr(self.state_model, "lower_bound_", None),
                 "state_distribution": [
                     int(np.sum(state_labels == i))
                     for i in range(self.model_params["n_components"])
@@ -234,9 +223,7 @@ class HMMPredictor(BasePredictor):
             logger.info(
                 f"Training R²: {training_score:.4f}, Validation R²: {validation_score}"
             )
-            logger.info(
-                f"Identified {self.model_params['n_components']} hidden states"
-            )
+            logger.info(f"Identified {self.model_params['n_components']} hidden states")
 
             return result
 
@@ -299,9 +286,7 @@ class HMMPredictor(BasePredictor):
                 )
 
                 # Calculate predicted transition time
-                predicted_time = prediction_time + timedelta(
-                    seconds=predicted_duration
-                )
+                predicted_time = prediction_time + timedelta(seconds=predicted_duration)
 
                 # Predict next state using transition matrix
                 next_state_probs = (
@@ -329,9 +314,7 @@ class HMMPredictor(BasePredictor):
                     model_version=self.model_version,
                     features_used=self.feature_names,
                     prediction_metadata={
-                        "time_until_transition_seconds": float(
-                            predicted_duration
-                        ),
+                        "time_until_transition_seconds": float(predicted_duration),
                         "prediction_method": "hidden_markov_model",
                         "current_hidden_state": int(most_likely_state),
                         "state_probability": float(state_confidence),
@@ -393,17 +376,14 @@ class HMMPredictor(BasePredictor):
                     within_state_variances = [cov[i] for cov in covariances]
                 else:  # 'tied' or 'spherical'
                     within_state_variances = [
-                        np.mean(np.diag(covariances))
-                        for _ in range(len(means))
+                        np.mean(np.diag(covariances)) for _ in range(len(means))
                     ]
 
                 avg_within_state_variance = np.mean(within_state_variances)
 
                 # Importance is ratio of between-state to within-state variance
                 if avg_within_state_variance > 0:
-                    importance = (
-                        between_state_variance / avg_within_state_variance
-                    )
+                    importance = between_state_variance / avg_within_state_variance
                 else:
                     importance = between_state_variance
 
@@ -413,8 +393,7 @@ class HMMPredictor(BasePredictor):
             total_importance = sum(importance_scores.values())
             if total_importance > 0:
                 importance_scores = {
-                    k: v / total_importance
-                    for k, v in importance_scores.items()
+                    k: v / total_importance for k, v in importance_scores.items()
                 }
 
             return importance_scores
@@ -433,9 +412,7 @@ class HMMPredictor(BasePredictor):
         ):
             target_times = pd.to_datetime(targets["target_time"])
             next_times = pd.to_datetime(targets["next_transition_time"])
-            target_values = (
-                (next_times - target_times).dt.total_seconds().values
-            )
+            target_values = (next_times - target_times).dt.total_seconds().values
         else:
             target_values = targets.iloc[:, 0].values
 
@@ -470,12 +447,12 @@ class HMMPredictor(BasePredictor):
             # Analyze feature characteristics
             state_features = X[state_mask]
             feature_means = np.mean(state_features, axis=0)
-            
+
             # Use state probabilities for enhanced state analysis
             state_probs = state_probabilities[state_mask, state_id]
             avg_probability = np.mean(state_probs)
             confidence_variance = np.var(state_probs)
-            
+
             # Calculate certainty metrics using state probabilities
             high_confidence_samples = np.sum(state_probs > 0.8)
             low_confidence_samples = np.sum(state_probs < 0.6)
@@ -495,7 +472,11 @@ class HMMPredictor(BasePredictor):
                 "confidence_variance": float(confidence_variance),
                 "high_confidence_samples": int(high_confidence_samples),
                 "low_confidence_samples": int(low_confidence_samples),
-                "prediction_reliability": "high" if avg_probability > 0.75 else "medium" if avg_probability > 0.6 else "low"
+                "prediction_reliability": (
+                    "high"
+                    if avg_probability > 0.75
+                    else "medium" if avg_probability > 0.6 else "low"
+                ),
             }
 
         logger.info("State analysis complete:")
@@ -542,9 +523,7 @@ class HMMPredictor(BasePredictor):
         for i in range(n_states):
             row_sum = np.sum(transition_counts[i, :])
             if row_sum > 0:
-                self.transition_matrix[i, :] = (
-                    transition_counts[i, :] / row_sum
-                )
+                self.transition_matrix[i, :] = transition_counts[i, :] / row_sum
             else:
                 # Uniform distribution if no transitions observed
                 self.transition_matrix[i, :] = 1.0 / n_states
@@ -573,10 +552,7 @@ class HMMPredictor(BasePredictor):
 
             if np.sum(state_mask) < 5:  # Need at least 5 samples
                 # Use simple average duration
-                if (
-                    state_id in self.state_durations
-                    and self.state_durations[state_id]
-                ):
+                if state_id in self.state_durations and self.state_durations[state_id]:
                     avg_duration = np.mean(self.state_durations[state_id])
                     self.transition_models[state_id] = {
                         "type": "average",
@@ -606,9 +582,7 @@ class HMMPredictor(BasePredictor):
             most_likely_state = np.argmax(state_probs)
 
             # Predict duration
-            duration = self._predict_single_duration(
-                X[i : i + 1], most_likely_state
-            )
+            duration = self._predict_single_duration(X[i : i + 1], most_likely_state)
             predictions.append(duration)
 
         return np.array(predictions)
@@ -642,9 +616,7 @@ class HMMPredictor(BasePredictor):
             return "vacant_to_occupied"
         else:
             # Use state characteristics to infer
-            current_characteristics = self.state_characteristics.get(
-                current_state, {}
-            )
+            current_characteristics = self.state_characteristics.get(current_state, {})
             avg_duration = current_characteristics.get("avg_duration", 1800)
 
             # Heuristic: longer stays suggest currently occupied

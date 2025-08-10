@@ -127,9 +127,7 @@ class FeatureEngineeringEngine:
             # Filter events for the specific room and time window
             cutoff_time = target_time - timedelta(hours=lookback_hours)
             room_events = [
-                e
-                for e in events
-                if e.room_id == room_id and e.timestamp >= cutoff_time
+                e for e in events if e.room_id == room_id and e.timestamp >= cutoff_time
             ]
             room_room_states = [
                 r
@@ -233,9 +231,7 @@ class FeatureEngineeringEngine:
             # Handle exceptions in results
             for i, result in enumerate(results):
                 if isinstance(result, Exception):
-                    logger.error(
-                        f"Batch extraction failed for request {i}: {result}"
-                    )
+                    logger.error(f"Batch extraction failed for request {i}: {result}")
                     results[i] = self._get_default_features()
         else:
             # Process sequentially
@@ -256,9 +252,7 @@ class FeatureEngineeringEngine:
                     )
                     results.append(features)
                 except Exception as e:
-                    logger.error(
-                        f"Batch extraction failed for room {room_id}: {e}"
-                    )
+                    logger.error(f"Batch extraction failed for room {room_id}: {e}")
                     results.append(self._get_default_features())
 
         return results
@@ -289,9 +283,7 @@ class FeatureEngineeringEngine:
             tasks.append(("temporal", task))
 
         if "sequential" in feature_types:
-            room_configs = (
-                {room_config.room_id: room_config} if room_config else {}
-            )
+            room_configs = {room_config.room_id: room_config} if room_config else {}
             task = loop.run_in_executor(
                 self.executor,
                 self.sequential_extractor.extract_features,
@@ -303,9 +295,7 @@ class FeatureEngineeringEngine:
             tasks.append(("sequential", task))
 
         if "contextual" in feature_types:
-            room_configs = (
-                {room_config.room_id: room_config} if room_config else {}
-            )
+            room_configs = {room_config.room_id: room_config} if room_config else {}
             task = loop.run_in_executor(
                 self.executor,
                 self.contextual_extractor.extract_features,
@@ -327,15 +317,11 @@ class FeatureEngineeringEngine:
         for i, (feature_type, _) in enumerate(tasks):
             result = results[i]
             if isinstance(result, Exception):
-                logger.error(
-                    f"Failed to extract {feature_type} features: {result}"
-                )
+                logger.error(f"Failed to extract {feature_type} features: {result}")
                 result = {}
 
             # Add prefix to feature names to avoid conflicts
-            prefixed_features = {
-                f"{feature_type}_{k}": v for k, v in result.items()
-            }
+            prefixed_features = {f"{feature_type}_{k}": v for k, v in result.items()}
             combined_features.update(prefixed_features)
 
             self.stats["feature_counts"][feature_type] += len(result)
@@ -363,55 +349,39 @@ class FeatureEngineeringEngine:
                     f"temporal_{k}": v for k, v in temporal_features.items()
                 }
                 combined_features.update(prefixed_temporal)
-                self.stats["feature_counts"]["temporal"] += len(
-                    temporal_features
-                )
+                self.stats["feature_counts"]["temporal"] += len(temporal_features)
         except Exception as e:
             logger.error(f"Failed to extract temporal features: {e}")
 
         try:
             if "sequential" in feature_types:
-                room_configs = (
-                    {room_config.room_id: room_config} if room_config else {}
-                )
-                sequential_features = (
-                    self.sequential_extractor.extract_features(
-                        events, target_time, room_configs, lookback_hours
-                    )
+                room_configs = {room_config.room_id: room_config} if room_config else {}
+                sequential_features = self.sequential_extractor.extract_features(
+                    events, target_time, room_configs, lookback_hours
                 )
                 prefixed_sequential = {
-                    f"sequential_{k}": v
-                    for k, v in sequential_features.items()
+                    f"sequential_{k}": v for k, v in sequential_features.items()
                 }
                 combined_features.update(prefixed_sequential)
-                self.stats["feature_counts"]["sequential"] += len(
-                    sequential_features
-                )
+                self.stats["feature_counts"]["sequential"] += len(sequential_features)
         except Exception as e:
             logger.error(f"Failed to extract sequential features: {e}")
 
         try:
             if "contextual" in feature_types:
-                room_configs = (
-                    {room_config.room_id: room_config} if room_config else {}
-                )
-                contextual_features = (
-                    self.contextual_extractor.extract_features(
-                        events,
-                        room_states,
-                        target_time,
-                        room_configs,
-                        lookback_hours,
-                    )
+                room_configs = {room_config.room_id: room_config} if room_config else {}
+                contextual_features = self.contextual_extractor.extract_features(
+                    events,
+                    room_states,
+                    target_time,
+                    room_configs,
+                    lookback_hours,
                 )
                 prefixed_contextual = {
-                    f"contextual_{k}": v
-                    for k, v in contextual_features.items()
+                    f"contextual_{k}": v for k, v in contextual_features.items()
                 }
                 combined_features.update(prefixed_contextual)
-                self.stats["feature_counts"]["contextual"] += len(
-                    contextual_features
-                )
+                self.stats["feature_counts"]["contextual"] += len(contextual_features)
         except Exception as e:
             logger.error(f"Failed to extract contextual features: {e}")
 
@@ -426,28 +396,32 @@ class FeatureEngineeringEngine:
     ) -> Dict[str, float]:
         """Add metadata features about the extraction context."""
         # Use numpy for efficient normalization and feature processing
-        feature_values = np.array([
-            event_count,
-            room_state_count,
-            target_time.hour,
-            target_time.weekday()
-        ], dtype=np.float64)
-        
+        feature_values = np.array(
+            [event_count, room_state_count, target_time.hour, target_time.weekday()],
+            dtype=np.float64,
+        )
+
         # Normalize using numpy operations
-        normalized_values = np.clip(feature_values / np.array([100.0, 50.0, 24.0, 7.0]), 0.0, 1.0)
-        
+        normalized_values = np.clip(
+            feature_values / np.array([100.0, 50.0, 24.0, 7.0]), 0.0, 1.0
+        )
+
         return {
-            "meta_event_count": float(normalized_values[0] * 100.0),  # Denormalize for interpretability
+            "meta_event_count": float(
+                normalized_values[0] * 100.0
+            ),  # Denormalize for interpretability
             "meta_room_state_count": float(normalized_values[1] * 50.0),
             "meta_extraction_hour": float(feature_values[2]),
             "meta_extraction_day_of_week": float(feature_values[3]),
-            "meta_data_quality_score": float(normalized_values[0]),  # Keep normalized for quality score
-            "meta_feature_vector_norm": float(np.linalg.norm(normalized_values)),  # Add vector norm
+            "meta_data_quality_score": float(
+                normalized_values[0]
+            ),  # Keep normalized for quality score
+            "meta_feature_vector_norm": float(
+                np.linalg.norm(normalized_values)
+            ),  # Add vector norm
         }
 
-    def get_feature_names(
-        self, feature_types: Optional[List[str]] = None
-    ) -> List[str]:
+    def get_feature_names(self, feature_types: Optional[List[str]] = None) -> List[str]:
         """
         Get list of all feature names that will be extracted.
 
@@ -464,21 +438,15 @@ class FeatureEngineeringEngine:
 
         if "temporal" in feature_types:
             temporal_names = self.temporal_extractor.get_feature_names()
-            feature_names.extend(
-                [f"temporal_{name}" for name in temporal_names]
-            )
+            feature_names.extend([f"temporal_{name}" for name in temporal_names])
 
         if "sequential" in feature_types:
             sequential_names = self.sequential_extractor.get_feature_names()
-            feature_names.extend(
-                [f"sequential_{name}" for name in sequential_names]
-            )
+            feature_names.extend([f"sequential_{name}" for name in sequential_names])
 
         if "contextual" in feature_types:
             contextual_names = self.contextual_extractor.get_feature_names()
-            feature_names.extend(
-                [f"contextual_{name}" for name in contextual_names]
-            )
+            feature_names.extend([f"contextual_{name}" for name in contextual_names])
 
         # Add metadata features
         feature_names.extend(
@@ -532,20 +500,12 @@ class FeatureEngineeringEngine:
         contextual_defaults = self.contextual_extractor._get_default_features()
 
         defaults = {}
-        defaults.update(
-            {f"temporal_{k}": v for k, v in temporal_defaults.items()}
-        )
-        defaults.update(
-            {f"sequential_{k}": v for k, v in sequential_defaults.items()}
-        )
-        defaults.update(
-            {f"contextual_{k}": v for k, v in contextual_defaults.items()}
-        )
+        defaults.update({f"temporal_{k}": v for k, v in temporal_defaults.items()})
+        defaults.update({f"sequential_{k}": v for k, v in sequential_defaults.items()})
+        defaults.update({f"contextual_{k}": v for k, v in contextual_defaults.items()})
 
         # Add metadata defaults
-        defaults.update(
-            self._add_metadata_features("unknown", datetime.utcnow(), 0, 0)
-        )
+        defaults.update(self._add_metadata_features("unknown", datetime.utcnow(), 0, 0))
 
         return defaults
 
@@ -584,16 +544,12 @@ class FeatureEngineeringEngine:
 
         # Check if configuration is available
         if not self.config:
-            validation_results["errors"].append(
-                "No system configuration available"
-            )
+            validation_results["errors"].append("No system configuration available")
             validation_results["valid"] = False
 
         # Check room configurations
         if not self.config.rooms:
-            validation_results["warnings"].append(
-                "No room configurations available"
-            )
+            validation_results["warnings"].append("No room configurations available")
 
         # Check feature extractor initialization
         extractors = {
