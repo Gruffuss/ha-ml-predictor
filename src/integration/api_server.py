@@ -284,7 +284,7 @@ async def background_health_check():
         # Start comprehensive health monitoring
         await health_monitor.start_monitoring()
         logger.info("Comprehensive health monitoring started")
-        
+
         # Start automated incident response
         await incident_manager.start_incident_response()
         logger.info("Automated incident response started")
@@ -295,19 +295,24 @@ async def background_health_check():
 
                 # Get system health from comprehensive monitor
                 system_health = health_monitor.get_system_health()
-                
+
                 # Log critical health issues
-                if system_health.overall_status in [HealthStatus.CRITICAL, HealthStatus.DEGRADED]:
+                if system_health.overall_status in [
+                    HealthStatus.CRITICAL,
+                    HealthStatus.DEGRADED,
+                ]:
                     logger.warning(
                         f"System health status: {system_health.overall_status.value}",
                         extra={
-                            'health_score': system_health.health_score(),
-                            'critical_components': system_health.critical_components,
-                            'degraded_components': system_health.degraded_components,
-                            'active_incidents': len(incident_manager.get_active_incidents())
-                        }
+                            "health_score": system_health.health_score(),
+                            "critical_components": system_health.critical_components,
+                            "degraded_components": system_health.degraded_components,
+                            "active_incidents": len(
+                                incident_manager.get_active_incidents()
+                            ),
+                        },
                     )
-                
+
                 # Log incident statistics periodically
                 if config.api.health_check_interval_seconds >= 300:  # Every 5+ minutes
                     incident_stats = incident_manager.get_incident_statistics()
@@ -315,9 +320,11 @@ async def background_health_check():
                         logger.info(
                             f"Active incidents: {incident_stats['active_incidents_count']}",
                             extra={
-                                'incident_statistics': incident_stats,
-                                'auto_recovery_enabled': incident_stats['auto_recovery_enabled']
-                            }
+                                "incident_statistics": incident_stats,
+                                "auto_recovery_enabled": incident_stats[
+                                    "auto_recovery_enabled"
+                                ],
+                            },
                         )
 
             except asyncio.CancelledError:
@@ -329,7 +336,7 @@ async def background_health_check():
         # Stop monitoring systems on shutdown
         await incident_manager.stop_incident_response()
         logger.info("Incident response stopped")
-        
+
         await health_monitor.stop_monitoring()
         logger.info("Health monitoring stopped")
 
@@ -687,7 +694,7 @@ async def comprehensive_health_check():
             HealthStatus.WARNING: "healthy",  # Warning is still healthy
             HealthStatus.DEGRADED: "degraded",
             HealthStatus.CRITICAL: "unhealthy",
-            HealthStatus.UNKNOWN: "unhealthy"
+            HealthStatus.UNKNOWN: "unhealthy",
         }
 
         return {
@@ -696,12 +703,12 @@ async def comprehensive_health_check():
             "system_health": system_health.to_dict(),
             "components": components,
             "monitoring_stats": monitoring_stats,
-            "response_time_seconds": response_time
+            "response_time_seconds": response_time,
         }
 
     except Exception as e:
         logger.error(f"Comprehensive health check failed: {e}", exc_info=True)
-        
+
         # Fallback health response if monitoring system fails
         return {
             "status": "unhealthy",
@@ -709,18 +716,18 @@ async def comprehensive_health_check():
             "system_health": {
                 "overall_status": "critical",
                 "health_score": 0.0,
-                "message": f"Health monitoring system failed: {e}"
+                "message": f"Health monitoring system failed: {e}",
             },
             "components": {
                 "health_monitor": {
                     "component_name": "health_monitor",
                     "status": "critical",
                     "message": f"Health monitoring system failed: {e}",
-                    "error": str(e)
+                    "error": str(e),
                 }
             },
             "error": str(e),
-            "response_time_seconds": (datetime.now() - start_time).total_seconds()
+            "response_time_seconds": (datetime.now() - start_time).total_seconds(),
         }
 
 
@@ -730,24 +737,21 @@ async def get_component_health(component_name: str):
     try:
         health_monitor = get_health_monitor()
         component_health = health_monitor.get_component_health(component_name)
-        
+
         if not component_health:
             raise APIResourceNotFoundError("Component", component_name)
-        
+
         # Get health history
         health_history = health_monitor.get_health_history(component_name, hours=24)
-        
+
         return {
             "component": component_health[component_name].to_dict(),
             "history_24h": [
-                {
-                    "timestamp": timestamp.isoformat(),
-                    "status": status.value
-                }
+                {"timestamp": timestamp.isoformat(), "status": status.value}
                 for timestamp, status in health_history
-            ]
+            ],
         }
-        
+
     except APIResourceNotFoundError:
         raise
     except Exception as e:
@@ -761,9 +765,9 @@ async def get_system_health_summary():
     try:
         health_monitor = get_health_monitor()
         system_health = health_monitor.get_system_health()
-        
+
         return system_health.to_dict()
-        
+
     except Exception as e:
         logger.error(f"System health summary failed: {e}")
         raise APIServerError("system_health_summary", e)
@@ -775,13 +779,13 @@ async def get_health_monitoring_status():
     try:
         health_monitor = get_health_monitor()
         monitoring_stats = health_monitor.get_monitoring_stats()
-        
+
         return {
             "monitoring_system": monitoring_stats,
             "registered_checks": list(health_monitor.health_checks.keys()),
-            "monitoring_active": health_monitor.is_monitoring_active()
+            "monitoring_active": health_monitor.is_monitoring_active(),
         }
-        
+
     except Exception as e:
         logger.error(f"Health monitoring status failed: {e}")
         raise APIServerError("health_monitoring_status", e)
@@ -792,23 +796,23 @@ async def start_health_monitoring():
     """Start health monitoring system."""
     try:
         health_monitor = get_health_monitor()
-        
+
         if health_monitor.is_monitoring_active():
             return {
                 "status": "success",
                 "message": "Health monitoring is already active",
-                "monitoring_active": True
+                "monitoring_active": True,
             }
-        
+
         await health_monitor.start_monitoring()
-        
+
         return {
             "status": "success",
             "message": "Health monitoring started successfully",
             "monitoring_active": True,
-            "registered_checks": len(health_monitor.health_checks)
+            "registered_checks": len(health_monitor.health_checks),
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to start health monitoring: {e}")
         raise APIServerError("start_health_monitoring", e)
@@ -819,22 +823,22 @@ async def stop_health_monitoring():
     """Stop health monitoring system."""
     try:
         health_monitor = get_health_monitor()
-        
+
         if not health_monitor.is_monitoring_active():
             return {
                 "status": "success",
                 "message": "Health monitoring is already stopped",
-                "monitoring_active": False
+                "monitoring_active": False,
             }
-        
+
         await health_monitor.stop_monitoring()
-        
+
         return {
             "status": "success",
             "message": "Health monitoring stopped successfully",
-            "monitoring_active": False
+            "monitoring_active": False,
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to stop health monitoring: {e}")
         raise APIServerError("stop_health_monitoring", e)
@@ -846,16 +850,16 @@ async def get_active_incidents():
     try:
         incident_manager = get_incident_response_manager()
         active_incidents = incident_manager.get_active_incidents()
-        
+
         return {
             "active_incidents_count": len(active_incidents),
             "incidents": {
-                incident_id: incident.to_dict() 
+                incident_id: incident.to_dict()
                 for incident_id, incident in active_incidents.items()
             },
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to get active incidents: {e}")
         raise APIServerError("get_active_incidents", e)
@@ -867,12 +871,12 @@ async def get_incident_details(incident_id: str):
     try:
         incident_manager = get_incident_response_manager()
         incident = incident_manager.get_incident(incident_id)
-        
+
         if not incident:
             raise APIResourceNotFoundError("Incident", incident_id)
-        
+
         return incident.to_dict()
-        
+
     except APIResourceNotFoundError:
         raise
     except Exception as e:
@@ -885,18 +889,20 @@ async def get_incident_history(hours: int = 24):
     """Get incident history for specified time period."""
     try:
         if hours < 1 or hours > 168:  # 1 week max
-            raise HTTPException(status_code=400, detail="Hours must be between 1 and 168")
-        
+            raise HTTPException(
+                status_code=400, detail="Hours must be between 1 and 168"
+            )
+
         incident_manager = get_incident_response_manager()
         incident_history = incident_manager.get_incident_history(hours=hours)
-        
+
         return {
             "time_window_hours": hours,
             "incidents_count": len(incident_history),
             "incidents": [incident.to_dict() for incident in incident_history],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -910,12 +916,9 @@ async def get_incident_statistics():
     try:
         incident_manager = get_incident_response_manager()
         stats = incident_manager.get_incident_statistics()
-        
-        return {
-            "statistics": stats,
-            "timestamp": datetime.now().isoformat()
-        }
-        
+
+        return {"statistics": stats, "timestamp": datetime.now().isoformat()}
+
     except Exception as e:
         logger.error(f"Failed to get incident statistics: {e}")
         raise APIServerError("get_incident_statistics", e)
@@ -926,20 +929,22 @@ async def acknowledge_incident(incident_id: str, acknowledged_by: str = "API_Use
     """Acknowledge an active incident."""
     try:
         incident_manager = get_incident_response_manager()
-        
-        success = await incident_manager.acknowledge_incident(incident_id, acknowledged_by)
-        
+
+        success = await incident_manager.acknowledge_incident(
+            incident_id, acknowledged_by
+        )
+
         if not success:
             raise APIResourceNotFoundError("Incident", incident_id)
-        
+
         return {
             "status": "success",
             "message": f"Incident {incident_id} acknowledged successfully",
             "incident_id": incident_id,
             "acknowledged_by": acknowledged_by,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
     except APIResourceNotFoundError:
         raise
     except Exception as e:
@@ -948,24 +953,26 @@ async def acknowledge_incident(incident_id: str, acknowledged_by: str = "API_Use
 
 
 @app.post("/incidents/{incident_id}/resolve")
-async def resolve_incident(incident_id: str, resolution_notes: str = "Manually resolved via API"):
+async def resolve_incident(
+    incident_id: str, resolution_notes: str = "Manually resolved via API"
+):
     """Manually resolve an active incident."""
     try:
         incident_manager = get_incident_response_manager()
-        
+
         success = await incident_manager.resolve_incident(incident_id, resolution_notes)
-        
+
         if not success:
             raise APIResourceNotFoundError("Incident", incident_id)
-        
+
         return {
             "status": "success",
             "message": f"Incident {incident_id} resolved successfully",
             "incident_id": incident_id,
             "resolution_notes": resolution_notes,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
     except APIResourceNotFoundError:
         raise
     except Exception as e:
@@ -979,14 +986,14 @@ async def start_incident_response():
     try:
         incident_manager = get_incident_response_manager()
         await incident_manager.start_incident_response()
-        
+
         return {
             "status": "success",
             "message": "Incident response system started successfully",
             "response_active": True,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to start incident response: {e}")
         raise APIServerError("start_incident_response", e)
@@ -998,14 +1005,14 @@ async def stop_incident_response():
     try:
         incident_manager = get_incident_response_manager()
         await incident_manager.stop_incident_response()
-        
+
         return {
             "status": "success",
             "message": "Incident response system stopped successfully",
             "response_active": False,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
     except Exception as e:
         logger.error(f"Failed to stop incident response: {e}")
         raise APIServerError("stop_incident_response", e)

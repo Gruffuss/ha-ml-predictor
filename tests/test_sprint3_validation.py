@@ -193,9 +193,7 @@ async def test_sprint3_model_training_basic():
     base_time = (
         1800 + features.iloc[:, 0] * 600
     )  # 30 min +/- 10 min based on first feature
-    targets_data = np.clip(
-        base_time + np.random.normal(0, 300, n_samples), 60, 86400
-    )
+    targets_data = np.clip(base_time + np.random.normal(0, 300, n_samples), 60, 86400)
 
     targets = pd.DataFrame({"time_until_transition_seconds": targets_data})
 
@@ -207,9 +205,7 @@ async def test_sprint3_model_training_basic():
     assert result.training_time_seconds > 0
     assert result.training_samples == n_samples
     assert result.training_score is not None
-    assert (
-        result.training_score >= 0
-    )  # R² can be negative, but should be reasonable
+    assert result.training_score >= 0  # R² can be negative, but should be reasonable
 
     # Check model state
     assert predictor.is_trained is True
@@ -265,9 +261,7 @@ async def test_sprint3_model_prediction_basic():
     prediction_time = datetime.utcnow()
 
     # Make predictions
-    predictions = await predictor.predict(
-        pred_features, prediction_time, "vacant"
-    )
+    predictions = await predictor.predict(pred_features, prediction_time, "vacant")
 
     # Validate predictions
     assert isinstance(predictions, list)
@@ -307,9 +301,7 @@ async def test_sprint3_lstm_sequence_handling():
             sample = np.random.randn(n_features)
         else:
             # Each sample is correlated with previous sample
-            sample = 0.7 * features_data[-1] + 0.3 * np.random.randn(
-                n_features
-            )
+            sample = 0.7 * features_data[-1] + 0.3 * np.random.randn(n_features)
         features_data.append(sample)
 
     features = pd.DataFrame(
@@ -349,9 +341,7 @@ async def test_sprint3_lstm_sequence_handling():
     pred_features = features.tail(
         predictor.sequence_length + 5
     )  # Ensure enough for sequence
-    predictions = await predictor.predict(
-        pred_features, datetime.utcnow(), "occupied"
-    )
+    predictions = await predictor.predict(pred_features, datetime.utcnow(), "occupied")
 
     assert len(predictions) > 0
     assert all(pred.model_type == "lstm" for pred in predictions)
@@ -377,19 +367,13 @@ async def test_sprint3_hmm_state_identification():
         state = i % 3
 
         if state == 0:  # Short stay state
-            features = np.random.normal(
-                [1, -1, 0, 0, 0, 0, 0, 0], 0.5, n_features
-            )
+            features = np.random.normal([1, -1, 0, 0, 0, 0, 0, 0], 0.5, n_features)
             duration = np.random.normal(600, 100)  # ~10 minutes
         elif state == 1:  # Medium stay state
-            features = np.random.normal(
-                [-1, 1, 1, 0, 0, 0, 0, 0], 0.5, n_features
-            )
+            features = np.random.normal([-1, 1, 1, 0, 0, 0, 0, 0], 0.5, n_features)
             duration = np.random.normal(3600, 300)  # ~1 hour
         else:  # Long stay state
-            features = np.random.normal(
-                [0, 0, -1, 1, 1, 0, 0, 0], 0.5, n_features
-            )
+            features = np.random.normal([0, 0, -1, 1, 1, 0, 0, 0], 0.5, n_features)
             duration = np.random.normal(7200, 600)  # ~2 hours
 
         features_data.append(features)
@@ -410,10 +394,7 @@ async def test_sprint3_hmm_state_identification():
 
     # Check state-specific metrics
     assert "n_states" in result.training_metrics
-    assert (
-        result.training_metrics["n_states"]
-        == predictor.model_params["n_components"]
-    )
+    assert result.training_metrics["n_states"] == predictor.model_params["n_components"]
     assert "state_distribution" in result.training_metrics
 
     # Test state info
@@ -424,9 +405,7 @@ async def test_sprint3_hmm_state_identification():
 
     # Test prediction with state information
     pred_features = features.head(10)
-    predictions = await predictor.predict(
-        pred_features, datetime.utcnow(), "unknown"
-    )
+    predictions = await predictor.predict(pred_features, datetime.utcnow(), "unknown")
 
     assert len(predictions) == 10
     for pred in predictions:
@@ -471,9 +450,7 @@ async def test_sprint3_ensemble_training():
         # Complex relationship involving multiple features
         base_time = 1800  # 30 minutes
         base_time += features_data[i, 0] * 400  # Linear component
-        base_time += (
-            features_data[i, 1] * features_data[i, 2] * 200
-        )  # Interaction
+        base_time += features_data[i, 1] * features_data[i, 2] * 200  # Interaction
         base_time += np.sin(i * 0.1) * 300  # Temporal pattern
 
         target = np.clip(base_time + np.random.normal(0, 200), 60, 86400)
@@ -526,9 +503,7 @@ async def test_sprint3_ensemble_training():
         assert pred.model_type == "ensemble"
         assert "base_model_predictions" in pred.prediction_metadata
         assert "model_weights" in pred.prediction_metadata
-        assert (
-            pred.alternatives is not None
-        )  # Should have alternative predictions
+        assert pred.alternatives is not None  # Should have alternative predictions
 
 
 def test_sprint3_model_serialization():
@@ -553,9 +528,7 @@ def test_sprint3_model_serialization():
         load_success = new_predictor.load_model(tmp_file.name)
 
         assert load_success is True
-        assert (
-            new_predictor.room_id == "test_room"
-        )  # Should be loaded from file
+        assert new_predictor.room_id == "test_room"  # Should be loaded from file
         assert new_predictor.model_version == "v1.5"
         assert new_predictor.feature_names == [
             "feature_1",
@@ -655,15 +628,9 @@ def test_sprint3_file_structure():
     assert (base_path / "src" / "models" / "__init__.py").exists()
     assert (base_path / "src" / "models" / "base" / "__init__.py").exists()
     assert (base_path / "src" / "models" / "base" / "predictor.py").exists()
-    assert (
-        base_path / "src" / "models" / "base" / "lstm_predictor.py"
-    ).exists()
-    assert (
-        base_path / "src" / "models" / "base" / "xgboost_predictor.py"
-    ).exists()
-    assert (
-        base_path / "src" / "models" / "base" / "hmm_predictor.py"
-    ).exists()
+    assert (base_path / "src" / "models" / "base" / "lstm_predictor.py").exists()
+    assert (base_path / "src" / "models" / "base" / "xgboost_predictor.py").exists()
+    assert (base_path / "src" / "models" / "base" / "hmm_predictor.py").exists()
 
     # Ensemble file
     assert (base_path / "src" / "models" / "ensemble.py").exists()
@@ -803,9 +770,7 @@ async def test_sprint3_end_to_end_modeling_pipeline():
     test_features = val_features.head(10)
     prediction_time = datetime.utcnow()
 
-    predictions = await ensemble.predict(
-        test_features, prediction_time, "vacant"
-    )
+    predictions = await ensemble.predict(test_features, prediction_time, "vacant")
 
     # Validate predictions
     assert len(predictions) == 10

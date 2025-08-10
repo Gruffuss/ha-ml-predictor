@@ -119,9 +119,7 @@ class TestTemporalFeatureExtractor:
             assert feature in features
             assert isinstance(features[feature], (int, float))
 
-    def test_extract_features_empty_events(
-        self, extractor, empty_events, target_time
-    ):
+    def test_extract_features_empty_events(self, extractor, empty_events, target_time):
         """Test behavior with empty event list."""
         features = extractor.extract_features(empty_events, target_time)
 
@@ -134,9 +132,7 @@ class TestTemporalFeatureExtractor:
         assert features["hour_sin"] == math.sin(2 * math.pi * 15 / 24)  # 3 PM
         assert features["is_work_hours"] == 1.0
 
-    def test_extract_features_single_event(
-        self, extractor, single_event, target_time
-    ):
+    def test_extract_features_single_event(self, extractor, single_event, target_time):
         """Test feature extraction with single event."""
         features = extractor.extract_features(single_event, target_time)
 
@@ -147,9 +143,7 @@ class TestTemporalFeatureExtractor:
 
     def test_time_since_features(self, extractor, sample_events, target_time):
         """Test time-since-last-event features calculation."""
-        features = extractor._extract_time_since_features(
-            sample_events, target_time
-        )
+        features = extractor._extract_time_since_features(sample_events, target_time)
 
         # Check that time calculations are reasonable
         assert "time_since_last_event" in features
@@ -164,9 +158,7 @@ class TestTemporalFeatureExtractor:
 
     def test_duration_features(self, extractor, sample_events, target_time):
         """Test state duration feature calculations."""
-        features = extractor._extract_duration_features(
-            sample_events, target_time
-        )
+        features = extractor._extract_duration_features(sample_events, target_time)
 
         # Check duration features
         assert "current_state_duration" in features
@@ -207,9 +199,7 @@ class TestTemporalFeatureExtractor:
 
     def test_historical_patterns(self, extractor, sample_events, target_time):
         """Test historical pattern feature extraction."""
-        features = extractor._extract_historical_patterns(
-            sample_events, target_time
-        )
+        features = extractor._extract_historical_patterns(sample_events, target_time)
 
         # Check pattern features
         pattern_features = [
@@ -224,9 +214,7 @@ class TestTemporalFeatureExtractor:
             # Activity rates should be between 0 and 1
             assert 0.0 <= features[feature] <= 1.0
 
-    def test_transition_timing_features(
-        self, extractor, sample_events, target_time
-    ):
+    def test_transition_timing_features(self, extractor, sample_events, target_time):
         """Test transition timing feature calculations."""
         features = extractor._extract_transition_timing_features(
             sample_events, target_time
@@ -243,9 +231,7 @@ class TestTemporalFeatureExtractor:
 
     def test_room_state_features(self, extractor, room_states, target_time):
         """Test room state feature extraction."""
-        features = extractor._extract_room_state_features(
-            room_states, target_time
-        )
+        features = extractor._extract_room_state_features(room_states, target_time)
 
         # Check room state features
         assert "avg_occupancy_confidence" in features
@@ -315,9 +301,7 @@ class TestTemporalFeatureExtractor:
         ]
         room_states_batches = [room_states, room_states[:2]]
 
-        results = extractor.extract_batch_features(
-            event_batches, room_states_batches
-        )
+        results = extractor.extract_batch_features(event_batches, room_states_batches)
 
         assert len(results) == 2
         assert all(isinstance(result, dict) for result in results)
@@ -488,9 +472,7 @@ class TestTemporalFeatureExtractor:
                 assert features[feature] in [0.0, 1.0]
 
     @pytest.mark.asyncio
-    async def test_concurrent_extraction(
-        self, extractor, sample_events, target_time
-    ):
+    async def test_concurrent_extraction(self, extractor, sample_events, target_time):
         """Test thread safety of feature extraction."""
         import asyncio
 

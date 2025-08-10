@@ -96,9 +96,7 @@ class MemoryProfiler:
 
         return False
 
-    def get_top_memory_allocations(
-        self, count: int = 10
-    ) -> List[Dict[str, Any]]:
+    def get_top_memory_allocations(self, count: int = 10) -> List[Dict[str, Any]]:
         """Get top memory allocations from latest snapshot."""
         if not self.snapshots:
             return []
@@ -113,9 +111,7 @@ class MemoryProfiler:
                     "size_mb": stat.size / 1024 / 1024,
                     "count": stat.count,
                     "filename": (
-                        stat.traceback.format()[-1]
-                        if stat.traceback
-                        else "Unknown"
+                        stat.traceback.format()[-1] if stat.traceback else "Unknown"
                     ),
                 }
             )
@@ -300,9 +296,7 @@ class TestMemoryProfiling:
                         "entity_id": f"binary_sensor.motion_{i}",
                         "state": "on" if i % 2 == 0 else "of",
                         "old_state": {"state": "of" if i % 2 == 0 else "on"},
-                        "time_fired": (
-                            base_time + timedelta(seconds=i)
-                        ).isoformat(),
+                        "time_fired": (base_time + timedelta(seconds=i)).isoformat(),
                         "attributes": {
                             "friendly_name": f"Motion Sensor {i}",
                             "data": f"test_data_{i}",
@@ -315,9 +309,7 @@ class TestMemoryProfiling:
 
                 processing_tasks = []
                 for event_data in events:
-                    processing_tasks.append(
-                        processor.process_event(event_data)
-                    )
+                    processing_tasks.append(processor.process_event(event_data))
 
                 await asyncio.gather(*processing_tasks)
 
@@ -348,9 +340,7 @@ class TestMemoryProfiling:
             largest_batch = memory_by_batch[max(batch_sizes)]
             smallest_batch = memory_by_batch[min(batch_sizes)]
 
-            scaling_ratio = (
-                largest_batch["increase"] / smallest_batch["increase"]
-            )
+            scaling_ratio = largest_batch["increase"] / smallest_batch["increase"]
             batch_size_ratio = max(batch_sizes) / min(batch_sizes)
 
             # Memory scaling should be reasonable (not more than 2x the batch size ratio)
@@ -431,9 +421,7 @@ class TestMemoryProfiling:
 
                 # Check for consistent leak pattern
                 has_leak = memory_profiler.detect_memory_leak(threshold_mb=3.0)
-                assert (
-                    not has_leak
-                ), "Memory leak pattern detected in long-running test"
+                assert not has_leak, "Memory leak pattern detected in long-running test"
 
     async def test_garbage_collection_effectiveness(self, memory_profiler):
         """Test effectiveness of garbage collection in releasing memory."""
@@ -447,9 +435,7 @@ class TestMemoryProfiling:
         for i in range(100):
             # Create large DataFrame that should be collectible
             large_df = pd.DataFrame(np.random.random((1000, 50)))
-            large_dict = {
-                f"key_{j}": np.random.random(100) for j in range(100)
-            }
+            large_dict = {f"key_{j}": np.random.random(100) for j in range(100)}
 
             large_objects.append(
                 {
@@ -478,9 +464,7 @@ class TestMemoryProfiling:
         memory_created = after_creation_memory - initial_memory
         memory_recovered = before_gc_memory - after_gc_memory
         recovery_rate = (
-            (memory_recovered / memory_created) * 100
-            if memory_created > 0
-            else 0
+            (memory_recovered / memory_created) * 100 if memory_created > 0 else 0
         )
 
         print("\nGarbage Collection Effectiveness:")
@@ -494,12 +478,8 @@ class TestMemoryProfiling:
         print(f"Objects collected: {collected}")
 
         # Garbage collection should be effective
-        assert (
-            memory_recovered > 0
-        ), "Garbage collection should recover some memory"
-        assert (
-            recovery_rate > 50
-        ), f"GC recovery rate {recovery_rate:.1f}% too low"
+        assert memory_recovered > 0, "Garbage collection should recover some memory"
+        assert recovery_rate > 50, f"GC recovery rate {recovery_rate:.1f}% too low"
 
     def test_object_lifecycle_memory_tracking(self):
         """Test memory tracking for object lifecycles."""

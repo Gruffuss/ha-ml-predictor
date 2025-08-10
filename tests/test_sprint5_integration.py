@@ -286,9 +286,7 @@ class TestTrackingIntegrationManager:
             await manager.shutdown()
 
     @pytest.mark.asyncio
-    async def test_integration_manager_initialization(
-        self, integration_manager
-    ):
+    async def test_integration_manager_initialization(self, integration_manager):
         """Test TrackingIntegrationManager initializes correctly."""
         assert integration_manager._integration_active
         assert integration_manager.enhanced_mqtt_manager is not None
@@ -375,18 +373,14 @@ class TestEnhancedMQTTIntegrationManager:
                 await manager.shutdown()
 
     @pytest.mark.asyncio
-    async def test_enhanced_mqtt_manager_initialization(
-        self, enhanced_mqtt_manager
-    ):
+    async def test_enhanced_mqtt_manager_initialization(self, enhanced_mqtt_manager):
         """Test enhanced MQTT manager initializes with real-time capabilities."""
         assert enhanced_mqtt_manager.base_mqtt_manager is not None
         assert enhanced_mqtt_manager.realtime_publisher is not None
         assert enhanced_mqtt_manager._integration_active
 
     @pytest.mark.asyncio
-    async def test_prediction_publishing_with_realtime(
-        self, enhanced_mqtt_manager
-    ):
+    async def test_prediction_publishing_with_realtime(self, enhanced_mqtt_manager):
         """Test prediction publishing across multiple channels."""
         prediction_data = {
             "room_id": "test_room",
@@ -394,9 +388,7 @@ class TestEnhancedMQTTIntegrationManager:
             "confidence": 0.85,
         }
 
-        await enhanced_mqtt_manager.publish_prediction(
-            "test_room", prediction_data
-        )
+        await enhanced_mqtt_manager.publish_prediction("test_room", prediction_data)
 
         # Verify both MQTT and real-time publishing were called
         enhanced_mqtt_manager.base_mqtt_manager.publish_prediction.assert_called_once()
@@ -429,18 +421,14 @@ class TestAPIServerIntegration:
             # Set tracking manager for API endpoints
             set_tracking_manager(mock_tracking_manager)
 
-            server = await integrate_with_tracking_manager(
-                mock_tracking_manager
-            )
+            server = await integrate_with_tracking_manager(mock_tracking_manager)
             yield server
 
             if server.is_running():
                 await server.stop()
 
     @pytest.mark.asyncio
-    async def test_api_server_integration(
-        self, api_server, mock_tracking_manager
-    ):
+    async def test_api_server_integration(self, api_server, mock_tracking_manager):
         """Test API server integrates correctly with TrackingManager."""
         assert api_server.tracking_manager == mock_tracking_manager
         assert not api_server.is_running()  # Not started yet
@@ -524,9 +512,7 @@ class TestAPIServerIntegration:
                 )
 
     @pytest.mark.asyncio
-    async def test_api_retrain_endpoint(
-        self, mock_tracking_manager, mock_api_config
-    ):
+    async def test_api_retrain_endpoint(self, mock_tracking_manager, mock_api_config):
         """Test manual retrain endpoint."""
         with patch("src.integration.api_server.get_config") as mock_get_config:
             # Configure mock config
@@ -596,17 +582,13 @@ class TestSystemIntegrationFlow:
                 )
 
                 # Create API server integration
-                with patch(
-                    "src.integration.api_server.get_config"
-                ) as mock_get_config:
+                with patch("src.integration.api_server.get_config") as mock_get_config:
                     mock_config = Mock()
                     mock_config.api = mock_api_config
                     mock_config.rooms = {"test_room": Mock()}
                     mock_get_config.return_value = mock_config
 
-                    api_server = await integrate_with_tracking_manager(
-                        tracking_manager
-                    )
+                    api_server = await integrate_with_tracking_manager(tracking_manager)
 
                 yield {
                     "tracking_manager": tracking_manager,
@@ -648,9 +630,7 @@ class TestSystemIntegrationFlow:
             "prediction_time": datetime.utcnow().isoformat(),
             "confidence": 0.85,
         }
-        mock_tracking.get_room_prediction = AsyncMock(
-            return_value=prediction_data
-        )
+        mock_tracking.get_room_prediction = AsyncMock(return_value=prediction_data)
 
         # Simulate prediction request
         result = await tracking_manager.get_room_prediction("test_room")
@@ -709,9 +689,7 @@ class TestErrorHandlingAndRecovery:
             "src.integration.tracking_integration.EnhancedMQTTIntegrationManager"
         ) as mock_mqtt_class:
             # Make MQTT manager initialization fail
-            mock_mqtt_class.side_effect = Exception(
-                "MQTT initialization failed"
-            )
+            mock_mqtt_class.side_effect = Exception("MQTT initialization failed")
 
             manager = TrackingIntegrationManager(
                 tracking_manager=mock_tracking_manager,
@@ -834,9 +812,7 @@ class TestConfigurationAndDiscovery:
             mock_config.rooms = {"test_room": Mock()}
             mock_get_config.return_value = mock_config
 
-            with patch(
-                "src.integration.api_server.get_mqtt_manager"
-            ) as mock_mqtt:
+            with patch("src.integration.api_server.get_mqtt_manager") as mock_mqtt:
                 mock_mqtt_manager = AsyncMock()
                 mock_mqtt_manager.cleanup_discovery = AsyncMock()
                 mock_mqtt_manager.initialize = AsyncMock()

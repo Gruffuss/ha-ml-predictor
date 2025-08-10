@@ -50,9 +50,7 @@ def optimization_config():
 def mock_accuracy_tracker():
     """Mock accuracy tracker for optimization."""
     tracker = Mock()
-    tracker.get_recent_performance = AsyncMock(
-        return_value=[0.8, 0.82, 0.79, 0.85]
-    )
+    tracker.get_recent_performance = AsyncMock(return_value=[0.8, 0.82, 0.79, 0.85])
     return tracker
 
 
@@ -247,9 +245,7 @@ class TestModelOptimizerInitialization:
         lstm_space = optimizer._get_parameter_space("lstm", {})
         xgboost_space = optimizer._get_parameter_space("xgboost", {})
 
-        assert (
-            lstm_space is not None or len(lstm_space) == 0
-        )  # May be empty in mock
+        assert lstm_space is not None or len(lstm_space) == 0  # May be empty in mock
         assert xgboost_space is not None or len(xgboost_space) == 0
 
 
@@ -270,9 +266,7 @@ class TestOptimizationStrategies:
             "max_depth": (3, 10),
         }
 
-        with patch.object(
-            optimizer, "_get_parameter_space", return_value=param_space
-        ):
+        with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             # Run optimization
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
@@ -308,9 +302,7 @@ class TestOptimizationStrategies:
             "max_depth": [3, 5, 7],
         }
 
-        with patch.object(
-            optimizer, "_get_parameter_space", return_value=param_space
-        ):
+        with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
                 model_type="test_model",
@@ -341,9 +333,7 @@ class TestOptimizationStrategies:
 
         param_space = {"learning_rate": (0.01, 0.3), "n_estimators": (50, 200)}
 
-        with patch.object(
-            optimizer, "_get_parameter_space", return_value=param_space
-        ):
+        with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
                 model_type="test_model",
@@ -372,9 +362,7 @@ class TestOptimizationStrategies:
 
         param_space = {"learning_rate": (0.01, 0.3), "n_estimators": (50, 200)}
 
-        with patch.object(
-            optimizer, "_get_parameter_space", return_value=param_space
-        ):
+        with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
                 model_type="test_model",
@@ -422,9 +410,7 @@ class TestObjectiveFunctions:
         X_train, X_val, y_train, y_val = synthetic_training_data
 
         # Set confidence calibration objective
-        optimizer.config.objective = (
-            OptimizationObjective.CONFIDENCE_CALIBRATION
-        )
+        optimizer.config.objective = OptimizationObjective.CONFIDENCE_CALIBRATION
 
         # Mock confidence calibration in predictor
         mock_base_predictor.evaluate_confidence_calibration = AsyncMock(
@@ -478,9 +464,7 @@ class TestOptimizationConstraints:
 
         start_time = time.time()
 
-        with patch.object(
-            optimizer, "_get_parameter_space", return_value=param_space
-        ):
+        with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
                 model_type="test_model",
@@ -492,10 +476,7 @@ class TestOptimizationConstraints:
         elapsed_time = time.time() - start_time
 
         # Should respect time constraint (with some tolerance)
-        assert (
-            elapsed_time
-            <= optimizer.config.max_optimization_time_minutes * 60 + 10
-        )
+        assert elapsed_time <= optimizer.config.max_optimization_time_minutes * 60 + 10
         assert isinstance(result, OptimizationResult)
 
     @pytest.mark.asyncio
@@ -511,12 +492,8 @@ class TestOptimizationConstraints:
 
         # Mock performance measurement
         with (
-            patch.object(
-                optimizer, "_measure_prediction_latency", return_value=45.0
-            ),
-            patch.object(
-                optimizer, "_measure_memory_usage", return_value=80.0
-            ),
+            patch.object(optimizer, "_measure_prediction_latency", return_value=45.0),
+            patch.object(optimizer, "_measure_memory_usage", return_value=80.0),
         ):
 
             param_space = {"learning_rate": (0.01, 0.1)}
@@ -541,8 +518,7 @@ class TestOptimizationConstraints:
                     )
                 if result.memory_usage_mb:
                     assert (
-                        result.memory_usage_mb
-                        <= optimizer.config.max_memory_usage_mb
+                        result.memory_usage_mb <= optimizer.config.max_memory_usage_mb
                     )
 
     @pytest.mark.asyncio
@@ -553,9 +529,7 @@ class TestOptimizationConstraints:
         X_train, X_val, y_train, y_val = synthetic_training_data
 
         # Set high minimum improvement threshold
-        optimizer.config.min_improvement_threshold = (
-            0.20  # 20% improvement required
-        )
+        optimizer.config.min_improvement_threshold = 0.20  # 20% improvement required
 
         # Mock baseline performance
         baseline_score = 0.85
@@ -600,9 +574,7 @@ class TestOptimizationHistory:
 
         param_space = {"learning_rate": (0.01, 0.1)}
 
-        with patch.object(
-            optimizer, "_get_parameter_space", return_value=param_space
-        ):
+        with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
                 model_type="test_model",
@@ -627,9 +599,7 @@ class TestOptimizationHistory:
         model_key = "test_room_test_model"
 
         # Mock successful optimization
-        with patch.object(
-            optimizer, "_bayesian_optimization"
-        ) as mock_bayesian:
+        with patch.object(optimizer, "_bayesian_optimization") as mock_bayesian:
             mock_result = OptimizationResult(
                 success=True,
                 optimization_time_seconds=30.0,
@@ -662,8 +632,7 @@ class TestOptimizationHistory:
                 ):
                     assert model_key in optimizer._parameter_cache
                     assert (
-                        optimizer._parameter_cache[model_key]
-                        == result.best_parameters
+                        optimizer._parameter_cache[model_key] == result.best_parameters
                     )
 
     @pytest.mark.asyncio
@@ -683,8 +652,7 @@ class TestOptimizationHistory:
             performance_values
         )
         assert (
-            list(optimizer._performance_history[room_model_key])
-            == performance_values
+            list(optimizer._performance_history[room_model_key]) == performance_values
         )
 
 
@@ -692,9 +660,7 @@ class TestOptimizationDecisionLogic:
     """Test optimization decision logic and triggers."""
 
     @pytest.mark.asyncio
-    async def test_should_optimize_decision(
-        self, optimizer, performance_context
-    ):
+    async def test_should_optimize_decision(self, optimizer, performance_context):
         """Test optimization need decision logic."""
         model_type = "lstm"
         room_id = "test_room"
@@ -706,12 +672,8 @@ class TestOptimizationDecisionLogic:
             "drift_detected": True,
         }
 
-        should_optimize = optimizer._should_optimize(
-            model_type, room_id, poor_context
-        )
-        assert (
-            should_optimize is True
-        )  # Should optimize due to poor performance
+        should_optimize = optimizer._should_optimize(model_type, room_id, poor_context)
+        assert should_optimize is True  # Should optimize due to poor performance
 
         # Test with excellent performance
         excellent_context = {
@@ -850,15 +812,11 @@ class TestErrorHandling:
 
         # Mock predictor that fails training
         failing_predictor = Mock(spec=BasePredictor)
-        failing_predictor.train = AsyncMock(
-            side_effect=Exception("Training failed")
-        )
+        failing_predictor.train = AsyncMock(side_effect=Exception("Training failed"))
 
         param_space = {"learning_rate": (0.01, 0.1)}
 
-        with patch.object(
-            optimizer, "_get_parameter_space", return_value=param_space
-        ):
+        with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             result = await optimizer.optimize_model_parameters(
                 model=failing_predictor,
                 model_type="failing_model",
@@ -924,9 +882,7 @@ class TestErrorHandling:
 
         param_space = {"learning_rate": (0.01, 0.1)}
 
-        with patch.object(
-            optimizer, "_get_parameter_space", return_value=param_space
-        ):
+        with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
                 model_type="slow_model",
@@ -952,9 +908,7 @@ class TestPerformanceOptimization:
 
         param_space = {"learning_rate": (0.01, 0.1)}
 
-        with patch.object(
-            optimizer, "_get_parameter_space", return_value=param_space
-        ):
+        with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
                 model_type="test_model",

@@ -317,7 +317,7 @@ class ConfigLoader:
         """Create SystemConfig from dictionary (used by environment manager)."""
         # Load rooms config
         rooms_config = self._load_yaml("rooms.yaml")
-        
+
         # Create configuration objects from processed config
         ha_config = HomeAssistantConfig(**config_dict.get("home_assistant", {}))
         db_config = DatabaseConfig(**config_dict.get("database", {}))
@@ -374,9 +374,10 @@ def get_config(environment: Optional[str] = None) -> SystemConfig:
         # Try to use environment manager if available
         try:
             from .environment import get_environment_manager
+
             env_manager = get_environment_manager()
             config = env_manager.load_environment_config()
-            
+
             # Convert dict back to SystemConfig objects
             loader = ConfigLoader()
             # Use the environment manager's processed config
@@ -393,9 +394,10 @@ def reload_config(environment: Optional[str] = None) -> SystemConfig:
     global _config_instance
     try:
         from .environment import get_environment_manager
+
         env_manager = get_environment_manager()
         config = env_manager.load_environment_config()
-        
+
         # Convert dict back to SystemConfig objects
         loader = ConfigLoader()
         _config_instance = loader._create_system_config(config)

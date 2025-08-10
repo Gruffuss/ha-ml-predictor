@@ -76,9 +76,7 @@ class TestSensorEvent:
         assert event.is_human_triggered is True  # Default value
 
     @pytest.mark.asyncio
-    async def test_get_recent_events(
-        self, test_db_session, sample_sensor_events
-    ):
+    async def test_get_recent_events(self, test_db_session, sample_sensor_events):
         """Test getting recent events for a room."""
         # Add events to database
         for event in sample_sensor_events:
@@ -272,9 +270,7 @@ class TestRoomState:
         await test_db_session.commit()
 
         # Get current state
-        current_state = await RoomState.get_current_state(
-            test_db_session, "office"
-        )
+        current_state = await RoomState.get_current_state(test_db_session, "office")
 
         assert current_state is not None
         assert current_state.timestamp == base_time
@@ -450,8 +446,7 @@ class TestPrediction:
                 confidence_score=0.9,
                 model_type="lstm",
                 model_version="v1.0",
-                actual_transition_time=base_time
-                - timedelta(hours=23, minutes=5),
+                actual_transition_time=base_time - timedelta(hours=23, minutes=5),
                 accuracy_minutes=5.0,
                 is_accurate=True,
                 validation_timestamp=base_time - timedelta(hours=22),
@@ -465,8 +460,7 @@ class TestPrediction:
                 confidence_score=0.7,
                 model_type="lstm",
                 model_version="v1.0",
-                actual_transition_time=base_time
-                - timedelta(hours=46, minutes=30),
+                actual_transition_time=base_time - timedelta(hours=46, minutes=30),
                 accuracy_minutes=30.0,
                 is_accurate=False,
                 validation_timestamp=base_time - timedelta(hours=46),
@@ -480,8 +474,7 @@ class TestPrediction:
                 confidence_score=0.8,
                 model_type="lstm",
                 model_version="v1.0",
-                actual_transition_time=base_time
-                - timedelta(hours=70, minutes=50),
+                actual_transition_time=base_time - timedelta(hours=70, minutes=50),
                 accuracy_minutes=10.0,
                 is_accurate=True,
                 validation_timestamp=base_time - timedelta(hours=70),
@@ -727,8 +720,7 @@ class TestModelApplicationLevelRelationships:
         prediction = Prediction(
             room_id="test_room",
             prediction_time=datetime.utcnow(),
-            predicted_transition_time=datetime.utcnow()
-            + timedelta(minutes=15),
+            predicted_transition_time=datetime.utcnow() + timedelta(minutes=15),
             transition_type="occupied_to_vacant",
             confidence_score=0.8,
             model_type="lstm",
@@ -770,8 +762,7 @@ class TestModelApplicationLevelRelationships:
         prediction = Prediction(
             room_id="test_room",
             prediction_time=datetime.utcnow(),
-            predicted_transition_time=datetime.utcnow()
-            + timedelta(minutes=20),
+            predicted_transition_time=datetime.utcnow() + timedelta(minutes=20),
             transition_type="occupied_to_vacant",
             confidence_score=0.75,
             model_type="xgboost",
@@ -816,9 +807,7 @@ class TestModelConstraints:
             await test_db_session.commit()
             # Should succeed
         except IntegrityError:
-            pytest.fail(
-                "Valid confidence score should not raise IntegrityError"
-            )
+            pytest.fail("Valid confidence score should not raise IntegrityError")
 
     @pytest.mark.asyncio
     async def test_model_accuracy_constraints(self, test_db_session):
@@ -987,9 +976,7 @@ class TestModelIntegration:
             ).total_seconds()
             / 60
         )
-        prediction.is_accurate = (
-            prediction.accuracy_minutes <= 15
-        )  # Within threshold
+        prediction.is_accurate = prediction.accuracy_minutes <= 15  # Within threshold
         prediction.validation_timestamp = datetime.utcnow()
 
         await test_db_session.commit()
@@ -1017,8 +1004,7 @@ class TestModelIntegration:
 
         # Check accuracy calculation
         expected_accuracy = abs(
-            (predicted_transition - actual_event.timestamp).total_seconds()
-            / 60
+            (predicted_transition - actual_event.timestamp).total_seconds() / 60
         )
         assert abs(prediction.accuracy_minutes - expected_accuracy) < 0.1
 

@@ -200,9 +200,7 @@ class TestHomeAssistantClient:
 
     def test_ha_client_init_no_config(self):
         """Test HomeAssistantClient initialization without config."""
-        with patch(
-            "src.data.ingestion.ha_client.get_config"
-        ) as mock_get_config:
+        with patch("src.data.ingestion.ha_client.get_config") as mock_get_config:
             mock_config = Mock()
             mock_get_config.return_value = mock_config
 
@@ -360,9 +358,7 @@ class TestHomeAssistantClient:
         assert exc_info.value.context["status_code"] == 500
 
     @pytest.mark.asyncio
-    async def test_test_authentication_connection_error(
-        self, test_system_config
-    ):
+    async def test_test_authentication_connection_error(self, test_system_config):
         """Test authentication with connection error."""
         client = HomeAssistantClient(test_system_config)
 
@@ -391,9 +387,7 @@ class TestHomeAssistantClient:
 
             # Should create WebSocket connection
             expected_url = (
-                test_system_config.home_assistant.url.replace(
-                    "http://", "ws://"
-                )
+                test_system_config.home_assistant.url.replace("http://", "ws://")
                 + "/api/websocket"
             )
             mock_connect.assert_called_once_with(
@@ -412,9 +406,7 @@ class TestHomeAssistantClient:
         """Test WebSocket connection failure."""
         client = HomeAssistantClient(test_system_config)
 
-        with patch(
-            "websockets.connect", side_effect=ConnectionClosed(None, None)
-        ):
+        with patch("websockets.connect", side_effect=ConnectionClosed(None, None)):
             with pytest.raises(WebSocketError):
                 await client._connect_websocket()
 
@@ -438,10 +430,7 @@ class TestHomeAssistantClient:
         assert mock_websocket.send.call_count == 1
         sent_data = json.loads(mock_websocket.send.call_args[0][0])
         assert sent_data["type"] == "auth"
-        assert (
-            sent_data["access_token"]
-            == test_system_config.home_assistant.token
-        )
+        assert sent_data["access_token"] == test_system_config.home_assistant.token
 
     @pytest.mark.asyncio
     async def test_authenticate_websocket_wrong_initial_message(
@@ -460,9 +449,7 @@ class TestHomeAssistantClient:
             await client._authenticate_websocket()
 
     @pytest.mark.asyncio
-    async def test_authenticate_websocket_auth_failed(
-        self, test_system_config
-    ):
+    async def test_authenticate_websocket_auth_failed(self, test_system_config):
         """Test WebSocket authentication failure."""
         client = HomeAssistantClient(test_system_config)
 
@@ -499,7 +486,9 @@ class TestHomeAssistantClient:
 
         assert result == expected_state
         client.rate_limiter.acquire.assert_called_once()
-        expected_url = f"{test_system_config.home_assistant.url}/api/states/binary_sensor.test"
+        expected_url = (
+            f"{test_system_config.home_assistant.url}/api/states/binary_sensor.test"
+        )
         mock_session.get.assert_called_once_with(expected_url)
 
     @pytest.mark.asyncio
@@ -554,9 +543,7 @@ class TestHomeAssistantClient:
 
         mock_response = AsyncMock()
         mock_response.status = 200
-        mock_response.json.return_value = [
-            expected_history
-        ]  # HA returns list of lists
+        mock_response.json.return_value = [expected_history]  # HA returns list of lists
         mock_session = AsyncMock()
         mock_session.get.return_value.__aenter__.return_value = mock_response
         client.session = mock_session
@@ -577,9 +564,7 @@ class TestHomeAssistantClient:
         assert kwargs["params"]["end_time"] == end_time.isoformat() + "Z"
 
     @pytest.mark.asyncio
-    async def test_get_entity_history_default_end_time(
-        self, test_system_config
-    ):
+    async def test_get_entity_history_default_end_time(self, test_system_config):
         """Test entity history retrieval with default end time."""
         client = HomeAssistantClient(test_system_config)
         client.rate_limiter = AsyncMock()
@@ -614,9 +599,7 @@ class TestHomeAssistantClient:
         client.session = mock_session
 
         with pytest.raises(EntityNotFoundError):
-            await client.get_entity_history(
-                "binary_sensor.nonexistent", start_time
-            )
+            await client.get_entity_history("binary_sensor.nonexistent", start_time)
 
     @pytest.mark.asyncio
     async def test_validate_entities_success(self, test_system_config):
@@ -712,15 +695,13 @@ class TestHomeAssistantClient:
             {
                 "entity_id": "binary_sensor.test",
                 "state": "on",
-                "last_changed": (base_time + timedelta(minutes=5)).isoformat()
-                + "Z",
+                "last_changed": (base_time + timedelta(minutes=5)).isoformat() + "Z",
                 "attributes": {"device_class": "motion"},
             },
             {
                 "entity_id": "binary_sensor.test",
                 "state": "of",
-                "last_changed": (base_time + timedelta(minutes=10)).isoformat()
-                + "Z",
+                "last_changed": (base_time + timedelta(minutes=10)).isoformat() + "Z",
                 "attributes": {"device_class": "motion"},
             },
         ]
@@ -740,9 +721,7 @@ class TestHomeAssistantClient:
 
         # Check second event
         assert events[1].state == "on"
-        assert (
-            events[1].previous_state == "of"
-        )  # Previous state from last event
+        assert events[1].previous_state == "of"  # Previous state from last event
 
         # Check third event
         assert events[2].state == "of"
@@ -925,9 +904,7 @@ class TestHomeAssistantClientWebSocketHandling:
     async def test_handle_event_not_subscribed(self, test_system_config):
         """Test WebSocket event for non-subscribed entity."""
         client = HomeAssistantClient(test_system_config)
-        client._subscribed_entities = {
-            "binary_sensor.other"
-        }  # Different entity
+        client._subscribed_entities = {"binary_sensor.other"}  # Different entity
 
         handler_calls = []
 
@@ -954,9 +931,7 @@ class TestHomeAssistantClientWebSocketHandling:
         assert len(handler_calls) == 0
 
     @pytest.mark.asyncio
-    async def test_should_process_event_deduplication(
-        self, test_system_config
-    ):
+    async def test_should_process_event_deduplication(self, test_system_config):
         """Test event deduplication logic."""
         client = HomeAssistantClient(test_system_config)
 

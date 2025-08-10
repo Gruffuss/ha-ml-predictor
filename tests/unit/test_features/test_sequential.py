@@ -198,9 +198,7 @@ class TestSequentialFeatureExtractor:
 
     def test_room_transition_features(self, extractor, multi_room_events):
         """Test room transition feature calculations."""
-        features = extractor._extract_room_transition_features(
-            multi_room_events
-        )
+        features = extractor._extract_room_transition_features(multi_room_events)
 
         # Should detect room transitions
         assert features["room_transition_count"] > 0
@@ -232,9 +230,7 @@ class TestSequentialFeatureExtractor:
 
     def test_sensor_sequence_features(self, extractor, single_room_events):
         """Test sensor sequence feature calculations."""
-        features = extractor._extract_sensor_sequence_features(
-            single_room_events
-        )
+        features = extractor._extract_sensor_sequence_features(single_room_events)
 
         # Check sensor features
         assert "unique_sensors_triggered" in features
@@ -261,9 +257,7 @@ class TestSequentialFeatureExtractor:
 
         # Should detect multiple active rooms
         assert features["active_room_count"] >= 2  # living_room and kitchen
-        assert (
-            features["multi_room_sequence_ratio"] > 0
-        )  # Has room transitions
+        assert features["multi_room_sequence_ratio"] > 0  # Has room transitions
 
     @patch("src.features.sequential.MovementPatternClassifier")
     def test_movement_classification_features(
@@ -420,9 +414,7 @@ class TestSequentialFeatureExtractor:
             features["sensor_revisit_count"] == 4.0
         )  # 5 total - 1 initial = 4 revisits
 
-    def test_empty_room_configs(
-        self, extractor, multi_room_events, target_time
-    ):
+    def test_empty_room_configs(self, extractor, multi_room_events, target_time):
         """Test behavior with empty room configurations."""
         features = extractor.extract_features(
             multi_room_events, target_time, room_configs={}, lookback_hours=2
@@ -585,9 +577,7 @@ class TestSequentialFeatureExtractor:
         # Check diversity calculation accuracy
         import math
 
-        assert (
-            abs(features["sensor_diversity_score"] - expected_diversity) < 0.01
-        )
+        assert abs(features["sensor_diversity_score"] - expected_diversity) < 0.01
 
     @pytest.mark.asyncio
     async def test_concurrent_extraction(
@@ -678,9 +668,7 @@ class TestSequentialFeatureExtractorMovementPatterns:
         # - High room revisit ratio
         # - High burst ratio
         assert features["movement_velocity_score"] > 0.6  # Fast movement
-        assert (
-            features["room_revisit_ratio"] > 0.5
-        )  # Frequent returns to same room
+        assert features["room_revisit_ratio"] > 0.5  # Frequent returns to same room
 
     def test_door_interaction_patterns(self, extractor):
         """Test door interaction feature calculations."""

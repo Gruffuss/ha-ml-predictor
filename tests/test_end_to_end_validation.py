@@ -207,9 +207,7 @@ class MockExternalServices:
             if websocket in self.websocket_clients:
                 self.websocket_clients.remove(websocket)
 
-    def add_ha_event(
-        self, entity_id: str, state: str, timestamp: datetime = None
-    ):
+    def add_ha_event(self, entity_id: str, state: str, timestamp: datetime = None):
         """Add a Home Assistant event for testing."""
         if timestamp is None:
             timestamp = datetime.utcnow()
@@ -236,18 +234,12 @@ async def mock_external_services():
 
 
 @pytest_asyncio.fixture
-async def complete_system(
-    e2e_system_config, e2e_room_configs, mock_external_services
-):
+async def complete_system(e2e_system_config, e2e_room_configs, mock_external_services):
     """Create a complete system for E2E testing."""
 
     # Patch external services
-    with patch(
-        "src.data.ingestion.ha_client.HomeAssistantClient"
-    ) as mock_ha_class:
-        with patch(
-            "src.integration.mqtt_publisher.MQTTPublisher"
-        ) as mock_mqtt_class:
+    with patch("src.data.ingestion.ha_client.HomeAssistantClient") as mock_ha_class:
+        with patch("src.integration.mqtt_publisher.MQTTPublisher") as mock_mqtt_class:
             with patch(
                 "src.integration.realtime_publisher.RealtimePublishingSystem"
             ) as mock_realtime_class:
@@ -274,11 +266,7 @@ async def complete_system(
                         setattr(
                             mock_config,
                             key,
-                            (
-                                Mock(**value)
-                                if isinstance(value, dict)
-                                else value
-                            ),
+                            (Mock(**value) if isinstance(value, dict) else value),
                         )
 
                     # Add API config to disable authentication and rate limiting for tests
@@ -348,9 +336,7 @@ async def complete_system(
                             mock_tracking.get_accuracy_metrics = AsyncMock()
                             mock_tracking.get_system_stats = AsyncMock()
                             mock_tracking.get_tracking_status = AsyncMock()
-                            mock_tracking.get_active_alerts = AsyncMock(
-                                return_value=[]
-                            )
+                            mock_tracking.get_active_alerts = AsyncMock(return_value=[])
                             mock_tracking.trigger_manual_retrain = AsyncMock()
 
                             mock_tracking_class.return_value = mock_tracking
@@ -360,18 +346,14 @@ async def complete_system(
                             mock_enhanced_mqtt.initialize = AsyncMock()
                             mock_enhanced_mqtt.shutdown = AsyncMock()
                             mock_enhanced_mqtt.publish_prediction = AsyncMock()
-                            mock_enhanced_mqtt.publish_system_status = (
-                                AsyncMock()
-                            )
+                            mock_enhanced_mqtt.publish_system_status = AsyncMock()
                             mock_enhanced_mqtt.get_integration_stats = Mock(
                                 return_value={}
                             )
                             mock_enhanced_mqtt.get_connection_info = Mock(
                                 return_value={"total_active_connections": 0}
                             )
-                            mock_enhanced_mqtt_class.return_value = (
-                                mock_enhanced_mqtt
-                            )
+                            mock_enhanced_mqtt_class.return_value = mock_enhanced_mqtt
 
                             # Create integrated system
                             tracking_manager, integration_manager = (
@@ -412,12 +394,8 @@ class TestCompleteSystemWorkflow:
         mock_tracking = system["mock_tracking"]
 
         # Add sensor events
-        external_services.add_ha_event(
-            "binary_sensor.living_room_presence", "on"
-        )
-        external_services.add_ha_event(
-            "binary_sensor.living_room_presence", "off"
-        )
+        external_services.add_ha_event("binary_sensor.living_room_presence", "on")
+        external_services.add_ha_event("binary_sensor.living_room_presence", "off")
 
         # Configure tracking manager to return prediction
         prediction_data = {
@@ -473,9 +451,7 @@ class TestCompleteSystemWorkflow:
         system = complete_system
 
         # Configure health responses
-        with patch(
-            "src.integration.api_server.get_database_manager"
-        ) as mock_db:
+        with patch("src.integration.api_server.get_database_manager") as mock_db:
             mock_db_manager = AsyncMock()
             mock_db_manager.health_check = AsyncMock(
                 return_value={
@@ -486,14 +462,10 @@ class TestCompleteSystemWorkflow:
             )
             mock_db.return_value = mock_db_manager
 
-            with patch(
-                "src.integration.api_server.get_mqtt_manager"
-            ) as mock_mqtt_mgr:
+            with patch("src.integration.api_server.get_mqtt_manager") as mock_mqtt_mgr:
                 mock_mqtt_manager = AsyncMock()
                 mock_mqtt_manager.get_integration_stats = AsyncMock(
-                    return_value=Mock(
-                        mqtt_connected=True, predictions_published=25
-                    )
+                    return_value=Mock(mqtt_connected=True, predictions_published=25)
                 )
                 mock_mqtt_mgr.return_value = mock_mqtt_manager
 
@@ -553,9 +525,7 @@ class TestCompleteSystemWorkflow:
             )
             return prediction
 
-        mock_tracking.get_room_prediction.side_effect = (
-            get_prediction_side_effect
-        )
+        mock_tracking.get_room_prediction.side_effect = get_prediction_side_effect
 
         # Test all rooms endpoint
         with TestClient(system["api_app"]) as client:
@@ -569,9 +539,7 @@ class TestCompleteSystemWorkflow:
             assert room_ids == {"living_room", "bedroom", "kitchen"}
 
             # Verify all rooms were queried
-            expected_calls = [
-                call(room_id) for room_id in room_predictions.keys()
-            ]
+            expected_calls = [call(room_id) for room_id in room_predictions.keys()]
             mock_tracking.get_room_prediction.assert_has_calls(
                 expected_calls, any_order=True
             )
@@ -716,9 +684,7 @@ class TestErrorPropagationAndRecovery:
         """Test error handling when database fails."""
         system = complete_system
 
-        with patch(
-            "src.integration.api_server.get_database_manager"
-        ) as mock_db:
+        with patch("src.integration.api_server.get_database_manager") as mock_db:
             # Configure database to fail
             mock_db_manager = AsyncMock()
             mock_db_manager.health_check = AsyncMock(
@@ -773,14 +739,10 @@ class TestErrorPropagationAndRecovery:
         external_services.mqtt_connected = False
 
         # System should continue to operate despite MQTT issues
-        with patch(
-            "src.integration.api_server.get_mqtt_manager"
-        ) as mock_mqtt_mgr:
+        with patch("src.integration.api_server.get_mqtt_manager") as mock_mqtt_mgr:
             mock_mqtt_manager = AsyncMock()
             mock_mqtt_manager.get_integration_stats = AsyncMock(
-                return_value=Mock(
-                    mqtt_connected=False, predictions_published=0
-                )
+                return_value=Mock(mqtt_connected=False, predictions_published=0)
             )
             mock_mqtt_mgr.return_value = mock_mqtt_manager
 
@@ -818,16 +780,12 @@ class TestSecurityAndAuthentication:
 
                 # Request with correct API key should succeed
                 headers = {"Authorization": "Bearer test_e2e_key"}
-                response2 = client.get(
-                    "/predictions/living_room", headers=headers
-                )
+                response2 = client.get("/predictions/living_room", headers=headers)
                 assert response2.status_code == 200
 
                 # Request with incorrect API key should fail
                 headers = {"Authorization": "Bearer wrong_key"}
-                response3 = client.get(
-                    "/predictions/living_room", headers=headers
-                )
+                response3 = client.get("/predictions/living_room", headers=headers)
                 assert response3.status_code == 401
 
     @pytest.mark.asyncio
@@ -930,12 +888,8 @@ class TestMetricsAndMonitoring:
         }
 
         # Test stats endpoint
-        with patch(
-            "src.integration.api_server.get_database_manager"
-        ) as mock_db:
-            with patch(
-                "src.integration.api_server.get_mqtt_manager"
-            ) as mock_mqtt_mgr:
+        with patch("src.integration.api_server.get_database_manager") as mock_db:
+            with patch("src.integration.api_server.get_mqtt_manager") as mock_mqtt_mgr:
 
                 # Configure mocks
                 mock_db_manager = AsyncMock()
@@ -949,9 +903,7 @@ class TestMetricsAndMonitoring:
 
                 mock_mqtt_manager = AsyncMock()
                 mock_mqtt_manager.get_integration_stats = AsyncMock(
-                    return_value=Mock(
-                        mqtt_connected=True, predictions_published=50
-                    )
+                    return_value=Mock(mqtt_connected=True, predictions_published=50)
                 )
                 mock_mqtt_mgr.return_value = mock_mqtt_manager
 
@@ -1026,9 +978,7 @@ class TestPerformanceBenchmarks:
             latency = end_time - start_time
 
             # Verify reasonable latency (< 100ms for mocked system)
-            assert (
-                latency < 0.1
-            ), f"Prediction request latency too high: {latency:.3f}s"
+            assert latency < 0.1, f"Prediction request latency too high: {latency:.3f}s"
 
     @pytest.mark.asyncio
     async def test_system_throughput(self, complete_system):
@@ -1074,9 +1024,7 @@ class TestPerformanceBenchmarks:
         logger.info(f"System throughput: {throughput:.2f} requests/second")
 
         # Verify reasonable throughput (> 100 req/s for mocked system)
-        assert (
-            throughput > 100
-        ), f"System throughput too low: {throughput:.2f} req/s"
+        assert throughput > 100, f"System throughput too low: {throughput:.2f} req/s"
 
 
 if __name__ == "__main__":

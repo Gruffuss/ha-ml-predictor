@@ -91,9 +91,7 @@ async def mock_ci_environment():
             """Get environment variable."""
             return self.env_vars.get(key, default)
 
-        def record_test_result(
-            self, test_name: str, status: str, duration: float
-        ):
+        def record_test_result(self, test_name: str, status: str, duration: float):
             """Record test execution result."""
             self.test_results.append(
                 {
@@ -217,13 +215,10 @@ class TestAutomatedTestExecution:
             successful_categories >= len(test_categories) * 0.8
         ), f"Too many test categories failed: {successful_categories}/{len(test_categories)}"
         assert (
-            overall_success_rate
-            >= ci_test_config["quality_gates"]["test_success_rate"]
+            overall_success_rate >= ci_test_config["quality_gates"]["test_success_rate"]
         ), f"Overall test success rate too low: {overall_success_rate}"
 
-        logger.info(
-            f"Parallel test execution completed in {total_execution_time:.1f}s"
-        )
+        logger.info(f"Parallel test execution completed in {total_execution_time:.1f}s")
         logger.info(
             f"Total tests: {total_tests}, Failures: {total_failures}, "
             f"Success rate: {overall_success_rate:.2%}"
@@ -244,13 +239,9 @@ class TestAutomatedTestExecution:
             value = mock_ci_environment.get_env_var(env_var)
             if value:
                 env_setup_score += 1
-                logger.info(
-                    f"Environment variable '{env_var}' configured: {value}"
-                )
+                logger.info(f"Environment variable '{env_var}' configured: {value}")
             else:
-                logger.error(
-                    f"Required environment variable '{env_var}' missing"
-                )
+                logger.error(f"Required environment variable '{env_var}' missing")
 
         # Test database connectivity in CI
         async def test_database_setup():
@@ -356,9 +347,7 @@ class TestCoverageReportingAndQualityGates:
             if (
                 data["percentage"] < min_threshold - 5
             ):  # 5% tolerance for individual modules
-                low_coverage_modules.append(
-                    f"{module}: {data['percentage']:.1f}%"
-                )
+                low_coverage_modules.append(f"{module}: {data['percentage']:.1f}%")
 
         assert (
             len(low_coverage_modules) == 0
@@ -374,9 +363,7 @@ class TestCoverageReportingAndQualityGates:
         }
 
         # Simulate saving coverage report as artifact
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(coverage_report, f, indent=2)
             mock_ci_environment.add_artifact(f.name, "coverage_report")
 
@@ -385,9 +372,7 @@ class TestCoverageReportingAndQualityGates:
         )
 
     @pytest_asyncio.async_test
-    async def test_quality_gates_enforcement(
-        self, ci_test_config, mock_ci_environment
-    ):
+    async def test_quality_gates_enforcement(self, ci_test_config, mock_ci_environment):
         """Test quality gates and build failure conditions."""
         quality_gates = ci_test_config["quality_gates"]
 
@@ -405,14 +390,12 @@ class TestCoverageReportingAndQualityGates:
 
         # Test success rate gate
         gate_results["test_success_rate"] = (
-            quality_metrics["test_success_rate"]
-            >= quality_gates["test_success_rate"]
+            quality_metrics["test_success_rate"] >= quality_gates["test_success_rate"]
         )
 
         # Coverage threshold gate
         gate_results["coverage_threshold"] = (
-            quality_metrics["coverage_threshold"]
-            >= quality_gates["coverage_threshold"]
+            quality_metrics["coverage_threshold"] >= quality_gates["coverage_threshold"]
         )
 
         # Performance regression gate
@@ -425,9 +408,7 @@ class TestCoverageReportingAndQualityGates:
         gate_results["security_scan"] = quality_gates["security_scan_pass"]
 
         # Additional quality gates
-        gate_results["code_quality"] = (
-            quality_metrics["code_quality_score"] >= 7.0
-        )
+        gate_results["code_quality"] = quality_metrics["code_quality_score"] >= 7.0
         gate_results["security_vulnerabilities"] = (
             quality_metrics["dependency_vulnerabilities"] == 0
         )
@@ -446,9 +427,7 @@ class TestCoverageReportingAndQualityGates:
             )
 
         # Quality gates must all pass for build to succeed
-        failed_gates = [
-            gate for gate, passed in gate_results.items() if not passed
-        ]
+        failed_gates = [gate for gate, passed in gate_results.items() if not passed]
 
         assert len(failed_gates) == 0, f"Quality gates failed: {failed_gates}"
         assert (
@@ -464,15 +443,11 @@ class TestCoverageReportingAndQualityGates:
             "build_id": mock_ci_environment.get_env_var("BUILD_ID"),
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(quality_report, f, indent=2)
             mock_ci_environment.add_artifact(f.name, "quality_report")
 
-        logger.info(
-            f"Quality gates validation: {gates_passed}/{total_gates} passed"
-        )
+        logger.info(f"Quality gates validation: {gates_passed}/{total_gates} passed")
 
 
 class TestDeploymentReadinessValidation:
@@ -523,9 +498,7 @@ class TestDeploymentReadinessValidation:
 
         # Validate all migration steps succeeded
         failed_steps = [
-            step
-            for step, result in migration_results.items()
-            if not result["success"]
+            step for step, result in migration_results.items() if not result["success"]
         ]
 
         assert (
@@ -643,15 +616,12 @@ class TestDeploymentReadinessValidation:
         readiness_report = {
             "health_checks": health_results,
             "startup_validation": startup_success,
-            "deployment_ready": len(unhealthy_services) == 0
-            and startup_success,
+            "deployment_ready": len(unhealthy_services) == 0 and startup_success,
             "timestamp": datetime.now().isoformat(),
             "build_id": mock_ci_environment.get_env_var("BUILD_ID"),
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(readiness_report, f, indent=2)
             mock_ci_environment.add_artifact(f.name, "deployment_readiness")
 
@@ -664,9 +634,7 @@ class TestCIArtifactsAndReporting:
     """Test CI artifact generation and reporting."""
 
     @pytest_asyncio.async_test
-    async def test_test_artifact_generation(
-        self, ci_test_config, mock_ci_environment
-    ):
+    async def test_test_artifact_generation(self, ci_test_config, mock_ci_environment):
         """Test generation of test artifacts and reports."""
 
         # Generate test execution report
@@ -700,9 +668,7 @@ class TestCIArtifactsAndReporting:
         </testsuites>"""
 
         # Save JUnit report as artifact
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".xml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".xml", delete=False) as f:
             f.write(junit_report)
             mock_ci_environment.add_artifact(f.name, "junit_report")
 
@@ -720,9 +686,7 @@ class TestCIArtifactsAndReporting:
         </body></html>
         """
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".html", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False) as f:
             f.write(coverage_html)
             mock_ci_environment.add_artifact(f.name, "coverage_html")
 
@@ -736,9 +700,7 @@ class TestCIArtifactsAndReporting:
             "memory_usage": {"peak_mb": 340.5, "average_mb": 285.3},
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(performance_data, f, indent=2)
             mock_ci_environment.add_artifact(f.name, "performance_report")
 
@@ -760,13 +722,11 @@ class TestCIArtifactsAndReporting:
         # Validate test summary meets requirements
         success_rate = test_summary["passed"] / test_summary["total_tests"]
         assert (
-            success_rate
-            >= ci_test_config["quality_gates"]["test_success_rate"]
+            success_rate >= ci_test_config["quality_gates"]["test_success_rate"]
         ), f"Test success rate too low: {success_rate:.2%}"
 
         assert (
-            test_summary["execution_time"]
-            < ci_test_config["max_test_execution_time"]
+            test_summary["execution_time"] < ci_test_config["max_test_execution_time"]
         ), f"Test execution took too long: {test_summary['execution_time']}s"
 
         logger.info(

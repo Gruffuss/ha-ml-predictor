@@ -54,9 +54,7 @@ def main():
         type=int,
         help="Number of parallel workers (requires pytest-xdist)",
     )
-    parser.add_argument(
-        "--verbose", "-v", action="store_true", help="Verbose output"
-    )
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     parser.add_argument(
         "--fail-fast", "-x", action="store_true", help="Stop on first failure"
     )

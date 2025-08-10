@@ -106,9 +106,7 @@ async def system_monitor():
             return {
                 "peak_cpu_percent": peak_cpu,
                 "peak_memory_mb": peak_memory,
-                "average_cpu_percent": sum(
-                    m["cpu_percent"] for m in self.metrics
-                )
+                "average_cpu_percent": sum(m["cpu_percent"] for m in self.metrics)
                 / len(self.metrics),
                 "average_memory_mb": sum(m["memory_mb"] for m in self.metrics)
                 / len(self.metrics),
@@ -128,9 +126,7 @@ class TestConcurrentRequestStress:
         system_monitor.start()
 
         # Create API server with tracking manager
-        with patch(
-            "src.integration.api_server.get_tracking_manager"
-        ) as mock_tm:
+        with patch("src.integration.api_server.get_tracking_manager") as mock_tm:
             mock_tracking_manager = AsyncMock(spec=TrackingManager)
             mock_tracking_manager.get_all_rooms.return_value = [
                 "living_room",
@@ -172,9 +168,7 @@ class TestConcurrentRequestStress:
                 tasks = []
                 for _ in range(concurrent_requests):
                     for endpoint in endpoints:
-                        task = asyncio.create_task(
-                            make_request(client, endpoint)
-                        )
+                        task = asyncio.create_task(make_request(client, endpoint))
                         tasks.append(task)
 
                 # Execute all requests concurrently
@@ -205,12 +199,9 @@ class TestConcurrentRequestStress:
         resource_metrics = system_monitor.get_peak_usage()
 
         # Assertions for stress test success
+        assert success_rate >= 0.95, f"Success rate {success_rate} below threshold 0.95"
         assert (
-            success_rate >= 0.95
-        ), f"Success rate {success_rate} below threshold 0.95"
-        assert (
-            resource_metrics["peak_memory_mb"]
-            < stress_test_config["memory_limit_mb"]
+            resource_metrics["peak_memory_mb"] < stress_test_config["memory_limit_mb"]
         ), f"Peak memory {resource_metrics['peak_memory_mb']}MB exceeded limit"
         assert failed_requests < (
             total_requests * 0.05
@@ -231,9 +222,7 @@ class TestConcurrentRequestStress:
         """Test database connection pool under concurrent query stress."""
         system_monitor.start()
 
-        with patch(
-            "src.data.storage.database.create_async_engine"
-        ) as mock_engine:
+        with patch("src.data.storage.database.create_async_engine") as mock_engine:
             # Mock database operations
             mock_session = AsyncMock()
             mock_session.execute.return_value = AsyncMock()
@@ -294,9 +283,7 @@ class TestConcurrentRequestStress:
 
             # Validate database stress test
             success_rate = successful_queries / len(results)
-            assert (
-                success_rate >= 0.98
-            ), f"Database success rate {success_rate} too low"
+            assert success_rate >= 0.98, f"Database success rate {success_rate} too low"
             assert (
                 resource_metrics["peak_memory_mb"]
                 < stress_test_config["memory_limit_mb"] * 1.2
@@ -319,9 +306,7 @@ class TestDataVolumeStress:
 
         event_volume = stress_test_config["event_volume"]
 
-        with patch(
-            "src.adaptation.tracking_manager.TrackingManager"
-        ) as MockTM:
+        with patch("src.adaptation.tracking_manager.TrackingManager") as MockTM:
             mock_tm = AsyncMock(spec=TrackingManager)
             mock_tm.process_prediction_validation.return_value = None
             mock_tm.get_room_metrics.return_value = {"accuracy": 0.85}
@@ -442,9 +427,7 @@ class TestDataVolumeStress:
 
                 # Periodically clean up to test garbage collection
                 if i % 100 == 0:
-                    data_structures = data_structures[
-                        -10:
-                    ]  # Keep only last 10
+                    data_structures = data_structures[-10:]  # Keep only last 10
                     gc.collect()
 
                 await asyncio.sleep(0.01)  # Simulate processing time
@@ -467,9 +450,7 @@ class TestDataVolumeStress:
             resource_metrics["peak_memory_mb"]
             < stress_test_config["memory_limit_mb"] * 2
         )
-        assert (
-            final_memory < initial_memory * 1.2
-        ), "Final memory usage too high"
+        assert final_memory < initial_memory * 1.2, "Final memory usage too high"
 
         logger.info(
             f"Memory stress test: Initial {initial_memory:.1f}MB, "
@@ -488,9 +469,7 @@ class TestMultiComponentStress:
         system_monitor.start()
 
         with (
-            patch.multiple(
-                "src.adaptation.tracking_manager", TrackingManager=Mock()
-            ),
+            patch.multiple("src.adaptation.tracking_manager", TrackingManager=Mock()),
             patch(
                 "src.integration.enhanced_mqtt_manager.EnhancedMQTTIntegrationManager"
             ) as MockMQTT,
@@ -503,9 +482,7 @@ class TestMultiComponentStress:
                 "bedroom",
                 "kitchen",
             ]
-            mock_tracking_manager.process_prediction_validation.return_value = (
-                None
-            )
+            mock_tracking_manager.process_prediction_validation.return_value = None
             mock_tracking_manager.get_room_metrics.return_value = {
                 "prediction_accuracy": 0.85,
                 "confidence_score": 0.9,
@@ -525,14 +502,10 @@ class TestMultiComponentStress:
                 try:
                     system_monitor.record_metrics()
 
-                    room_id = ["living_room", "bedroom", "kitchen"][
-                        operation_id % 3
-                    ]
+                    room_id = ["living_room", "bedroom", "kitchen"][operation_id % 3]
 
                     # 1. Tracking manager operation
-                    metrics = await mock_tracking_manager.get_room_metrics(
-                        room_id
-                    )
+                    metrics = await mock_tracking_manager.get_room_metrics(room_id)
 
                     # 2. API operation
                     async with httpx.AsyncClient(
@@ -555,9 +528,7 @@ class TestMultiComponentStress:
                     return api_success and metrics is not None
 
                 except Exception as e:
-                    logger.error(
-                        f"Integrated operation {operation_id} failed: {e}"
-                    )
+                    logger.error(f"Integrated operation {operation_id} failed: {e}")
                     return False
 
             # Execute concurrent integrated operations
@@ -615,15 +586,11 @@ class TestMultiComponentStress:
                 # Create memory-intensive structures
                 if intensity > 70:
                     # High intensity - create large data structures
-                    large_data = [
-                        {"data": "x" * 1000, "id": i} for i in range(1000)
-                    ]
+                    large_data = [{"data": "x" * 1000, "id": i} for i in range(1000)]
                     await asyncio.sleep(0.1)
                 elif intensity > 40:
                     # Medium intensity
-                    medium_data = [
-                        {"data": "x" * 100, "id": i} for i in range(500)
-                    ]
+                    medium_data = [{"data": "x" * 100, "id": i} for i in range(500)]
                     await asyncio.sleep(0.05)
                 else:
                     # Low intensity
@@ -638,17 +605,13 @@ class TestMultiComponentStress:
         # Gradually increase resource usage
         results = []
         for intensity in range(0, 100, 10):
-            batch_size = min(
-                10, stress_test_config["concurrent_requests"] // 5
-            )
+            batch_size = min(10, stress_test_config["concurrent_requests"] // 5)
             batch_tasks = [
                 asyncio.create_task(resource_intensive_operation(intensity))
                 for _ in range(batch_size)
             ]
 
-            batch_results = await asyncio.gather(
-                *batch_tasks, return_exceptions=True
-            )
+            batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
             results.extend(batch_results)
 
             # Check if we're approaching resource limits
@@ -705,9 +668,7 @@ class TestFailureRecoveryStress:
                 # Inject failure for middle operations
                 if 10 <= operation_id <= 20 and not failure_injected:
                     failure_injected = True
-                    raise DatabaseConnectionError(
-                        "Simulated connection failure"
-                    )
+                    raise DatabaseConnectionError("Simulated connection failure")
 
                 # Simulate successful database operation
                 await asyncio.sleep(0.01)
@@ -778,9 +739,7 @@ class TestFailureRecoveryStress:
                 successful_publishes += 1
                 return True
 
-            mock_mqtt_manager.publish_prediction.side_effect = (
-                publish_with_failures
-            )
+            mock_mqtt_manager.publish_prediction.side_effect = publish_with_failures
             mock_mqtt_manager.is_connected = True
             MockMQTT.return_value = mock_mqtt_manager
 
@@ -798,9 +757,7 @@ class TestFailureRecoveryStress:
                         "operation_id": operation_id,
                     }
 
-                    result = await mqtt_manager.publish_prediction(
-                        room_id, prediction
-                    )
+                    result = await mqtt_manager.publish_prediction(room_id, prediction)
                     return result
 
                 except ConnectionError as e:
@@ -826,9 +783,7 @@ class TestFailureRecoveryStress:
             resource_metrics = system_monitor.get_peak_usage()
 
             # Validate MQTT resilience
-            assert (
-                connection_failures > 0
-            ), "No connection failures were simulated"
+            assert connection_failures > 0, "No connection failures were simulated"
             assert (
                 successful_mqtt_operations >= operations_count * 0.8
             ), f"Too few successful MQTT operations: {successful_mqtt_operations}/{operations_count}"

@@ -109,9 +109,7 @@ class TestSystemThroughput:
 
             while (time.perf_counter() - start_time) < test_duration:
                 # Create batch of concurrent requests
-                tasks = [
-                    make_api_request(i) for i in range(concurrent_requests)
-                ]
+                tasks = [make_api_request(i) for i in range(concurrent_requests)]
                 results = await asyncio.gather(*tasks, return_exceptions=True)
 
                 for result in results:
@@ -144,17 +142,13 @@ class TestSystemThroughput:
             print(f"Mean response time: {mean_response_time:.2f}ms")
             print(f"Median response time: {median_response_time:.2f}ms")
             print(f"P95 response time: {p95_response_time:.2f}ms")
-            print(
-                f"Success rate: {(successful_requests/request_count)*100:.1f}%"
-            )
+            print(f"Success rate: {(successful_requests/request_count)*100:.1f}%")
 
             # Verify throughput requirements
             assert (
                 throughput >= 100
             ), f"API throughput {throughput:.2f} req/s below requirement"
-            assert (
-                successful_requests / request_count
-            ) >= 0.99, "Success rate too low"
+            assert (successful_requests / request_count) >= 0.99, "Success rate too low"
             assert (
                 mean_response_time < 200
             ), f"Mean response time {mean_response_time:.2f}ms too high"
@@ -188,9 +182,7 @@ class TestSystemThroughput:
 
             # Extract timing data
             prediction_times = [result[0] for result in results]
-            successful_predictions = len(
-                [r for r in results if r[1] is not None]
-            )
+            successful_predictions = len([r for r in results if r[1] is not None])
 
             throughput = successful_predictions / total_time
             mean_prediction_time = statistics.mean(prediction_times)
@@ -204,9 +196,7 @@ class TestSystemThroughput:
             print(f"\nConcurrent Predictions ({concurrent_count} concurrent):")
             print(f"Throughput: {throughput:.2f} predictions/s")
             print(f"Mean prediction time: {mean_prediction_time:.2f}ms")
-            print(
-                f"Success rate: {(successful_predictions/concurrent_count)*100:.1f}%"
-            )
+            print(f"Success rate: {(successful_predictions/concurrent_count)*100:.1f}%")
 
         # Verify throughput scales appropriately
         for concurrent_count, metrics in throughput_results.items():
@@ -245,9 +235,7 @@ class TestSystemThroughput:
         for batch_start in range(0, message_count, batch_size):
             batch_tasks = []
 
-            for i in range(
-                batch_start, min(batch_start + batch_size, message_count)
-            ):
+            for i in range(batch_start, min(batch_start + batch_size, message_count)):
                 room_id = rooms[i % len(rooms)]
 
                 async def publish_message(room, prediction):
@@ -283,9 +271,7 @@ class TestSystemThroughput:
         print(f"P95 publish time: {p95_publish_time:.2f}ms")
 
         # MQTT should handle high-frequency publishing
-        assert (
-            throughput >= 200
-        ), f"MQTT throughput {throughput:.2f} msg/s too low"
+        assert throughput >= 200, f"MQTT throughput {throughput:.2f} msg/s too low"
         assert (
             successful_publishes / message_count
         ) >= 0.99, "MQTT publish success rate too low"
@@ -417,18 +403,12 @@ class TestSystemThroughput:
         # Calculate resource usage statistics
         max_memory = max(memory_samples) if memory_samples else initial_memory
         mean_memory = (
-            statistics.mean(memory_samples)
-            if memory_samples
-            else initial_memory
+            statistics.mean(memory_samples) if memory_samples else initial_memory
         )
         memory_increase = max_memory - initial_memory
 
         max_cpu = max(cpu_samples) if cpu_samples else initial_cpu_percent
-        mean_cpu = (
-            statistics.mean(cpu_samples)
-            if cpu_samples
-            else initial_cpu_percent
-        )
+        mean_cpu = statistics.mean(cpu_samples) if cpu_samples else initial_cpu_percent
 
         print("\nSystem Resource Utilization Results:")
         print(f"Initial memory: {initial_memory:.1f} MB")
@@ -447,9 +427,7 @@ class TestSystemThroughput:
 
     async def test_database_operation_throughput(self):
         """Test database operation throughput under concurrent load."""
-        with patch(
-            "src.data.storage.database.get_database_manager"
-        ) as mock_db:
+        with patch("src.data.storage.database.get_database_manager") as mock_db:
             mock_manager = AsyncMock()
             mock_db.return_value = mock_manager
 

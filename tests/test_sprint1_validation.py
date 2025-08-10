@@ -51,9 +51,7 @@ def test_sprint1_config_system(test_config_dir):
 
     # Verify configuration structure
     assert config.home_assistant.url == "http://test-ha:8123"
-    assert (
-        config.database.connection_string
-    )  # Just verify it exists and is not empty
+    assert config.database.connection_string  # Just verify it exists and is not empty
     assert len(config.rooms) >= 2
 
     # Verify room configuration
@@ -140,9 +138,7 @@ def test_sprint1_ha_client_structure(test_system_config):
     assert event.is_valid()
 
     # Test conversion to SensorEvent
-    sensor_event = client.convert_ha_event_to_sensor_event(
-        event, "test_room", "motion"
-    )
+    sensor_event = client.convert_ha_event_to_sensor_event(event, "test_room", "motion")
     assert sensor_event.room_id == "test_room"
     assert sensor_event.sensor_type == "motion"
 
@@ -334,12 +330,8 @@ def test_sprint1_file_structure():
 
     # Data ingestion files
     assert (base_path / "src" / "data" / "ingestion" / "ha_client.py").exists()
-    assert (
-        base_path / "src" / "data" / "ingestion" / "event_processor.py"
-    ).exists()
-    assert (
-        base_path / "src" / "data" / "ingestion" / "bulk_importer.py"
-    ).exists()
+    assert (base_path / "src" / "data" / "ingestion" / "event_processor.py").exists()
+    assert (base_path / "src" / "data" / "ingestion" / "bulk_importer.py").exists()
 
     # Configuration files
     assert (base_path / "config" / "config.yaml").exists()

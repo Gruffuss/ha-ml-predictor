@@ -141,9 +141,7 @@ class TestDatabaseManager:
             patch(
                 "src.data.storage.database.create_async_engine"
             ) as mock_create_engine,
-            patch.object(
-                manager, "_setup_connection_events"
-            ) as mock_setup_events,
+            patch.object(manager, "_setup_connection_events") as mock_setup_events,
         ):
 
             mock_engine = Mock()
@@ -180,9 +178,7 @@ class TestDatabaseManager:
             patch(
                 "src.data.storage.database.create_async_engine"
             ) as mock_create_engine,
-            patch.object(
-                manager, "_setup_connection_events"
-            ) as mock_setup_events,
+            patch.object(manager, "_setup_connection_events") as mock_setup_events,
         ):
 
             mock_engine = Mock()
@@ -210,24 +206,18 @@ class TestDatabaseManager:
 
         manager = DatabaseManager(config)
 
-        with pytest.raises(
-            ValueError, match="Connection string must use postgresql"
-        ):
+        with pytest.raises(ValueError, match="Connection string must use postgresql"):
             await manager._create_engine()
 
     @pytest.mark.asyncio
     async def test_setup_session_factory(self):
         """Test session factory setup."""
         manager = DatabaseManager(
-            DatabaseConfig(
-                connection_string="postgresql://user:pass@localhost/db"
-            )
+            DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         )
         manager.engine = Mock()
 
-        with patch(
-            "src.data.storage.database.async_sessionmaker"
-        ) as mock_sessionmaker:
+        with patch("src.data.storage.database.async_sessionmaker") as mock_sessionmaker:
             mock_factory = Mock()
             mock_sessionmaker.return_value = mock_factory
 
@@ -247,9 +237,7 @@ class TestDatabaseManager:
     async def test_setup_session_factory_no_engine(self):
         """Test session factory setup without engine."""
         manager = DatabaseManager(
-            DatabaseConfig(
-                connection_string="postgresql://user:pass@localhost/db"
-            )
+            DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         )
 
         with pytest.raises(RuntimeError, match="Engine must be created"):
@@ -259,9 +247,7 @@ class TestDatabaseManager:
     async def test_verify_connection_success(self):
         """Test successful connection verification."""
         manager = DatabaseManager(
-            DatabaseConfig(
-                connection_string="postgresql://user:pass@localhost/db"
-            )
+            DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         )
 
         mock_engine = Mock()
@@ -280,18 +266,14 @@ class TestDatabaseManager:
 
         # Should check for TimescaleDB extension
         calls = mock_conn.execute.call_args_list
-        timescale_calls = [
-            call for call in calls if "timescaledb" in str(call)
-        ]
+        timescale_calls = [call for call in calls if "timescaledb" in str(call)]
         assert len(timescale_calls) > 0
 
     @pytest.mark.asyncio
     async def test_verify_connection_no_engine(self):
         """Test connection verification without engine."""
         manager = DatabaseManager(
-            DatabaseConfig(
-                connection_string="postgresql://user:pass@localhost/db"
-            )
+            DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         )
 
         with pytest.raises(RuntimeError, match="Engine not initialized"):
@@ -317,9 +299,7 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_get_session_retry_on_connection_error(self):
         """Test session retry logic on connection errors."""
-        config = DatabaseConfig(
-            connection_string="postgresql://user:pass@localhost/db"
-        )
+        config = DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         manager = DatabaseManager(config)
         manager.max_retries = 2
         manager.base_delay = 0.01  # Fast retry for testing
@@ -347,9 +327,7 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_get_session_max_retries_exceeded(self):
         """Test session creation when max retries exceeded."""
-        config = DatabaseConfig(
-            connection_string="postgresql://user:pass@localhost/db"
-        )
+        config = DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         manager = DatabaseManager(config)
         manager.max_retries = 1
         manager.base_delay = 0.01
@@ -370,14 +348,10 @@ class TestDatabaseManager:
     @pytest.mark.asyncio
     async def test_get_session_non_connection_error(self):
         """Test session creation with non-connection error."""
-        config = DatabaseConfig(
-            connection_string="postgresql://user:pass@localhost/db"
-        )
+        config = DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         manager = DatabaseManager(config)
 
-        manager.session_factory = Mock(
-            side_effect=ValueError("Not a connection error")
-        )
+        manager.session_factory = Mock(side_effect=ValueError("Not a connection error"))
 
         with pytest.raises(DatabaseQueryError):
             async with manager.get_session():
@@ -393,9 +367,7 @@ class TestDatabaseManager:
         mock_session.execute.return_value = mock_result
 
         test_db_manager.get_session = AsyncMock()
-        test_db_manager.get_session.return_value.__aenter__.return_value = (
-            mock_session
-        )
+        test_db_manager.get_session.return_value.__aenter__.return_value = mock_session
 
         # Test fetch_one
         result = await test_db_manager.execute_query(
@@ -420,9 +392,7 @@ class TestDatabaseManager:
         mock_session.execute.side_effect = Exception("Query failed")
 
         test_db_manager.get_session = AsyncMock()
-        test_db_manager.get_session.return_value.__aenter__.return_value = (
-            mock_session
-        )
+        test_db_manager.get_session.return_value.__aenter__.return_value = mock_session
 
         with pytest.raises(DatabaseQueryError):
             await test_db_manager.execute_query("INVALID SQL")
@@ -436,9 +406,7 @@ class TestDatabaseManager:
         mock_session.execute.return_value = mock_result
 
         test_db_manager.get_session = AsyncMock()
-        test_db_manager.get_session.return_value.__aenter__.return_value = (
-            mock_session
-        )
+        test_db_manager.get_session.return_value.__aenter__.return_value = mock_session
         test_db_manager.engine = Mock()
         test_db_manager.engine.pool.size.return_value = 5
         test_db_manager.engine.pool.checkedout.return_value = 2
@@ -486,9 +454,7 @@ class TestDatabaseManager:
         mock_session.execute.side_effect = mock_execute
 
         test_db_manager.get_session = AsyncMock()
-        test_db_manager.get_session.return_value.__aenter__.return_value = (
-            mock_session
-        )
+        test_db_manager.get_session.return_value.__aenter__.return_value = mock_session
         test_db_manager.engine = Mock()
         test_db_manager.engine.pool.size.return_value = 0
         test_db_manager.engine.pool.checkedout.return_value = 0
@@ -502,7 +468,10 @@ class TestDatabaseManager:
         assert "full_version" in version_info
         assert "timescale_version" in version_info
         assert "postgresql_version" in version_info
-        assert version_info["full_version"] == "TimescaleDB version 2.8.0 on PostgreSQL 14.6"
+        assert (
+            version_info["full_version"]
+            == "TimescaleDB version 2.8.0 on PostgreSQL 14.6"
+        )
         assert version_info["timescale_version"] == "2.8.0"
         assert version_info["postgresql_version"] == "14.6"
 
@@ -522,9 +491,7 @@ class TestDatabaseManager:
         mock_session.execute.side_effect = mock_execute
 
         test_db_manager.get_session = AsyncMock()
-        test_db_manager.get_session.return_value.__aenter__.return_value = (
-            mock_session
-        )
+        test_db_manager.get_session.return_value.__aenter__.return_value = mock_session
         test_db_manager.engine = Mock()
         test_db_manager.engine.pool.size.return_value = 0
         test_db_manager.engine.pool.checkedout.return_value = 0
@@ -557,6 +524,7 @@ class TestDatabaseManager:
 
         for version_string, expected_ts_version, expected_pg_version in test_cases:
             with self.subTest(version_string=version_string):
+
                 def mock_execute(query):
                     mock_result = Mock()
                     if "SELECT 1" in str(query):
@@ -580,22 +548,24 @@ class TestDatabaseManager:
                 assert health["timescale_status"] == "available"
                 assert "timescale_version_info" in health
                 version_info = health["timescale_version_info"]
-                
+
                 # Full version should always be available
                 assert "full_version" in version_info
                 assert version_info["full_version"] == version_string
-                
+
                 # Check parsed versions
                 if expected_ts_version:
                     assert "timescale_version" in version_info
                     assert version_info["timescale_version"] == expected_ts_version
-                    
+
                 if expected_pg_version:
                     assert "postgresql_version" in version_info
                     assert version_info["postgresql_version"] == expected_pg_version
 
     @pytest.mark.asyncio
-    async def test_health_check_timescaledb_version_parsing_error(self, test_db_manager):
+    async def test_health_check_timescaledb_version_parsing_error(
+        self, test_db_manager
+    ):
         """Test TimescaleDB version parsing with fetchone() returning None."""
         mock_session = AsyncMock()
 
@@ -611,9 +581,7 @@ class TestDatabaseManager:
         mock_session.execute.side_effect = mock_execute
 
         test_db_manager.get_session = AsyncMock()
-        test_db_manager.get_session.return_value.__aenter__.return_value = (
-            mock_session
-        )
+        test_db_manager.get_session.return_value.__aenter__.return_value = mock_session
         test_db_manager.engine = Mock()
         test_db_manager.engine.pool.size.return_value = 0
         test_db_manager.engine.pool.checkedout.return_value = 0
@@ -630,9 +598,7 @@ class TestDatabaseManager:
     async def test_health_check_loop(self):
         """Test background health check loop."""
         manager = DatabaseManager(
-            DatabaseConfig(
-                connection_string="postgresql://user:pass@localhost/db"
-            )
+            DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         )
         manager.health_check = AsyncMock()
 
@@ -655,9 +621,7 @@ class TestDatabaseManager:
     async def test_close_cleanup(self):
         """Test database manager cleanup on close."""
         manager = DatabaseManager(
-            DatabaseConfig(
-                connection_string="postgresql://user:pass@localhost/db"
-            )
+            DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         )
 
         # Mock components
@@ -685,9 +649,7 @@ class TestDatabaseManager:
     def test_get_connection_stats(self):
         """Test getting connection statistics."""
         manager = DatabaseManager(
-            DatabaseConfig(
-                connection_string="postgresql://user:pass@localhost/db"
-            )
+            DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         )
 
         # Set some test stats
@@ -705,9 +667,7 @@ class TestDatabaseManager:
 
     def test_connection_event_handlers(self):
         """Test database connection event handlers setup."""
-        config = DatabaseConfig(
-            connection_string="postgresql://user:pass@localhost/db"
-        )
+        config = DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         manager = DatabaseManager(config)
 
         # Mock engine with event listener capability
@@ -736,9 +696,7 @@ class TestGlobalDatabaseFunctions:
 
         src.data.storage.database._db_manager = None
 
-        with patch(
-            "src.data.storage.database.DatabaseManager"
-        ) as mock_manager_class:
+        with patch("src.data.storage.database.DatabaseManager") as mock_manager_class:
             mock_manager = AsyncMock()
             mock_manager.initialize = AsyncMock()
             mock_manager_class.return_value = mock_manager
@@ -758,9 +716,7 @@ class TestGlobalDatabaseFunctions:
         """Test convenience function for getting database session."""
         mock_manager = AsyncMock()
         mock_session = AsyncMock()
-        mock_manager.get_session.return_value.__aenter__.return_value = (
-            mock_session
-        )
+        mock_manager.get_session.return_value.__aenter__.return_value = mock_session
 
         with patch(
             "src.data.storage.database.get_database_manager",
@@ -824,9 +780,7 @@ class TestDatabaseUtilityFunctions:
     @pytest.mark.asyncio
     async def test_execute_sql_file_error(self):
         """Test SQL file execution error handling."""
-        with patch(
-            "builtins.open", side_effect=FileNotFoundError("File not found")
-        ):
+        with patch("builtins.open", side_effect=FileNotFoundError("File not found")):
             with pytest.raises(DatabaseQueryError):
                 await execute_sql_file("/nonexistent/file.sql")
 
@@ -948,9 +902,7 @@ class TestDatabaseUtilityFunctions:
     async def test_get_timescaledb_version_error(self):
         """Test TimescaleDB version error handling."""
         mock_manager = AsyncMock()
-        mock_manager.execute_query.side_effect = Exception(
-            "Extension not found"
-        )
+        mock_manager.execute_query.side_effect = Exception("Extension not found")
 
         with patch(
             "src.data.storage.database.get_database_manager",
@@ -968,9 +920,7 @@ class TestDatabaseManagerEdgeCases:
     async def test_initialize_already_initialized(self):
         """Test initializing already initialized manager."""
         manager = DatabaseManager(
-            DatabaseConfig(
-                connection_string="postgresql://user:pass@localhost/db"
-            )
+            DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         )
         manager.engine = Mock()  # Simulate already initialized
 
@@ -984,9 +934,7 @@ class TestDatabaseManagerEdgeCases:
     async def test_verify_connection_timescaledb_warning(self):
         """Test connection verification with TimescaleDB warning."""
         manager = DatabaseManager(
-            DatabaseConfig(
-                connection_string="postgresql://user:pass@localhost/db"
-            )
+            DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         )
 
         mock_engine = Mock()
@@ -1010,9 +958,7 @@ class TestDatabaseManagerEdgeCases:
     @pytest.mark.asyncio
     async def test_get_session_rollback_on_error(self):
         """Test session rollback on error during context."""
-        config = DatabaseConfig(
-            connection_string="postgresql://user:pass@localhost/db"
-        )
+        config = DatabaseConfig(connection_string="postgresql://user:pass@localhost/db")
         manager = DatabaseManager(config)
 
         mock_session = AsyncMock()
@@ -1034,9 +980,7 @@ class TestDatabaseManagerEdgeCases:
     async def test_health_check_with_previous_errors(self, test_db_manager):
         """Test health check reporting previous connection errors."""
         # Simulate previous connection error
-        test_db_manager._connection_stats["last_connection_error"] = (
-            "Previous error"
-        )
+        test_db_manager._connection_stats["last_connection_error"] = "Previous error"
         test_db_manager._connection_stats["failed_connections"] = 5
 
         mock_session = AsyncMock()
@@ -1045,9 +989,7 @@ class TestDatabaseManagerEdgeCases:
         mock_session.execute.return_value = mock_result
 
         test_db_manager.get_session = AsyncMock()
-        test_db_manager.get_session.return_value.__aenter__.return_value = (
-            mock_session
-        )
+        test_db_manager.get_session.return_value.__aenter__.return_value = mock_session
         test_db_manager.engine = Mock()
         test_db_manager.engine.pool.size.return_value = 0
         test_db_manager.engine.pool.checkedout.return_value = 0
@@ -1062,9 +1004,7 @@ class TestDatabaseManagerEdgeCases:
 
     def test_database_connection_error_password_masking(self):
         """Test password masking in database connection errors."""
-        connection_string = (
-            "postgresql://user:secretpassword@localhost:5432/db"
-        )
+        connection_string = "postgresql://user:secretpassword@localhost:5432/db"
 
         # Create error (this should be tested in database manager)
         masked = DatabaseConnectionError._mask_password(connection_string)

@@ -49,9 +49,7 @@ class TestPredictionLatency:
             }
         )
 
-        feature_store.get_prediction_features = AsyncMock(
-            return_value=feature_data
-        )
+        feature_store.get_prediction_features = AsyncMock(return_value=feature_data)
         return feature_store
 
     @pytest.fixture
@@ -248,15 +246,10 @@ class TestPredictionLatency:
         for feature_count in feature_sizes:
             # Mock different feature set sizes
             feature_data = pd.DataFrame(
-                {
-                    f"feature_{i}": np.random.random(100)
-                    for i in range(feature_count)
-                }
+                {f"feature_{i}": np.random.random(100) for i in range(feature_count)}
             )
 
-            predictor.feature_store.get_prediction_features.return_value = (
-                feature_data
-            )
+            predictor.feature_store.get_prediction_features.return_value = feature_data
 
             # Measure latency with this feature set
             latencies = []
@@ -301,15 +294,9 @@ class TestPredictionLatency:
             print(f"{metric}: {value:.2f}ms")
 
         # Verify percentile requirements
-        assert (
-            results["p50"] < 80
-        ), f"P50 latency {results['p50']:.2f}ms too high"
-        assert (
-            results["p95"] < 150
-        ), f"P95 latency {results['p95']:.2f}ms too high"
-        assert (
-            results["p99"] < 200
-        ), f"P99 latency {results['p99']:.2f}ms too high"
+        assert results["p50"] < 80, f"P50 latency {results['p50']:.2f}ms too high"
+        assert results["p95"] < 150, f"P95 latency {results['p95']:.2f}ms too high"
+        assert results["p99"] < 200, f"P99 latency {results['p99']:.2f}ms too high"
 
     def benchmark_prediction_latency_summary(self, predictor):
         """Generate comprehensive prediction latency benchmark summary."""

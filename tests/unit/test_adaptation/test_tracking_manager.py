@@ -172,9 +172,7 @@ class TestTrackingManagerInitialization:
     """Test TrackingManager initialization and lifecycle."""
 
     @pytest.mark.asyncio
-    async def test_manager_initialization(
-        self, tracking_config, mock_database_manager
-    ):
+    async def test_manager_initialization(self, tracking_config, mock_database_manager):
         """Test tracking manager initialization."""
         manager = TrackingManager(
             config=tracking_config,
@@ -194,9 +192,7 @@ class TestTrackingManagerInitialization:
         assert manager.config.drift_detection_enabled
 
     @pytest.mark.asyncio
-    async def test_manager_initialization_with_components(
-        self, tracking_manager
-    ):
+    async def test_manager_initialization_with_components(self, tracking_manager):
         """Test manager initialization with all components."""
         assert tracking_manager._tracking_active
         assert tracking_manager.validator is not None
@@ -219,9 +215,7 @@ class TestTrackingManagerInitialization:
         assert len(tracking_manager._background_tasks) == 0
 
     @pytest.mark.asyncio
-    async def test_disabled_manager_initialization(
-        self, mock_database_manager
-    ):
+    async def test_disabled_manager_initialization(self, mock_database_manager):
         """Test initialization when tracking is disabled."""
         disabled_config = TrackingConfig(enabled=False)
         manager = TrackingManager(
@@ -305,9 +299,7 @@ class TestPredictionRecording:
         await tracking_manager._perform_cleanup()
 
         # Old prediction should be cleaned up
-        room_predictions = tracking_manager._pending_predictions.get(
-            "living_room", []
-        )
+        room_predictions = tracking_manager._pending_predictions.get("living_room", [])
         old_predictions = [
             p
             for p in room_predictions
@@ -339,9 +331,7 @@ class TestRoomStateChangeHandling:
         assert tracking_manager._total_validations_performed > 0
 
     @pytest.mark.asyncio
-    async def test_state_change_triggers_retraining_evaluation(
-        self, tracking_manager
-    ):
+    async def test_state_change_triggers_retraining_evaluation(self, tracking_manager):
         """Test that state changes trigger retraining evaluation."""
         room_id = "bedroom"
 
@@ -386,10 +376,7 @@ class TestRoomStateChangeHandling:
         )
 
         # Should not perform validation
-        assert (
-            tracking_manager._total_validations_performed
-            == initial_validations
-        )
+        assert tracking_manager._total_validations_performed == initial_validations
 
 
 class TestDriftDetectionIntegration:
@@ -583,9 +570,7 @@ class TestSystemStatusAndMetrics:
             "get_real_time_metrics",
             return_value=Mock(accuracy_rate=85.0, average_error_minutes=12.5),
         ):
-            metrics = await tracking_manager.get_real_time_metrics(
-                room_id=room_id
-            )
+            metrics = await tracking_manager.get_real_time_metrics(room_id=room_id)
 
             # Verify metrics retrieval
             assert metrics is not None
@@ -596,9 +581,7 @@ class TestSystemStatusAndMetrics:
         """Test active alerts retrieval."""
         # Mock active alerts
         mock_alerts = [
-            Mock(
-                alert_id="alert_1", room_id="living_room", severity="warning"
-            ),
+            Mock(alert_id="alert_1", room_id="living_room", severity="warning"),
             Mock(alert_id="alert_2", room_id="bedroom", severity="critical"),
         ]
 
@@ -756,9 +739,7 @@ class TestNotificationCallbacks:
         tracking_manager.add_notification_callback(test_callback)
 
         # Verify tracker received callback
-        mock_tracker.add_notification_callback.assert_called_with(
-            test_callback
-        )
+        mock_tracker.add_notification_callback.assert_called_with(test_callback)
 
 
 class TestErrorHandling:
@@ -828,9 +809,7 @@ class TestPerformanceAndConcurrency:
             predictions.append(pred)
 
         # Record predictions concurrently
-        tasks = [
-            tracking_manager.record_prediction(pred) for pred in predictions
-        ]
+        tasks = [tracking_manager.record_prediction(pred) for pred in predictions]
         await asyncio.gather(*tasks)
 
         # Verify all were recorded
@@ -868,7 +847,6 @@ class TestPerformanceAndConcurrency:
 
         # Verify cache was cleaned up appropriately
         total_cached = sum(
-            len(preds)
-            for preds in tracking_manager._pending_predictions.values()
+            len(preds) for preds in tracking_manager._pending_predictions.values()
         )
         assert total_cached < 100  # Should have cleaned up old predictions

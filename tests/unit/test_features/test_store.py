@@ -57,16 +57,9 @@ class TestFeatureRecord:
         assert reconstructed_record.room_id == sample_record.room_id
         assert reconstructed_record.target_time == sample_record.target_time
         assert reconstructed_record.features == sample_record.features
-        assert (
-            reconstructed_record.extraction_time
-            == sample_record.extraction_time
-        )
-        assert (
-            reconstructed_record.lookback_hours == sample_record.lookback_hours
-        )
-        assert (
-            reconstructed_record.feature_types == sample_record.feature_types
-        )
+        assert reconstructed_record.extraction_time == sample_record.extraction_time
+        assert reconstructed_record.lookback_hours == sample_record.lookback_hours
+        assert reconstructed_record.feature_types == sample_record.feature_types
         assert reconstructed_record.data_hash == sample_record.data_hash
 
     def test_is_valid_fresh(self, sample_record):
@@ -127,12 +120,8 @@ class TestFeatureCache:
         lookback_hours = 24
         feature_types = ["temporal", "sequential"]
 
-        key1 = cache._make_key(
-            room_id, target_time, lookback_hours, feature_types
-        )
-        key2 = cache._make_key(
-            room_id, target_time, lookback_hours, feature_types
-        )
+        key1 = cache._make_key(room_id, target_time, lookback_hours, feature_types)
+        key2 = cache._make_key(room_id, target_time, lookback_hours, feature_types)
 
         # Keys should be identical for same parameters
         assert key1 == key2
@@ -348,16 +337,12 @@ class TestFeatureStore:
     @pytest.fixture
     def store(self, mock_config):
         """Create feature store instance."""
-        return FeatureStore(
-            config=mock_config, cache_size=10, enable_persistence=False
-        )
+        return FeatureStore(config=mock_config, cache_size=10, enable_persistence=False)
 
     @pytest.fixture
     def store_with_persistence(self, mock_config):
         """Create feature store with persistence enabled."""
-        return FeatureStore(
-            config=mock_config, cache_size=10, enable_persistence=True
-        )
+        return FeatureStore(config=mock_config, cache_size=10, enable_persistence=True)
 
     @pytest.fixture
     def sample_events(self) -> List[SensorEvent]:
@@ -401,9 +386,7 @@ class TestFeatureStore:
         assert store.enable_persistence is False
 
     @pytest.mark.asyncio
-    async def test_initialize_with_persistence_success(
-        self, store_with_persistence
-    ):
+    async def test_initialize_with_persistence_success(self, store_with_persistence):
         """Test initialization with successful persistence setup."""
         with patch("src.features.store.get_database_manager") as mock_get_db:
             mock_db_manager = AsyncMock()
@@ -415,9 +398,7 @@ class TestFeatureStore:
             assert store_with_persistence.enable_persistence is True
 
     @pytest.mark.asyncio
-    async def test_initialize_with_persistence_failure(
-        self, store_with_persistence
-    ):
+    async def test_initialize_with_persistence_failure(self, store_with_persistence):
         """Test initialization with persistence setup failure."""
         with patch("src.features.store.get_database_manager") as mock_get_db:
             mock_get_db.side_effect = Exception("Database connection failed")
@@ -489,9 +470,7 @@ class TestFeatureStore:
                 "living_room", target_time, force_recompute=True
             )
 
-            assert (
-                features == computed_features
-            )  # Should get computed, not cached
+            assert features == computed_features  # Should get computed, not cached
             mock_compute.assert_called_once()
 
     @pytest.mark.asyncio
@@ -550,9 +529,7 @@ class TestFeatureStore:
         ]
 
         with (
-            patch.object(
-                store, "get_batch_features", return_value=mock_features
-            ),
+            patch.object(store, "get_batch_features", return_value=mock_features),
             patch.object(
                 store.feature_engine, "create_feature_dataframe"
             ) as mock_create_df,
@@ -581,9 +558,7 @@ class TestFeatureStore:
                 assert col in targets_df.columns
 
     @pytest.mark.asyncio
-    async def test_compute_features(
-        self, store, sample_events, sample_room_states
-    ):
+    async def test_compute_features(self, store, sample_events, sample_room_states):
         """Test feature computation."""
         target_time = datetime(2024, 1, 15, 15, 0, 0)
         expected_features = {"computed_feature": 1.0}
@@ -607,9 +582,7 @@ class TestFeatureStore:
 
             assert features == expected_features
             assert store.stats["feature_computations"] == 1
-            mock_get_data.assert_called_once_with(
-                "living_room", target_time, 24
-            )
+            mock_get_data.assert_called_once_with("living_room", target_time, 24)
             mock_extract.assert_called_once()
 
     @pytest.mark.asyncio
@@ -669,17 +642,13 @@ class TestFeatureStore:
         assert len(hash1) == 32  # MD5 hash length
 
         # Different parameters should produce different hash
-        hash3 = store._compute_data_hash(
-            room_id, target_time, 12
-        )  # Different lookback
+        hash3 = store._compute_data_hash(room_id, target_time, 12)  # Different lookback
         assert hash1 != hash3
 
     def test_get_stats(self, store):
         """Test statistics retrieval."""
         with (
-            patch.object(
-                store.cache, "get_stats", return_value={"cache_stat": 1}
-            ),
+            patch.object(store.cache, "get_stats", return_value={"cache_stat": 1}),
             patch.object(
                 store.feature_engine,
                 "get_extraction_stats",
@@ -699,9 +668,7 @@ class TestFeatureStore:
         """Test cache clearing."""
         with (
             patch.object(store.cache, "clear") as mock_cache_clear,
-            patch.object(
-                store.feature_engine, "clear_caches"
-            ) as mock_engine_clear,
+            patch.object(store.feature_engine, "clear_caches") as mock_engine_clear,
         ):
 
             store.clear_cache()
@@ -715,9 +682,7 @@ class TestFeatureStore:
         store.stats["total_requests"] = 10
         store.stats["cache_hits"] = 5
 
-        with patch.object(
-            store.feature_engine, "reset_stats"
-        ) as mock_engine_reset:
+        with patch.object(store.feature_engine, "reset_stats") as mock_engine_reset:
             store.reset_stats()
 
             assert store.stats["total_requests"] == 0
@@ -878,9 +843,7 @@ class TestFeatureStore:
         target_time = datetime(2024, 1, 15, 15, 0, 0)
 
         with patch.object(store, "_compute_features") as mock_compute:
-            mock_compute.side_effect = FeatureExtractionError(
-                "Computation failed"
-            )
+            mock_compute.side_effect = FeatureExtractionError("Computation failed")
 
             with pytest.raises(FeatureExtractionError):
                 await store.get_features("living_room", target_time)
@@ -902,8 +865,6 @@ class TestFeatureStore:
         assert cache_key1 == cache_key2
 
         # Test subset
-        cache_key3 = store.cache._make_key(
-            "room", target_time, 24, ["temporal"]
-        )
+        cache_key3 = store.cache._make_key("room", target_time, 24, ["temporal"])
 
         assert cache_key1 != cache_key3

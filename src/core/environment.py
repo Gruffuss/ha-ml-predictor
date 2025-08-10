@@ -19,8 +19,9 @@ logger = logging.getLogger(__name__)
 
 class Environment(Enum):
     """Supported deployment environments."""
+
     DEVELOPMENT = "development"
-    TESTING = "testing"  
+    TESTING = "testing"
     STAGING = "staging"
     PRODUCTION = "production"
 
@@ -43,6 +44,7 @@ class Environment(Enum):
 @dataclass
 class SecretConfig:
     """Configuration for a secret value."""
+
     key: str
     required: bool = True
     default: Optional[str] = None
@@ -54,6 +56,7 @@ class SecretConfig:
 @dataclass
 class EnvironmentSettings:
     """Environment-specific configuration settings."""
+
     name: str
     debug: bool = False
     log_level: str = "INFO"
@@ -79,7 +82,7 @@ class SecretsManager:
     def _get_or_create_key(self) -> bytes:
         """Get or create encryption key for secrets."""
         key_file = self.secrets_dir / "master.key"
-        
+
         if key_file.exists():
             return base64.b64decode(key_file.read_text().strip())
         else:
@@ -100,10 +103,12 @@ class SecretsManager:
         encrypted_bytes = base64.b64decode(encrypted_value.encode())
         return self._cipher.decrypt(encrypted_bytes).decode()
 
-    def store_secret(self, environment: Environment, key: str, value: str, encrypt: bool = True) -> None:
+    def store_secret(
+        self, environment: Environment, key: str, value: str, encrypt: bool = True
+    ) -> None:
         """Store a secret for a specific environment."""
         env_secrets_file = self.secrets_dir / f"{environment.value}.json"
-        
+
         # Load existing secrets
         secrets = {}
         if env_secrets_file.exists():
@@ -112,7 +117,7 @@ class SecretsManager:
         # Store the secret (encrypted or plain)
         secrets[key] = {
             "value": self.encrypt_secret(value) if encrypt else value,
-            "encrypted": encrypt
+            "encrypted": encrypt,
         }
 
         # Save back to file
@@ -120,10 +125,12 @@ class SecretsManager:
         env_secrets_file.chmod(0o600)
         logger.info(f"Stored secret '{key}' for {environment.value}")
 
-    def get_secret(self, environment: Environment, key: str, default: Optional[str] = None) -> Optional[str]:
+    def get_secret(
+        self, environment: Environment, key: str, default: Optional[str] = None
+    ) -> Optional[str]:
         """Retrieve a secret for a specific environment."""
         env_secrets_file = self.secrets_dir / f"{environment.value}.json"
-        
+
         if not env_secrets_file.exists():
             return default
 
@@ -147,7 +154,7 @@ class SecretsManager:
     def list_secrets(self, environment: Environment) -> List[str]:
         """List all secret keys for an environment."""
         env_secrets_file = self.secrets_dir / f"{environment.value}.json"
-        
+
         if not env_secrets_file.exists():
             return []
 
@@ -157,23 +164,23 @@ class SecretsManager:
     def rotate_encryption_key(self) -> None:
         """Rotate the master encryption key and re-encrypt all secrets."""
         logger.warning("Starting encryption key rotation...")
-        
+
         # Store old cipher
         old_cipher = self._cipher
-        
+
         # Generate new key
         new_key = Fernet.generate_key()
         new_cipher = Fernet(new_key)
-        
+
         # Re-encrypt all secrets for all environments
         for env in Environment:
             env_secrets_file = self.secrets_dir / f"{env.value}.json"
-            
+
             if not env_secrets_file.exists():
                 continue
-                
+
             secrets = json.loads(env_secrets_file.read_text())
-            
+
             for key, secret_data in secrets.items():
                 if secret_data.get("encrypted", False):
                     try:
@@ -181,27 +188,29 @@ class SecretsManager:
                         old_value = old_cipher.decrypt(
                             base64.b64decode(secret_data["value"])
                         ).decode()
-                        
+
                         # Encrypt with new key
                         new_encrypted = base64.b64encode(
                             new_cipher.encrypt(old_value.encode())
                         ).decode()
-                        
+
                         secrets[key]["value"] = new_encrypted
                     except Exception as e:
-                        logger.error(f"Failed to rotate key for secret '{key}' in {env.value}: {e}")
-            
+                        logger.error(
+                            f"Failed to rotate key for secret '{key}' in {env.value}: {e}"
+                        )
+
             # Save updated secrets
             env_secrets_file.write_text(json.dumps(secrets, indent=2))
-        
+
         # Update master key
         key_file = self.secrets_dir / "master.key"
         key_file.write_text(base64.b64encode(new_key).decode())
-        
+
         # Update instance
         self._encryption_key = new_key
         self._cipher = new_cipher
-        
+
         logger.info("Encryption key rotation completed successfully")
 
 
@@ -211,25 +220,56 @@ class EnvironmentManager:
     # Define secrets required for each environment
     REQUIRED_SECRETS = {
         Environment.DEVELOPMENT: [
-            SecretConfig("ha_token", required=True, description="Home Assistant API token"),
-            SecretConfig("database_password", required=False, default="dev_pass", description="Database password"),
+            SecretConfig(
+                "ha_token", required=True, description="Home Assistant API token"
+            ),
+            SecretConfig(
+                "database_password",
+                required=False,
+                default="dev_pass",
+                description="Database password",
+            ),
         ],
         Environment.TESTING: [
-            SecretConfig("ha_token", required=False, default="test_token", description="Home Assistant API token"),
-            SecretConfig("database_password", required=False, default="test_pass", description="Database password"),
+            SecretConfig(
+                "ha_token",
+                required=False,
+                default="test_token",
+                description="Home Assistant API token",
+            ),
+            SecretConfig(
+                "database_password",
+                required=False,
+                default="test_pass",
+                description="Database password",
+            ),
         ],
         Environment.STAGING: [
-            SecretConfig("ha_token", required=True, description="Home Assistant API token"),
-            SecretConfig("database_password", required=True, description="Database password"),
-            SecretConfig("redis_password", required=False, description="Redis password"),
+            SecretConfig(
+                "ha_token", required=True, description="Home Assistant API token"
+            ),
+            SecretConfig(
+                "database_password", required=True, description="Database password"
+            ),
+            SecretConfig(
+                "redis_password", required=False, description="Redis password"
+            ),
         ],
         Environment.PRODUCTION: [
-            SecretConfig("ha_token", required=True, description="Home Assistant API token"),
-            SecretConfig("database_password", required=True, description="Database password"),
+            SecretConfig(
+                "ha_token", required=True, description="Home Assistant API token"
+            ),
+            SecretConfig(
+                "database_password", required=True, description="Database password"
+            ),
             SecretConfig("redis_password", required=True, description="Redis password"),
-            SecretConfig("api_secret_key", required=True, description="API secret key for JWT"),
-            SecretConfig("grafana_password", required=False, description="Grafana admin password"),
-        ]
+            SecretConfig(
+                "api_secret_key", required=True, description="API secret key for JWT"
+            ),
+            SecretConfig(
+                "grafana_password", required=False, description="Grafana admin password"
+            ),
+        ],
     }
 
     # Environment-specific settings
@@ -280,15 +320,17 @@ class EnvironmentManager:
             secrets_encrypted=True,
             config_validation_strict=True,
             performance_monitoring=True,
-        )
+        ),
     }
 
     def __init__(self, config_dir: str = "config", secrets_dir: str = "secrets"):
         self.config_dir = Path(config_dir)
         self.secrets_manager = SecretsManager(secrets_dir)
         self.current_environment = self._detect_environment()
-        
-        logger.info(f"Environment manager initialized for: {self.current_environment.value}")
+
+        logger.info(
+            f"Environment manager initialized for: {self.current_environment.value}"
+        )
 
     def _detect_environment(self) -> Environment:
         """Detect current environment from various sources."""
@@ -320,7 +362,7 @@ class EnvironmentManager:
         """Get environment-specific config file path."""
         env_name = self.current_environment.value
         env_file = self.config_dir / f"{base_name}.{env_name}.yaml"
-        
+
         if env_file.exists():
             return env_file
         else:
@@ -329,25 +371,25 @@ class EnvironmentManager:
     def load_environment_config(self) -> Dict[str, Any]:
         """Load environment-specific configuration."""
         config_file = self.get_config_file_path()
-        
+
         if not config_file.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_file}")
 
-        with open(config_file, 'r') as f:
+        with open(config_file, "r") as f:
             config = yaml.safe_load(f)
 
         # Apply environment-specific overrides
         self._apply_environment_overrides(config)
-        
+
         # Inject secrets
         self._inject_secrets(config)
-        
+
         return config
 
     def _apply_environment_overrides(self, config: Dict[str, Any]) -> None:
         """Apply environment-specific configuration overrides."""
         settings = self.get_environment_settings()
-        
+
         # Override logging configuration
         if "logging" not in config:
             config["logging"] = {}
@@ -433,7 +475,9 @@ class EnvironmentManager:
             if secret_config.required:
                 value = self.get_secret(secret_config.key, secret_config.default)
                 if not value:
-                    errors.append(f"Missing required secret: {secret_config.key} ({secret_config.description})")
+                    errors.append(
+                        f"Missing required secret: {secret_config.key} ({secret_config.description})"
+                    )
 
         # Environment-specific validation
         if self.current_environment == Environment.PRODUCTION:
@@ -480,13 +524,13 @@ class EnvironmentManager:
         """Interactive setup for environment secrets."""
         required_secrets = self.REQUIRED_SECRETS.get(self.current_environment, [])
         settings = self.get_environment_settings()
-        
+
         print(f"\nSetting up secrets for {self.current_environment.value} environment")
         print("=" * 60)
 
         for secret_config in required_secrets:
             current_value = self.get_secret(secret_config.key)
-            
+
             if current_value and not secret_config.required:
                 print(f"✓ {secret_config.key}: Already configured")
                 continue
@@ -494,10 +538,10 @@ class EnvironmentManager:
             print(f"\n{secret_config.description}")
             print(f"Key: {secret_config.key}")
             print(f"Required: {'Yes' if secret_config.required else 'No'}")
-            
+
             if current_value:
                 print(f"Current value: ****** (hidden)")
-                update = input("Update? (y/n): ").lower().strip() == 'y'
+                update = input("Update? (y/n): ").lower().strip() == "y"
                 if not update:
                     continue
 
@@ -512,28 +556,34 @@ class EnvironmentManager:
                 self.set_secret(
                     secret_config.key,
                     value or secret_config.default or "",
-                    encrypt=settings.secrets_encrypted
+                    encrypt=settings.secrets_encrypted,
                 )
                 print(f"✓ Secret '{secret_config.key}' configured")
 
-        print(f"\n✓ Environment secrets setup completed for {self.current_environment.value}")
+        print(
+            f"\n✓ Environment secrets setup completed for {self.current_environment.value}"
+        )
 
-    def export_environment_template(self, target_environment: Environment, output_file: str) -> None:
+    def export_environment_template(
+        self, target_environment: Environment, output_file: str
+    ) -> None:
         """Export environment configuration template."""
         template = {
             "environment": target_environment.value,
             "settings": self.ENVIRONMENT_SETTINGS[target_environment].__dict__.copy(),
-            "required_secrets": []
+            "required_secrets": [],
         }
 
         # Add required secrets (without values)
         for secret_config in self.REQUIRED_SECRETS.get(target_environment, []):
-            template["required_secrets"].append({
-                "key": secret_config.key,
-                "required": secret_config.required,
-                "description": secret_config.description,
-                "env_var": secret_config.env_var or secret_config.key.upper(),
-            })
+            template["required_secrets"].append(
+                {
+                    "key": secret_config.key,
+                    "required": secret_config.required,
+                    "description": secret_config.description,
+                    "env_var": secret_config.env_var or secret_config.key.upper(),
+                }
+            )
 
         output_path = Path(output_file)
         output_path.write_text(yaml.dump(template, default_flow_style=False, indent=2))
@@ -543,6 +593,6 @@ class EnvironmentManager:
 def get_environment_manager() -> EnvironmentManager:
     """Get global environment manager instance."""
     global _env_manager_instance
-    if '_env_manager_instance' not in globals():
+    if "_env_manager_instance" not in globals():
         _env_manager_instance = EnvironmentManager()
     return _env_manager_instance

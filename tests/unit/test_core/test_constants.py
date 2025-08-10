@@ -268,12 +268,8 @@ class TestFeatureNames:
     def test_feature_names_no_duplicates(self):
         """Test that feature names don't have duplicates within categories."""
         assert len(TEMPORAL_FEATURE_NAMES) == len(set(TEMPORAL_FEATURE_NAMES))
-        assert len(SEQUENTIAL_FEATURE_NAMES) == len(
-            set(SEQUENTIAL_FEATURE_NAMES)
-        )
-        assert len(CONTEXTUAL_FEATURE_NAMES) == len(
-            set(CONTEXTUAL_FEATURE_NAMES)
-        )
+        assert len(SEQUENTIAL_FEATURE_NAMES) == len(set(SEQUENTIAL_FEATURE_NAMES))
+        assert len(CONTEXTUAL_FEATURE_NAMES) == len(set(CONTEXTUAL_FEATURE_NAMES))
 
     def test_feature_names_no_cross_category_duplicates(self):
         """Test that feature names don't overlap between categories."""
@@ -349,9 +345,7 @@ class TestDatabaseTables:
         for table_key, table_name in DB_TABLES.items():
             assert isinstance(table_name, str)
             assert len(table_name) > 0
-            assert table_name.replace(
-                "_", ""
-            ).isalnum()  # Valid SQL table name
+            assert table_name.replace("_", "").isalnum()  # Valid SQL table name
 
 
 class TestAPIEndpoints:
@@ -489,18 +483,12 @@ class TestMovementPatterns:
         assert HUMAN_MOVEMENT_PATTERNS["min_duration_seconds"] > 0
         assert isinstance(HUMAN_MOVEMENT_PATTERNS["max_velocity_ms"], float)
         assert HUMAN_MOVEMENT_PATTERNS["max_velocity_ms"] > 0.0
-        assert isinstance(
-            HUMAN_MOVEMENT_PATTERNS["typical_room_sequence_length"], int
-        )
+        assert isinstance(HUMAN_MOVEMENT_PATTERNS["typical_room_sequence_length"], int)
         assert HUMAN_MOVEMENT_PATTERNS["typical_room_sequence_length"] > 0
         assert isinstance(
             HUMAN_MOVEMENT_PATTERNS["door_interaction_probability"], float
         )
-        assert (
-            0.0
-            <= HUMAN_MOVEMENT_PATTERNS["door_interaction_probability"]
-            <= 1.0
-        )
+        assert 0.0 <= HUMAN_MOVEMENT_PATTERNS["door_interaction_probability"] <= 1.0
 
     def test_cat_movement_patterns(self):
         """Test cat movement pattern constants."""
@@ -520,16 +508,10 @@ class TestMovementPatterns:
         assert CAT_MOVEMENT_PATTERNS["min_duration_seconds"] > 0
         assert isinstance(CAT_MOVEMENT_PATTERNS["max_velocity_ms"], float)
         assert CAT_MOVEMENT_PATTERNS["max_velocity_ms"] > 0.0
-        assert isinstance(
-            CAT_MOVEMENT_PATTERNS["typical_room_sequence_length"], int
-        )
+        assert isinstance(CAT_MOVEMENT_PATTERNS["typical_room_sequence_length"], int)
         assert CAT_MOVEMENT_PATTERNS["typical_room_sequence_length"] > 0
-        assert isinstance(
-            CAT_MOVEMENT_PATTERNS["door_interaction_probability"], float
-        )
-        assert (
-            0.0 <= CAT_MOVEMENT_PATTERNS["door_interaction_probability"] <= 1.0
-        )
+        assert isinstance(CAT_MOVEMENT_PATTERNS["door_interaction_probability"], float)
+        assert 0.0 <= CAT_MOVEMENT_PATTERNS["door_interaction_probability"] <= 1.0
 
     def test_movement_pattern_differences(self):
         """Test that human and cat movement patterns have logical differences."""
@@ -594,17 +576,13 @@ class TestConstantsIntegration:
         assert (
             HUMAN_MOVEMENT_PATTERNS["min_duration_seconds"] >= 10
         )  # At least 10 seconds
-        assert (
-            CAT_MOVEMENT_PATTERNS["min_duration_seconds"] >= 1
-        )  # At least 1 second
+        assert CAT_MOVEMENT_PATTERNS["min_duration_seconds"] >= 1  # At least 1 second
 
         # Velocities should be reasonable (m/s)
         assert (
             HUMAN_MOVEMENT_PATTERNS["max_velocity_ms"] <= 5.0
         )  # Reasonable human speed
-        assert (
-            CAT_MOVEMENT_PATTERNS["max_velocity_ms"] <= 10.0
-        )  # Reasonable cat speed
+        assert CAT_MOVEMENT_PATTERNS["max_velocity_ms"] <= 10.0  # Reasonable cat speed
 
     def test_string_constants_format(self):
         """Test that string constants follow expected formats."""

@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BackupMetadata:
     """Metadata for a backup."""
+
     backup_id: str
     backup_type: str
     timestamp: datetime
@@ -41,8 +42,10 @@ class BackupMetadata:
             "size_bytes": self.size_bytes,
             "compressed": self.compressed,
             "checksum": self.checksum,
-            "retention_date": self.retention_date.isoformat() if self.retention_date else None,
-            "tags": self.tags or {}
+            "retention_date": (
+                self.retention_date.isoformat() if self.retention_date else None
+            ),
+            "tags": self.tags or {},
         }
 
     @classmethod
@@ -55,8 +58,12 @@ class BackupMetadata:
             size_bytes=data["size_bytes"],
             compressed=data["compressed"],
             checksum=data.get("checksum"),
-            retention_date=datetime.fromisoformat(data["retention_date"]) if data.get("retention_date") else None,
-            tags=data.get("tags", {})
+            retention_date=(
+                datetime.fromisoformat(data["retention_date"])
+                if data.get("retention_date")
+                else None
+            ),
+            tags=data.get("tags", {}),
         )
 
 
@@ -67,22 +74,24 @@ class DatabaseBackupManager:
         self.backup_dir = Path(backup_dir) / "database"
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         self.db_config = db_config
-        
-    def create_backup(self, backup_id: Optional[str] = None, compress: bool = True) -> BackupMetadata:
+
+    def create_backup(
+        self, backup_id: Optional[str] = None, compress: bool = True
+    ) -> BackupMetadata:
         """Create a database backup."""
         if not backup_id:
             backup_id = f"db_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            
+
         backup_file = self.backup_dir / f"{backup_id}.sql"
         if compress:
             backup_file = backup_file.with_suffix(".sql.gz")
-            
+
         logger.info(f"Creating database backup: {backup_id}")
-        
+
         try:
             # Extract database connection details
             connection_string = self.db_config.get("connection_string", "")
-            
+
             # Parse connection string for pg_dump
             # Format: postgresql+asyncpg://user:pass@host:port/dbname
             if "://" in connection_string:
@@ -98,7 +107,7 @@ class DatabaseBackupManager:
                     user = "postgres"
                     password = ""
                     host_db = rest
-                    
+
                 if "/" in host_db:
                     host_port, dbname = host_db.rsplit("/", 1)
                     if ":" in host_port:
@@ -112,47 +121,53 @@ class DatabaseBackupManager:
                     dbname = host_db
             else:
                 raise ValueError("Invalid database connection string format")
-            
+
             # Prepare pg_dump command
             env = os.environ.copy()
             if password:
                 env["PGPASSWORD"] = password
-                
+
             cmd = [
                 "pg_dump",
-                "-h", host,
-                "-p", port,
-                "-U", user,
-                "-d", dbname,
+                "-h",
+                host,
+                "-p",
+                port,
+                "-U",
+                user,
+                "-d",
+                dbname,
                 "--no-password",
                 "--verbose",
                 "--clean",
                 "--if-exists",
-                "--create"
+                "--create",
             ]
-            
+
             # Execute backup
-            with open(backup_file if not compress else backup_file.with_suffix(".sql"), "w") as f:
+            with open(
+                backup_file if not compress else backup_file.with_suffix(".sql"), "w"
+            ) as f:
                 result = subprocess.run(
                     cmd,
                     stdout=f,
                     stderr=subprocess.PIPE,
                     env=env,
                     text=True,
-                    timeout=3600  # 1 hour timeout
+                    timeout=3600,  # 1 hour timeout
                 )
-                
+
             if result.returncode != 0:
                 error_msg = result.stderr if result.stderr else "Unknown error"
                 raise RuntimeError(f"pg_dump failed: {error_msg}")
-            
+
             # Compress if requested
             if compress:
                 with open(backup_file.with_suffix(".sql"), "rb") as f_in:
                     with gzip.open(backup_file, "wb") as f_out:
                         shutil.copyfileobj(f_in, f_out)
                 os.remove(backup_file.with_suffix(".sql"))
-            
+
             # Create metadata
             size_bytes = backup_file.stat().st_size
             metadata = BackupMetadata(
@@ -161,14 +176,16 @@ class DatabaseBackupManager:
                 timestamp=datetime.now(),
                 size_bytes=size_bytes,
                 compressed=compress,
-                tags={"database": dbname, "host": host}
+                tags={"database": dbname, "host": host},
             )
-            
+
             self._save_backup_metadata(metadata)
-            logger.info(f"Database backup created successfully: {backup_file} ({size_bytes / 1024 / 1024:.1f} MB)")
-            
+            logger.info(
+                f"Database backup created successfully: {backup_file} ({size_bytes / 1024 / 1024:.1f} MB)"
+            )
+
             return metadata
-            
+
         except Exception as e:
             logger.error(f"Failed to create database backup: {e}")
             # Cleanup failed backup file
@@ -181,20 +198,20 @@ class DatabaseBackupManager:
         metadata = self._load_backup_metadata(backup_id)
         if not metadata or metadata.backup_type != "database":
             raise ValueError(f"Database backup not found: {backup_id}")
-            
+
         backup_file = self.backup_dir / f"{backup_id}.sql"
         if metadata.compressed:
             backup_file = backup_file.with_suffix(".sql.gz")
-            
+
         if not backup_file.exists():
             raise FileNotFoundError(f"Backup file not found: {backup_file}")
-            
+
         logger.warning(f"Restoring database from backup: {backup_id}")
-        
+
         try:
             # Extract database connection details (same as backup)
             connection_string = self.db_config.get("connection_string", "")
-            
+
             # Parse connection string for psql
             if "://" in connection_string:
                 _, rest = connection_string.split("://", 1)
@@ -209,7 +226,7 @@ class DatabaseBackupManager:
                     user = "postgres"
                     password = ""
                     host_db = rest
-                    
+
                 if "/" in host_db:
                     host_port, dbname = host_db.rsplit("/", 1)
                     if ":" in host_port:
@@ -223,22 +240,27 @@ class DatabaseBackupManager:
                     dbname = host_db
             else:
                 raise ValueError("Invalid database connection string format")
-            
+
             # Prepare psql command
             env = os.environ.copy()
             if password:
                 env["PGPASSWORD"] = password
-                
+
             cmd = [
                 "psql",
-                "-h", host,
-                "-p", port,
-                "-U", user,
-                "-d", "postgres",  # Connect to postgres db first
+                "-h",
+                host,
+                "-p",
+                port,
+                "-U",
+                user,
+                "-d",
+                "postgres",  # Connect to postgres db first
                 "--no-password",
-                "-v", "ON_ERROR_STOP=1"
+                "-v",
+                "ON_ERROR_STOP=1",
             ]
-            
+
             # Prepare input data
             if metadata.compressed:
                 # Read compressed file
@@ -248,7 +270,7 @@ class DatabaseBackupManager:
                 # Read regular file
                 with open(backup_file, "r") as f:
                     sql_content = f.read()
-            
+
             # Execute restoration
             result = subprocess.run(
                 cmd,
@@ -256,15 +278,15 @@ class DatabaseBackupManager:
                 stderr=subprocess.PIPE,
                 env=env,
                 text=True,
-                timeout=3600  # 1 hour timeout
+                timeout=3600,  # 1 hour timeout
             )
-            
+
             if result.returncode != 0:
                 error_msg = result.stderr if result.stderr else "Unknown error"
                 raise RuntimeError(f"Database restoration failed: {error_msg}")
-            
+
             logger.info(f"Database restored successfully from backup: {backup_id}")
-            
+
         except Exception as e:
             logger.error(f"Failed to restore database backup: {e}")
             raise
@@ -280,10 +302,10 @@ class DatabaseBackupManager:
         metadata_file = self.backup_dir / f"{backup_id}.metadata.json"
         if not metadata_file.exists():
             return None
-            
+
         with open(metadata_file, "r") as f:
             data = json.load(f)
-            
+
         return BackupMetadata.from_dict(data)
 
 
@@ -295,30 +317,41 @@ class ModelBackupManager:
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         self.models_dir = Path(models_dir)
 
-    def create_backup(self, backup_id: Optional[str] = None, compress: bool = True) -> BackupMetadata:
+    def create_backup(
+        self, backup_id: Optional[str] = None, compress: bool = True
+    ) -> BackupMetadata:
         """Create a model backup."""
         if not backup_id:
             backup_id = f"models_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            
+
         backup_file = self.backup_dir / f"{backup_id}.tar"
         if compress:
             backup_file = backup_file.with_suffix(".tar.gz")
-            
+
         logger.info(f"Creating models backup: {backup_id}")
-        
+
         try:
             if not self.models_dir.exists():
                 logger.warning("Models directory does not exist, creating empty backup")
                 self.models_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Create tar archive
-            cmd = ["tar", "-cf" if not compress else "-czf", str(backup_file), "-C", str(self.models_dir.parent), self.models_dir.name]
-            
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)  # 30 minutes
-            
+            cmd = [
+                "tar",
+                "-cf" if not compress else "-czf",
+                str(backup_file),
+                "-C",
+                str(self.models_dir.parent),
+                self.models_dir.name,
+            ]
+
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=1800
+            )  # 30 minutes
+
             if result.returncode != 0:
                 raise RuntimeError(f"tar command failed: {result.stderr}")
-            
+
             # Create metadata
             size_bytes = backup_file.stat().st_size
             metadata = BackupMetadata(
@@ -327,14 +360,16 @@ class ModelBackupManager:
                 timestamp=datetime.now(),
                 size_bytes=size_bytes,
                 compressed=compress,
-                tags={"models_dir": str(self.models_dir)}
+                tags={"models_dir": str(self.models_dir)},
             )
-            
+
             self._save_backup_metadata(metadata)
-            logger.info(f"Models backup created successfully: {backup_file} ({size_bytes / 1024 / 1024:.1f} MB)")
-            
+            logger.info(
+                f"Models backup created successfully: {backup_file} ({size_bytes / 1024 / 1024:.1f} MB)"
+            )
+
             return metadata
-            
+
         except Exception as e:
             logger.error(f"Failed to create models backup: {e}")
             if backup_file.exists():
@@ -346,33 +381,41 @@ class ModelBackupManager:
         metadata = self._load_backup_metadata(backup_id)
         if not metadata or metadata.backup_type != "models":
             raise ValueError(f"Models backup not found: {backup_id}")
-            
+
         backup_file = self.backup_dir / f"{backup_id}.tar"
         if metadata.compressed:
             backup_file = backup_file.with_suffix(".tar.gz")
-            
+
         if not backup_file.exists():
             raise FileNotFoundError(f"Backup file not found: {backup_file}")
-            
+
         logger.warning(f"Restoring models from backup: {backup_id}")
-        
+
         try:
             # Backup existing models directory
             if self.models_dir.exists():
-                backup_existing = self.models_dir.with_suffix(f".backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}")
+                backup_existing = self.models_dir.with_suffix(
+                    f".backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                )
                 shutil.move(str(self.models_dir), str(backup_existing))
                 logger.info(f"Existing models backed up to: {backup_existing}")
-            
+
             # Extract models
-            cmd = ["tar", "-xf" if not metadata.compressed else "-xzf", str(backup_file), "-C", str(self.models_dir.parent)]
-            
+            cmd = [
+                "tar",
+                "-xf" if not metadata.compressed else "-xzf",
+                str(backup_file),
+                "-C",
+                str(self.models_dir.parent),
+            ]
+
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
-            
+
             if result.returncode != 0:
                 raise RuntimeError(f"tar extraction failed: {result.stderr}")
-            
+
             logger.info(f"Models restored successfully from backup: {backup_id}")
-            
+
         except Exception as e:
             logger.error(f"Failed to restore models backup: {e}")
             raise
@@ -388,10 +431,10 @@ class ModelBackupManager:
         metadata_file = self.backup_dir / f"{backup_id}.metadata.json"
         if not metadata_file.exists():
             return None
-            
+
         with open(metadata_file, "r") as f:
             data = json.load(f)
-            
+
         return BackupMetadata.from_dict(data)
 
 
@@ -403,26 +446,37 @@ class ConfigurationBackupManager:
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         self.config_dir = Path(config_dir)
 
-    def create_backup(self, backup_id: Optional[str] = None, compress: bool = True) -> BackupMetadata:
+    def create_backup(
+        self, backup_id: Optional[str] = None, compress: bool = True
+    ) -> BackupMetadata:
         """Create a configuration backup."""
         if not backup_id:
             backup_id = f"config_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            
+
         backup_file = self.backup_dir / f"{backup_id}.tar"
         if compress:
             backup_file = backup_file.with_suffix(".tar.gz")
-            
+
         logger.info(f"Creating configuration backup: {backup_id}")
-        
+
         try:
             # Create tar archive of config directory
-            cmd = ["tar", "-cf" if not compress else "-czf", str(backup_file), "-C", str(self.config_dir.parent), self.config_dir.name]
-            
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)  # 5 minutes
-            
+            cmd = [
+                "tar",
+                "-cf" if not compress else "-czf",
+                str(backup_file),
+                "-C",
+                str(self.config_dir.parent),
+                self.config_dir.name,
+            ]
+
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=300
+            )  # 5 minutes
+
             if result.returncode != 0:
                 raise RuntimeError(f"tar command failed: {result.stderr}")
-            
+
             # Create metadata
             size_bytes = backup_file.stat().st_size
             metadata = BackupMetadata(
@@ -431,14 +485,16 @@ class ConfigurationBackupManager:
                 timestamp=datetime.now(),
                 size_bytes=size_bytes,
                 compressed=compress,
-                tags={"config_dir": str(self.config_dir)}
+                tags={"config_dir": str(self.config_dir)},
             )
-            
+
             self._save_backup_metadata(metadata)
-            logger.info(f"Configuration backup created successfully: {backup_file} ({size_bytes / 1024:.1f} KB)")
-            
+            logger.info(
+                f"Configuration backup created successfully: {backup_file} ({size_bytes / 1024:.1f} KB)"
+            )
+
             return metadata
-            
+
         except Exception as e:
             logger.error(f"Failed to create configuration backup: {e}")
             if backup_file.exists():
@@ -459,119 +515,144 @@ class BackupManager:
         self.backup_dir = Path(backup_dir)
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         self.config = config
-        
+
         # Initialize sub-managers
-        self.db_backup_manager = DatabaseBackupManager(str(self.backup_dir), config.get("database", {}))
-        self.model_backup_manager = ModelBackupManager(str(self.backup_dir), config.get("models_dir", "models"))
-        self.config_backup_manager = ConfigurationBackupManager(str(self.backup_dir), config.get("config_dir", "config"))
-        
+        self.db_backup_manager = DatabaseBackupManager(
+            str(self.backup_dir), config.get("database", {})
+        )
+        self.model_backup_manager = ModelBackupManager(
+            str(self.backup_dir), config.get("models_dir", "models")
+        )
+        self.config_backup_manager = ConfigurationBackupManager(
+            str(self.backup_dir), config.get("config_dir", "config")
+        )
+
         self.backup_config = config.get("backup", {})
-        
+
     async def run_scheduled_backups(self) -> None:
         """Run scheduled backup tasks."""
         if not self.backup_config.get("enabled", False):
             logger.info("Backups are disabled")
             return
-            
+
         interval_hours = self.backup_config.get("interval_hours", 24)
         retention_days = self.backup_config.get("retention_days", 7)
         compress = self.backup_config.get("compress", True)
-        
+
         logger.info(f"Starting scheduled backup task (every {interval_hours} hours)")
-        
+
         while True:
             try:
                 # Create backups
                 backups_created = []
-                
+
                 # Database backup
                 if self.backup_config.get("database_backup", True):
                     db_backup = self.db_backup_manager.create_backup(compress=compress)
-                    db_backup.retention_date = datetime.now() + timedelta(days=retention_days)
+                    db_backup.retention_date = datetime.now() + timedelta(
+                        days=retention_days
+                    )
                     backups_created.append(db_backup)
-                    
+
                 # Model backup (less frequent)
-                model_interval_hours = self.backup_config.get("model_backup_interval_hours", 24)
+                model_interval_hours = self.backup_config.get(
+                    "model_backup_interval_hours", 24
+                )
                 current_hour = datetime.now().hour
-                if (current_hour % model_interval_hours == 0 and 
-                    self.backup_config.get("model_backup", True)):
-                    model_backup = self.model_backup_manager.create_backup(compress=compress)
-                    model_backup.retention_date = datetime.now() + timedelta(days=retention_days)
+                if current_hour % model_interval_hours == 0 and self.backup_config.get(
+                    "model_backup", True
+                ):
+                    model_backup = self.model_backup_manager.create_backup(
+                        compress=compress
+                    )
+                    model_backup.retention_date = datetime.now() + timedelta(
+                        days=retention_days
+                    )
                     backups_created.append(model_backup)
-                    
+
                 # Configuration backup (daily)
                 if current_hour == 2:  # 2 AM
-                    config_backup = self.config_backup_manager.create_backup(compress=compress)
-                    config_backup.retention_date = datetime.now() + timedelta(days=retention_days * 2)  # Keep config backups longer
+                    config_backup = self.config_backup_manager.create_backup(
+                        compress=compress
+                    )
+                    config_backup.retention_date = datetime.now() + timedelta(
+                        days=retention_days * 2
+                    )  # Keep config backups longer
                     backups_created.append(config_backup)
-                
-                logger.info(f"Completed scheduled backup: {len(backups_created)} backups created")
-                
+
+                logger.info(
+                    f"Completed scheduled backup: {len(backups_created)} backups created"
+                )
+
                 # Cleanup old backups
                 await self.cleanup_expired_backups()
-                
+
             except Exception as e:
                 logger.error(f"Scheduled backup failed: {e}")
-            
+
             # Wait for next interval
             await asyncio.sleep(interval_hours * 3600)
 
     async def cleanup_expired_backups(self) -> None:
         """Remove expired backup files."""
         logger.info("Starting backup cleanup")
-        
+
         cleaned_count = 0
         total_size_freed = 0
-        
+
         # Find all metadata files
         for metadata_file in self.backup_dir.rglob("*.metadata.json"):
             try:
                 with open(metadata_file, "r") as f:
                     data = json.load(f)
-                
+
                 metadata = BackupMetadata.from_dict(data)
-                
+
                 # Check if backup has expired
                 if metadata.retention_date and datetime.now() > metadata.retention_date:
                     # Find and remove backup file
                     backup_extensions = [".sql", ".sql.gz", ".tar", ".tar.gz"]
                     for ext in backup_extensions:
-                        backup_file = metadata_file.parent / f"{metadata.backup_id}{ext}"
+                        backup_file = (
+                            metadata_file.parent / f"{metadata.backup_id}{ext}"
+                        )
                         if backup_file.exists():
                             size = backup_file.stat().st_size
                             backup_file.unlink()
                             total_size_freed += size
                             break
-                    
+
                     # Remove metadata file
                     metadata_file.unlink()
                     cleaned_count += 1
-                    
+
                     logger.debug(f"Removed expired backup: {metadata.backup_id}")
-                    
+
             except Exception as e:
                 logger.error(f"Failed to cleanup backup {metadata_file}: {e}")
-        
+
         if cleaned_count > 0:
-            logger.info(f"Backup cleanup completed: {cleaned_count} backups removed, {total_size_freed / 1024 / 1024:.1f} MB freed")
+            logger.info(
+                f"Backup cleanup completed: {cleaned_count} backups removed, {total_size_freed / 1024 / 1024:.1f} MB freed"
+            )
 
     def list_backups(self, backup_type: Optional[str] = None) -> List[BackupMetadata]:
         """List all available backups."""
         backups = []
-        
+
         for metadata_file in self.backup_dir.rglob("*.metadata.json"):
             try:
                 with open(metadata_file, "r") as f:
                     data = json.load(f)
-                
+
                 metadata = BackupMetadata.from_dict(data)
-                
+
                 if backup_type is None or metadata.backup_type == backup_type:
                     backups.append(metadata)
-                    
+
             except Exception as e:
                 logger.error(f"Failed to load backup metadata {metadata_file}: {e}")
-        
+
         # Sort by timestamp (newest first)
         return sorted(backups, key=lambda x: x.timestamp, reverse=True)
 
@@ -584,7 +665,7 @@ class BackupManager:
                 return BackupMetadata.from_dict(data)
             except Exception as e:
                 logger.error(f"Failed to load backup metadata: {e}")
-        
+
         return None
 
     def restore_database_backup(self, backup_id: str) -> None:
@@ -600,15 +681,19 @@ class BackupManager:
         package_id = f"disaster_recovery_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         package_dir = self.backup_dir / package_id
         package_dir.mkdir(exist_ok=True)
-        
+
         logger.info(f"Creating disaster recovery package: {package_id}")
-        
+
         try:
             # Create all types of backups
             db_backup = self.db_backup_manager.create_backup(f"{package_id}_db")
-            model_backup = self.model_backup_manager.create_backup(f"{package_id}_models")
-            config_backup = self.config_backup_manager.create_backup(f"{package_id}_config")
-            
+            model_backup = self.model_backup_manager.create_backup(
+                f"{package_id}_models"
+            )
+            config_backup = self.config_backup_manager.create_backup(
+                f"{package_id}_config"
+            )
+
             # Create package manifest
             manifest = {
                 "package_id": package_id,
@@ -616,21 +701,21 @@ class BackupManager:
                 "backups": [
                     db_backup.to_dict(),
                     model_backup.to_dict(),
-                    config_backup.to_dict()
+                    config_backup.to_dict(),
                 ],
                 "system_info": {
                     "platform": os.name,
-                    "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-                }
+                    "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+                },
             }
-            
+
             manifest_file = package_dir / "manifest.json"
             with open(manifest_file, "w") as f:
                 json.dump(manifest, f, indent=2)
-            
+
             logger.info(f"Disaster recovery package created: {package_dir}")
             return package_id
-            
+
         except Exception as e:
             logger.error(f"Failed to create disaster recovery package: {e}")
             # Cleanup partial package

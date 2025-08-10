@@ -43,9 +43,7 @@ class TestFeatureEngineeringEngine:
     @pytest.fixture
     def engine_sequential(self, mock_config):
         """Create engine with sequential processing."""
-        return FeatureEngineeringEngine(
-            config=mock_config, enable_parallel=False
-        )
+        return FeatureEngineeringEngine(config=mock_config, enable_parallel=False)
 
     @pytest.fixture
     def sample_events(self) -> List[SensorEvent]:
@@ -208,18 +206,8 @@ class TestFeatureEngineeringEngine:
             mock_contextual.assert_not_called()
 
             assert "temporal_temporal_feature" in features
-            assert (
-                len(
-                    [k for k in features.keys() if k.startswith("sequential_")]
-                )
-                == 0
-            )
-            assert (
-                len(
-                    [k for k in features.keys() if k.startswith("contextual_")]
-                )
-                == 0
-            )
+            assert len([k for k in features.keys() if k.startswith("sequential_")]) == 0
+            assert len([k for k in features.keys() if k.startswith("contextual_")]) == 0
 
     @pytest.mark.asyncio
     async def test_extract_batch_features(self, engine):
@@ -276,9 +264,7 @@ class TestFeatureEngineeringEngine:
         """Test error handling with invalid room ID."""
         target_time = datetime(2024, 1, 15, 15, 0, 0)
 
-        with pytest.raises(
-            FeatureExtractionError, match="Room ID is required"
-        ):
+        with pytest.raises(FeatureExtractionError, match="Room ID is required"):
             await engine.extract_features(
                 room_id="", target_time=target_time  # Empty room ID
             )
@@ -404,12 +390,8 @@ class TestFeatureEngineeringEngine:
     def test_clear_caches(self, engine):
         """Test cache clearing."""
         with (
-            patch.object(
-                engine.temporal_extractor, "clear_cache"
-            ) as mock_temp_clear,
-            patch.object(
-                engine.sequential_extractor, "clear_cache"
-            ) as mock_seq_clear,
+            patch.object(engine.temporal_extractor, "clear_cache") as mock_temp_clear,
+            patch.object(engine.sequential_extractor, "clear_cache") as mock_seq_clear,
             patch.object(
                 engine.contextual_extractor, "clear_cache"
             ) as mock_context_clear,
@@ -449,9 +431,7 @@ class TestFeatureEngineeringEngine:
         assert len(defaults) > 50  # Should have many default features
 
         # Should have prefixed features from all extractors
-        temporal_features = [
-            k for k in defaults.keys() if k.startswith("temporal_")
-        ]
+        temporal_features = [k for k in defaults.keys() if k.startswith("temporal_")]
         sequential_features = [
             k for k in defaults.keys() if k.startswith("sequential_")
         ]
@@ -479,9 +459,7 @@ class TestFeatureEngineeringEngine:
         )
 
         with (
-            patch.object(
-                TemporalFeatureExtractor, "extract_features"
-            ) as mock_temporal,
+            patch.object(TemporalFeatureExtractor, "extract_features") as mock_temporal,
             patch.object(
                 SequentialFeatureExtractor, "extract_features"
             ) as mock_sequential,
@@ -511,9 +489,7 @@ class TestFeatureEngineeringEngine:
 
             # Results should be identical (excluding potentially different metadata timestamps)
             parallel_clean = {
-                k: v
-                for k, v in parallel_features.items()
-                if not k.startswith("meta_")
+                k: v for k, v in parallel_features.items() if not k.startswith("meta_")
             }
             sequential_clean = {
                 k: v
@@ -681,9 +657,7 @@ class TestFeatureEngineeringEngine:
         target_time = datetime(2024, 1, 15, 15, 0, 0)
 
         # Mock extractors to return large feature sets
-        large_temporal = {
-            f"temporal_feature_{i}": float(i) for i in range(100)
-        }
+        large_temporal = {f"temporal_feature_{i}": float(i) for i in range(100)}
         large_sequential = {
             f"sequential_feature_{i}": float(i + 100) for i in range(50)
         }
@@ -718,25 +692,13 @@ class TestFeatureEngineeringEngine:
 
             # Should handle large feature sets
             temporal_count = len(
-                [
-                    k
-                    for k in features.keys()
-                    if k.startswith("temporal_temporal_")
-                ]
+                [k for k in features.keys() if k.startswith("temporal_temporal_")]
             )
             sequential_count = len(
-                [
-                    k
-                    for k in features.keys()
-                    if k.startswith("sequential_sequential_")
-                ]
+                [k for k in features.keys() if k.startswith("sequential_sequential_")]
             )
             contextual_count = len(
-                [
-                    k
-                    for k in features.keys()
-                    if k.startswith("contextual_contextual_")
-                ]
+                [k for k in features.keys() if k.startswith("contextual_contextual_")]
             )
 
             assert temporal_count == 100
@@ -803,9 +765,7 @@ class TestFeatureEngineeringEngine:
                 assert extraction_time < 0.05  # Allow some overhead
             else:
                 # Should take roughly 30ms (sequential execution)
-                assert (
-                    extraction_time > 0.025
-                )  # Should be slower than parallel
+                assert extraction_time > 0.025  # Should be slower than parallel
 
             # Results should be valid regardless of processing mode
             assert isinstance(features, dict)

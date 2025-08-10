@@ -74,9 +74,7 @@ def mock_feature_store():
     """Create mock feature store."""
     store = MagicMock()
     store.compute_features = AsyncMock(return_value=pd.DataFrame())
-    store.get_training_data = AsyncMock(
-        return_value=(pd.DataFrame(), pd.DataFrame())
-    )
+    store.get_training_data = AsyncMock(return_value=(pd.DataFrame(), pd.DataFrame()))
     return store
 
 
@@ -136,9 +134,7 @@ def sample_raw_data():
             "room_id": "test_room",
             "sensor_type": "motion",
             "state": np.random.choice(["on", "of"], len(dates)),
-            "occupancy_state": np.random.choice(
-                ["occupied", "vacant"], len(dates)
-            ),
+            "occupancy_state": np.random.choice(["occupied", "vacant"], len(dates)),
         }
     )
 
@@ -160,9 +156,7 @@ def sample_features_and_targets():
 
     targets = pd.DataFrame(
         {
-            "time_until_transition_seconds": np.random.exponential(
-                3600, n_samples
-            ),
+            "time_until_transition_seconds": np.random.exponential(3600, n_samples),
             "transition_type": np.random.choice(
                 ["occupied_to_vacant", "vacant_to_occupied"], n_samples
             ),
@@ -196,8 +190,7 @@ class TestTrainingPipelineInitialization:
 
             assert pipeline.config == basic_training_config
             assert (
-                pipeline.feature_engineering_engine
-                == mock_feature_engineering_engine
+                pipeline.feature_engineering_engine == mock_feature_engineering_engine
             )
             assert pipeline.feature_store == mock_feature_store
             assert pipeline.database_manager == mock_database_manager
@@ -333,15 +326,11 @@ class TestDataQualityValidation:
         assert quality_report.missing_values_percent < 20.0
 
     @pytest.mark.asyncio
-    async def test_data_quality_validation_insufficient_data(
-        self, training_pipeline
-    ):
+    async def test_data_quality_validation_insufficient_data(self, training_pipeline):
         """Test data quality validation with insufficient data."""
         small_data = pd.DataFrame(
             {
-                "timestamp": pd.date_range(
-                    "2024-01-01", periods=10, freq="1H"
-                ),
+                "timestamp": pd.date_range("2024-01-01", periods=10, freq="1H"),
                 "room_id": "test_room",
                 "sensor_type": "motion",
                 "state": ["on"] * 10,
@@ -357,15 +346,11 @@ class TestDataQualityValidation:
         assert "Insufficient samples" in str(quality_report.recommendations)
 
     @pytest.mark.asyncio
-    async def test_data_quality_validation_missing_columns(
-        self, training_pipeline
-    ):
+    async def test_data_quality_validation_missing_columns(self, training_pipeline):
         """Test data quality validation with missing required columns."""
         incomplete_data = pd.DataFrame(
             {
-                "timestamp": pd.date_range(
-                    "2024-01-01", periods=100, freq="1H"
-                ),
+                "timestamp": pd.date_range("2024-01-01", periods=100, freq="1H"),
                 "room_id": "test_room",
                 # Missing sensor_type and state columns
             }
@@ -377,19 +362,13 @@ class TestDataQualityValidation:
 
         assert quality_report.passed is False
         assert quality_report.feature_completeness_ok is False
-        assert "Missing required columns" in str(
-            quality_report.recommendations
-        )
+        assert "Missing required columns" in str(quality_report.recommendations)
 
     @pytest.mark.asyncio
-    async def test_data_quality_validation_temporal_issues(
-        self, training_pipeline
-    ):
+    async def test_data_quality_validation_temporal_issues(self, training_pipeline):
         """Test data quality validation with temporal consistency issues."""
         # Create data with non-monotonic timestamps
-        timestamps = pd.date_range(
-            "2024-01-01", periods=50, freq="1H"
-        ).tolist()
+        timestamps = pd.date_range("2024-01-01", periods=50, freq="1H").tolist()
         timestamps[20] = timestamps[10]  # Create temporal inconsistency
 
         inconsistent_data = pd.DataFrame(
@@ -409,15 +388,11 @@ class TestDataQualityValidation:
         assert "chronological order" in str(quality_report.recommendations)
 
     @pytest.mark.asyncio
-    async def test_data_quality_validation_with_missing_values(
-        self, training_pipeline
-    ):
+    async def test_data_quality_validation_with_missing_values(self, training_pipeline):
         """Test data quality validation with missing values."""
         data_with_nulls = pd.DataFrame(
             {
-                "timestamp": pd.date_range(
-                    "2024-01-01", periods=100, freq="1H"
-                ),
+                "timestamp": pd.date_range("2024-01-01", periods=100, freq="1H"),
                 "room_id": "test_room",
                 "sensor_type": ["motion"] * 50 + [None] * 50,  # 50% missing
                 "state": ["on"] * 100,
@@ -449,9 +424,7 @@ class TestDataQualityValidation:
         )
 
         assert (
-            training_pipeline._can_proceed_with_quality_issues(
-                acceptable_report
-            )
+            training_pipeline._can_proceed_with_quality_issues(acceptable_report)
             is True
         )
 
@@ -471,9 +444,7 @@ class TestDataQualityValidation:
         )
 
         assert (
-            training_pipeline._can_proceed_with_quality_issues(
-                unacceptable_report
-            )
+            training_pipeline._can_proceed_with_quality_issues(unacceptable_report)
             is False
         )
 
@@ -482,18 +453,12 @@ class TestDataPreparationAndFeatures:
     """Test data preparation and feature extraction processes."""
 
     @pytest.mark.asyncio
-    async def test_data_preparation_with_mock(
-        self, training_pipeline, sample_raw_data
-    ):
+    async def test_data_preparation_with_mock(self, training_pipeline, sample_raw_data):
         """Test data preparation with mocked database."""
         # Mock the query method to return our sample data
-        training_pipeline._query_room_events = AsyncMock(
-            return_value=sample_raw_data
-        )
+        training_pipeline._query_room_events = AsyncMock(return_value=sample_raw_data)
 
-        result = await training_pipeline._prepare_training_data(
-            "test_room", 30
-        )
+        result = await training_pipeline._prepare_training_data("test_room", 30)
 
         assert result is not None
         assert len(result) == len(sample_raw_data)
@@ -511,23 +476,17 @@ class TestDataPreparationAndFeatures:
         """Test data preparation behavior when database manager is unavailable."""
         training_pipeline.database_manager = None
 
-        result = await training_pipeline._prepare_training_data(
-            "test_room", 30
-        )
+        result = await training_pipeline._prepare_training_data("test_room", 30)
 
         # Should return empty DataFrame when no database manager
         assert result is not None
         assert len(result) == 0
 
     @pytest.mark.asyncio
-    async def test_feature_extraction(
-        self, training_pipeline, sample_raw_data
-    ):
+    async def test_feature_extraction(self, training_pipeline, sample_raw_data):
         """Test feature extraction process."""
-        features_df, targets_df = (
-            await training_pipeline._extract_features_and_targets(
-                sample_raw_data, "test_room"
-            )
+        features_df, targets_df = await training_pipeline._extract_features_and_targets(
+            sample_raw_data, "test_room"
         )
 
         assert isinstance(features_df, pd.DataFrame)
@@ -542,37 +501,29 @@ class TestDataPreparationAndFeatures:
             "sequential_last_motion",
             "contextual_temp",
         ]
-        assert all(
-            col in features_df.columns for col in expected_feature_columns
-        )
+        assert all(col in features_df.columns for col in expected_feature_columns)
 
         # Check expected target columns
         expected_target_columns = [
             "time_until_transition_seconds",
             "transition_type",
         ]
-        assert all(
-            col in targets_df.columns for col in expected_target_columns
-        )
+        assert all(col in targets_df.columns for col in expected_target_columns)
 
     @pytest.mark.asyncio
     async def test_feature_extraction_empty_data(self, training_pipeline):
         """Test feature extraction with empty data."""
         empty_data = pd.DataFrame()
 
-        features_df, targets_df = (
-            await training_pipeline._extract_features_and_targets(
-                empty_data, "test_room"
-            )
+        features_df, targets_df = await training_pipeline._extract_features_and_targets(
+            empty_data, "test_room"
         )
 
         assert len(features_df) == 0
         assert len(targets_df) == 0
 
     @pytest.mark.asyncio
-    async def test_data_splitting(
-        self, training_pipeline, sample_features_and_targets
-    ):
+    async def test_data_splitting(self, training_pipeline, sample_features_and_targets):
         """Test data splitting into train/validation/test sets."""
         features_df, targets_df = sample_features_and_targets
 
@@ -594,15 +545,11 @@ class TestDataPreparationAndFeatures:
 
         # Check split sizes
         total_samples = len(features_df)
-        expected_test_size = int(
-            total_samples * training_pipeline.config.test_split
-        )
+        expected_test_size = int(total_samples * training_pipeline.config.test_split)
         expected_val_size = int(
             total_samples * training_pipeline.config.validation_split
         )
-        expected_train_size = (
-            total_samples - expected_test_size - expected_val_size
-        )
+        expected_train_size = total_samples - expected_test_size - expected_val_size
 
         assert len(train_features) == expected_train_size
         assert len(val_features) == expected_val_size
@@ -629,12 +576,10 @@ class TestModelTraining:
     ):
         """Test ensemble model training coordination."""
         train_features, train_targets = sample_features_and_targets
-        val_features, val_targets = train_features.tail(
-            50
-        ), train_targets.tail(50)
-        train_features, train_targets = train_features.head(
+        val_features, val_targets = train_features.tail(50), train_targets.tail(50)
+        train_features, train_targets = train_features.head(250), train_targets.head(
             250
-        ), train_targets.head(250)
+        )
 
         progress = TrainingProgress(
             pipeline_id="test",
@@ -678,9 +623,7 @@ class TestModelTraining:
     ):
         """Test handling of model training failures."""
         train_features, train_targets = sample_features_and_targets
-        val_features, val_targets = train_features.tail(
-            50
-        ), train_targets.tail(50)
+        val_features, val_targets = train_features.tail(50), train_targets.tail(50)
 
         progress = TrainingProgress(
             pipeline_id="test",
@@ -693,9 +636,7 @@ class TestModelTraining:
             "src.models.training_pipeline.OccupancyEnsemble"
         ) as mock_ensemble_class:
             mock_ensemble = MagicMock()
-            mock_ensemble.train = AsyncMock(
-                side_effect=Exception("Training failed")
-            )
+            mock_ensemble.train = AsyncMock(side_effect=Exception("Training failed"))
             mock_ensemble_class.return_value = mock_ensemble
 
             with pytest.raises(
@@ -719,9 +660,7 @@ class TestModelTraining:
     ):
         """Test training specific model type (not ensemble)."""
         train_features, train_targets = sample_features_and_targets
-        val_features, val_targets = train_features.tail(
-            50
-        ), train_targets.tail(50)
+        val_features, val_targets = train_features.tail(50), train_targets.tail(50)
 
         progress = TrainingProgress(
             pipeline_id="test",
@@ -751,9 +690,7 @@ class TestModelValidation:
     ):
         """Test successful model validation."""
         val_features, val_targets = sample_features_and_targets
-        test_features, test_targets = val_features.tail(50), val_targets.tail(
-            50
-        )
+        test_features, test_targets = val_features.tail(50), val_targets.tail(50)
         val_features, val_targets = val_features.head(50), val_targets.head(50)
 
         progress = TrainingProgress(
@@ -770,8 +707,7 @@ class TestModelValidation:
         for i in range(len(val_features)):
             mock_predictions.append(
                 PredictionResult(
-                    predicted_time=datetime.utcnow()
-                    + timedelta(seconds=1800 + i * 60),
+                    predicted_time=datetime.utcnow() + timedelta(seconds=1800 + i * 60),
                     transition_type="vacant_to_occupied",
                     confidence_score=0.8,
                 )
@@ -790,9 +726,7 @@ class TestModelValidation:
 
         assert "ensemble" in validation_results
         assert isinstance(validation_results["ensemble"], float)
-        assert (
-            validation_results["ensemble"] >= 0
-        )  # MAE should be non-negative
+        assert validation_results["ensemble"] >= 0  # MAE should be non-negative
 
     @pytest.mark.asyncio
     async def test_model_validation_prediction_failure(
@@ -800,9 +734,7 @@ class TestModelValidation:
     ):
         """Test model validation with prediction failures."""
         val_features, val_targets = sample_features_and_targets
-        test_features, test_targets = val_features.tail(50), val_targets.tail(
-            50
-        )
+        test_features, test_targets = val_features.tail(50), val_targets.tail(50)
         val_features, val_targets = val_features.head(50), val_targets.head(50)
 
         progress = TrainingProgress(
@@ -813,9 +745,7 @@ class TestModelValidation:
 
         # Create mock model that fails during prediction
         mock_model = AsyncMock()
-        mock_model.predict = AsyncMock(
-            side_effect=Exception("Prediction failed")
-        )
+        mock_model.predict = AsyncMock(side_effect=Exception("Prediction failed"))
 
         trained_models = {"ensemble": mock_model}
 
@@ -877,9 +807,7 @@ class TestModelValidation:
             "mae": 900.0,  # 15 minutes, below 45-minute threshold (2700 seconds)
         }
 
-        assert (
-            training_pipeline._meets_quality_thresholds(good_metrics) is True
-        )
+        assert training_pipeline._meets_quality_thresholds(good_metrics) is True
 
         # Metrics that don't meet thresholds
         bad_metrics = {
@@ -887,9 +815,7 @@ class TestModelValidation:
             "mae": 3600.0,  # 60 minutes, above 45-minute threshold
         }
 
-        assert (
-            training_pipeline._meets_quality_thresholds(bad_metrics) is False
-        )
+        assert training_pipeline._meets_quality_thresholds(bad_metrics) is False
 
 
 class TestModelDeployment:
@@ -940,12 +866,8 @@ class TestModelDeployment:
 
     def test_model_version_generation(self, training_pipeline):
         """Test model version generation."""
-        version1 = training_pipeline._generate_model_version(
-            "test_room", "ensemble"
-        )
-        version2 = training_pipeline._generate_model_version(
-            "test_room", "xgboost"
-        )
+        version1 = training_pipeline._generate_model_version("test_room", "ensemble")
+        version2 = training_pipeline._generate_model_version("test_room", "xgboost")
 
         # Should contain timestamp, room_id, and model_name
         assert "test_room" in version1
@@ -1004,9 +926,7 @@ class TestFullTrainingWorkflow:
     ):
         """Test complete room model training workflow."""
         # Setup mocks for the full pipeline
-        training_pipeline._query_room_events = AsyncMock(
-            return_value=sample_raw_data
-        )
+        training_pipeline._query_room_events = AsyncMock(return_value=sample_raw_data)
 
         features_df, targets_df = sample_features_and_targets
         training_pipeline._extract_features_and_targets = AsyncMock(
@@ -1023,8 +943,7 @@ class TestFullTrainingWorkflow:
                     success=True,
                     training_time_seconds=120.0,
                     model_version="v1.0",
-                    training_samples=len(features_df)
-                    * 0.7,  # Approximate train size
+                    training_samples=len(features_df) * 0.7,  # Approximate train size
                     training_score=0.85,
                     validation_score=0.80,
                 )
@@ -1060,24 +979,18 @@ class TestFullTrainingWorkflow:
             assert progress.progress_percent == 100.0
 
     @pytest.mark.asyncio
-    async def test_train_room_models_insufficient_data(
-        self, training_pipeline
-    ):
+    async def test_train_room_models_insufficient_data(self, training_pipeline):
         """Test training workflow with insufficient data."""
         # Mock insufficient data
         small_data = pd.DataFrame(
             {
-                "timestamp": pd.date_range(
-                    "2024-01-01", periods=10, freq="1H"
-                ),
+                "timestamp": pd.date_range("2024-01-01", periods=10, freq="1H"),
                 "room_id": "test_room",
                 "sensor_type": "motion",
                 "state": ["on"] * 10,
             }
         )
-        training_pipeline._query_room_events = AsyncMock(
-            return_value=small_data
-        )
+        training_pipeline._query_room_events = AsyncMock(return_value=small_data)
 
         with pytest.raises(ModelTrainingError, match="Insufficient data"):
             await training_pipeline.train_room_models(
@@ -1098,9 +1011,7 @@ class TestFullTrainingWorkflow:
         )
         training_pipeline._query_room_events = AsyncMock(return_value=bad_data)
 
-        with pytest.raises(
-            ModelTrainingError, match="Data quality validation failed"
-        ):
+        with pytest.raises(ModelTrainingError, match="Data quality validation failed"):
             await training_pipeline.train_room_models(
                 room_id="test_room",
                 training_type=TrainingType.INITIAL,
@@ -1113,18 +1024,14 @@ class TestFullTrainingWorkflow:
     ):
         """Test initial training pipeline for multiple rooms."""
         # Setup mocks
-        training_pipeline._query_room_events = AsyncMock(
-            return_value=sample_raw_data
-        )
+        training_pipeline._query_room_events = AsyncMock(return_value=sample_raw_data)
         features_df, targets_df = sample_features_and_targets
         training_pipeline._extract_features_and_targets = AsyncMock(
             return_value=(features_df, targets_df)
         )
 
         # Mock system config
-        with patch(
-            "src.models.training_pipeline.get_config"
-        ) as mock_get_config:
+        with patch("src.models.training_pipeline.get_config") as mock_get_config:
             mock_config = MagicMock()
             mock_config.rooms.keys.return_value = ["room1", "room2", "room3"]
             mock_get_config.return_value = mock_config
@@ -1147,8 +1054,7 @@ class TestFullTrainingWorkflow:
                 mock_ensemble.predict = AsyncMock(
                     return_value=[
                         PredictionResult(
-                            predicted_time=datetime.utcnow()
-                            + timedelta(seconds=1800),
+                            predicted_time=datetime.utcnow() + timedelta(seconds=1800),
                             transition_type="vacant_to_occupied",
                             confidence_score=0.8,
                         )
@@ -1157,9 +1063,7 @@ class TestFullTrainingWorkflow:
                 mock_ensemble_class.return_value = mock_ensemble
 
                 # Run initial training
-                results = await training_pipeline.run_initial_training(
-                    months_of_data=3
-                )
+                results = await training_pipeline.run_initial_training(months_of_data=3)
 
                 # Should have results for all rooms
                 assert len(results) == 3
@@ -1346,9 +1250,7 @@ class TestTrainingPipelineErrorHandling:
             side_effect=Exception("Database connection failed")
         )
 
-        with pytest.raises(
-            ModelTrainingError, match="Training pipeline failed"
-        ):
+        with pytest.raises(ModelTrainingError, match="Training pipeline failed"):
             await training_pipeline.train_room_models(
                 room_id="test_room",
                 training_type=TrainingType.INITIAL,
@@ -1376,9 +1278,7 @@ class TestTrainingPipelineErrorHandling:
         training_pipeline._query_room_events = AsyncMock(
             return_value=pd.DataFrame(
                 {
-                    "timestamp": pd.date_range(
-                        "2024-01-01", periods=100, freq="1H"
-                    ),
+                    "timestamp": pd.date_range("2024-01-01", periods=100, freq="1H"),
                     "room_id": "test_room",
                     "sensor_type": "motion",
                     "state": ["on"] * 100,
@@ -1400,18 +1300,14 @@ class TestTrainingPipelineErrorHandling:
         assert len(active_pipelines) == 0
 
     @pytest.mark.asyncio
-    async def test_incremental_training_error_handling(
-        self, training_pipeline
-    ):
+    async def test_incremental_training_error_handling(self, training_pipeline):
         """Test error handling in incremental training workflow."""
         # Mock incremental training to fail
         training_pipeline.train_room_models = AsyncMock(
             side_effect=Exception("Incremental training failed")
         )
 
-        with pytest.raises(
-            ModelTrainingError, match="Incremental training failed"
-        ):
+        with pytest.raises(ModelTrainingError, match="Incremental training failed"):
             await training_pipeline.run_incremental_training(
                 room_id="test_room", days_of_new_data=7
             )
@@ -1424,9 +1320,7 @@ class TestTrainingPipelineErrorHandling:
             side_effect=Exception("Retraining failed")
         )
 
-        with pytest.raises(
-            ModelTrainingError, match="Retraining pipeline failed"
-        ):
+        with pytest.raises(ModelTrainingError, match="Retraining pipeline failed"):
             await training_pipeline.run_retraining_pipeline(
                 room_id="test_room", trigger_reason="accuracy_degradation"
             )

@@ -225,16 +225,12 @@ class TestConceptDriftDetector:
         return validator
 
     @pytest.mark.asyncio
-    async def test_detect_drift_basic(
-        self, drift_detector, mock_prediction_validator
-    ):
+    async def test_detect_drift_basic(self, drift_detector, mock_prediction_validator):
         """Test basic drift detection functionality."""
         room_id = "test_room"
 
         with (
-            patch.object(
-                drift_detector, "_get_occupancy_patterns", return_value=None
-            ),
+            patch.object(drift_detector, "_get_occupancy_patterns", return_value=None),
             patch.object(
                 drift_detector,
                 "_get_recent_prediction_errors",
@@ -248,27 +244,21 @@ class TestConceptDriftDetector:
 
             assert drift_metrics.room_id == room_id
             assert drift_metrics.accuracy_degradation == 10.0  # 20 - 10
-            assert (
-                drift_metrics.confidence_calibration_drift == 0.2
-            )  # |0.6 - 0.8|
+            assert drift_metrics.confidence_calibration_drift == 0.2  # |0.6 - 0.8|
 
     @pytest.mark.asyncio
     async def test_numerical_feature_drift_test(self, drift_detector):
         """Test numerical feature drift detection."""
         # Create test data with different distributions
         baseline_data = pd.Series(np.random.normal(10, 2, 100))
-        current_data = pd.Series(
-            np.random.normal(15, 3, 100)
-        )  # Different mean and std
+        current_data = pd.Series(np.random.normal(15, 3, 100))  # Different mean and std
 
         drift_result = await drift_detector._test_numerical_drift(
             baseline_data, current_data, "test_feature"
         )
 
         assert drift_result.feature_name == "test_feature"
-        assert (
-            drift_result.statistical_test == StatisticalTest.KOLMOGOROV_SMIRNOV
-        )
+        assert drift_result.statistical_test == StatisticalTest.KOLMOGOROV_SMIRNOV
         assert drift_result.p_value < 0.05  # Should detect significant drift
         assert drift_result.drift_detected
         assert "mean" in drift_result.baseline_stats
@@ -299,9 +289,7 @@ class TestConceptDriftDetector:
         baseline_data = pd.Series(np.random.normal(10, 2, 1000))
         current_data = pd.Series(np.random.normal(15, 2, 1000))  # Shifted mean
 
-        psi = drift_detector._calculate_numerical_psi(
-            baseline_data, current_data
-        )
+        psi = drift_detector._calculate_numerical_psi(baseline_data, current_data)
 
         assert psi > 0  # Should detect shift
         assert isinstance(psi, float)
@@ -313,9 +301,7 @@ class TestConceptDriftDetector:
             ["A"] * 40 + ["B"] * 30 + ["C"] * 30
         )  # Different distribution
 
-        psi = drift_detector._calculate_categorical_psi(
-            baseline_data, current_data
-        )
+        psi = drift_detector._calculate_categorical_psi(baseline_data, current_data)
 
         assert psi > 0  # Should detect drift
         assert isinstance(psi, float)
@@ -433,9 +419,7 @@ class TestFeatureDriftDetector:
                 "feature2": np.concatenate(
                     [
                         np.random.normal(5, 1, 48),  # Baseline: mean=5
-                        np.random.normal(
-                            5, 1, 25
-                        ),  # Recent: mean=5 (no drift)
+                        np.random.normal(5, 1, 25),  # Recent: mean=5 (no drift)
                     ]
                 ),
             }
@@ -448,12 +432,8 @@ class TestFeatureDriftDetector:
         assert len(drift_results) == 2  # Two features tested
 
         # Find results for each feature
-        feature1_result = next(
-            r for r in drift_results if r.feature_name == "feature1"
-        )
-        feature2_result = next(
-            r for r in drift_results if r.feature_name == "feature2"
-        )
+        feature1_result = next(r for r in drift_results if r.feature_name == "feature1")
+        feature2_result = next(r for r in drift_results if r.feature_name == "feature2")
 
         # Feature1 should show drift, feature2 should not
         assert feature1_result.drift_score > feature2_result.drift_score
@@ -531,9 +511,7 @@ class TestIntegration:
         baseline_metrics.recent_records = []
 
         current_metrics = Mock(spec=AccuracyMetrics)
-        current_metrics.mean_absolute_error_minutes = (
-            25.0  # Degraded performance
-        )
+        current_metrics.mean_absolute_error_minutes = 25.0  # Degraded performance
         current_metrics.confidence_vs_accuracy_correlation = 0.5
         current_metrics.recent_records = []
 
@@ -543,9 +521,7 @@ class TestIntegration:
 
         # Mock other methods to avoid database calls
         with (
-            patch.object(
-                drift_detector, "_get_occupancy_patterns", return_value=None
-            ),
+            patch.object(drift_detector, "_get_occupancy_patterns", return_value=None),
             patch.object(
                 drift_detector,
                 "_get_recent_prediction_errors",
