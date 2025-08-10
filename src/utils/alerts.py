@@ -4,18 +4,19 @@ Provides comprehensive error handling, notification, and recovery mechanisms.
 """
 
 import asyncio
-import smtplib
-from datetime import datetime, timedelta
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from typing import Dict, List, Optional, Any, Callable, Set
-from dataclasses import dataclass, field
-from enum import Enum
-import json
-import hashlib
 from collections import defaultdict, deque
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from enum import Enum
+import hashlib
+import json
+from typing import Any, Callable, Dict, List, Optional, Set
 
-from .logger import get_logger, get_error_tracker
+import smtplib
+
+from .logger import get_error_tracker, get_logger
 from .metrics import get_metrics_collector
 
 

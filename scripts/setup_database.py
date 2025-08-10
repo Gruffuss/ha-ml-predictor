@@ -8,25 +8,26 @@ It's designed to be idempotent and handle both fresh installs and updates.
 """
 
 import asyncio
+from datetime import datetime
 import logging
-import sys
 import os
 from pathlib import Path
-from typing import Dict, Any, List
+import sys
+from typing import Any, Dict, List
+
 import asyncpg
-from datetime import datetime
 
 # Add src to path to import our modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from core.config import get_config
 from core.exceptions import DatabaseConnectionError, DatabaseMigrationError
+from data.storage.database import DatabaseManager
 from data.storage.models import (
     Base,
     create_timescale_hypertables,
     optimize_database_performance,
 )
-from data.storage.database import DatabaseManager
 
 # Setup logging
 logging.basicConfig(

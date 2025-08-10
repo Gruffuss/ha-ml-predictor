@@ -3,8 +3,8 @@
 Simple import test for ModelOptimizer to validate implementation.
 """
 
-import sys
 from pathlib import Path
+import sys
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent / "src"))
@@ -19,10 +19,10 @@ def test_optimizer_imports():
         from src.adaptation.optimizer import (
             ModelOptimizer,
             OptimizationConfig,
-            OptimizationStrategy,
+            OptimizationError,
             OptimizationObjective,
             OptimizationResult,
-            OptimizationError,
+            OptimizationStrategy,
         )
 
         print("  ✅ Core optimization classes imported successfully")

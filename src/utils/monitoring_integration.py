@@ -4,14 +4,14 @@ Integrates monitoring system with existing TrackingManager and components.
 """
 
 import asyncio
-from datetime import datetime
-from typing import Dict, Any, Optional
 from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import Any, Dict, Optional
 
-from .logger import get_logger, get_performance_logger, get_ml_ops_logger
-from .metrics import get_metrics_manager, get_metrics_collector
-from .monitoring import get_monitoring_manager
 from .alerts import get_alert_manager
+from .logger import get_logger, get_ml_ops_logger, get_performance_logger
+from .metrics import get_metrics_collector, get_metrics_manager
+from .monitoring import get_monitoring_manager
 
 
 class MonitoringIntegration:

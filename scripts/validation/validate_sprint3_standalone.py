@@ -6,10 +6,10 @@ Standalone validation script that tests Sprint 3 model components without extern
 This uses mock imports to bypass missing libraries like pandas, numpy, sklearn.
 """
 
-import sys
-import os
 from datetime import datetime, timedelta
+import os
 from pathlib import Path
+import sys
 import traceback
 from unittest.mock import MagicMock
 
@@ -39,14 +39,14 @@ def test_imports():
 
     try:
         # Core model components
+        from models.base.hmm_predictor import HMMPredictor
+        from models.base.lstm_predictor import LSTMPredictor
         from models.base.predictor import (
             BasePredictor,
             PredictionResult,
             TrainingResult,
         )
-        from models.base.lstm_predictor import LSTMPredictor
         from models.base.xgboost_predictor import XGBoostPredictor
-        from models.base.hmm_predictor import HMMPredictor
         from models.ensemble import OccupancyEnsemble
 
         print("[PASS] All Sprint 3 imports successful")
@@ -62,11 +62,11 @@ def test_basic_structure():
     print("\nTesting basic model structure...")
 
     try:
+        from core.constants import ModelType
+        from models.base.hmm_predictor import HMMPredictor
         from models.base.lstm_predictor import LSTMPredictor
         from models.base.xgboost_predictor import XGBoostPredictor
-        from models.base.hmm_predictor import HMMPredictor
         from models.ensemble import OccupancyEnsemble
-        from core.constants import ModelType
 
         # Test model initialization
         lstm = LSTMPredictor(room_id="test_room")
@@ -257,9 +257,10 @@ def test_model_serialization():
     print("\nTesting model serialization...")
 
     try:
-        from models.base.xgboost_predictor import XGBoostPredictor
-        import tempfile
         import os
+        import tempfile
+
+        from models.base.xgboost_predictor import XGBoostPredictor
 
         predictor = XGBoostPredictor(room_id="test_room")
 
@@ -417,8 +418,8 @@ def test_abstract_base_class():
     print("\nTesting abstract base class implementation...")
 
     try:
-        from models.base.predictor import BasePredictor
         from core.constants import ModelType
+        from models.base.predictor import BasePredictor
 
         # Should not be able to instantiate BasePredictor directly
         try:

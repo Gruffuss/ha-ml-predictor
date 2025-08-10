@@ -19,12 +19,13 @@ Features demonstrated:
 - Error handling and reconnection
 """
 
+import argparse
 import asyncio
+from datetime import datetime
 import json
 import logging
-import argparse
-from datetime import datetime
 from typing import Dict, List, Optional, Set
+
 import websockets
 from websockets.client import WebSocketClientProtocol
 

@@ -7,18 +7,19 @@ or cron job to automatically maintain model performance and freshness.
 """
 
 import asyncio
+from datetime import datetime, timedelta
 import json
 import logging
-import signal
-import sys
-from datetime import datetime, timedelta
 from pathlib import Path
+import sys
 from typing import Dict, List, Optional
+
+import signal
 
 # Add src directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from src.adaptation.tracking_manager import TrackingManager, TrackingConfig
+from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
 from src.core.config import get_config
 from src.data.storage.database import get_database_manager
 from src.features.engineering import FeatureEngineeringEngine

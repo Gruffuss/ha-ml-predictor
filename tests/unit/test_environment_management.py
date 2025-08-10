@@ -3,21 +3,22 @@ Unit tests for environment management system.
 Tests environment detection, configuration loading, secrets management, and validation.
 """
 
-import pytest
-import tempfile
 import json
-import yaml
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+import tempfile
+from unittest.mock import MagicMock, patch
 
+import pytest
+import yaml
+
+from src.core.backup_manager import BackupManager
+from src.core.config_validator import ConfigurationValidator, ValidationResult
 from src.core.environment import (
     Environment,
     EnvironmentManager,
-    SecretsManager,
     EnvironmentSettings,
+    SecretsManager,
 )
-from src.core.config_validator import ConfigurationValidator, ValidationResult
-from src.core.backup_manager import BackupManager
 
 
 class TestEnvironment:

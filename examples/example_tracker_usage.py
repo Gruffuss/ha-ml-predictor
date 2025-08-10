@@ -6,14 +6,13 @@ for comprehensive real-time monitoring of prediction accuracy.
 """
 
 import asyncio
-import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any
+import logging
+from typing import Any, Dict
 
-from src.adaptation.validator import PredictionValidator
 from src.adaptation.tracker import AccuracyTracker, AlertSeverity
+from src.adaptation.validator import PredictionValidator
 from src.models.base.predictor import PredictionResult
-
 
 # Configure logging
 logging.basicConfig(

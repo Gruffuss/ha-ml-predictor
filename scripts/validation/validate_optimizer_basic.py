@@ -3,8 +3,8 @@
 Basic validation test for ModelOptimizer implementation.
 """
 
-import sys
 from pathlib import Path
+import sys
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent / "src"))

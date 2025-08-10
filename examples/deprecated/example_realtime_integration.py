@@ -27,27 +27,27 @@ This file remains for reference only.
 """
 
 import asyncio
-import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any
+import logging
+from typing import Any, Dict
+
+from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
 
 # Core system imports
 from src.core.config import get_config
-from src.adaptation.tracking_manager import TrackingManager, TrackingConfig
+from src.core.constants import ModelType
 
 # Integration imports
 from src.integration import (
-    integrate_tracking_with_realtime_publishing,
     IntegrationConfig,
+    get_integration_info,
+    integrate_tracking_with_realtime_publishing,
     realtime_router,
     set_integration_manager,
-    get_integration_info,
 )
 
 # Model imports for example predictions
 from src.models.base.predictor import PredictionResult
-from src.core.constants import ModelType
-
 
 # Configure logging
 logging.basicConfig(
@@ -132,8 +132,9 @@ class RealtimeIntegrationExample:
         """Set up API server with real-time endpoints."""
         try:
             from fastapi import FastAPI
-            from src.integration.api_server import integrate_with_tracking_manager
             import uvicorn
+
+            from src.integration.api_server import integrate_with_tracking_manager
 
             # Create API server integrated with tracking manager
             self.api_server = await integrate_with_tracking_manager(

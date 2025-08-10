@@ -20,19 +20,20 @@ This file remains for reference only.
 """
 
 import asyncio
-import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any
-import pandas as pd
+import logging
+from typing import Any, Dict
+
 import numpy as np
+import pandas as pd
+
+from src.adaptation.tracking_manager import TrackingManager
 
 # Import the integrated tracking system components
-from src.core.config import get_config, TrackingConfig
-from src.adaptation.tracking_manager import TrackingManager
-from src.models.ensemble import OccupancyEnsemble
+from src.core.config import TrackingConfig, get_config
 from src.data.ingestion.event_processor import EventProcessor
 from src.data.storage.database import get_database_manager
-
+from src.models.ensemble import OccupancyEnsemble
 
 # Configure logging
 logging.basicConfig(

@@ -7,11 +7,11 @@ requirements for automatic component integration.
 """
 
 import asyncio
-import logging
 from datetime import datetime
+import logging
 
-from src.core.config import get_config, APIConfig
-from src.adaptation.tracking_manager import TrackingManager, TrackingConfig
+from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
+from src.core.config import APIConfig, get_config
 
 
 async def test_api_integration():

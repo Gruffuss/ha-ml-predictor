@@ -6,9 +6,9 @@ Minimal validation that checks file structure and basic Sprint 3 components
 without requiring external dependencies.
 """
 
-import sys
 import os
 from pathlib import Path
+import sys
 
 
 def check_file_structure():

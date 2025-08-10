@@ -7,14 +7,14 @@ and works automatically without manual scripts.
 """
 
 import asyncio
-import logging
 from datetime import datetime, timedelta
+import logging
 
-from src.adaptation.tracking_manager import TrackingManager, TrackingConfig
-from src.adaptation.validator import PredictionValidator
 from src.adaptation.drift_detector import ConceptDriftDetector, DriftSeverity
-from src.models.base.predictor import PredictionResult
+from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
+from src.adaptation.validator import PredictionValidator
 from src.core.constants import ModelType
+from src.models.base.predictor import PredictionResult
 
 # Setup logging
 logging.basicConfig(

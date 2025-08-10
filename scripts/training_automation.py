@@ -8,10 +8,10 @@ including initial setup, scheduled retraining, and system maintenance.
 
 import argparse
 import asyncio
-import logging
-import sys
 from datetime import datetime, timedelta
+import logging
 from pathlib import Path
+import sys
 from typing import List, Optional
 
 # Add src directory to path for imports
@@ -23,8 +23,8 @@ from src.data.storage.database import get_database_manager
 from src.features.engineering import FeatureEngineeringEngine
 from src.features.store import FeatureStore
 from src.models.training_config import TrainingProfile, get_training_config_manager
-from src.models.training_pipeline import ModelTrainingPipeline, TrainingType
 from src.models.training_integration import integrate_training_with_tracking_manager
+from src.models.training_pipeline import ModelTrainingPipeline, TrainingType
 
 # Configure logging
 logging.basicConfig(

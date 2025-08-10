@@ -8,22 +8,23 @@ alerting, and performance monitoring.
 """
 
 import asyncio
-import sys
 from pathlib import Path
+import sys
 
 # Add src to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from datetime import datetime, timedelta
-from src.core.config import get_config
-from src.adaptation.tracking_manager import TrackingConfig
+
 from src.adaptation.monitoring_enhanced_tracking import (
     create_monitoring_enhanced_tracking_manager,
 )
-from src.utils.monitoring_integration import get_monitoring_integration
-from src.utils.metrics import get_metrics_manager
-from src.utils.alerts import get_alert_manager, NotificationConfig
+from src.adaptation.tracking_manager import TrackingConfig
+from src.core.config import get_config
 from src.models.base.predictor import PredictionResult
+from src.utils.alerts import NotificationConfig, get_alert_manager
+from src.utils.metrics import get_metrics_manager
+from src.utils.monitoring_integration import get_monitoring_integration
 
 
 async def demonstrate_monitoring_integration():

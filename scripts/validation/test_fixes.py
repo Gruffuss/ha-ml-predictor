@@ -3,9 +3,9 @@
 Test runner script to validate the Sprint 1 test fixes.
 """
 
-import sys
-import subprocess
 import os
+import subprocess
+import sys
 
 
 def run_test(test_name):

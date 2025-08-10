@@ -14,15 +14,15 @@ as a unified self-adaptation system.
 """
 
 import asyncio
-import logging
-import time
-import json
-import tempfile
-import traceback
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from pathlib import Path
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+import json
+import logging
+from pathlib import Path
+import tempfile
+import time
+import traceback
+from typing import Any, Dict, List, Optional, Tuple
 
 # Configure logging
 logging.basicConfig(
@@ -36,41 +36,41 @@ logging.getLogger("src.integration").setLevel(logging.WARNING)
 
 try:
     # Import Sprint 4 components
-    from src.adaptation.validator import (
-        PredictionValidator,
-        ValidationRecord,
-        AccuracyMetrics,
-    )
-    from src.adaptation.tracker import (
-        AccuracyTracker,
-        RealTimeMetrics,
-        AccuracyAlert,
-        AlertSeverity,
-    )
     from src.adaptation.drift_detector import (
         ConceptDriftDetector,
         DriftMetrics,
         DriftSeverity,
-    )
-    from src.adaptation.retrainer import (
-        AdaptiveRetrainer,
-        RetrainingRequest,
-        RetrainingTrigger,
     )
     from src.adaptation.optimizer import (
         ModelOptimizer,
         OptimizationConfig,
         OptimizationStrategy,
     )
-    from src.adaptation.tracking_manager import TrackingManager, TrackingConfig
-    from src.integration.dashboard import (
-        PerformanceDashboard,
-        DashboardConfig,
-        DashboardMode,
+    from src.adaptation.retrainer import (
+        AdaptiveRetrainer,
+        RetrainingRequest,
+        RetrainingTrigger,
     )
-    from src.models.base.predictor import PredictionResult
+    from src.adaptation.tracker import (
+        AccuracyAlert,
+        AccuracyTracker,
+        AlertSeverity,
+        RealTimeMetrics,
+    )
+    from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
+    from src.adaptation.validator import (
+        AccuracyMetrics,
+        PredictionValidator,
+        ValidationRecord,
+    )
     from src.core.constants import ModelType
     from src.core.exceptions import OccupancyPredictionError
+    from src.integration.dashboard import (
+        DashboardConfig,
+        DashboardMode,
+        PerformanceDashboard,
+    )
+    from src.models.base.predictor import PredictionResult
 
     IMPORTS_SUCCESSFUL = True
     IMPORT_ERRORS = []
@@ -999,9 +999,10 @@ class Sprint4SystemValidator:
         start_time = time.time()
 
         try:
-            import psutil
-            import os
             import gc
+            import os
+
+            import psutil
 
             process = psutil.Process(os.getpid())
             initial_memory = process.memory_info().rss / 1024 / 1024  # MB

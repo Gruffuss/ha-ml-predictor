@@ -5,8 +5,9 @@ Run this after installing requirements.txt to verify everything works.
 """
 
 import sys
-import importlib
 import traceback
+
+import importlib
 
 
 def test_import(module_name, package_name=None):

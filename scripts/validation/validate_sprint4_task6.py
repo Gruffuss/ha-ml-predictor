@@ -6,20 +6,27 @@ This script validates that the ModelOptimizer is properly integrated with
 the AdaptiveRetrainer and can automatically optimize model parameters during retraining.
 """
 
-import sys
 import asyncio
 from pathlib import Path
+import sys
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent / "src"))
+
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
+
+from src.adaptation.drift_detector import DriftMetrics
 
 # Import required components
 from src.adaptation.optimizer import (
     ModelOptimizer,
     OptimizationConfig,
-    OptimizationStrategy,
     OptimizationObjective,
     OptimizationResult,
+    OptimizationStrategy,
 )
 from src.adaptation.retrainer import (
     AdaptiveRetrainer,
@@ -29,10 +36,6 @@ from src.adaptation.retrainer import (
 )
 from src.adaptation.tracking_manager import TrackingConfig
 from src.adaptation.validator import AccuracyMetrics
-from src.adaptation.drift_detector import DriftMetrics
-from datetime import datetime
-import pandas as pd
-import numpy as np
 
 
 class MockModel:

@@ -4,9 +4,9 @@ Manual test to verify the fixes work without pytest.
 """
 
 import asyncio
-import sys
-import os
 from datetime import datetime, timedelta
+import os
+import sys
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
@@ -17,8 +17,8 @@ async def test_database_manager_initialization():
     print("Testing DatabaseManager initialization...")
 
     try:
-        from src.data.storage.database import DatabaseManager
         from src.core.config import DatabaseConfig
+        from src.data.storage.database import DatabaseManager
 
         # Create test config
         config = DatabaseConfig(
@@ -59,7 +59,7 @@ async def test_model_imports():
     print("Testing model imports...")
 
     try:
-        from src.data.storage.models import SensorEvent, RoomState, Prediction
+        from src.data.storage.models import Prediction, RoomState, SensorEvent
 
         # Create test instances
         event = SensorEvent(
@@ -100,7 +100,7 @@ async def test_config_system():
     print("Testing config system...")
 
     try:
-        from src.core.config import SystemConfig, DatabaseConfig, HomeAssistantConfig
+        from src.core.config import DatabaseConfig, HomeAssistantConfig, SystemConfig
 
         # Test basic config creation
         ha_config = HomeAssistantConfig(url="http://test", token="test")

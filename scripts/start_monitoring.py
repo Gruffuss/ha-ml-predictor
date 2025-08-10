@@ -7,20 +7,21 @@ for the Home Assistant ML Predictor, including metrics collection,
 alerting, and health monitoring.
 """
 
-import asyncio
-import sys
-import signal
-from pathlib import Path
 import argparse
+import asyncio
 import logging
+from pathlib import Path
+import sys
+
+import signal
 
 # Add src to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from src.utils.monitoring_integration import get_monitoring_integration
-from src.utils.metrics import get_metrics_manager
-from src.utils.alerts import get_alert_manager, NotificationConfig
+from src.utils.alerts import NotificationConfig, get_alert_manager
 from src.utils.logger import get_logger_manager
+from src.utils.metrics import get_metrics_manager
+from src.utils.monitoring_integration import get_monitoring_integration
 
 
 class MonitoringSystemStarter:

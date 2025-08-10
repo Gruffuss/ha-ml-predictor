@@ -1151,7 +1151,7 @@ class TrackingManager:
                 # Use alert_severity to create drift alert with appropriate severity level
                 if self.accuracy_tracker:
                     # Import AlertSeverity for proper alert creation
-                    from .tracker import AlertSeverity, AccuracyAlert
+                    from .tracker import AccuracyAlert, AlertSeverity
 
                     # Map string severity to AlertSeverity enum
                     severity_mapping = {

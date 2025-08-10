@@ -11,21 +11,21 @@ This script shows how to:
 """
 
 import asyncio
-import logging
-import sys
-import os
 from datetime import datetime, timedelta
+import logging
+import os
+import sys
 from typing import List
 
 # Add src to path to import our modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from data.storage import (
+    RoomState,
+    SensorEvent,
+    close_database_manager,
     get_database_manager,
     get_db_session,
-    SensorEvent,
-    RoomState,
-    close_database_manager,
 )
 
 # Setup logging

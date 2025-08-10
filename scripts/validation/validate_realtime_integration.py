@@ -17,14 +17,14 @@ Usage:
 """
 
 import asyncio
-import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any
+import logging
+from typing import Any, Dict
 
 # Core system imports
-from src.adaptation.tracking_manager import TrackingManager, TrackingConfig
-from src.models.base.predictor import PredictionResult
+from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
 from src.core.constants import ModelType
+from src.models.base.predictor import PredictionResult
 
 # Configure logging
 logging.basicConfig(

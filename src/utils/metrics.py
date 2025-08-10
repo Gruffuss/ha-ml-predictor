@@ -3,23 +3,24 @@ Prometheus metrics collection system for Home Assistant ML Predictor.
 Provides comprehensive monitoring of ML operations, performance, and system health.
 """
 
-import time
-from datetime import datetime
-from typing import Dict, List, Optional, Any
 from contextlib import contextmanager
-import psutil
-import threading
+from datetime import datetime
 from functools import wraps
+import threading
+import time
+from typing import Any, Dict, List, Optional
+
+import psutil
 
 try:
     from prometheus_client import (
+        REGISTRY,
+        CollectorRegistry,
         Counter,
         Gauge,
         Histogram,
         Info,
         Summary,
-        CollectorRegistry,
-        REGISTRY,
         generate_latest,
         multiprocess,
         values,
@@ -299,8 +300,9 @@ class MLMetricsCollector:
     def update_system_info(self):
         """Update system information metrics."""
         if not self._system_info_updated:
-            import platform
             import sys
+
+            import platform
 
             self.system_info.info(
                 {

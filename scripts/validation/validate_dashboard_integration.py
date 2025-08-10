@@ -14,8 +14,8 @@ into the TrackingManager lifecycle and works automatically without manual setup.
 """
 
 import asyncio
-import logging
 from datetime import datetime, timedelta
+import logging
 from typing import Optional
 
 # Configure logging
@@ -40,7 +40,7 @@ async def validate_dashboard_integration():
 
     try:
         # Import system components
-        from src.adaptation.tracking_manager import TrackingManager, TrackingConfig
+        from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
         from src.models.base.predictor import PredictionResult
 
         logger.info("✅ Successfully imported TrackingManager and dashboard components")

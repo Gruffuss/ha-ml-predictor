@@ -13,8 +13,9 @@ This file remains for reference only.
 
 import asyncio
 import logging
-from src.core.config import get_config
+
 from src.adaptation.tracking_manager import TrackingManager
+from src.core.config import get_config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

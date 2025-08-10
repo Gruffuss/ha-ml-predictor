@@ -4,19 +4,19 @@ Environment Management Script
 Manages environment setup, configuration validation, secrets, and deployment.
 """
 
-import os
-import sys
 import argparse
 import logging
+import os
 from pathlib import Path
-from typing import Optional, List
+import sys
+from typing import List, Optional
 
 # Add the src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from core.environment import EnvironmentManager, Environment
-from core.config_validator import ConfigurationValidator
 from core.backup_manager import BackupManager
+from core.config_validator import ConfigurationValidator
+from core.environment import Environment, EnvironmentManager
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)

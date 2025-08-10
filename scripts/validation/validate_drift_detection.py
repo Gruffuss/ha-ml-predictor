@@ -6,8 +6,8 @@ components and structure without requiring full dependencies.
 """
 
 import ast
-import sys
 from pathlib import Path
+import sys
 
 
 def validate_drift_detector_structure():

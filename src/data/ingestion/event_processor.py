@@ -11,8 +11,9 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 import logging
 import math
-import statistics
 from typing import Any, Dict, List, Optional, Set, Tuple
+
+import statistics
 
 from ...core.config import RoomConfig, SystemConfig, get_config
 from ...core.constants import (

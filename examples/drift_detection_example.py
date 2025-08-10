@@ -6,8 +6,8 @@ occupancy patterns and detect when models need retraining.
 """
 
 import asyncio
-import logging
 from datetime import datetime, timedelta
+import logging
 from pathlib import Path
 import sys
 
@@ -16,9 +16,8 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from src.adaptation.drift_detector import ConceptDriftDetector, FeatureDriftDetector
-from src.adaptation.validator import PredictionValidator
 from src.adaptation.tracker import AccuracyTracker
-
+from src.adaptation.validator import PredictionValidator
 
 # Setup logging
 logging.basicConfig(

@@ -3,17 +3,17 @@ Production-grade structured logging system for Home Assistant ML Predictor.
 Provides JSON formatted logging, centralized configuration, and performance monitoring.
 """
 
+from contextlib import contextmanager
+from datetime import datetime, timezone
 import json
 import logging
 import logging.config
 import logging.handlers
-import sys
-import traceback
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
-from contextlib import contextmanager
+import sys
 import time
+import traceback
+from typing import Any, Dict, Optional, Union
 
 import yaml
 

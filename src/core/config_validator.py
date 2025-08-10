@@ -3,16 +3,17 @@ Configuration validation framework.
 Validates configuration files, environment settings, and system requirements.
 """
 
-import re
-import socket
+from dataclasses import dataclass
 import logging
 from pathlib import Path
+import re
+import socket
 from typing import Any, Dict, List, Optional, Tuple, Union
-from dataclasses import dataclass
 from urllib.parse import urlparse
-import yaml
-import requests
+
 from pydantic import BaseModel, ValidationError, validator
+import requests
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -232,8 +233,9 @@ class DatabaseConfigValidator:
             return result
 
         try:
-            import asyncpg
             import asyncio
+
+            import asyncpg
 
             async def test_db():
                 try:

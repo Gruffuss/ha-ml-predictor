@@ -21,7 +21,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 import logging
 import traceback
-from typing import TYPE_CHECKING, List, Dict, Any, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from fastapi import (
     BackgroundTasks,
@@ -55,7 +55,7 @@ from ..core.exceptions import (
 from ..data.storage.database import get_database_manager
 from ..integration.mqtt_integration_manager import MQTTIntegrationManager
 from ..models.base.predictor import PredictionResult
-from ..utils.health_monitor import get_health_monitor, HealthStatus
+from ..utils.health_monitor import HealthStatus, get_health_monitor
 from ..utils.incident_response import get_incident_response_manager
 
 logger = logging.getLogger(__name__)

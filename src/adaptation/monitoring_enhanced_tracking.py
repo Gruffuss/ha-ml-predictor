@@ -4,14 +4,14 @@ Extends existing TrackingManager with integrated monitoring capabilities.
 """
 
 import asyncio
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any, Dict, Optional
-from contextlib import asynccontextmanager
 
 from ..core.constants import ModelType
 from ..models.base.predictor import PredictionResult
 from ..utils.monitoring_integration import get_monitoring_integration
-from .tracking_manager import TrackingManager, TrackingConfig
+from .tracking_manager import TrackingConfig, TrackingManager
 
 
 class MonitoringEnhancedTrackingManager:
