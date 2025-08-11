@@ -8,7 +8,7 @@ from datetime import datetime
 from functools import wraps
 import threading
 import time
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional
 
 import psutil
 
