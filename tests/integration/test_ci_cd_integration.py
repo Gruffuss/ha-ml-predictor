@@ -24,6 +24,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import time
+from typing import Any, Dict, Optional
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -34,7 +35,6 @@ from src.core.config import get_config
 from src.core.exceptions import ErrorSeverity, SystemError
 from src.data.storage.database import DatabaseManager
 from src.integration.api_server import create_app
-from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 

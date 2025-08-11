@@ -12,10 +12,10 @@ import json
 import logging
 from pathlib import Path
 import pickle
-import psutil
 import traceback
 from typing import Any, Dict, List, Optional
 
+import psutil
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession

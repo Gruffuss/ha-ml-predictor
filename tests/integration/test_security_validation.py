@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 import hashlib
 import logging
 import time
+from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from urllib.parse import quote
 
@@ -42,7 +43,6 @@ from src.core.exceptions import (
     ErrorSeverity,
 )
 from src.integration.api_server import APIServer, create_app
-from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 

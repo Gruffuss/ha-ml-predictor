@@ -14,13 +14,13 @@ from enum import Enum
 import json
 import logging
 from pathlib import Path
-import statistics
 import threading
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from sqlalchemy import and_, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+import statistics
 
 from ..core.constants import ModelType
 from ..core.exceptions import (

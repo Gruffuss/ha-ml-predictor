@@ -17,6 +17,7 @@ import asyncio
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 import logging
+from typing import Any, Callable, Dict, List, Optional
 
 from ..core.config import MQTTConfig, RoomConfig, get_config
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
@@ -25,8 +26,6 @@ from .mqtt_integration_manager import (
     MQTTIntegrationManager,
     MQTTIntegrationStats,
 )
-from typing import Any, Callable, Dict, List, Optional
-
 from .realtime_publisher import (
     PublishingChannel,
     PublishingMetrics,

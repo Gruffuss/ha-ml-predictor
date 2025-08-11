@@ -17,12 +17,12 @@ import asyncio
 from dataclasses import dataclass
 from datetime import datetime
 import logging
+from typing import Any, Callable, Dict, List, Optional
 
 from ..adaptation.tracking_manager import TrackingManager
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
 from ..models.base.predictor import PredictionResult
 from .enhanced_integration_manager import EnhancedIntegrationManager
-from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

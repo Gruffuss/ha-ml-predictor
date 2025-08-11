@@ -22,11 +22,11 @@ from datetime import datetime
 from enum import Enum
 import json
 import logging
+from typing import Any, Callable, Dict, List, Optional
 
 from ..core.config import MQTTConfig, RoomConfig
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
 from .mqtt_publisher import MQTTPublisher, MQTTPublishResult
-from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

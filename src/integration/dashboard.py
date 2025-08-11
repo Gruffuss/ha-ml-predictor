@@ -46,8 +46,7 @@ except ImportError:
     uvicorn = None
 
 # Defer imports to prevent circular dependency
-from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple
-
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 if TYPE_CHECKING:
     from ..adaptation.tracking_manager import TrackingManager

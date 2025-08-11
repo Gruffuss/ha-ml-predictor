@@ -10,12 +10,12 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 import logging
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 import yaml
 
 from ..core.config import get_config
 from .training_pipeline import TrainingConfig, ValidationStrategy
-from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

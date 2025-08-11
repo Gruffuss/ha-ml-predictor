@@ -14,6 +14,7 @@ import asyncio
 from datetime import datetime, timedelta
 import gc
 import time
+from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, patch
 import weakref
 
@@ -29,7 +30,6 @@ from src.data.storage.models import SensorEvent
 from src.features.store import FeatureStore
 from src.integration.mqtt_publisher import MQTTPublisher
 from src.models.predictor import OccupancyPredictor
-from typing import Any, Dict, List
 
 
 class MemoryProfiler:

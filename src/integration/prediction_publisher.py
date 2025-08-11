@@ -15,11 +15,11 @@ Features:
 from dataclasses import asdict, dataclass
 from datetime import datetime
 import logging
+from typing import Any, Dict, List, Optional
 
 from ..core.config import MQTTConfig, RoomConfig
 from ..models.base.predictor import PredictionResult
 from .mqtt_publisher import MQTTPublisher, MQTTPublishResult
-from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 

@@ -4,11 +4,9 @@ Validates configuration files, environment settings, and system requirements.
 """
 
 import asyncio
-import asyncpg
 from dataclasses import dataclass
 import logging
 from pathlib import Path
-import psutil
 import re
 import shutil
 import sys
@@ -16,7 +14,9 @@ import time
 from typing import Any, Dict, List
 from urllib.parse import urlparse
 
+import asyncpg
 import paho.mqtt.client as mqtt
+import psutil
 import requests
 import yaml
 

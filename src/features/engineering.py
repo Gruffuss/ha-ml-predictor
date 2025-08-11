@@ -9,6 +9,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 import logging
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -19,7 +20,6 @@ from ..data.storage.models import RoomState, SensorEvent
 from .contextual import ContextualFeatureExtractor
 from .sequential import SequentialFeatureExtractor
 from .temporal import TemporalFeatureExtractor
-from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 

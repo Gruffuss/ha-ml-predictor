@@ -25,7 +25,6 @@ from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
 from src.core.config import APIConfig, MQTTConfig, SystemConfig
 from src.integration.enhanced_mqtt_manager import EnhancedIntegrationStats
 from src.integration.mqtt_integration_manager import MQTTIntegrationStats
-
 from src.integration.realtime_publisher import (
     PublishingChannel,
     PublishingMetrics,

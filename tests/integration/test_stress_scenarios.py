@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 import gc
 import logging
 import time
+from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 from fastapi.testclient import TestClient
@@ -41,8 +42,6 @@ from src.core.exceptions import (
 from src.data.storage.database import DatabaseManager, get_database_manager
 from src.data.storage.models import RoomState, SensorEvent
 from src.integration.api_server import APIServer, create_app
-from typing import Any, Dict, List
-
 from src.integration.enhanced_mqtt_manager import (
     EnhancedMQTTIntegrationManager,
 )
