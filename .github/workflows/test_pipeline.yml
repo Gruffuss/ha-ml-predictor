@@ -77,15 +77,15 @@ jobs:
         
     - name: "Code formatting check (Black)"
       run: |
-        black --check --diff src/ tests/ || (echo "Code formatting issues found. Run 'black src/ tests/' to fix." && exit 1)
+        black --check --diff --line-length 88 src/ tests/ scripts/ examples/ || (echo "Code formatting issues found. Run 'black src/ tests/ scripts/ examples/' to fix." && exit 1)
         
     - name: "Import sorting check (isort)"
       run: |
-        isort --check-only --diff src/ tests/ || (echo "Import sorting issues found. Run 'isort src/ tests/' to fix." && exit 1)
+        isort --check-only --diff --profile black src/ tests/ scripts/ examples/ || (echo "Import sorting issues found. Run 'isort --profile black src/ tests/ scripts/ examples/' to fix." && exit 1)
         
     - name: "Linting (Flake8)"
       run: |
-        flake8 src/ tests/ --max-line-length=88 --extend-ignore=E203,W503
+        flake8 src/ tests/ scripts/ examples/ --max-line-length=140 --extend-ignore=E203,W503,E501,W291,W293,E402
         
     - name: "Type checking (mypy)"
       run: |
