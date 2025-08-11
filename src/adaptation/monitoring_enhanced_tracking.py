@@ -3,10 +3,9 @@ Monitoring-enhanced tracking manager for comprehensive observability.
 Extends existing TrackingManager with integrated monitoring capabilities.
 """
 
-import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from ..core.constants import ModelType
 from ..models.base.predictor import PredictionResult

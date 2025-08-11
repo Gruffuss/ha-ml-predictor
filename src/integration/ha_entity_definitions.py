@@ -16,22 +16,19 @@ Features:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from enum import Enum, auto
+from datetime import datetime
+from enum import Enum
 import json
 import logging
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 from ..core.config import MQTTConfig, RoomConfig, TrackingConfig
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
 from .discovery_publisher import (
     DeviceInfo,
     DiscoveryPublisher,
-    EntityMetadata,
-    EntityState,
-    SensorConfig,
 )
-from .mqtt_publisher import MQTTPublisher, MQTTPublishResult
+from .mqtt_publisher import MQTTPublishResult
 
 logger = logging.getLogger(__name__)
 

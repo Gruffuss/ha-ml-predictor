@@ -14,13 +14,10 @@ from datetime import datetime, timedelta
 from enum import Enum
 import json
 import logging
-from pathlib import Path
 import threading
-import uuid
 
 try:
     from fastapi import (
-        Depends,
         FastAPI,
         HTTPException,
         Query,
@@ -51,31 +48,10 @@ except ImportError:
 # Defer imports to prevent circular dependency
 from typing import Any, Dict, List, Optional, Set, TYPE_CHECKING, Tuple
 
-from ..adaptation.drift_detector import (
-    ConceptDriftDetector,
-    DriftMetrics,
-    DriftSeverity,
-    DriftType,
-)
-from ..adaptation.retrainer import (
-    AdaptiveRetrainer,
-    RetrainingRequest,
-    RetrainingStatus,
-    RetrainingTrigger,
-)
-from ..adaptation.tracker import (
-    AccuracyAlert,
-    AccuracyTracker,
-    AlertSeverity,
-    RealTimeMetrics,
-    TrendDirection,
-)
 
 if TYPE_CHECKING:
-    from ..adaptation.tracking_manager import TrackingConfig, TrackingManager
+    from ..adaptation.tracking_manager import TrackingManager
 
-from ..adaptation.validator import AccuracyLevel, AccuracyMetrics
-from ..core.constants import ModelType
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
 
 logger = logging.getLogger(__name__)

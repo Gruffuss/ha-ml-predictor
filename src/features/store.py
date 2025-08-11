@@ -6,19 +6,16 @@ including database persistence, memory caching, and batch processing capabilitie
 """
 
 import asyncio
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 import hashlib
 import logging
-import pickle
 from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
 import pandas as pd
 
 from ..core.config import SystemConfig, get_config
-from ..core.exceptions import DatabaseConnectionError, FeatureExtractionError
 from ..data.storage.database import DatabaseManager, get_database_manager
 from ..data.storage.models import RoomState, SensorEvent
 from .engineering import FeatureEngineeringEngine

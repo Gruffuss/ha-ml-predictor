@@ -14,7 +14,7 @@ Features:
 
 import asyncio
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 import logging
 import ssl
@@ -22,11 +22,9 @@ import threading
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from paho.mqtt import client as mqtt_client
-import paho.mqtt.enums as mqtt_enums
 
 from ..core.config import MQTTConfig
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
-from ..models.base.predictor import PredictionResult
 
 logger = logging.getLogger(__name__)
 

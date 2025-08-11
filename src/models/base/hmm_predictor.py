@@ -7,6 +7,7 @@ for modeling occupancy state transitions and duration predictions.
 
 from datetime import datetime, timedelta
 import logging
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -544,7 +545,6 @@ class HMMPredictor(BasePredictor):
     ):
         """Train duration prediction models for each state."""
         from sklearn.linear_model import LinearRegression
-from typing import Any, Dict, List, Optional
 
         self.transition_models = {}
 

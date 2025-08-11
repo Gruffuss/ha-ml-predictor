@@ -15,7 +15,6 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 from ..core.constants import ModelType
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
-from ..data.storage.models import RoomState, SensorEvent
 from ..integration.enhanced_mqtt_manager import EnhancedMQTTIntegrationManager
 from ..integration.realtime_publisher import (
     PublishingChannel,
@@ -26,13 +25,11 @@ from .drift_detector import ConceptDriftDetector, DriftMetrics, DriftSeverity
 from .optimizer import (
     ModelOptimizer,
     OptimizationConfig,
-    OptimizationObjective,
     OptimizationStrategy,
 )
 from .retrainer import (
     AdaptiveRetrainer,
     RetrainingRequest,
-    RetrainingStatus,
     RetrainingTrigger,
 )
 from .tracker import AccuracyAlert, AccuracyTracker, RealTimeMetrics

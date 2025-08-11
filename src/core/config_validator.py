@@ -7,11 +7,8 @@ from dataclasses import dataclass
 import logging
 from pathlib import Path
 import re
-import socket
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List
 from urllib.parse import urlparse
-
-from pydantic import BaseModel, ValidationError, validator
 import requests
 import yaml
 

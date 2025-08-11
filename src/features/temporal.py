@@ -5,7 +5,6 @@ This module extracts time-based features from sensor event sequences, including
 cyclical encodings, historical patterns, and state duration metrics.
 """
 
-from collections import defaultdict
 from datetime import datetime, timedelta
 import logging
 import math

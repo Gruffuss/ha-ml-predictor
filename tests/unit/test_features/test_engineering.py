@@ -7,6 +7,7 @@ feature integration, error handling, and performance management.
 
 import asyncio
 from datetime import datetime, timedelta
+from typing import List
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -726,7 +727,6 @@ class TestFeatureEngineeringEngine:
         # Mock extractors with slight delay to simulate work
         def mock_extraction_with_delay(*args, **kwargs):
             import time
-from typing import List
 
             time.sleep(0.01)  # 10ms delay
             return {"feature": 1.0}

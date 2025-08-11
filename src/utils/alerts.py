@@ -6,13 +6,13 @@ Provides comprehensive error handling, notification, and recovery mechanisms.
 import asyncio
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from enum import Enum
 import hashlib
 import json
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional
 
 import smtplib
 

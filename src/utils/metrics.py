@@ -8,7 +8,7 @@ from datetime import datetime
 from functools import wraps
 import threading
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import psutil
 
@@ -23,7 +23,6 @@ try:
         Summary,
         generate_latest,
         multiprocess,
-        values,
     )
 
     PROMETHEUS_AVAILABLE = True

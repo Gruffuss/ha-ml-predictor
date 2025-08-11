@@ -660,23 +660,23 @@ class FeatureEngineeringEngine:
         }
     
     def _validate_configuration(self):
-        \"\"\"Validate configuration during initialization.\"\"\"
+        """Validate configuration during initialization."""
         if not self.config:
             raise ConfigurationError(
-                \"System configuration is required for feature engineering\",
-                error_code=\"FEATURE_ENGINE_NO_CONFIG\"
+                "System configuration is required for feature engineering",
+                error_code="FEATURE_ENGINE_NO_CONFIG"
             )
         
         if not hasattr(self.config, 'rooms') or not self.config.rooms:
-            logger.warning(\"No room configurations available - feature extraction may be limited\")
+            logger.warning("No room configurations available - feature extraction may be limited")
         
         if self.max_workers < 1:
             raise ConfigurationError(
-                f\"max_workers must be at least 1, got {self.max_workers}\",
-                error_code=\"FEATURE_ENGINE_INVALID_WORKERS\"
+                f"max_workers must be at least 1, got {self.max_workers}",
+                error_code="FEATURE_ENGINE_INVALID_WORKERS"
             )
         
-        logger.debug(\"Feature engineering configuration validated successfully\")
+        logger.debug("Feature engineering configuration validated successfully")
 
     def compute_feature_statistics(self, features_df: pd.DataFrame) -> Dict[str, Any]:
         """Compute comprehensive statistics for extracted features using pandas and numpy."""

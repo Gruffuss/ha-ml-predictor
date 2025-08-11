@@ -315,3 +315,671 @@ tests/unit\test_environment_management.py:373:40: E712 comparison to True should
 tests/unit\test_features\test_engineering.py:731:13: E999 IndentationError: unexpected indent
 tests/unit\test_features\test_store.py:776:9: E999 IndentationError: unexpected indent
 tests/unit\test_ingestion\test_ha_client.py:1087:13: F402 import 'call' from line 11 shadowed by loop variable
+examples/deprecated\comprehensive_ha_integration_example.py:149:25: F541 f-string is missing placeholders
+examples/deprecated\example_database_usage.py:23:1: E402 module level import not at top of file
+examples/deprecated\example_database_usage.py:243:23: W291 trailing whitespace
+examples/deprecated\example_database_usage.py:249:35: W291 trailing whitespace
+examples/deprecated\example_realtime_integration.py:251:29: F541 f-string is missing placeholders
+examples/deprecated\example_realtime_integration.py:365:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:368:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:376:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:381:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:390:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:393:1: W293 blank line contains whitespace
+examples/deprecated\example_realtime_integration.py:401:1: W293 blank line contains whitespace
+examples/deprecated\system_integration_example.py:148:21: F541 f-string is missing placeholders
+examples/drift_detection_example.py:18:1: E402 module level import not at top of file
+examples/drift_detection_example.py:19:1: E402 module level import not at top of file
+examples/drift_detection_example.py:20:1: E402 module level import not at top of file
+examples/drift_detection_example.py:160:11: F541 f-string is missing placeholders
+examples/drift_detection_example.py:174:15: F541 f-string is missing placeholders
+examples/drift_detection_example.py:178:15: F541 f-string is missing placeholders
+examples/drift_detection_example.py:182:15: F541 f-string is missing placeholders
+examples/drift_detection_example.py:188:11: F541 f-string is missing placeholders
+examples/drift_detection_example.py:196:11: F541 f-string is missing placeholders
+examples/drift_detection_example.py:201:11: F541 f-string is missing placeholders
+examples/drift_detection_example.py:250:21: F541 f-string is missing placeholders
+examples/drift_detection_example.py:257:21: F541 f-string is missing placeholders
+examples/monitoring_system_integration.py:17:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:19:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:22:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:23:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:24:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:25:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:26:1: E402 module level import not at top of file
+examples/monitoring_system_integration.py:27:1: E402 module level import not at top of file
+examples/websocket_api_client.py:9:1: W293 blank line contains whitespace
+examples/websocket_api_client.py:365:25: F541 f-string is missing placeholders
+examples/websocket_api_client.py:374:21: F541 f-string is missing placeholders
+examples/websocket_api_client.py:391:13: F541 f-string is missing placeholders
+examples/websocket_api_client.py:444:24: F541 f-string is missing placeholders
+scripts/environment-manager.py:17:1: E402 module level import not at top of file
+scripts/environment-manager.py:18:1: E402 module level import not at top of file
+scripts/environment-manager.py:19:1: E402 module level import not at top of file
+scripts/setup_database.py:23:1: E402 module level import not at top of file
+scripts/setup_database.py:24:1: E402 module level import not at top of file
+scripts/setup_database.py:25:1: E402 module level import not at top of file
+scripts/setup_database.py:26:1: E402 module level import not at top of file
+scripts/setup_database.py:188:64: W291 trailing whitespace
+scripts/setup_database.py:198:86: W291 trailing whitespace
+scripts/setup_database.py:412:71: W291 trailing whitespace
+scripts/setup_database.py:425:74: W291 trailing whitespace
+scripts/setup_database.py:454:46: W291 trailing whitespace
+scripts/setup_database.py:483:13: F811 redefinition of unused 'datetime' from line 11
+scripts/start_monitoring.py:21:1: E402 module level import not at top of file
+scripts/start_monitoring.py:22:1: E402 module level import not at top of file
+scripts/start_monitoring.py:23:1: E402 module level import not at top of file
+scripts/start_monitoring.py:24:1: E402 module level import not at top of file
+scripts/training_automation.py:20:1: E402 module level import not at top of file
+scripts/training_automation.py:21:1: E402 module level import not at top of file
+scripts/training_automation.py:22:1: E402 module level import not at top of file
+scripts/training_automation.py:23:1: E402 module level import not at top of file
+scripts/training_automation.py:24:1: E402 module level import not at top of file
+scripts/training_automation.py:25:1: E402 module level import not at top of file
+scripts/training_automation.py:26:1: E402 module level import not at top of file
+scripts/training_automation.py:27:1: E402 module level import not at top of file
+scripts/training_automation.py:387:1: C901 'validate_training_setup' is too complex (23)
+scripts/training_automation.py:474:15: F541 f-string is missing placeholders
+scripts/training_scheduler.py:22:1: E402 module level import not at top of file
+scripts/training_scheduler.py:23:1: E402 module level import not at top of file
+scripts/training_scheduler.py:24:1: E402 module level import not at top of file
+scripts/training_scheduler.py:25:1: E402 module level import not at top of file
+scripts/training_scheduler.py:26:1: E402 module level import not at top of file
+scripts/training_scheduler.py:27:1: E402 module level import not at top of file
+scripts/training_scheduler.py:28:1: E402 module level import not at top of file
+scripts/training_scheduler.py:29:1: E402 module level import not at top of file
+scripts/validation\test_drift_integration.py:52:43: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\test_drift_integration.py:98:49: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\test_drift_integration.py:101:50: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\test_drift_integration.py:171:49: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\test_drift_integration.py:174:50: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_drift_detection.py:13:1: C901 'validate_drift_detector_structure' is too complex (17)
+scripts/validation\validate_realtime_integration.py:84:40: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\validate_realtime_integration.py:148:39: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:67:36: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:126:31: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\validate_sprint3.py:168:35: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:243:9: F811 redefinition of unused 'os' from line 10
+scripts/validation\validate_sprint3.py:360:23: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:403:35: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3.py:494:11: F541 f-string is missing placeholders
+scripts/validation\validate_sprint3_simple.py:182:19: F541 f-string is missing placeholders
+scripts/validation\validate_sprint3_standalone.py:84:36: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3_standalone.py:143:31: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+scripts/validation\validate_sprint3_standalone.py:185:35: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3_standalone.py:260:9: F811 redefinition of unused 'os' from line 10
+scripts/validation\validate_sprint3_standalone.py:361:23: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3_standalone.py:404:35: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+scripts/validation\validate_sprint3_standalone.py:523:11: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1296:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1305:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1311:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1317:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1321:15: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1335:19: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1337:17: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1339:19: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_complete.py:1341:19: F541 f-string is missing placeholders
+scripts/validation\validate_sprint4_task6.py:5:74: W291 trailing whitespace
+scripts/validation\validate_sprint4_task6.py:16:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:18:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:19:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:21:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:24:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:31:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:37:1: E402 module level import not at top of file
+scripts/validation\validate_sprint4_task6.py:38:1: E402 module level import not at top of file
+src/adaptation\monitoring_enhanced_tracking.py:6:1: F401 'asyncio' imported but unused
+src/adaptation\monitoring_enhanced_tracking.py:9:1: F401 'typing.Optional' imported but unused
+src/adaptation\monitoring_enhanced_tracking.py:171:9: F841 local variable 'e' is assigned to but never used
+src/adaptation\monitoring_enhanced_tracking.py:175:13: E722 do not use bare 'except'
+src/adaptation\monitoring_enhanced_tracking.py:236:13: E722 do not use bare 'except'
+src/adaptation\retrainer.py:88:1: W293 blank line contains whitespace
+src/adaptation\retrainer.py:99:1: W293 blank line contains whitespace
+src/adaptation\retrainer.py:110:1: W293 blank line contains whitespace
+src/adaptation\retrainer.py:115:1: W293 blank line contains whitespace
+src/adaptation\retrainer.py:141:1: W293 blank line contains whitespace
+src/adaptation\retrainer.py:153:1: W293 blank line contains whitespace
+src/adaptation\retrainer.py:176:1: W293 blank line contains whitespace
+src/adaptation\retrainer.py:342:5: C901 'AdaptiveRetrainer.evaluate_retraining_need' is too complex (16)
+src/adaptation\retrainer.py:1023:13: F841 local variable 'start_date' is assigned to but never used
+src/adaptation\tracker.py:1248:5: C901 'AccuracyTracker._check_entity_alerts' is too complex (16)
+src/adaptation\tracking_manager.py:18:1: F401 '..data.storage.models.RoomState' imported but unused
+src/adaptation\tracking_manager.py:18:1: F401 '..data.storage.models.SensorEvent' imported but unused
+src/adaptation\tracking_manager.py:26:1: F401 '.optimizer.OptimizationObjective' imported but unused
+src/adaptation\tracking_manager.py:32:1: F401 '.retrainer.RetrainingStatus' imported but unused
+src/adaptation\tracking_manager.py:436:5: C901 'TrackingManager.record_prediction' is too complex (20)
+src/adaptation\tracking_manager.py:918:39: W291 trailing whitespace
+src/adaptation\tracking_manager.py:919:42: W291 trailing whitespace
+src/core\backup_manager.py:19:1: F401 'yaml' imported but unused
+src/core\backup_manager.py:241:21: F841 local variable 'dbname' is assigned to but never used
+src/core\config_validator.py:10:1: F401 'socket' imported but unused
+src/core\config_validator.py:11:1: F401 'typing.Optional' imported but unused
+src/core\config_validator.py:11:1: F401 'typing.Tuple' imported but unused
+src/core\config_validator.py:11:1: F401 'typing.Union' imported but unused
+src/core\config_validator.py:14:1: F401 'pydantic.BaseModel' imported but unused
+src/core\config_validator.py:14:1: F401 'pydantic.ValidationError' imported but unused
+src/core\config_validator.py:14:1: F401 'pydantic.validator' imported but unused
+src/core\config_validator.py:127:9: E722 do not use bare 'except'
+src/core\config_validator.py:204:25: F541 f-string is missing placeholders
+src/core\config_validator.py:268:21: E722 do not use bare 'except'
+src/core\config_validator.py:524:5: C901 'SystemRequirementsValidator.validate' is too complex (17)
+src/core\config_validator.py:578:9: E722 do not use bare 'except'
+src/core\config_validator.py:603:9: E722 do not use bare 'except'
+src/core\environment.py:7:1: F401 'dataclasses.field' imported but unused
+src/core\environment.py:13:1: F401 'typing.Set' imported but unused
+src/core\environment.py:544:23: F541 f-string is missing placeholders
+src/data\ingestion\bulk_importer.py:802:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:806:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:824:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:827:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:836:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:845:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:852:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:859:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:861:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:868:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:871:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:882:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:887:36: W291 trailing whitespace
+src/data\ingestion\bulk_importer.py:891:39: W291 trailing whitespace
+src/data\ingestion\bulk_importer.py:895:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:897:42: W291 trailing whitespace
+src/data\ingestion\bulk_importer.py:900:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:903:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:908:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:911:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:916:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:921:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:927:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:934:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:942:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:946:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:948:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:952:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:955:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:973:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:977:1: W293 blank line contains whitespace
+src/data\ingestion\bulk_importer.py:980:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:125:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:138:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:144:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:267:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:271:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:275:46: W291 trailing whitespace
+src/data\ingestion\event_processor.py:356:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:362:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:382:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:391:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:393:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:401:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:405:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:412:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:415:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:422:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:424:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:431:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:435:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:445:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:448:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:451:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:455:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:559:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:563:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:569:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:572:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:580:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:582:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:584:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:590:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:593:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:599:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:602:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:608:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:612:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:619:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:621:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:627:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:631:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:637:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:642:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:647:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:649:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:655:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:658:48: W291 trailing whitespace
+src/data\ingestion\event_processor.py:660:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:667:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:671:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:680:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:682:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:687:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:689:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:694:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:699:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:702:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:707:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:711:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:715:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:725:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:737:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1077:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1078:5: C901 'EventProcessor.validate_event_sequence_integrity' is too complex (20)
+src/data\ingestion\event_processor.py:1085:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1089:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1100:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1103:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1110:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1116:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1120:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1128:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1134:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1140:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1147:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1152:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1158:1: W293 blank line contains whitespace
+src/data\ingestion\event_processor.py:1172:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:319:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:323:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:342:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:346:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:349:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:355:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:358:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:370:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:374:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:390:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:526:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:532:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:570:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:592:1: W293 blank line contains whitespace
+src/data\ingestion\ha_client.py:600:1: W293 blank line contains whitespace
+src/data\storage\database.py:103:65: W291 trailing whitespace
+src/data\storage\database.py:293:48: W291 trailing whitespace
+src/data\storage\database.py:327:1: W293 blank line contains whitespace
+src/data\storage\database.py:340:1: W293 blank line contains whitespace
+src/data\storage\database.py:348:29: W291 trailing whitespace
+src/data\storage\database.py:349:39: W291 trailing whitespace
+src/data\storage\database.py:366:29: W291 trailing whitespace
+src/data\storage\database.py:367:39: W291 trailing whitespace
+src/data\storage\database.py:371:1: W293 blank line contains whitespace
+src/data\storage\database.py:381:1: W293 blank line contains whitespace
+src/data\storage\database.py:387:1: W293 blank line contains whitespace
+src/data\storage\database.py:396:1: W293 blank line contains whitespace
+src/data\storage\database.py:402:1: W293 blank line contains whitespace
+src/data\storage\database.py:407:1: W293 blank line contains whitespace
+src/data\storage\database.py:412:1: W293 blank line contains whitespace
+src/data\storage\database.py:415:1: W293 blank line contains whitespace
+src/data\storage\database.py:421:1: W293 blank line contains whitespace
+src/data\storage\database.py:423:1: W293 blank line contains whitespace
+src/data\storage\database.py:427:29: W291 trailing whitespace
+src/data\storage\database.py:428:39: W291 trailing whitespace
+src/data\storage\database.py:432:1: W293 blank line contains whitespace
+src/data\storage\database.py:441:1: W293 blank line contains whitespace
+src/data\storage\database.py:446:1: W293 blank line contains whitespace
+src/data\storage\database.py:455:1: W293 blank line contains whitespace
+src/data\storage\database.py:461:1: W293 blank line contains whitespace
+src/data\storage\database.py:469:1: W293 blank line contains whitespace
+src/data\storage\database.py:473:1: W293 blank line contains whitespace
+src/data\storage\database.py:478:1: W293 blank line contains whitespace
+src/data\storage\database.py:488:1: W293 blank line contains whitespace
+src/data\storage\database.py:491:1: W293 blank line contains whitespace
+src/data\storage\database.py:494:1: W293 blank line contains whitespace
+src/data\storage\database.py:497:1: W293 blank line contains whitespace
+src/data\storage\database.py:499:1: W293 blank line contains whitespace
+src/data\storage\database.py:504:1: W293 blank line contains whitespace
+src/data\storage\database.py:508:1: W293 blank line contains whitespace
+src/data\storage\database.py:512:1: W293 blank line contains whitespace
+src/data\storage\database.py:516:1: W293 blank line contains whitespace
+src/data\storage\database.py:520:1: W293 blank line contains whitespace
+src/data\storage\database.py:524:1: W293 blank line contains whitespace
+src/data\storage\database.py:526:1: W293 blank line contains whitespace
+src/data\storage\database.py:530:1: W293 blank line contains whitespace
+src/data\storage\database.py:539:1: W293 blank line contains whitespace
+src/data\storage\database.py:543:1: W293 blank line contains whitespace
+src/data\storage\database.py:546:1: W293 blank line contains whitespace
+src/data\storage\database.py:554:1: W293 blank line contains whitespace
+src/data\storage\database.py:561:1: W293 blank line contains whitespace
+src/data\storage\database.py:569:1: W293 blank line contains whitespace
+src/data\storage\database.py:584:1: W293 blank line contains whitespace
+src/data\storage\database.py:587:1: W293 blank line contains whitespace
+src/data\storage\database.py:590:5: C901 'DatabaseManager.health_check' is too complex (17)
+src/data\storage\models.py:232:1: W293 blank line contains whitespace
+src/data\storage\models.py:243:1: W293 blank line contains whitespace
+src/data\storage\models.py:249:1: W293 blank line contains whitespace
+src/data\storage\models.py:254:1: W293 blank line contains whitespace
+src/data\storage\models.py:262:60: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+src/data\storage\models.py:263:60: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+src/data\storage\models.py:270:1: W293 blank line contains whitespace
+src/data\storage\models.py:273:1: W293 blank line contains whitespace
+src/data\storage\models.py:286:1: W293 blank line contains whitespace
+src/data\storage\models.py:300:1: W293 blank line contains whitespace
+src/data\storage\models.py:303:1: W293 blank line contains whitespace
+src/data\storage\models.py:309:1: W293 blank line contains whitespace
+src/data\storage\models.py:311:1: W293 blank line contains whitespace
+src/data\storage\models.py:321:1: W293 blank line contains whitespace
+src/data\storage\models.py:326:1: W293 blank line contains whitespace
+src/data\storage\models.py:331:1: W293 blank line contains whitespace
+src/data\storage\models.py:341:72: W291 trailing whitespace
+src/data\storage\models.py:343:38: W291 trailing whitespace
+src/data\storage\models.py:344:17: E128 continuation line under-indented for visual indent
+src/data\storage\models.py:360:1: W293 blank line contains whitespace
+src/data\storage\models.py:362:1: W293 blank line contains whitespace
+src/data\storage\models.py:382:1: W293 blank line contains whitespace
+src/data\storage\models.py:384:1: W293 blank line contains whitespace
+src/data\storage\models.py:397:1: W293 blank line contains whitespace
+src/data\storage\models.py:400:1: W293 blank line contains whitespace
+src/data\storage\models.py:410:1: W293 blank line contains whitespace
+src/data\storage\models.py:415:1: W293 blank line contains whitespace
+src/data\storage\models.py:420:1: W293 blank line contains whitespace
+src/data\storage\models.py:434:1: W293 blank line contains whitespace
+src/data\storage\models.py:444:1: W293 blank line contains whitespace
+src/data\storage\models.py:458:1: W293 blank line contains whitespace
+src/data\storage\models.py:469:1: W293 blank line contains whitespace
+src/data\storage\models.py:573:1: W293 blank line contains whitespace
+src/data\storage\models.py:579:1: W293 blank line contains whitespace
+src/data\storage\models.py:584:1: W293 blank line contains whitespace
+src/data\storage\models.py:593:1: W293 blank line contains whitespace
+src/data\storage\models.py:598:1: W293 blank line contains whitespace
+src/data\storage\models.py:601:1: W293 blank line contains whitespace
+src/data\storage\models.py:617:1: W293 blank line contains whitespace
+src/data\storage\models.py:626:1: W293 blank line contains whitespace
+src/data\storage\models.py:632:1: W293 blank line contains whitespace
+src/data\storage\models.py:634:1: W293 blank line contains whitespace
+src/data\storage\models.py:639:1: W293 blank line contains whitespace
+src/data\storage\models.py:647:1: W293 blank line contains whitespace
+src/data\storage\models.py:652:1: W293 blank line contains whitespace
+src/data\storage\models.py:654:1: W293 blank line contains whitespace
+src/data\storage\models.py:656:1: W293 blank line contains whitespace
+src/data\storage\models.py:666:1: W293 blank line contains whitespace
+src/data\storage\models.py:671:1: W293 blank line contains whitespace
+src/data\storage\models.py:687:1: W293 blank line contains whitespace
+src/data\storage\models.py:690:1: W293 blank line contains whitespace
+src/data\storage\models.py:913:13: W291 trailing whitespace
+src/data\storage\models.py:914:31: W291 trailing whitespace
+src/data\storage\models.py:915:22: W291 trailing whitespace
+src/data\storage\models.py:922:1: W293 blank line contains whitespace
+src/data\storage\models.py:928:1: W293 blank line contains whitespace
+src/data\storage\models.py:933:1: W293 blank line contains whitespace
+src/data\storage\models.py:941:1: W293 blank line contains whitespace
+src/data\storage\models.py:944:1: W293 blank line contains whitespace
+src/data\storage\models.py:950:1: W293 blank line contains whitespace
+src/data\storage\models.py:962:1: W293 blank line contains whitespace
+src/data\storage\models.py:970:1: W293 blank line contains whitespace
+src/data\storage\models.py:978:1: W293 blank line contains whitespace
+src/data\storage\models.py:980:1: W293 blank line contains whitespace
+src/data\storage\models.py:982:1: W293 blank line contains whitespace
+src/data\storage\models.py:988:1: W293 blank line contains whitespace
+src/data\storage\models.py:992:1: W293 blank line contains whitespace
+src/data\storage\models.py:1003:1: W293 blank line contains whitespace
+src/data\storage\models.py:1016:1: W293 blank line contains whitespace
+src/data\storage\models.py:1018:1: W293 blank line contains whitespace
+src/data\storage\models.py:1024:1: W293 blank line contains whitespace
+src/data\storage\models.py:1029:1: W293 blank line contains whitespace
+src/data\storage\models.py:1032:1: W293 blank line contains whitespace
+src/data\storage\models.py:1035:1: W293 blank line contains whitespace
+src/data\storage\models.py:1042:1: W293 blank line contains whitespace
+src/data\storage\models.py:1046:1: W293 blank line contains whitespace
+src/data\storage\models.py:1052:1: W293 blank line contains whitespace
+src/data\storage\models.py:1062:1: W293 blank line contains whitespace
+src/data\storage\models.py:1221:1: W293 blank line contains whitespace
+src/data\storage\models.py:1223:1: W293 blank line contains whitespace
+src/data\storage\models.py:1225:1: W293 blank line contains whitespace
+src/data\storage\models.py:1226:32: W291 trailing whitespace
+src/data\storage\models.py:1229:1: W293 blank line contains whitespace
+src/data\storage\models.py:1234:1: W293 blank line contains whitespace
+src/data\storage\models.py:1239:1: W293 blank line contains whitespace
+src/data\storage\models.py:1242:1: W293 blank line contains whitespace
+src/data\storage\models.py:1245:97: W291 trailing whitespace
+src/data\storage\models.py:1246:1: W293 blank line contains whitespace
+src/data\storage\models.py:1251:1: W293 blank line contains whitespace
+src/data\storage\models.py:1264:1: W293 blank line contains whitespace
+src/data\storage\models.py:1272:1: W293 blank line contains whitespace
+src/data\storage\models.py:1283:1: W293 blank line contains whitespace
+src/data\storage\models.py:1286:1: W293 blank line contains whitespace
+src/data\storage\models.py:1288:1: W293 blank line contains whitespace
+src/data\storage\models.py:1298:1: W293 blank line contains whitespace
+src/data\storage\models.py:1303:1: W293 blank line contains whitespace
+src/data\storage\models.py:1308:1: W293 blank line contains whitespace
+src/data\storage\models.py:1315:1: W293 blank line contains whitespace
+src/data\storage\models.py:1317:1: W293 blank line contains whitespace
+src/data\storage\models.py:1320:1: W293 blank line contains whitespace
+src/data\storage\models.py:1324:1: W293 blank line contains whitespace
+src/data\storage\models.py:1329:1: W293 blank line contains whitespace
+src/data\storage\models.py:1337:1: W293 blank line contains whitespace
+src/data\storage\models.py:1342:1: W293 blank line contains whitespace
+src/data\storage\models.py:1345:1: W293 blank line contains whitespace
+src/data\storage\models.py:1347:1: W293 blank line contains whitespace
+src/data\storage\models.py:1353:1: W293 blank line contains whitespace
+src/data\storage\models.py:1360:1: W293 blank line contains whitespace
+src/features\contextual.py:153:1: W293 blank line contains whitespace
+src/features\contextual.py:159:1: W293 blank line contains whitespace
+src/features\contextual.py:283:1: W293 blank line contains whitespace
+src/features\contextual.py:533:1: W293 blank line contains whitespace
+src/features\contextual.py:559:1: W293 blank line contains whitespace
+src/features\contextual.py:562:1: W293 blank line contains whitespace
+src/features\engineering.py:663:11: E999 SyntaxError: unexpected character after line continuation character
+src/features\sequential.py:235:1: W293 blank line contains whitespace
+src/features\sequential.py:238:1: W293 blank line contains whitespace
+src/features\sequential.py:247:1: W293 blank line contains whitespace
+src/features\sequential.py:255:1: W293 blank line contains whitespace
+src/features\sequential.py:264:1: W293 blank line contains whitespace
+src/features\sequential.py:370:1: W293 blank line contains whitespace
+src/features\sequential.py:383:1: W293 blank line contains whitespace
+src/features\sequential.py:389:1: W293 blank line contains whitespace
+src/features\sequential.py:405:1: W293 blank line contains whitespace
+src/features\sequential.py:415:1: W293 blank line contains whitespace
+src/features\sequential.py:422:1: W293 blank line contains whitespace
+src/features\sequential.py:431:1: W293 blank line contains whitespace
+src/features\sequential.py:440:1: W293 blank line contains whitespace
+src/features\sequential.py:446:1: W293 blank line contains whitespace
+src/features\sequential.py:453:1: W293 blank line contains whitespace
+src/features\sequential.py:458:1: W293 blank line contains whitespace
+src/features\sequential.py:510:1: W293 blank line contains whitespace
+src/features\sequential.py:546:1: W293 blank line contains whitespace
+src/features\sequential.py:552:1: W293 blank line contains whitespace
+src/features\sequential.py:558:1: W293 blank line contains whitespace
+src/features\sequential.py:561:1: W293 blank line contains whitespace
+src/features\sequential.py:562:56: W291 trailing whitespace
+src/features\sequential.py:567:1: W293 blank line contains whitespace
+src/features\sequential.py:570:1: W293 blank line contains whitespace
+src/features\sequential.py:591:1: W293 blank line contains whitespace
+src/features\sequential.py:671:41: W291 trailing whitespace
+src/features\sequential.py:672:5: E129 visually indented line with same indent as next logical line
+src/features\sequential.py:674:1: W293 blank line contains whitespace
+src/features\store.py:9:1: F401 'collections.defaultdict' imported but unused
+src/features\store.py:14:1: F401 'pickle' imported but unused
+src/features\store.py:17:1: F401 'numpy as np' imported but unused
+src/features\store.py:21:1: F401 '..core.exceptions.DatabaseConnectionError' imported but unused
+src/features\store.py:21:1: F401 '..core.exceptions.FeatureExtractionError' imported but unused
+src/features\temporal.py:8:1: F401 'collections.defaultdict' imported but unused
+src/features\temporal.py:230:1: W293 blank line contains whitespace
+src/features\temporal.py:235:1: W293 blank line contains whitespace
+src/features\temporal.py:243:1: W293 blank line contains whitespace
+src/features\temporal.py:244:5: C901 'TemporalFeatureExtractor._extract_generic_sensor_features' is too complex (19)
+src/features\temporal.py:247:1: W293 blank line contains whitespace
+src/features\temporal.py:252:1: W293 blank line contains whitespace
+src/features\temporal.py:255:1: W293 blank line contains whitespace
+src/features\temporal.py:261:1: W293 blank line contains whitespace
+src/features\temporal.py:267:1: W293 blank line contains whitespace
+src/features\temporal.py:280:1: W293 blank line contains whitespace
+src/features\temporal.py:284:1: W293 blank line contains whitespace
+src/features\temporal.py:295:1: W293 blank line contains whitespace
+src/features\temporal.py:305:1: W293 blank line contains whitespace
+src/features\temporal.py:306:35: W291 trailing whitespace
+src/features\temporal.py:312:1: W293 blank line contains whitespace
+src/features\temporal.py:319:1: W293 blank line contains whitespace
+src/features\temporal.py:325:1: W293 blank line contains whitespace
+src/features\temporal.py:331:1: W293 blank line contains whitespace
+src/features\temporal.py:401:1: W293 blank line contains whitespace
+src/features\temporal.py:403:1: W293 blank line contains whitespace
+src/features\temporal.py:412:1: W293 blank line contains whitespace
+src/features\temporal.py:428:1: W293 blank line contains whitespace
+src/features\temporal.py:435:1: W293 blank line contains whitespace
+src/features\temporal.py:442:1: W293 blank line contains whitespace
+src/features\temporal.py:445:1: W293 blank line contains whitespace
+src/features\temporal.py:453:1: W293 blank line contains whitespace
+src/features\temporal.py:621:1: W293 blank line contains whitespace
+src/features\temporal.py:625:1: W293 blank line contains whitespace
+src/features\temporal.py:631:36: W291 trailing whitespace
+src/features\temporal.py:636:1: W293 blank line contains whitespace
+src/features\temporal.py:647:1: W293 blank line contains whitespace
+src/features\temporal.py:652:1: W293 blank line contains whitespace
+src/integration\api_server.py:44:1: F401 '..core.config.APIConfig' imported but unused
+src/integration\api_server.py:45:1: F401 '..core.exceptions.APIValidationError' imported but unused
+src/integration\api_server.py:57:1: F401 '..models.base.predictor.PredictionResult' imported but unused
+src/integration\api_server.py:163:1: W293 blank line contains whitespace
+src/integration\api_server.py:459:1: W293 blank line contains whitespace
+src/integration\api_server.py:515:1: W293 blank line contains whitespace
+src/integration\api_server.py:606:1: C901 'health_check' is too complex (16)
+src/integration\dashboard.py:17:1: F401 'pathlib.Path' imported but unused
+src/integration\dashboard.py:19:1: F401 'uuid' imported but unused
+src/integration\dashboard.py:22:5: F401 'fastapi.Depends' imported but unused
+src/integration\dashboard.py:54:1: F401 '..adaptation.drift_detector.ConceptDriftDetector' imported but unused
+src/integration\dashboard.py:54:1: F401 '..adaptation.drift_detector.DriftMetrics' imported but unused
+src/integration\dashboard.py:54:1: F401 '..adaptation.drift_detector.DriftSeverity' imported but unused
+src/integration\dashboard.py:54:1: F401 '..adaptation.drift_detector.DriftType' imported but unused
+src/integration\dashboard.py:60:1: F401 '..adaptation.retrainer.AdaptiveRetrainer' imported but unused
+src/integration\dashboard.py:60:1: F401 '..adaptation.retrainer.RetrainingRequest' imported but unused
+src/integration\dashboard.py:60:1: F401 '..adaptation.retrainer.RetrainingStatus' imported but unused
+src/integration\dashboard.py:60:1: F401 '..adaptation.retrainer.RetrainingTrigger' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.AccuracyAlert' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.AccuracyTracker' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.AlertSeverity' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.RealTimeMetrics' imported but unused
+src/integration\dashboard.py:66:1: F401 '..adaptation.tracker.TrendDirection' imported but unused
+src/integration\dashboard.py:75:5: F401 '..adaptation.tracking_manager.TrackingConfig' imported but unused
+src/integration\dashboard.py:77:1: F401 '..adaptation.validator.AccuracyLevel' imported but unused
+src/integration\dashboard.py:77:1: F401 '..adaptation.validator.AccuracyMetrics' imported but unused
+src/integration\dashboard.py:78:1: F401 '..core.constants.ModelType' imported but unused
+src/integration\dashboard.py:453:5: C901 'PerformanceDashboard._register_routes' is too complex (42)
+src/integration\discovery_publisher.py:21:1: F401 'datetime.timedelta' imported but unused
+src/integration\enhanced_integration_manager.py:21:1: F401 'typing.Tuple' imported but unused
+src/integration\enhanced_integration_manager.py:23:1: F401 '..core.config.MQTTConfig' imported but unused
+src/integration\enhanced_integration_manager.py:23:1: F401 '..core.config.RoomConfig' imported but unused
+src/integration\enhanced_integration_manager.py:26:1: F401 '.discovery_publisher.DiscoveryPublisher' imported but unused
+src/integration\enhanced_integration_manager.py:27:1: F401 '.ha_entity_definitions.HAEntityConfig' imported but unused
+src/integration\enhanced_integration_manager.py:27:1: F401 '.ha_entity_definitions.HAServiceDefinition' imported but unused
+src/integration\enhanced_integration_manager.py:33:1: F401 '.mqtt_publisher.MQTTPublisher' imported but unused
+src/integration\enhanced_integration_manager.py:33:1: F401 '.mqtt_publisher.MQTTPublishResult' imported but unused
+src/integration\enhanced_mqtt_manager.py:32:2: E999 SyntaxError: invalid syntax
+src/integration\ha_entity_definitions.py:19:1: F401 'datetime.timedelta' imported but unused
+src/integration\ha_entity_definitions.py:20:1: F401 'enum.auto' imported but unused
+src/integration\ha_entity_definitions.py:23:1: F401 'typing.Callable' imported but unused
+src/integration\ha_entity_definitions.py:23:1: F401 'typing.Set' imported but unused
+src/integration\ha_entity_definitions.py:23:1: F401 'typing.Tuple' imported but unused
+src/integration\ha_entity_definitions.py:27:1: F401 '.discovery_publisher.EntityMetadata' imported but unused
+src/integration\ha_entity_definitions.py:27:1: F401 '.discovery_publisher.EntityState' imported but unused
+src/integration\ha_entity_definitions.py:27:1: F401 '.discovery_publisher.SensorConfig' imported but unused
+src/integration\ha_entity_definitions.py:34:1: F401 '.mqtt_publisher.MQTTPublisher' imported but unused
+src/integration\ha_entity_definitions.py:1447:5: C901 'HAEntityDefinitions._publish_entity_discovery' is too complex (21)
+src/integration\ha_tracking_bridge.py:18:1: F401 'datetime.timedelta' imported but unused
+src/integration\mqtt_integration_manager.py:18:1: F401 'datetime.timedelta' imported but unused
+src/integration\mqtt_integration_manager.py:26:1: F401 '.mqtt_publisher.MQTTPublisherError' imported but unused
+src/integration\mqtt_publisher.py:17:1: F401 'datetime.timedelta' imported but unused
+src/integration\mqtt_publisher.py:25:1: F401 'paho.mqtt.enums as mqtt_enums' imported but unused
+src/integration\mqtt_publisher.py:29:1: F401 '..models.base.predictor.PredictionResult' imported but unused
+src/integration\prediction_publisher.py:16:1: F401 'datetime.timedelta' imported but unused
+src/integration\prediction_publisher.py:20:1: F401 '..core.constants.ModelType' imported but unused
+src/integration\realtime_api_endpoints.py:122:1: C901 'websocket_room_predictions_endpoint' is too complex (17)
+src/integration\realtime_api_endpoints.py:462:9: F841 local variable 'target_rooms' is assigned to but never used
+src/integration\realtime_publisher.py:481:5: C901 'RealtimePublishingSystem.publish_prediction' is too complex (18)
+src/integration\realtime_publisher.py:521:21: F841 local variable 'prediction_payload' is assigned to but never used
+src/integration\realtime_publisher.py:531:21: F841 local variable 'mqtt_publisher' is assigned to but never used
+src/integration\tracking_integration.py:27:1: F401 '..core.config.MQTTConfig' imported but unused
+src/integration\tracking_integration.py:27:1: F401 '..core.config.RoomConfig' imported but unused
+src/integration\websocket_api.py:1309:1: F811 redefinition of unused 'WebSocketAuthenticationError' from line 47
+src/integration\websocket_api.py:1321:1: F811 redefinition of unused 'WebSocketConnectionError' from line 47
+src/integration\websocket_api.py:1333:1: F811 redefinition of unused 'WebSocketRateLimitError' from line 47
+src/integration\websocket_api.py:1347:1: F811 redefinition of unused 'WebSocketValidationError' from line 47
+src/models\base\hmm_predictor.py:549:9: E999 IndentationError: unexpected indent
+src/models\base\predictor.py:16:1: F401 'numpy as np' imported but unused
+src/models\base\predictor.py:20:1: F401 '...core.constants.PredictionType' imported but unused
+src/models\base\predictor.py:21:1: F401 '...core.exceptions.ModelTrainingError' imported but unused
+src/models\ensemble.py:589:13: E999 IndentationError: unexpected indent
+src/models\training_pipeline.py:1743:63: E999 SyntaxError: unexpected character after line continuation character
+src/utils\alerts.py:9:1: F401 'datetime.timedelta' imported but unused
+src/utils\alerts.py:15:1: F401 'typing.Set' imported but unused
+src/utils\alerts.py:193:1: W293 blank line contains whitespace
+src/utils\alerts.py:195:1: W293 blank line contains whitespace
+src/utils\alerts.py:285:13: F841 local variable 'payload' is assigned to but never used
+src/utils\health_monitor.py:4:74: W291 trailing whitespace
+src/utils\health_monitor.py:5:83: W291 trailing whitespace
+src/utils\health_monitor.py:14:1: F401 'json' imported but unused
+src/utils\health_monitor.py:15:1: F401 'logging' imported but unused
+src/utils\health_monitor.py:17:1: F401 'ssl' imported but unused
+src/utils\health_monitor.py:19:1: F401 'typing.Set' imported but unused
+src/utils\health_monitor.py:1096:9: E722 do not use bare 'except'
+src/utils\incident_response.py:12:1: F401 'json' imported but unused
+src/utils\incident_response.py:13:1: F401 'logging' imported but unused
+src/utils\incident_response.py:14:1: F401 'typing.Set' imported but unused
+src/utils\logger.py:16:1: F401 'typing.Union' imported but unused
+src/utils\metrics.py:11:1: F401 'typing.List' imported but unused
+src/utils\metrics.py:15:1: C901 'TryExcept 15' is too complex (22)
+src/utils\metrics.py:16:5: F401 'prometheus_client.values' imported but unused
+src/utils\metrics.py:458:13: F841 local variable 'memory' is assigned to but never used
+src/utils\metrics.py:501:13: F841 local variable 'duration' is assigned to but never used
+src/utils\metrics.py:605:13: F841 local variable 'e' is assigned to but never used
+src/utils\metrics.py:625:1: W293 blank line contains whitespace
+src/utils\metrics.py:628:1: W293 blank line contains whitespace
+src/utils\metrics.py:633:1: W293 blank line contains whitespace
+src/utils\metrics.py:639:1: W293 blank line contains whitespace
+src/utils\metrics.py:643:1: W293 blank line contains whitespace
+src/utils\metrics.py:647:1: W293 blank line contains whitespace
+src/utils\metrics.py:651:1: W293 blank line contains whitespace
+src/utils\metrics.py:657:1: W293 blank line contains whitespace
+src/utils\metrics.py:661:1: W293 blank line contains whitespace
+src/utils\metrics.py:670:1: W293 blank line contains whitespace
+src/utils\metrics.py:678:1: W293 blank line contains whitespace
+src/utils\metrics.py:680:1: W293 blank line contains whitespace
+src/utils\metrics.py:682:1: W293 blank line contains whitespace
+src/utils\metrics.py:685:1: W293 blank line contains whitespace
+src/utils\metrics.py:689:1: W293 blank line contains whitespace
+src/utils\metrics.py:695:1: W293 blank line contains whitespace
+src/utils\metrics.py:700:1: W293 blank line contains whitespace
+src/utils\metrics.py:705:1: W293 blank line contains whitespace
+src/utils\metrics.py:709:9: F841 local variable 'e' is assigned to but never used
+src/utils\metrics.py:729:1: W293 blank line contains whitespace
+src/utils\metrics.py:733:1: W293 blank line contains whitespace
+src/utils\metrics.py:737:1: W293 blank line contains whitespace
+src/utils\metrics.py:747:1: W293 blank line contains whitespace
+src/utils\metrics.py:750:1: W293 blank line contains whitespace
+src/utils\metrics.py:755:1: W293 blank line contains whitespace
+src/utils\metrics.py:759:1: W293 blank line contains whitespace
+src/utils\metrics.py:762:1: W293 blank line contains whitespace
+src/utils\metrics.py:779:1: W293 blank line contains whitespace
+src/utils\metrics.py:784:1: W293 blank line contains whitespace
+src/utils\monitoring.py:10:1: F401 'threading' imported but unused
+src/utils\monitoring_integration.py:9:1: F401 'typing.Optional' imported but unused
+tests/integration\test_security_validation.py:612:5: C901 'TestAPISecurityBoundaries.test_unauthorized_endpoint_access' is too complex (16)
+tests/integration\test_stress_scenarios.py:45:2: E999 SyntaxError: invalid syntax
+tests/performance\performance_benchmark_runner.py:622:5: E999 IndentationError: unexpected indent
+tests/run_tests.py:32:1: C901 'main' is too complex (18)
+tests/test_sprint3_validation.py:108:31: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/test_sprint3_validation.py:493:31: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:563:56: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:574:58: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/test_sprint3_validation.py:586:56: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:815:40: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:816:49: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint3_validation.py:817:50: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/test_sprint5_fixtures.py:28:2: E999 SyntaxError: invalid syntax
+tests/unit\test_adaptation\test_optimizer.py:781:39: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:558:42: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:559:44: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:636:34: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:638:41: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_adaptation\test_tracking_manager.py:654:34: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:173:44: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:174:40: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:225:32: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:229:32: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:234:32: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:253:33: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:275:32: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:288:32: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:308:32: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_environment_management.py:320:32: E712 comparison to False should be 'if cond is False:' or 'if not cond:'
+tests/unit\test_environment_management.py:373:40: E712 comparison to True should be 'if cond is True:' or 'if cond:'
+tests/unit\test_features\test_engineering.py:731:13: E999 IndentationError: unexpected indent
+tests/unit\test_features\test_store.py:776:9: E999 IndentationError: unexpected indent
+tests/unit\test_ingestion\test_ha_client.py:1087:13: F402 import 'call' from line 11 shadowed by loop variable

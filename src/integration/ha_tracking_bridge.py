@@ -15,7 +15,7 @@ Features:
 
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 
 from ..adaptation.tracking_manager import TrackingManager

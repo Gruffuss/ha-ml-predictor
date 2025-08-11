@@ -41,20 +41,18 @@ import uvicorn
 if TYPE_CHECKING:
     from ..adaptation.tracking_manager import TrackingManager
 
-from ..core.config import APIConfig, get_config
+from ..core.config import get_config
 from ..core.exceptions import (
     APIAuthenticationError,
     APIError,
     APIRateLimitError,
     APIResourceNotFoundError,
     APIServerError,
-    APIValidationError,
     ErrorSeverity,
     OccupancyPredictionError,
 )
 from ..data.storage.database import get_database_manager
 from ..integration.mqtt_integration_manager import MQTTIntegrationManager
-from ..models.base.predictor import PredictionResult
 from ..utils.health_monitor import HealthStatus, get_health_monitor
 from ..utils.incident_response import get_incident_response_manager
 

@@ -41,8 +41,9 @@ from src.core.exceptions import (
 from src.data.storage.database import DatabaseManager, get_database_manager
 from src.data.storage.models import RoomState, SensorEvent
 from src.integration.api_server import APIServer, create_app
-from src.integration.enhanced_mqtt_manager import (
 from typing import Any, Dict, List
+
+from src.integration.enhanced_mqtt_manager import (
     EnhancedMQTTIntegrationManager,
 )
 

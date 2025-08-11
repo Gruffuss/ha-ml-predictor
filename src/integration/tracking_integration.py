@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 if TYPE_CHECKING:
     from ..adaptation.tracking_manager import TrackingConfig, TrackingManager
 
-from ..core.config import MQTTConfig, RoomConfig, get_config
+from ..core.config import get_config
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
 from .enhanced_mqtt_manager import EnhancedMQTTIntegrationManager
 from .realtime_publisher import PublishingChannel

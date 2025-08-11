@@ -1,0 +1,238 @@
+    365  W293 blank line contains whitespace
+     49  E712 comparison to True should be 'if cond is True
+     47  E402 module level import not at top of file
+     47  E402 module level import not at top of file
+     37  E712 comparison to False should be 'if cond is False
+     36  W291 trailing whitespace
+     31  F541 f-string is missing placeholders
+     31  F541 f-string is missing placeholders
+     12  W291 trailing whitespace
+     10  W293 blank line contains whitespace
+     10  E999 IndentationError
+      9  E999 SyntaxError
+      8  F401 'datetime.timedelta' imported but unused
+      7  F401 'typing.Set' imported but unused
+      7  F401 'datetime.timedelta' imported but unused
+      7  E722 do not use bare 'except'
+      7  E722 do not use bare 'except'
+      5  F401 'typing.Set' imported but unused
+      4  F401 'typing.Tuple' imported but unused
+      3  F841 local variable 'e' is assigned to but never used
+      3  F401 'typing.Tuple' imported but unused
+      3  F401 'typing.Optional' imported but unused
+      3  F401 'typing.Optional' imported but unused
+      3  F401 '..core.constants.ModelType' imported but unused
+      2  F841 local variable 'e' is assigned to but never used
+      2  F811 redefinition of unused 'os' from line 10
+      2  F811 redefinition of unused 'os' from line 10
+      2  F401 'typing.Union' imported but unused
+      2  F401 'typing.Union' imported but unused
+      2  F401 'typing.Callable' imported but unused
+      2  F401 'typing.Any' imported but unused
+      2  F401 'pydantic.validator' imported but unused
+      2  F401 'numpy as np' imported but unused
+      2  F401 'numpy as np' imported but unused
+      2  F401 'logging' imported but unused
+      2  F401 'logging' imported but unused
+      2  F401 'json' imported but unused
+      2  F401 'json' imported but unused
+      2  F401 'dataclasses.field' imported but unused
+      2  F401 'collections.defaultdict' imported but unused
+      2  F401 '.mqtt_publisher.MQTTPublisher' imported but unused
+      2  F401 '.mqtt_publisher.MQTTPublisher' imported but unused
+      2  F401 '..models.base.predictor.PredictionResult' imported but unused
+      2  F401 '..models.base.predictor.PredictionResult' imported but unused
+      2  F401 '..core.constants.SensorType' imported but unused
+      2  F401 '..core.constants.ModelType' imported but unused
+      2  F401 '..core.config.RoomConfig' imported but unused
+      2  F401 '..core.config.RoomConfig' imported but unused
+      2  F401 '..core.config.MQTTConfig' imported but unused
+      2  F401 '..core.config.MQTTConfig' imported but unused
+      2  F401 '...core.constants.SensorState' imported but unused
+      1  F841 local variable 'target_rooms' is assigned to but never used
+      1  F841 local variable 'target_rooms' is assigned to but never used
+      1  F841 local variable 'start_date' is assigned to but never used
+      1  F841 local variable 'start_date' is assigned to but never used
+      1  F841 local variable 'prediction_payload' is assigned to but never used
+      1  F841 local variable 'prediction_payload' is assigned to but never used
+      1  F841 local variable 'payload' is assigned to but never used
+      1  F841 local variable 'payload' is assigned to but never used
+      1  F841 local variable 'mqtt_publisher' is assigned to but never used
+      1  F841 local variable 'mqtt_publisher' is assigned to but never used
+      1  F841 local variable 'memory' is assigned to but never used
+      1  F841 local variable 'memory' is assigned to but never used
+      1  F841 local variable 'duration' is assigned to but never used
+      1  F841 local variable 'duration' is assigned to but never used
+      1  F841 local variable 'dbname' is assigned to but never used
+      1  F841 local variable 'dbname' is assigned to but never used
+      1  F811 redefinition of unused 'WebSocketValidationError' from line 47
+      1  F811 redefinition of unused 'WebSocketValidationError' from line 47
+      1  F811 redefinition of unused 'WebSocketRateLimitError' from line 47
+      1  F811 redefinition of unused 'WebSocketRateLimitError' from line 47
+      1  F811 redefinition of unused 'WebSocketConnectionError' from line 47
+      1  F811 redefinition of unused 'WebSocketConnectionError' from line 47
+      1  F811 redefinition of unused 'WebSocketAuthenticationError' from line 47
+      1  F811 redefinition of unused 'WebSocketAuthenticationError' from line 47
+      1  F811 redefinition of unused 'datetime' from line 11
+      1  F811 redefinition of unused 'datetime' from line 11
+      1  F402 import 'call' from line 11 shadowed by loop variable
+      1  F402 import 'call' from line 11 shadowed by loop variable
+      1  F401 'yaml' imported but unused
+      1  F401 'yaml' imported but unused
+      1  F401 'uuid' imported but unused
+      1  F401 'uuid' imported but unused
+      1  F401 'urllib.parse.urljoin' imported but unused
+      1  F401 'typing.List' imported but unused
+      1  F401 'typing.List' imported but unused
+      1  F401 'typing.Callable' imported but unused
+      1  F401 'traceback' imported but unused
+      1  F401 'threading' imported but unused
+      1  F401 'threading' imported but unused
+      1  F401 'ssl' imported but unused
+      1  F401 'ssl' imported but unused
+      1  F401 'src.core.exceptions.ErrorSeverity' imported but unused
+      1  F401 'sqlalchemy.Text' imported but unused
+      1  F401 'sqlalchemy.sql.func as sql_func' imported but unused
+      1  F401 'sqlalchemy.orm.selectinload' imported but unused
+      1  F401 'sqlalchemy.orm.relationship' imported but unused
+      1  F401 'sqlalchemy.JSON' imported but unused
+      1  F401 'sqlalchemy.ForeignKey' imported but unused
+      1  F401 'sqlalchemy.exc.SQLAlchemyError' imported but unused
+      1  F401 'sqlalchemy.dialects.postgresql.UUID' imported but unused
+      1  F401 'socket' imported but unused
+      1  F401 'socket' imported but unused
+      1  F401 'pydantic.validator' imported but unused
+      1  F401 'pydantic.ValidationError' imported but unused
+      1  F401 'pydantic.ValidationError' imported but unused
+      1  F401 'pydantic.BaseModel' imported but unused
+      1  F401 'pydantic.BaseModel' imported but unused
+      1  F401 'prometheus_client.values' imported but unused
+      1  F401 'prometheus_client.values' imported but unused
+      1  F401 'prometheus_client.multiprocess' imported but unused
+      1  F401 'pickle' imported but unused
+      1  F401 'pathlib.Path' imported but unused
+      1  F401 'pathlib.Path' imported but unused
+      1  F401 'pandas as pd' imported but unused
+      1  F401 'paho.mqtt.enums as mqtt_enums' imported but unused
+      1  F401 'paho.mqtt.enums as mqtt_enums' imported but unused
+      1  F401 'math' imported but unused
+      1  F401 'fastapi.Depends' imported but unused
+      1  F401 'fastapi.Depends' imported but unused
+      1  F401 'enum.auto' imported but unused
+      1  F401 'enum.auto' imported but unused
+      1  F401 'decimal.Decimal' imported but unused
+      1  F401 'dataclasses.field' imported but unused
+      1  F401 'asyncio' imported but unused
+      1  F401 'asyncio' imported but unused
+      1  F401 '.retrainer.RetrainingStatus' imported but unused
+      1  F401 '.retrainer.RetrainingStatus' imported but unused
+      1  F401 '.optimizer.OptimizationObjective' imported but unused
+      1  F401 '.optimizer.OptimizationObjective' imported but unused
+      1  F401 '.mqtt_publisher.MQTTPublishResult' imported but unused
+      1  F401 '.mqtt_publisher.MQTTPublishResult' imported but unused
+      1  F401 '.mqtt_publisher.MQTTPublisherError' imported but unused
+      1  F401 '.mqtt_publisher.MQTTPublisherError' imported but unused
+      1  F401 '.ha_entity_definitions.HAServiceDefinition' imported but unused
+      1  F401 '.ha_entity_definitions.HAServiceDefinition' imported but unused
+      1  F401 '.ha_entity_definitions.HAEntityConfig' imported but unused
+      1  F401 '.ha_entity_definitions.HAEntityConfig' imported but unused
+      1  F401 '.discovery_publisher.SensorConfig' imported but unused
+      1  F401 '.discovery_publisher.SensorConfig' imported but unused
+      1  F401 '.discovery_publisher.EntityState' imported but unused
+      1  F401 '.discovery_publisher.EntityState' imported but unused
+      1  F401 '.discovery_publisher.EntityMetadata' imported but unused
+      1  F401 '.discovery_publisher.EntityMetadata' imported but unused
+      1  F401 '.discovery_publisher.DiscoveryPublisher' imported but unused
+      1  F401 '.discovery_publisher.DiscoveryPublisher' imported but unused
+      1  F401 '..data.storage.models.SensorEvent' imported but unused
+      1  F401 '..data.storage.models.SensorEvent' imported but unused
+      1  F401 '..data.storage.models.RoomState' imported but unused
+      1  F401 '..data.storage.models.RoomState' imported but unused
+      1  F401 '..core.exceptions.OccupancyPredictionError' imported but unused
+      1  F401 '..core.exceptions.FeatureExtractionError' imported but unused
+      1  F401 '..core.exceptions.DatabaseConnectionError' imported but unused
+      1  F401 '..core.exceptions.ConfigurationError' imported but unused
+      1  F401 '..core.exceptions.APIValidationError' imported but unused
+      1  F401 '..core.exceptions.APIValidationError' imported but unused
+      1  F401 '..core.constants.TEMPORAL_FEATURE_NAMES' imported but unused
+      1  F401 '..core.constants.MIN_EVENT_SEPARATION' imported but unused
+      1  F401 '..core.constants.HUMAN_MOVEMENT_PATTERNS' imported but unused
+      1  F401 '..core.constants.CAT_MOVEMENT_PATTERNS' imported but unused
+      1  F401 '..core.config.APIConfig' imported but unused
+      1  F401 '..core.config.APIConfig' imported but unused
+      1  F401 '..adaptation.validator.AccuracyMetrics' imported but unused
+      1  F401 '..adaptation.validator.AccuracyMetrics' imported but unused
+      1  F401 '..adaptation.validator.AccuracyLevel' imported but unused
+      1  F401 '..adaptation.validator.AccuracyLevel' imported but unused
+      1  F401 '..adaptation.tracking_manager.TrackingConfig' imported but unused
+      1  F401 '..adaptation.tracking_manager.TrackingConfig' imported but unused
+      1  F401 '..adaptation.tracker.TrendDirection' imported but unused
+      1  F401 '..adaptation.tracker.TrendDirection' imported but unused
+      1  F401 '..adaptation.tracker.RealTimeMetrics' imported but unused
+      1  F401 '..adaptation.tracker.RealTimeMetrics' imported but unused
+      1  F401 '..adaptation.tracker.AlertSeverity' imported but unused
+      1  F401 '..adaptation.tracker.AlertSeverity' imported but unused
+      1  F401 '..adaptation.tracker.AccuracyTracker' imported but unused
+      1  F401 '..adaptation.tracker.AccuracyTracker' imported but unused
+      1  F401 '..adaptation.tracker.AccuracyAlert' imported but unused
+      1  F401 '..adaptation.tracker.AccuracyAlert' imported but unused
+      1  F401 '..adaptation.retrainer.RetrainingTrigger' imported but unused
+      1  F401 '..adaptation.retrainer.RetrainingTrigger' imported but unused
+      1  F401 '..adaptation.retrainer.RetrainingStatus' imported but unused
+      1  F401 '..adaptation.retrainer.RetrainingStatus' imported but unused
+      1  F401 '..adaptation.retrainer.RetrainingRequest' imported but unused
+      1  F401 '..adaptation.retrainer.RetrainingRequest' imported but unused
+      1  F401 '..adaptation.retrainer.AdaptiveRetrainer' imported but unused
+      1  F401 '..adaptation.retrainer.AdaptiveRetrainer' imported but unused
+      1  F401 '..adaptation.drift_detector.DriftType' imported but unused
+      1  F401 '..adaptation.drift_detector.DriftType' imported but unused
+      1  F401 '..adaptation.drift_detector.DriftSeverity' imported but unused
+      1  F401 '..adaptation.drift_detector.DriftSeverity' imported but unused
+      1  F401 '..adaptation.drift_detector.DriftMetrics' imported but unused
+      1  F401 '..adaptation.drift_detector.DriftMetrics' imported but unused
+      1  F401 '..adaptation.drift_detector.ConceptDriftDetector' imported but unused
+      1  F401 '..adaptation.drift_detector.ConceptDriftDetector' imported but unused
+      1  F401 '...core.exceptions.RateLimitExceededError' imported but unused
+      1  F401 '...core.exceptions.ModelTrainingError' imported but unused
+      1  F401 '...core.exceptions.ModelTrainingError' imported but unused
+      1  F401 '...core.exceptions.FeatureExtractionError' imported but unused
+      1  F401 '...core.exceptions.DataValidationError' imported but unused
+      1  F401 '...core.exceptions.ConfigurationError' imported but unused
+      1  F401 '...core.constants.PRESENCE_STATES' imported but unused
+      1  F401 '...core.constants.PredictionType' imported but unused
+      1  F401 '...core.constants.PredictionType' imported but unused
+      1  F401 '...core.constants.ABSENCE_STATES' imported but unused
+      1  E129 visually indented line with same indent as next logical line
+      1  E128 continuation line under-indented for visual indent
+      1  C901 'websocket_room_predictions_endpoint' is too complex (17)
+      1  C901 'websocket_room_predictions_endpoint' is too complex (17)
+      1  C901 'validate_training_setup' is too complex (23)
+      1  C901 'validate_training_setup' is too complex (23)
+      1  C901 'validate_drift_detector_structure' is too complex (17)
+      1  C901 'validate_drift_detector_structure' is too complex (17)
+      1  C901 'TryExcept 15' is too complex (22)
+      1  C901 'TryExcept 15' is too complex (22)
+      1  C901 'TrackingManager.record_prediction' is too complex (20)
+      1  C901 'TrackingManager.record_prediction' is too complex (20)
+      1  C901 'TestAPISecurityBoundaries.test_unauthorized_endpoint_access' is too complex (16)
+      1  C901 'TestAPISecurityBoundaries.test_unauthorized_endpoint_access' is too complex (16)
+      1  C901 'TemporalFeatureExtractor._extract_generic_sensor_features' is too complex (19)
+      1  C901 'SystemRequirementsValidator.validate' is too complex (17)
+      1  C901 'SystemRequirementsValidator.validate' is too complex (17)
+      1  C901 'RealtimePublishingSystem.publish_prediction' is too complex (18)
+      1  C901 'RealtimePublishingSystem.publish_prediction' is too complex (18)
+      1  C901 'PerformanceDashboard._register_routes' is too complex (42)
+      1  C901 'PerformanceDashboard._register_routes' is too complex (42)
+      1  C901 'main' is too complex (18)
+      1  C901 'main' is too complex (18)
+      1  C901 'health_check' is too complex (16)
+      1  C901 'health_check' is too complex (16)
+      1  C901 'HAEntityDefinitions._publish_entity_discovery' is too complex (21)
+      1  C901 'HAEntityDefinitions._publish_entity_discovery' is too complex (21)
+      1  C901 'EventProcessor.validate_event_sequence_integrity' is too complex (20)
+      1  C901 'DatabaseManager.health_check' is too complex (17)
+      1  C901 'DatabaseManager.health_check' is too complex (17)
+      1  C901 'AdaptiveRetrainer.evaluate_retraining_need' is too complex (16)
+      1  C901 'AdaptiveRetrainer.evaluate_retraining_need' is too complex (16)
+      1  C901 'AccuracyTracker._check_entity_alerts' is too complex (16)
+      1  C901 'AccuracyTracker._check_entity_alerts' is too complex (16)

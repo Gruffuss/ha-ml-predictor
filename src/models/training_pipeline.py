@@ -1740,4 +1740,64 @@ class ModelTrainingPipeline:
             logger.error(f"Model comparison failed: {e}")
             return {"error": str(e)}
     
-    def _is_valid_model_type(self, model_type: str) -> bool:\n        \"\"\"Validate model type using ModelType enum.\"\"\"\n        try:\n            # Check if model_type is a valid ModelType enum value\n            valid_types = [mt.value for mt in ModelType]\n            return model_type.lower() in [vt.lower() for vt in valid_types]\n        except Exception as e:\n            logger.error(f\"Model type validation failed: {e}\")\n            return False\n    \n    async def _create_model_instance(self, model_type: str, room_id: str) -> Optional[BasePredictor]:\n        \"\"\"Create model instance based on model type with validation.\"\"\"\n        try:\n            if model_type == \"ensemble\":\n                return OccupancyEnsemble(\n                    room_id=room_id,\n                    tracking_manager=self.tracking_manager,\n                )\n            else:\n                # Import base model classes dynamically to avoid circular imports\n                if model_type.lower() == \"lstm\":\n                    from .base.lstm_predictor import LSTMPredictor\n                    return LSTMPredictor(room_id=room_id, tracking_manager=self.tracking_manager)\n                elif model_type.lower() == \"xgboost\":\n                    from .base.xgboost_predictor import XGBoostPredictor\n                    return XGBoostPredictor(room_id=room_id, tracking_manager=self.tracking_manager)\n                elif model_type.lower() == \"hmm\":\n                    from .base.hmm_predictor import HMMPredictor\n                    return HMMPredictor(room_id=room_id, tracking_manager=self.tracking_manager)\n                elif model_type.lower() == \"gp\" or model_type.lower() == \"gaussian_process\":\n                    from .base.gp_predictor import GaussianProcessPredictor\n                    return GaussianProcessPredictor(room_id=room_id, tracking_manager=self.tracking_manager)\n                else:\n                    logger.error(f\"Unsupported model type: {model_type}\")\n                    return None\n                    \n        except ImportError as e:\n            logger.error(f\"Failed to import model class for {model_type}: {e}\")\n            return None\n        except Exception as e:\n            logger.error(f\"Failed to create model instance for {model_type}: {e}\")\n            return None\n    \n    def _invoke_callback_if_configured(self, callback_name: str, *args, **kwargs):\n        \"\"\"Invoke callback function if configured in training config.\"\"\"\n        try:\n            callback = getattr(self.config, callback_name, None)\n            if callback and callable(callback):\n                callback(*args, **kwargs)\n        except Exception as e:\n            logger.warning(f\"Callback {callback_name} execution failed: {e}\")
+    def _is_valid_model_type(self, model_type: str) -> bool:
+        """Validate model type using ModelType enum."""
+        try:
+            # Check if model_type is a valid ModelType enum value
+            valid_types = [mt.value for mt in ModelType]
+            return model_type.lower() in [vt.lower() for vt in valid_types]
+        except Exception as e:
+            logger.error(f"Model type validation failed: {e}")
+            return False
+    
+    async def _create_model_instance(
+        self, model_type: str, room_id: str
+    ) -> Optional[BasePredictor]:
+        """Create model instance based on model type with validation."""
+        try:
+            if model_type == "ensemble":
+                return OccupancyEnsemble(
+                    room_id=room_id,
+                    tracking_manager=self.tracking_manager,
+                )
+            else:
+                # Import base model classes dynamically to avoid circular imports
+                if model_type.lower() == "lstm":
+                    from .base.lstm_predictor import LSTMPredictor
+                    return LSTMPredictor(
+                        room_id=room_id, tracking_manager=self.tracking_manager
+                    )
+                elif model_type.lower() == "xgboost":
+                    from .base.xgboost_predictor import XGBoostPredictor
+                    return XGBoostPredictor(
+                        room_id=room_id, tracking_manager=self.tracking_manager
+                    )
+                elif model_type.lower() == "hmm":
+                    from .base.hmm_predictor import HMMPredictor
+                    return HMMPredictor(
+                        room_id=room_id, tracking_manager=self.tracking_manager
+                    )
+                elif model_type.lower() in ["gp", "gaussian_process"]:
+                    from .base.gp_predictor import GaussianProcessPredictor
+                    return GaussianProcessPredictor(
+                        room_id=room_id, tracking_manager=self.tracking_manager
+                    )
+                else:
+                    logger.error(f"Unsupported model type: {model_type}")
+                    return None
+                    
+        except ImportError as e:
+            logger.error(f"Failed to import model class for {model_type}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Failed to create model instance for {model_type}: {e}")
+            return None
+    
+    def _invoke_callback_if_configured(self, callback_name: str, *args, **kwargs):
+        """Invoke callback function if configured in training config."""
+        try:
+            callback = getattr(self.config, callback_name, None)
+            if callback and callable(callback):
+                callback(*args, **kwargs)
+        except Exception as e:
+            logger.warning(f"Callback {callback_name} execution failed: {e}")

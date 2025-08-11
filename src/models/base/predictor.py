@@ -13,12 +13,11 @@ import pickle
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from abc import ABC, abstractmethod
-import numpy as np
 import pandas as pd
 
 from ...core.config import SystemConfig
-from ...core.constants import ModelType, PredictionType
-from ...core.exceptions import ModelPredictionError, ModelTrainingError
+from ...core.constants import ModelType
+from ...core.exceptions import ModelPredictionError
 
 logger = logging.getLogger(__name__)
 

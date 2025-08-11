@@ -5,7 +5,6 @@ Performance Benchmark Framework Demonstration (ASCII version)
 This script demonstrates the completed Sprint 6 Task 4 implementation.
 """
 
-import os
 from pathlib import Path
 
 

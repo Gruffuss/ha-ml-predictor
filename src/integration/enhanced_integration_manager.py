@@ -18,19 +18,15 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 import logging
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
-from ..core.config import MQTTConfig, RoomConfig, TrackingConfig, get_config
+from ..core.config import TrackingConfig, get_config
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
 from ..models.base.predictor import PredictionResult
-from .discovery_publisher import DiscoveryPublisher
 from .ha_entity_definitions import (
-    HAEntityConfig,
     HAEntityDefinitions,
-    HAServiceDefinition,
 )
 from .mqtt_integration_manager import MQTTIntegrationManager
-from .mqtt_publisher import MQTTPublisher, MQTTPublishResult
 
 logger = logging.getLogger(__name__)
 

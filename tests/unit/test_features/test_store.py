@@ -8,6 +8,7 @@ LRU eviction, training data generation, and performance management.
 import asyncio
 from datetime import datetime, timedelta
 import hashlib
+from typing import List
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pandas as pd
@@ -771,7 +772,6 @@ class TestFeatureStore:
         """Test that caching doesn't cause memory leaks."""
         import gc
         import sys
-from typing import List
 
         gc.collect()
         initial_size = sys.getsizeof(store.cache)

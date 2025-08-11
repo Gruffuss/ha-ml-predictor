@@ -15,7 +15,7 @@ Features:
 
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
@@ -23,7 +23,7 @@ from ..core.config import MQTTConfig, RoomConfig, get_config
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
 from ..models.base.predictor import PredictionResult
 from .discovery_publisher import DiscoveryPublisher
-from .mqtt_publisher import MQTTPublisher, MQTTPublisherError
+from .mqtt_publisher import MQTTPublisher
 from .prediction_publisher import PredictionPublisher
 
 logger = logging.getLogger(__name__)

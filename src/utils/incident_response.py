@@ -9,9 +9,7 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-import json
-import logging
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional
 
 from .alerts import get_alert_manager
 from .health_monitor import ComponentHealth, HealthStatus, get_health_monitor

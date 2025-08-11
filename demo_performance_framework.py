@@ -6,7 +6,6 @@ This script demonstrates the completed Sprint 6 Task 4 implementation
 without importing the full system to avoid dependency issues.
 """
 
-import os
 from pathlib import Path
 
 

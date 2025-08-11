@@ -19,6 +19,7 @@ import json
 from pathlib import Path
 import time
 import traceback
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -617,7 +618,6 @@ class PerformanceBenchmarkRunner:
 async def main():
     """Main function for running performance benchmarks."""
     import argparse
-from typing import Any, Dict, Optional
 
     parser = argparse.ArgumentParser(description="Run performance benchmarks")
     parser.add_argument("--baseline", help="Baseline metrics file path")

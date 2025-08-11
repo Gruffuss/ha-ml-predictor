@@ -6,7 +6,7 @@ Integrates monitoring system with existing TrackingManager and components.
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from .alerts import get_alert_manager
 from .logger import get_logger, get_ml_ops_logger, get_performance_logger

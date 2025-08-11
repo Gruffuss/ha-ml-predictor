@@ -5,9 +5,9 @@ This module implements a meta-learning ensemble that combines multiple base
 predictors (LSTM, XGBoost, HMM) using stacking with a meta-learner.
 """
 
-import asyncio
 from datetime import datetime, timedelta
 import logging
+from typing import Any, Dict, List, Optional
 import warnings
 
 import numpy as np
@@ -584,7 +584,6 @@ class OccupancyEnsemble(BasePredictor):
         else:
             # Default to linear regression
             from sklearn.linear_model import LinearRegression
-from typing import Any, Dict, List, Optional
 
             self.meta_learner = LinearRegression()
 
