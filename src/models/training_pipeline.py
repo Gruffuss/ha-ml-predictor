@@ -500,8 +500,10 @@ class ModelTrainingPipeline:
 
             if raw_data is None or len(raw_data) < self.config.min_samples_per_room:
                 raise ModelTrainingError(
-                    "ensemble", room_id, cause=None,
-                    training_data_size=len(raw_data) if raw_data else 0
+                    "ensemble",
+                    room_id,
+                    cause=None,
+                    training_data_size=len(raw_data) if raw_data else 0,
                 )
 
             # Stage 3: Data quality validation
@@ -511,9 +513,7 @@ class ModelTrainingPipeline:
             if not quality_report.passed:
                 progress.warnings.extend(quality_report.recommendations)
                 if not self._can_proceed_with_quality_issues(quality_report):
-                    raise ModelTrainingError(
-                        "ensemble", room_id, cause=None
-                    )
+                    raise ModelTrainingError("ensemble", room_id, cause=None)
 
             # Stage 4: Feature extraction
             progress.update_stage(TrainingStage.FEATURE_EXTRACTION)
@@ -522,9 +522,7 @@ class ModelTrainingPipeline:
             )
 
             if features_df.empty or targets_df.empty:
-                raise ModelTrainingError(
-                    "ensemble", room_id, cause=None
-                )
+                raise ModelTrainingError("ensemble", room_id, cause=None)
 
             # Stage 5: Data splitting
             progress.update_stage(TrainingStage.DATA_SPLITTING)
@@ -630,9 +628,7 @@ class ModelTrainingPipeline:
             self._training_stats["failed_pipelines"] += 1
 
             logger.error(f"Training pipeline {pipeline_id} failed: {e}")
-            raise ModelTrainingError(
-                "ensemble", room_id, cause=e
-            )
+            raise ModelTrainingError("ensemble", room_id, cause=e)
 
         finally:
             if pipeline_id in self._active_pipelines:
@@ -1333,9 +1329,7 @@ class ModelTrainingPipeline:
             logger.debug("Evaluating models and selecting best performer")
 
             if not validation_results:
-                raise ModelTrainingError(
-                    "ensemble", "model_selection", cause=None
-                )
+                raise ModelTrainingError("ensemble", "model_selection", cause=None)
 
             # Select best model based on metric
             if self.config.model_selection_metric in ["mae", "rmse"]:

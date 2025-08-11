@@ -363,7 +363,9 @@ class LSTMPredictor(BasePredictor):
         except Exception as e:
             error_msg = f"LSTM prediction failed: {str(e)}"
             logger.error(error_msg)
-            raise ModelPredictionError(self.model_type.value, self.room_id or "unknown", cause=e)
+            raise ModelPredictionError(
+                self.model_type.value, self.room_id or "unknown", cause=e
+            )
 
     def get_feature_importance(self) -> Dict[str, float]:
         """
