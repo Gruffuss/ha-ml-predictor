@@ -45,11 +45,8 @@ from websockets.server import WebSocketServerProtocol
 
 from ..core.config import get_config
 from ..core.exceptions import (
-    ErrorSeverity,
-    OccupancyPredictionError,
     WebSocketAuthenticationError,
     WebSocketConnectionError,
-    WebSocketRateLimitError,
     WebSocketValidationError,
 )
 from ..models.base.predictor import PredictionResult
@@ -1294,66 +1291,7 @@ class WebSocketAPIServer:
 # Exception classes for WebSocket API
 
 
-class WebSocketAPIError(OccupancyPredictionError):
-    """Base exception for WebSocket API errors."""
-
-    def __init__(self, message: str, **kwargs):
-        super().__init__(
-            message=message,
-            error_code="WEBSOCKET_API_ERROR",
-            severity=kwargs.get("severity", ErrorSeverity.MEDIUM),
-            **kwargs,
-        )
-
-
-class WebSocketAuthenticationError(WebSocketAPIError):
-    """Raised when WebSocket authentication fails."""
-
-    def __init__(self, message: str, **kwargs):
-        super().__init__(
-            message=message,
-            error_code="WEBSOCKET_AUTH_ERROR",
-            severity=ErrorSeverity.HIGH,
-            **kwargs,
-        )
-
-
-class WebSocketConnectionError(WebSocketAPIError):
-    """Raised when WebSocket connection operations fail."""
-
-    def __init__(self, message: str, **kwargs):
-        super().__init__(
-            message=message,
-            error_code="WEBSOCKET_CONNECTION_ERROR",
-            severity=ErrorSeverity.MEDIUM,
-            **kwargs,
-        )
-
-
-class WebSocketRateLimitError(WebSocketAPIError):
-    """Raised when WebSocket rate limits are exceeded."""
-
-    def __init__(self, client_id: str, limit: int, **kwargs):
-        message = f"Rate limit exceeded for client {client_id}: {limit} messages/minute"
-        super().__init__(
-            message=message,
-            error_code="WEBSOCKET_RATE_LIMIT_ERROR",
-            severity=ErrorSeverity.LOW,
-            context={"client_id": client_id, "limit": limit},
-            **kwargs,
-        )
-
-
-class WebSocketValidationError(WebSocketAPIError):
-    """Raised when WebSocket message validation fails."""
-
-    def __init__(self, message: str, **kwargs):
-        super().__init__(
-            message=message,
-            error_code="WEBSOCKET_VALIDATION_ERROR",
-            severity=ErrorSeverity.LOW,
-            **kwargs,
-        )
+# WebSocket exceptions are imported from core.exceptions
 
 
 # Starlette Application Setup for WebSocket API

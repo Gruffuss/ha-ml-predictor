@@ -18,7 +18,7 @@ import asyncio
 from datetime import datetime, timedelta
 import json
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from fastapi import (
     APIRouter,
@@ -458,9 +458,7 @@ async def test_realtime_broadcast():
             },
         )
 
-        # Create test data with room filtering using Set type
-        target_rooms: Set[str] = {"living_room", "kitchen", "bedroom"}
-
+        # Create test data for broadcast
         test_data = test_event.data
 
         # Broadcast via enhanced MQTT manager

@@ -1038,8 +1038,7 @@ class AdaptiveRetrainer:
 
         try:
             # Get recent data from database (placeholder - would query actual data)
-            end_date = datetime.utcnow()
-            start_date = end_date - timedelta(days=request.lookback_days)
+            # TODO: Use end_date = datetime.utcnow() and start_date = end_date - timedelta(days=request.lookback_days) for actual DB query
 
             # In actual implementation, this would query the database for historical data
             # For now, create placeholder data structure

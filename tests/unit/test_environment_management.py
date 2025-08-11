@@ -170,8 +170,8 @@ class TestEnvironmentManager:
         assert isinstance(settings, EnvironmentSettings)
         assert settings.name == "production"
         assert settings.log_level == "WARNING"
-        assert settings.monitoring_enabled == True
-        assert settings.backup_enabled == True
+        assert settings.monitoring_enabled is True
+        assert settings.backup_enabled is True
 
     def test_load_environment_config(self):
         """Test loading environment-specific configuration."""
@@ -222,16 +222,16 @@ class TestConfigurationValidator:
         result = ValidationResult(is_valid=True, errors=[], warnings=[], info=[])
 
         # Initially valid
-        assert result.is_valid == True
+        assert result.is_valid is True
 
         # Adding error makes invalid
         result.add_error("Test error")
-        assert result.is_valid == False
+        assert result.is_valid is False
         assert len(result.errors) == 1
 
         # Adding warning doesn't affect validity
         result.add_warning("Test warning")
-        assert result.is_valid == False  # Still invalid due to error
+        assert result.is_valid is False  # Still invalid due to error
         assert len(result.warnings) == 1
 
         # Adding info
@@ -250,7 +250,7 @@ class TestConfigurationValidator:
 
         result1.merge(result2)
 
-        assert result1.is_valid == False  # result2 had error
+        assert result1.is_valid is False  # result2 had error
         assert len(result1.errors) == 1
         assert len(result1.warnings) == 1
         assert len(result1.info) == 2
@@ -272,7 +272,7 @@ class TestConfigurationValidator:
         }
 
         result = validator.validate(valid_config)
-        assert result.is_valid == True
+        assert result.is_valid is True
 
         # Invalid configuration
         invalid_config = {
@@ -285,7 +285,7 @@ class TestConfigurationValidator:
         }
 
         result = validator.validate(invalid_config)
-        assert result.is_valid == False
+        assert result.is_valid is False
         assert len(result.errors) > 0
         assert len(result.warnings) > 0
 
@@ -305,7 +305,7 @@ class TestConfigurationValidator:
         }
 
         result = validator.validate(valid_config)
-        assert result.is_valid == True
+        assert result.is_valid is True
 
         # Invalid configuration
         invalid_config = {
@@ -317,7 +317,7 @@ class TestConfigurationValidator:
         }
 
         result = validator.validate(invalid_config)
-        assert result.is_valid == False
+        assert result.is_valid is False
 
 
 class TestBackupManager:
@@ -370,7 +370,7 @@ class TestBackupManager:
 
             assert metadata.backup_id == backup_id
             assert metadata.backup_type == "database"
-            assert metadata.compressed == True
+            assert metadata.compressed is True
             assert metadata.size_bytes > 0
         except Exception as e:
             # Expected to fail due to mocking limitations, but test structure is valid

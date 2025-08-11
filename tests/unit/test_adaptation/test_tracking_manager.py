@@ -555,8 +555,8 @@ class TestSystemStatusAndMetrics:
         assert "prediction_cache" in status
 
         # Verify status values
-        assert status["tracking_active"] == True
-        assert status["config"]["enabled"] == True
+        assert status["tracking_active"] is True
+        assert status["config"]["enabled"] is True
         assert status["performance"]["total_predictions_recorded"] >= 0
 
     @pytest.mark.asyncio
@@ -633,9 +633,9 @@ class TestIntegrationStatus:
         assert "sse_connections" in status
 
         # Verify mock values
-        assert status["enabled"] == True
+        assert status["enabled"] is True
         assert status["type"] == "enhanced"
-        assert status["mqtt_connected"] == True
+        assert status["mqtt_connected"] is True
 
     @pytest.mark.asyncio
     async def test_realtime_publishing_status(self, tracking_manager):
@@ -651,7 +651,7 @@ class TestIntegrationStatus:
         assert "source" in status
 
         # Verify values
-        assert status["enabled"] == True
+        assert status["enabled"] is True
         assert status["source"] == "enhanced_mqtt_manager"
 
     @pytest.mark.asyncio

@@ -167,11 +167,11 @@ class MonitoringEnhancedTrackingManager:
 
             return result
 
-        except Exception as e:
+        except Exception:
             # Log error but try to stop monitoring anyway
             try:
                 await self.monitoring_integration.stop_monitoring()
-            except:
+            except Exception:
                 pass
             raise
 
@@ -232,7 +232,7 @@ class MonitoringEnhancedTrackingManager:
         if hasattr(self.tracking_manager, "get_system_status"):
             try:
                 tracking_status = await self.tracking_manager.get_system_status()
-            except:
+            except Exception:
                 tracking_status = {"error": "Failed to get tracking status"}
 
         return {

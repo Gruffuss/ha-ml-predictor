@@ -282,16 +282,17 @@ class MQTTNotifier:
             if self.mqtt_client is None:
                 await self._initialize_mqtt_client()
 
-            payload = {
-                "alert_id": alert.id,
-                "severity": alert.severity.value,
-                "timestamp": alert.timestamp.isoformat(),
-                "title": alert.title,
-                "message": alert.message,
-                "component": alert.component,
-                "room_id": alert.room_id,
-                "resolved": alert.resolved,
-            }
+            # TODO: Implement MQTT alert publishing
+            # payload = {
+            #     "alert_id": alert.id,
+            #     "severity": alert.severity.value,
+            #     "timestamp": alert.timestamp.isoformat(),
+            #     "title": alert.title,
+            #     "message": alert.message,
+            #     "component": alert.component,
+            #     "room_id": alert.room_id,
+            #     "resolved": alert.resolved,
+            # }
 
             topic = f"{self.config.mqtt_topic}/{alert.severity.value}"
 

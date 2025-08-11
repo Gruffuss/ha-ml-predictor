@@ -1084,7 +1084,7 @@ class TestHomeAssistantClientIntegration:
 
         # Check that each entity was processed
         processed_entities = set()
-        for call in client.get_entity_history.call_args_list:
-            processed_entities.add(call[0][0])  # First argument is entity_id
+        for call_args in client.get_entity_history.call_args_list:
+            processed_entities.add(call_args[0][0])  # First argument is entity_id
 
         assert processed_entities == set(entity_ids)

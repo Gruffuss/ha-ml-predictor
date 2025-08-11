@@ -454,7 +454,7 @@ class MLMetricsCollector:
             self.cpu_usage_percent.set(cpu_percent)
 
             # Memory usage
-            memory = psutil.virtual_memory()
+            # memory = psutil.virtual_memory()  # Available if system memory metrics needed
             process = psutil.Process()
             process_memory = process.memory_info()
 
@@ -493,11 +493,11 @@ class MLMetricsCollector:
     @contextmanager
     def time_operation(self, room_id: str, operation_type: str):
         """Context manager to time operations."""
-        start_time = time.time()
+        # start_time = time.time()  # Available for timing if needed
         try:
             yield
         finally:
-            duration = time.time() - start_time
+            # duration = time.time() - start_time  # Available for operation-specific metrics
             # You can extend this to record operation-specific metrics
             pass
 
@@ -601,7 +601,7 @@ def time_prediction(room_id: str, prediction_type: str, model_type: str):
                 )
                 return result
 
-            except Exception as e:
+            except Exception:
                 duration = time.time() - start_time
                 get_metrics_collector().record_prediction(
                     room_id=room_id,
@@ -709,7 +709,7 @@ class MultiProcessMetricsManager:
         try:
             # Use multiprocess values functionality to clean up
             multiprocess.mark_process_dead(None)  # Clean up current process
-        except Exception as e:
+        except Exception:
             # Log error but don't fail
             pass
 

@@ -567,8 +567,8 @@ class IntegrationTestHelper:
             "transition_type",
         ]
 
-        for field in required_fields:
-            assert field in prediction, f"Missing required field: {field}"
+        for field_name in required_fields:
+            assert field_name in prediction, f"Missing required field: {field_name}"
 
         assert isinstance(prediction["confidence"], (int, float))
         assert 0.0 <= prediction["confidence"] <= 1.0
@@ -582,8 +582,8 @@ class IntegrationTestHelper:
         """Assert that a health response has the correct structure."""
         required_fields = ["status", "timestamp", "components"]
 
-        for field in required_fields:
-            assert field in health, f"Missing required field: {field}"
+        for field_name in required_fields:
+            assert field_name in health, f"Missing required field: {field_name}"
 
         assert health["status"] in ["healthy", "degraded", "unhealthy"]
         assert "database" in health["components"]
@@ -593,8 +593,8 @@ class IntegrationTestHelper:
         """Assert that an MQTT message has the correct structure."""
         required_fields = ["topic", "payload", "timestamp"]
 
-        for field in required_fields:
-            assert field in message, f"Missing required field: {field}"
+        for field_name in required_fields:
+            assert field_name in message, f"Missing required field: {field_name}"
 
         # Validate topic format
         assert message["topic"].startswith("occupancy/") or message["topic"].startswith(

@@ -541,7 +541,7 @@ class EnvironmentManager:
             print(f"Required: {'Yes' if secret_config.required else 'No'}")
 
             if current_value:
-                print(f"Current value: ****** (hidden)")
+                print("Current value: ****** (hidden)")
                 update = input("Update? (y/n): ").lower().strip() == "y"
                 if not update:
                     continue

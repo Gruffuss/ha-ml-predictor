@@ -114,7 +114,8 @@ class HMMPredictor(BasePredictor):
                 random_state=self.model_params["random_state"],
                 n_init=10,
             )
-            kmeans_labels = kmeans.fit_predict(X_train_scaled)
+            # Get cluster centers for GMM initialization
+            kmeans.fit(X_train_scaled)  # Labels not needed, only centers
             kmeans_centers = kmeans.cluster_centers_
 
             # Train Gaussian Mixture Model to identify hidden states
@@ -533,7 +534,7 @@ class HMMPredictor(BasePredictor):
         for i in range(n_states):
             logger.info(
                 f"  {self.state_labels.get(i, f'State_{i}')} -> "
-                f"{[f'{prob:.2f}' for prob in self.transition_matrix[i,:]]}"
+                f"{[f'{prob:.2f}' for prob in self.transition_matrix[i, :]]}"
             )
 
     def _train_state_duration_models(

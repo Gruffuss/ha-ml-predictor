@@ -237,7 +237,7 @@ class DatabaseBackupManager:
                 else:
                     host = "localhost"
                     port = "5432"
-                    dbname = host_db
+                    # Note: dbname = host_db would be parsed here if needed
             else:
                 raise ValueError("Invalid database connection string format")
 

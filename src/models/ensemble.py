@@ -536,7 +536,7 @@ class OccupancyEnsemble(BasePredictor):
         # Store cross-validation performance
         y_true = self._prepare_targets(targets)
         for model_idx, model_name in enumerate(model_names):
-            model_preds = meta_features[:, model_idx]
+            # model_preds = meta_features[:, model_idx]  # Available if needed for individual model evaluation
 
             # Use cross_val_score for more robust evaluation
             cv_scores = cross_val_score(
@@ -547,8 +547,8 @@ class OccupancyEnsemble(BasePredictor):
                 scoring="r2",
             )
 
-            # Store both individual score and cross-validation scores
-            individual_score = r2_score(y_true, model_preds)
+            # Store cross-validation scores for model evaluation
+            # Note: individual_score = r2_score(y_true, model_preds) available if needed
             self.cross_validation_scores[model_name] = list(cv_scores)
 
         return meta_features_df

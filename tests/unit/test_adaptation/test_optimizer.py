@@ -778,7 +778,7 @@ class TestOptimizationResults:
         assert "success" in result_dict
         assert "best_parameters" in result_dict
         assert "optimization_time_seconds" in result_dict
-        assert result_dict["success"] == True
+        assert result_dict["success"] is True
         assert result_dict["best_score"] == 0.85
         assert len(result_dict["optimization_history"]) == 2
 

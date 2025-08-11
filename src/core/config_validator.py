@@ -129,7 +129,7 @@ class HomeAssistantConfigValidator:
         try:
             parsed = urlparse(url)
             return bool(parsed.scheme and parsed.netloc)
-        except:
+        except Exception:
             return False
 
     def test_connection(self, config: Dict[str, Any]) -> ValidationResult:
@@ -206,7 +206,7 @@ class DatabaseConfigValidator:
                 "TimescaleDB extension is recommended for time-series data"
             )
 
-        result.add_info(f"Database connection string configured")
+        result.add_info("Database connection string configured")
 
         # Check pool settings
         pool_size = db_config.get("pool_size", 10)
@@ -267,7 +267,7 @@ class DatabaseConfigValidator:
                             )
                         else:
                             result.add_warning("⚠️  TimescaleDB extension not found")
-                    except:
+                    except Exception:
                         result.add_warning("⚠️  Cannot check TimescaleDB extension")
 
                     await conn.close()
@@ -569,7 +569,7 @@ class SystemRequirementsValidator:
                 result.add_error("Insufficient disk space (< 1 GB available)")
             elif free_gb < 5:
                 result.add_warning("Low disk space (< 5 GB available)")
-        except:
+        except Exception:
             result.add_warning("Cannot check disk space")
 
         # Check memory
@@ -592,7 +592,7 @@ class SystemRequirementsValidator:
 
         except ImportError:
             result.add_warning("Cannot check memory usage (psutil not available)")
-        except:
+        except Exception:
             result.add_warning("Cannot check memory usage")
 
         return result

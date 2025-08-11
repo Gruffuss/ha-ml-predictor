@@ -1090,7 +1090,7 @@ class HealthMonitor:
             system_load = (
                 psutil.getloadavg()[0] if hasattr(psutil, "getloadavg") else 0.0
             )
-        except:
+        except Exception:
             cpu_usage = 0.0
             memory = psutil.virtual_memory()
             system_load = 0.0

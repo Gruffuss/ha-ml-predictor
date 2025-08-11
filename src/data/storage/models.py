@@ -262,10 +262,10 @@ class SensorEvent(Base):
             sql_func.min(cls.timestamp).label("first_event"),
             sql_func.max(cls.timestamp).label("last_event"),
             sql_func.count()
-            .filter(cls.is_human_triggered == True)
+            .filter(cls.is_human_triggered.is_(True))
             .label("human_events"),
             sql_func.count()
-            .filter(cls.is_human_triggered == False)
+            .filter(cls.is_human_triggered.is_(False))
             .label("automated_events"),
         ).where(and_(cls.room_id == room_id, cls.timestamp >= start_time))
 

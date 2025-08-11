@@ -105,7 +105,7 @@ def test_sprint3_lstm_predictor_structure():
     assert isinstance(info, dict)
     assert info["model_type"] == "lstm"
     assert info["room_id"] == "test_room"
-    assert info["is_trained"] == False
+    assert info["is_trained"] is False
 
 
 def test_sprint3_xgboost_predictor_structure():
@@ -490,7 +490,7 @@ async def test_sprint3_ensemble_training():
     # Test ensemble info
     info = ensemble.get_ensemble_info()
     assert info["ensemble_type"] == "stacking"
-    assert info["is_trained"] == True
+    assert info["is_trained"] is True
     assert len(info["base_models"]) == 3
 
     # Test ensemble prediction
@@ -560,7 +560,7 @@ def test_sprint3_feature_validation():
         }
     )
 
-    assert predictor.validate_features(valid_features) == True
+    assert predictor.validate_features(valid_features) is True
 
     # Test missing features
     missing_features = pd.DataFrame(
@@ -571,7 +571,7 @@ def test_sprint3_feature_validation():
         }
     )
 
-    assert predictor.validate_features(missing_features) == False
+    assert predictor.validate_features(missing_features) is False
 
     # Test extra features (should warn but not fail)
     extra_features = pd.DataFrame(
@@ -583,7 +583,7 @@ def test_sprint3_feature_validation():
         }
     )
 
-    assert predictor.validate_features(extra_features) == True
+    assert predictor.validate_features(extra_features) is True
 
 
 def test_sprint3_prediction_result_validation():
@@ -812,9 +812,9 @@ async def test_sprint3_end_to_end_modeling_pipeline():
 
     # Test ensemble info
     ensemble_info = ensemble.get_ensemble_info()
-    assert ensemble_info["is_trained"] == True
-    assert ensemble_info["base_models_trained"] == True
-    assert ensemble_info["meta_learner_trained"] == True
+    assert ensemble_info["is_trained"] is True
+    assert ensemble_info["base_models_trained"] is True
+    assert ensemble_info["meta_learner_trained"] is True
     assert len(ensemble_info["model_weights"]) > 0
 
 

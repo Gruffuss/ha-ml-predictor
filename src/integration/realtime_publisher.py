@@ -36,8 +36,7 @@ from websockets.server import WebSocketServerProtocol
 from ..core.config import MQTTConfig, RoomConfig, get_config
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
 from ..models.base.predictor import PredictionResult
-from .mqtt_publisher import MQTTPublisher
-from .prediction_publisher import PredictionPayload, PredictionPublisher
+from .prediction_publisher import PredictionPublisher
 
 logger = logging.getLogger(__name__)
 
@@ -517,21 +516,11 @@ class RealtimePublishingSystem:
                 and self.prediction_publisher is not None
             ):
                 try:
-                    # Create standardized prediction payload
-                    prediction_payload = PredictionPayload(
-                        room_id=room_id,
-                        predicted_time=prediction_result.predicted_time,
-                        transition_type=prediction_result.transition_type,
-                        confidence_score=prediction_result.confidence_score,
-                        model_type=prediction_result.model_type,
-                        current_state=current_state,
-                    )
+                    # TODO: Create standardized prediction payload for future use
+                    # prediction_payload = PredictionPayload(...)
 
-                    # Use dedicated MQTT publisher for enhanced functionality
-                    mqtt_publisher = MQTTPublisher(
-                        mqtt_config=self.config.get("mqtt_config"),
-                        room_configs=self.rooms,
-                    )
+                    # TODO: Use dedicated MQTT publisher for enhanced functionality
+                    # mqtt_publisher = MQTTPublisher(...)
 
                     mqtt_result = await self.prediction_publisher.publish_prediction(
                         prediction_result, room_id, current_state
