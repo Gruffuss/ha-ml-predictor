@@ -436,10 +436,10 @@ class GaussianProcessPredictor(BasePredictor):
             List of prediction results with confidence intervals
         """
         if not self.is_trained or self.model is None:
-            raise ModelPredictionError("GP model is not trained")
+            raise ModelPredictionError(self.model_type.value, self.room_id or "unknown")
 
         if not self.validate_features(features):
-            raise ModelPredictionError("Feature validation failed")
+            raise ModelPredictionError(self.model_type.value, self.room_id or "unknown")
 
         try:
             predictions = []
@@ -528,7 +528,7 @@ class GaussianProcessPredictor(BasePredictor):
         except Exception as e:
             error_msg = f"GP prediction failed: {str(e)}"
             logger.error(error_msg)
-            raise ModelPredictionError(error_msg)
+            raise ModelPredictionError(self.model_type.value, self.room_id or "unknown", cause=e)
 
     def get_feature_importance(self) -> Dict[str, float]:
         """
@@ -891,7 +891,7 @@ class GaussianProcessPredictor(BasePredictor):
 
             if len(features) < 5:
                 raise ModelTrainingError(
-                    f"Insufficient data for incremental update: only {len(features)} samples"
+                    self.model_type.value, self.room_id or "unknown", cause=None
                 )
 
             # Prepare new data
@@ -1026,4 +1026,4 @@ class GaussianProcessPredictor(BasePredictor):
             )
 
             self.training_history.append(result)
-            raise ModelTrainingError(error_msg)
+            raise ModelTrainingError(self.model_type.value, self.room_id or "unknown", cause=e)

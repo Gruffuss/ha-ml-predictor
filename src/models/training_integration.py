@@ -838,4 +838,4 @@ async def integrate_training_with_tracking_manager(
 
     except Exception as e:
         logger.error(f"Failed to integrate training with tracking manager: {e}")
-        raise ModelTrainingError(f"Training integration failed: {str(e)}")
+        raise ModelTrainingError("integration", "tracking_context", cause=e)

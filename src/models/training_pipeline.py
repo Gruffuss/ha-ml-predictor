@@ -365,7 +365,7 @@ class ModelTrainingPipeline:
 
         except Exception as e:
             logger.error(f"Initial training pipeline failed: {e}")
-            raise ModelTrainingError(f"Initial training failed: {str(e)}")
+            raise ModelTrainingError("ensemble", "all_rooms", cause=e)
 
     async def run_incremental_training(
         self,
@@ -396,7 +396,7 @@ class ModelTrainingPipeline:
 
         except Exception as e:
             logger.error(f"Incremental training failed for {room_id}: {e}")
-            raise ModelTrainingError(f"Incremental training failed: {str(e)}")
+            raise ModelTrainingError(model_type or "ensemble", room_id, cause=e)
 
     async def run_retraining_pipeline(
         self,
@@ -446,7 +446,7 @@ class ModelTrainingPipeline:
 
         except Exception as e:
             logger.error(f"Retraining pipeline failed for {room_id}: {e}")
-            raise ModelTrainingError(f"Retraining pipeline failed: {str(e)}")
+            raise ModelTrainingError("ensemble", room_id, cause=e)
 
     async def train_room_models(
         self,
@@ -500,8 +500,8 @@ class ModelTrainingPipeline:
 
             if raw_data is None or len(raw_data) < self.config.min_samples_per_room:
                 raise ModelTrainingError(
-                    f"Insufficient data for room {room_id}: {len(raw_data) if raw_data else 0} samples "
-                    f"(minimum required: {self.config.min_samples_per_room})"
+                    "ensemble", room_id, cause=None,
+                    training_data_size=len(raw_data) if raw_data else 0
                 )
 
             # Stage 3: Data quality validation
@@ -512,7 +512,7 @@ class ModelTrainingPipeline:
                 progress.warnings.extend(quality_report.recommendations)
                 if not self._can_proceed_with_quality_issues(quality_report):
                     raise ModelTrainingError(
-                        f"Data quality validation failed: {quality_report.recommendations}"
+                        "ensemble", room_id, cause=None
                     )
 
             # Stage 4: Feature extraction
@@ -523,7 +523,7 @@ class ModelTrainingPipeline:
 
             if features_df.empty or targets_df.empty:
                 raise ModelTrainingError(
-                    f"Feature extraction failed for room {room_id}"
+                    "ensemble", room_id, cause=None
                 )
 
             # Stage 5: Data splitting
@@ -631,7 +631,7 @@ class ModelTrainingPipeline:
 
             logger.error(f"Training pipeline {pipeline_id} failed: {e}")
             raise ModelTrainingError(
-                f"Training pipeline failed for room {room_id}: {str(e)}"
+                "ensemble", room_id, cause=e
             )
 
         finally:
@@ -867,7 +867,7 @@ class ModelTrainingPipeline:
 
             # Use the existing feature engineering engine
             if not self.feature_engineering_engine:
-                raise ModelTrainingError("Feature engineering engine not available")
+                raise ModelTrainingError("ensemble", "unknown", cause=None)
 
             # In real implementation, this would use the feature store to compute features
             # For now, create mock feature and target data
@@ -1241,7 +1241,7 @@ class ModelTrainingPipeline:
                     progress.errors.append(f"{model_type} training error: {str(e)}")
 
             if not trained_models:
-                raise ModelTrainingError("No models were successfully trained")
+                raise ModelTrainingError("ensemble", room_id, cause=None)
 
             logger.info(
                 f"Successfully trained {len(trained_models)} models for room {room_id}"
@@ -1250,7 +1250,7 @@ class ModelTrainingPipeline:
 
         except Exception as e:
             logger.error(f"Model training failed for room {room_id}: {e}")
-            raise ModelTrainingError(f"Model training failed: {str(e)}")
+            raise ModelTrainingError("ensemble", room_id, cause=e)
 
     async def _validate_models(
         self,
@@ -1320,7 +1320,7 @@ class ModelTrainingPipeline:
 
         except Exception as e:
             logger.error(f"Model validation failed: {e}")
-            raise ModelTrainingError(f"Model validation failed: {str(e)}")
+            raise ModelTrainingError("ensemble", "validation_context", cause=e)
 
     async def _evaluate_and_select_best_model(
         self,
@@ -1334,7 +1334,7 @@ class ModelTrainingPipeline:
 
             if not validation_results:
                 raise ModelTrainingError(
-                    "No validation results available for model selection"
+                    "ensemble", "model_selection", cause=None
                 )
 
             # Select best model based on metric
@@ -1392,7 +1392,7 @@ class ModelTrainingPipeline:
 
         except Exception as e:
             logger.error(f"Model evaluation failed: {e}")
-            raise ModelTrainingError(f"Model evaluation failed: {str(e)}")
+            raise ModelTrainingError("ensemble", "evaluation_context", cause=e)
 
     def _meets_quality_thresholds(self, evaluation_metrics: Dict[str, float]) -> bool:
         """Check if model meets minimum quality thresholds."""
@@ -1472,7 +1472,7 @@ class ModelTrainingPipeline:
 
         except Exception as e:
             logger.error(f"Model deployment failed for room {room_id}: {e}")
-            raise ModelTrainingError(f"Model deployment failed: {str(e)}")
+            raise ModelTrainingError("ensemble", room_id, cause=e)
 
     def _generate_model_version(self, room_id: str, model_name: str) -> str:
         """Generate unique model version identifier."""

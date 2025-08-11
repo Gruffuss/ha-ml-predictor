@@ -8,7 +8,7 @@ from datetime import datetime
 from functools import wraps
 import threading
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 import psutil
 
@@ -30,7 +30,7 @@ except ImportError:
     PROMETHEUS_AVAILABLE = False
 
     # Mock classes for when prometheus_client isn't available
-    class Counter:
+    class _MockCounter:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -40,7 +40,7 @@ except ImportError:
         def labels(self, *args, **kwargs):
             return self
 
-    class Gauge:
+    class _MockGauge:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -56,7 +56,7 @@ except ImportError:
         def labels(self, *args, **kwargs):
             return self
 
-    class Histogram:
+    class _MockHistogram:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -69,7 +69,7 @@ except ImportError:
         def labels(self, *args, **kwargs):
             return self
 
-    class Summary:
+    class _MockSummary:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -82,7 +82,7 @@ except ImportError:
         def labels(self, *args, **kwargs):
             return self
 
-    class Info:
+    class _MockInfo:
         def __init__(self, *args, **kwargs):
             pass
 
@@ -91,6 +91,13 @@ except ImportError:
 
         def labels(self, *args, **kwargs):
             return self
+
+    # Assign mock classes to original names
+    Counter = _MockCounter
+    Gauge = _MockGauge
+    Histogram = _MockHistogram
+    Summary = _MockSummary
+    Info = _MockInfo
 
 
 class MLMetricsCollector:
@@ -509,7 +516,7 @@ class MetricsManager:
         self.registry = registry or REGISTRY
         self.collector = MLMetricsCollector(self.registry)
         self.start_time = datetime.now()
-        self._resource_update_thread = None
+        self._resource_update_thread: Optional[threading.Thread] = None
         self._running = False
 
     def start_background_collection(self, update_interval: int = 30):

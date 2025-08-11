@@ -217,7 +217,7 @@ class BasePredictor(ABC):
         predictions = await self.predict(feature_df, prediction_time, current_state)
 
         if not predictions:
-            raise ModelPredictionError("No predictions generated")
+            raise ModelPredictionError(self.model_type.value, self.room_id or "unknown")
 
         return predictions[0]
 
