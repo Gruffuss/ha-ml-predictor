@@ -77,26 +77,30 @@ class RetrainingRequest:
     performance_degradation: Optional[Dict[str, float]] = field(default_factory=dict)
 
     # Retraining configuration with complex defaults
-    retraining_parameters: Dict[str, Any] = field(default_factory=lambda: {
-        "lookback_days": 14,
-        "validation_split": 0.2,
-        "feature_refresh": True,
-        "max_training_time_minutes": 60,
-        "early_stopping_patience": 10,
-        "min_improvement_threshold": 0.01
-    })
-    
+    retraining_parameters: Dict[str, Any] = field(
+        default_factory=lambda: {
+            "lookback_days": 14,
+            "validation_split": 0.2,
+            "feature_refresh": True,
+            "max_training_time_minutes": 60,
+            "early_stopping_patience": 10,
+            "min_improvement_threshold": 0.01,
+        }
+    )
+
     # Advanced configuration options
     model_hyperparameters: Dict[str, Any] = field(default_factory=dict)
     feature_engineering_config: Dict[str, Any] = field(default_factory=dict)
-    validation_strategy: List[str] = field(default_factory=lambda: ["time_series_split", "holdout"])
+    validation_strategy: List[str] = field(
+        default_factory=lambda: ["time_series_split", "holdout"]
+    )
 
     # Status tracking
     status: RetrainingStatus = RetrainingStatus.PENDING
     started_time: Optional[datetime] = None
     completed_time: Optional[datetime] = None
     error_message: Optional[str] = None
-    
+
     # Advanced tracking fields
     execution_log: List[str] = field(default_factory=list)
     resource_usage_log: List[Dict[str, float]] = field(default_factory=list)
@@ -107,12 +111,12 @@ class RetrainingRequest:
     performance_improvement: Optional[Dict[str, float]] = field(default_factory=dict)
     prediction_results: Optional[List[PredictionResult]] = field(default_factory=list)
     validation_metrics: Dict[str, float] = field(default_factory=dict)
-    
+
     # Legacy compatibility fields
     lookback_days: int = field(init=False)
     validation_split: float = field(init=False)
     feature_refresh: bool = field(init=False)
-    
+
     def __post_init__(self):
         """Initialize legacy fields from retraining_parameters for backward compatibility."""
         params = self.retraining_parameters
@@ -129,16 +133,25 @@ class RetrainingRequest:
         return {
             "request_id": self.request_id,
             "room_id": self.room_id,
-            "model_type": self.model_type.value if isinstance(self.model_type, ModelType) else str(self.model_type),
+            "model_type": (
+                self.model_type.value
+                if isinstance(self.model_type, ModelType)
+                else str(self.model_type)
+            ),
             "trigger": self.trigger.value,
             "strategy": self.strategy.value,
             "priority": self.priority,
-            "created_time": self.created_time.isoformat() if self.created_time else None,
+            "created_time": (
+                self.created_time.isoformat() if self.created_time else None
+            ),
             "status": self.status.value,
-            "started_time": self.started_time.isoformat() if self.started_time else None,
-            "completed_time": self.completed_time.isoformat() if self.completed_time else None,
+            "started_time": (
+                self.started_time.isoformat() if self.started_time else None
+            ),
+            "completed_time": (
+                self.completed_time.isoformat() if self.completed_time else None
+            ),
             "error_message": self.error_message,
-            
             # Complex field data
             "performance_degradation": dict(self.performance_degradation),
             "retraining_parameters": dict(self.retraining_parameters),
@@ -150,10 +163,13 @@ class RetrainingRequest:
             "checkpoint_data": dict(self.checkpoint_data),
             "performance_improvement": dict(self.performance_improvement),
             "validation_metrics": dict(self.validation_metrics),
-            
             # Metadata
-            "accuracy_metrics": self.accuracy_metrics.to_dict() if self.accuracy_metrics else None,
-            "drift_metrics": self.drift_metrics.to_dict() if self.drift_metrics else None,
+            "accuracy_metrics": (
+                self.accuracy_metrics.to_dict() if self.accuracy_metrics else None
+            ),
+            "drift_metrics": (
+                self.drift_metrics.to_dict() if self.drift_metrics else None
+            ),
             "training_result": (
                 {
                     "success": self.training_result.success,
@@ -167,13 +183,16 @@ class RetrainingRequest:
             "prediction_results": [
                 {
                     "room_id": result.room_id,
-                    "predicted_time": result.predicted_time.isoformat() if result.predicted_time else None,
+                    "predicted_time": (
+                        result.predicted_time.isoformat()
+                        if result.predicted_time
+                        else None
+                    ),
                     "confidence": result.confidence,
                     "alternatives": result.alternatives,
                 }
                 for result in (self.prediction_results or [])
             ],
-            
             # Legacy compatibility
             "lookback_days": self.lookback_days,
             "validation_split": self.validation_split,

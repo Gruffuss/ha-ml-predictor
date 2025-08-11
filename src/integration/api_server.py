@@ -138,7 +138,9 @@ class AccuracyMetricsResponse(BaseModel):
         """Validate trend direction is valid."""
         valid_trends = {"improving", "stable", "degrading"}
         if v not in valid_trends:
-            raise ValueError(f"Trend direction must be one of: {', '.join(valid_trends)}")
+            raise ValueError(
+                f"Trend direction must be one of: {', '.join(valid_trends)}"
+            )
         return v
 
 
@@ -158,7 +160,7 @@ class ManualRetrainRequest(BaseModel):
         if v is not None:
             # Import here to avoid circular dependency
             from ..core.config import get_config
-            
+
             config = get_config()
             if v not in config.rooms:
                 raise ValueError(f"Room '{v}' not found in configuration")
@@ -454,7 +456,7 @@ def create_app() -> FastAPI:
                 "traceback": traceback.format_exc(),
             },
         )
-        
+
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=ErrorResponse(
@@ -510,7 +512,7 @@ def create_app() -> FastAPI:
                 "request_method": request.method,
             },
         )
-        
+
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=ErrorResponse(

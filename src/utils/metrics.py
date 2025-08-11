@@ -621,87 +621,91 @@ def time_prediction(room_id: str, prediction_type: str, model_type: str):
 class MultiProcessMetricsManager:
     """
     Manages metrics collection across multiple processes using prometheus_client multiprocess support.
-    
+
     This enables metrics collection in multi-process deployments such as gunicorn workers.
     """
-    
+
     def __init__(self):
         """Initialize multi-process metrics manager."""
-        self.multiprocess_enabled = PROMETHEUS_AVAILABLE and hasattr(multiprocess, 'MultiProcessCollector')
+        self.multiprocess_enabled = PROMETHEUS_AVAILABLE and hasattr(
+            multiprocess, "MultiProcessCollector"
+        )
         self.registry = None
-        
+
         if self.multiprocess_enabled:
             # Create a separate registry for multi-process metrics
             self.registry = CollectorRegistry()
             # Add multiprocess collector
             multiprocess.MultiProcessCollector(self.registry)
-    
+
     def is_multiprocess_enabled(self) -> bool:
         """Check if multi-process metrics collection is enabled."""
         return self.multiprocess_enabled
-    
+
     def get_multiprocess_registry(self) -> Optional[CollectorRegistry]:
         """Get the multi-process registry."""
         return self.registry
-    
+
     def aggregate_multiprocess_metrics(self) -> Dict[str, Any]:
         """
         Aggregate metrics from all processes.
-        
+
         Returns:
             Dictionary containing aggregated metrics from all processes.
         """
         if not self.multiprocess_enabled:
             return {"error": "Multi-process metrics not available"}
-        
+
         try:
             # Use multiprocess.aggregate to combine metrics from all processes
             aggregated = {}
-            
+
             # Get all metric families from the registry
             for metric_family in self.registry.collect():
                 family_data = {
                     "name": metric_family.name,
                     "help": metric_family.help,
                     "type": metric_family.type,
-                    "samples": []
+                    "samples": [],
                 }
-                
+
                 for sample in metric_family.samples:
-                    family_data["samples"].append({
-                        "name": sample.name,
-                        "labels": dict(sample.labels),
-                        "value": sample.value,
-                        "timestamp": sample.timestamp
-                    })
-                
+                    family_data["samples"].append(
+                        {
+                            "name": sample.name,
+                            "labels": dict(sample.labels),
+                            "value": sample.value,
+                            "timestamp": sample.timestamp,
+                        }
+                    )
+
                 aggregated[metric_family.name] = family_data
-            
+
             return aggregated
-            
+
         except Exception as e:
             return {"error": f"Failed to aggregate multi-process metrics: {e}"}
-    
+
     def generate_multiprocess_metrics(self) -> str:
         """
         Generate Prometheus-formatted metrics from all processes.
-        
+
         Returns:
             Prometheus-formatted metrics string.
         """
         if not self.multiprocess_enabled:
             return "# Multi-process metrics not available\n"
-        
+
         try:
-            return generate_latest(self.registry).decode('utf-8')
+            return generate_latest(self.registry).decode("utf-8")
         except Exception as e:
             return f"# Error generating multi-process metrics: {e}\n"
-    
+
     def cleanup_dead_processes(self):
         """Clean up metrics from dead processes."""
         if not self.multiprocess_enabled:
             return
-        
+
         try:
             # Use multiprocess values functionality to clean up
             multiprocess.mark_process_dead(None)  # Clean up current process
@@ -725,62 +729,62 @@ def get_multiprocess_metrics_manager() -> MultiProcessMetricsManager:
 def setup_multiprocess_metrics():
     """
     Set up multi-process metrics collection.
-    
+
     This should be called once at application startup in multi-process environments.
     """
     manager = get_multiprocess_metrics_manager()
-    
+
     if manager.is_multiprocess_enabled():
         # Clean up any existing metrics from previous runs
         manager.cleanup_dead_processes()
-        
+
         # Ensure metrics collector uses multi-process aware metrics
         collector = get_metrics_collector()
-        if hasattr(collector, 'multiprocess_registry'):
+        if hasattr(collector, "multiprocess_registry"):
             collector.multiprocess_registry = manager.get_multiprocess_registry()
 
 
 def get_aggregated_metrics() -> Dict[str, Any]:
     """
     Get aggregated metrics from all processes.
-    
+
     This is the main function to call for getting comprehensive metrics
     in multi-process deployments.
-    
+
     Returns:
         Dictionary containing all aggregated metrics.
     """
     manager = get_multiprocess_metrics_manager()
-    
+
     if manager.is_multiprocess_enabled():
         # Return aggregated multi-process metrics
         multiprocess_metrics = manager.aggregate_multiprocess_metrics()
-        
+
         # Also include single-process metrics for completeness
         single_process_metrics = get_metrics_collector().get_metrics()
-        
+
         return {
             "multiprocess_metrics": multiprocess_metrics,
             "single_process_metrics": single_process_metrics,
-            "collection_mode": "multiprocess"
+            "collection_mode": "multiprocess",
         }
     else:
         # Fall back to single-process metrics
         return {
             "single_process_metrics": get_metrics_collector().get_metrics(),
-            "collection_mode": "single_process"
+            "collection_mode": "single_process",
         }
 
 
 def export_multiprocess_metrics() -> str:
     """
     Export metrics in Prometheus format for multi-process deployments.
-    
+
     Returns:
         Prometheus-formatted metrics string suitable for scraping.
     """
     manager = get_multiprocess_metrics_manager()
-    
+
     if manager.is_multiprocess_enabled():
         return manager.generate_multiprocess_metrics()
     else:

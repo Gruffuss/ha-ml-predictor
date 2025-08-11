@@ -79,7 +79,9 @@ class RateLimiter:
             if len(self.requests) >= self.max_requests:
                 # Calculate wait time
                 oldest_request = min(self.requests)
-                wait_time_seconds = self.window.total_seconds() - (now - oldest_request).total_seconds()
+                wait_time_seconds = (
+                    self.window.total_seconds() - (now - oldest_request).total_seconds()
+                )
                 if wait_time_seconds > 0:
                     logger.warning(
                         f"Rate limit reached, waiting {wait_time_seconds:.2f} seconds"
@@ -89,7 +91,7 @@ class RateLimiter:
                         resource="home_assistant_api",
                         wait_time=wait_time_seconds,
                         requests_per_window=self.max_requests,
-                        window_seconds=self.window.total_seconds()
+                        window_seconds=self.window.total_seconds(),
                     )
 
             self.requests.append(now)
@@ -316,11 +318,15 @@ class HomeAssistantClient:
             # Extract and validate state using SensorState constants
             current_state = new_state.get("state", "")
             previous_state = old_state.get("state") if old_state else None
-            
+
             # Validate states using SensorState enum
             validated_current_state = self._validate_and_normalize_state(current_state)
-            validated_previous_state = self._validate_and_normalize_state(previous_state) if previous_state else None
-            
+            validated_previous_state = (
+                self._validate_and_normalize_state(previous_state)
+                if previous_state
+                else None
+            )
+
             # Create HAEvent with validated states
             ha_event = HAEvent(
                 entity_id=entity_id,
@@ -339,23 +345,23 @@ class HomeAssistantClient:
 
         except Exception as e:
             logger.error(f"Error handling event: {e}")
-    
+
     def _validate_and_normalize_state(self, state: str) -> str:
         """
         Validate and normalize sensor state using SensorState constants.
-        
+
         Args:
             state: Raw state from Home Assistant
-            
+
         Returns:
             Validated and normalized state string
         """
         if not state:
             return ""
-        
+
         # Normalize state to lowercase for consistent comparison
         normalized_state = state.lower().strip()
-        
+
         # Map common Home Assistant states to SensorState values
         state_mapping = {
             "on": SensorState.ON.value,
@@ -367,11 +373,11 @@ class HomeAssistantClient:
             "unavailable": SensorState.UNAVAILABLE.value,
             "unknown": SensorState.UNKNOWN.value,
         }
-        
+
         # Try exact match first
         if normalized_state in state_mapping:
             return state_mapping[normalized_state]
-        
+
         # Try partial matches for common variations
         if "on" in normalized_state or "active" in normalized_state:
             return SensorState.ON.value
@@ -387,7 +393,7 @@ class HomeAssistantClient:
             return SensorState.CLEAR.value
         elif "unavailable" in normalized_state:
             return SensorState.UNAVAILABLE.value
-        
+
         # If no match found, log warning and return original normalized state
         logger.debug(f"Unknown sensor state '{state}', using as-is")
         return normalized_state
@@ -509,12 +515,12 @@ class HomeAssistantClient:
                     return None
                 elif response.status == 429:
                     # Handle rate limiting from HA server
-                    retry_after = int(response.headers.get('Retry-After', 60))
+                    retry_after = int(response.headers.get("Retry-After", 60))
                     raise RateLimitExceededError(
                         resource="home_assistant_api",
                         wait_time=retry_after,
                         requests_per_window=self.rate_limiter.max_requests,
-                        window_seconds=self.rate_limiter.window.total_seconds()
+                        window_seconds=self.rate_limiter.window.total_seconds(),
                     )
                 elif response.status != 200:
                     raise HomeAssistantAPIError(
@@ -523,13 +529,13 @@ class HomeAssistantClient:
                         await response.text(),
                         "GET",
                     )
-                
+
                 # Validate response data
                 data = await response.json()
                 if data and "state" in data:
                     # Normalize the state in the response
                     data["state"] = self._validate_and_normalize_state(data["state"])
-                
+
                 return data
         except RateLimitExceededError:
             raise  # Re-raise rate limit errors
@@ -567,18 +573,18 @@ class HomeAssistantClient:
             # Use urljoin for proper URL construction
             history_path = f"/api/history/period/{start_time.isoformat()}Z"
             url = urljoin(self.ha_config.url, history_path)
-            
+
             async with self.session.get(url, params=params) as response:
                 if response.status == 404:
                     raise EntityNotFoundError(entity_id)
                 elif response.status == 429:
                     # Handle rate limiting from HA server
-                    retry_after = int(response.headers.get('Retry-After', 60))
+                    retry_after = int(response.headers.get("Retry-After", 60))
                     raise RateLimitExceededError(
                         resource="home_assistant_history_api",
                         wait_time=retry_after,
                         requests_per_window=self.rate_limiter.max_requests,
-                        window_seconds=self.rate_limiter.window.total_seconds()
+                        window_seconds=self.rate_limiter.window.total_seconds(),
                     )
                 elif response.status != 200:
                     raise HomeAssistantAPIError(
@@ -589,15 +595,17 @@ class HomeAssistantClient:
                     )
 
                 data = await response.json()
-                
+
                 # Validate and normalize states in historical data
                 if data and isinstance(data, list) and len(data) > 0:
                     historical_records = data[0]
                     for record in historical_records:
                         if "state" in record:
-                            record["state"] = self._validate_and_normalize_state(record["state"])
+                            record["state"] = self._validate_and_normalize_state(
+                                record["state"]
+                            )
                     return historical_records
-                
+
                 return []
 
         except RateLimitExceededError:
@@ -644,7 +652,9 @@ class HomeAssistantClient:
 
                 except RateLimitExceededError as e:
                     # Handle rate limiting gracefully in bulk operations
-                    logger.warning(f"Rate limited during bulk history fetch, waiting {e.wait_time}s")
+                    logger.warning(
+                        f"Rate limited during bulk history fetch, waiting {e.wait_time}s"
+                    )
                     await asyncio.sleep(e.wait_time)
                     # Retry the request once
                     try:

@@ -799,11 +799,11 @@ class BulkImporter:
             raise DatabaseError(
                 f"Data sufficiency validation failed: {str(e)}", cause=e
             )
-    
+
     async def optimize_import_performance(self) -> Dict[str, Any]:
         """
         Analyze and optimize bulk import performance.
-        
+
         Returns:
             Dictionary with performance optimization suggestions
         """
@@ -812,19 +812,19 @@ class BulkImporter:
                 "batch_size": self.import_config.batch_size,
                 "entity_batch_size": self.import_config.entity_batch_size,
                 "max_concurrent_entities": self.import_config.max_concurrent_entities,
-                "chunk_days": self.import_config.chunk_days
+                "chunk_days": self.import_config.chunk_days,
             },
             "performance_metrics": {
                 "events_per_second": self.progress.events_per_second,
                 "average_batch_time": 0.0,
-                "memory_usage_mb": 0.0
+                "memory_usage_mb": 0.0,
             },
-            "optimization_suggestions": []
+            "optimization_suggestions": [],
         }
-        
+
         # Analyze current performance
         events_per_second = self.progress.events_per_second
-        
+
         if events_per_second < 50:
             optimization_report["optimization_suggestions"].append(
                 "Increase batch_size to 2000 for better throughput"
@@ -833,7 +833,7 @@ class BulkImporter:
             optimization_report["optimization_suggestions"].append(
                 "Decrease batch_size to reduce memory usage"
             )
-        
+
         if self.import_config.max_concurrent_entities < 5:
             optimization_report["optimization_suggestions"].append(
                 "Increase max_concurrent_entities for better parallelism"
@@ -842,33 +842,35 @@ class BulkImporter:
             optimization_report["optimization_suggestions"].append(
                 "Reduce max_concurrent_entities to avoid overwhelming HA API"
             )
-        
+
         # Check for memory usage patterns
         try:
             import psutil
+
             process = psutil.Process()
             memory_mb = process.memory_info().rss / 1024 / 1024
             optimization_report["performance_metrics"]["memory_usage_mb"] = memory_mb
-            
+
             if memory_mb > 500:
                 optimization_report["optimization_suggestions"].append(
                     "High memory usage detected - consider reducing chunk_days or batch_size"
                 )
         except ImportError:
-            optimization_report["performance_metrics"]["memory_usage_mb"] = "unavailable"
-        
+            optimization_report["performance_metrics"][
+                "memory_usage_mb"
+            ] = "unavailable"
+
         return optimization_report
-    
+
     async def verify_import_integrity(
-        self,
-        sample_percentage: float = 1.0
+        self, sample_percentage: float = 1.0
     ) -> Dict[str, Any]:
         """
         Verify integrity of imported data using statistical sampling.
-        
+
         Args:
             sample_percentage: Percentage of data to sample for verification
-            
+
         Returns:
             Dictionary with integrity verification results
         """
@@ -877,13 +879,14 @@ class BulkImporter:
             "sample_percentage": sample_percentage,
             "checks_performed": [],
             "issues_found": [],
-            "overall_integrity_score": 0.0
+            "overall_integrity_score": 0.0,
         }
-        
+
         try:
             async with get_db_session() as session:
                 # Check for temporal consistency
-                temporal_check_query = text("""
+                temporal_check_query = text(
+                    """
                     SELECT room_id, 
                            COUNT(*) as total_events,
                            COUNT(CASE WHEN timestamp > created_at THEN 1 END) as future_timestamps,
@@ -891,47 +894,49 @@ class BulkImporter:
                     FROM sensor_events 
                     WHERE random() < :sample_rate
                     GROUP BY room_id
-                """)
-                
-                result = await session.execute(
-                    temporal_check_query, 
-                    {"sample_rate": sample_percentage / 100.0}
+                """
                 )
-                
+
+                result = await session.execute(
+                    temporal_check_query, {"sample_rate": sample_percentage / 100.0}
+                )
+
                 total_issues = 0
                 total_events = 0
-                
+
                 for row in result:
                     room_events = row.total_events
                     future_events = row.future_timestamps or 0
                     missing_states = row.missing_states or 0
-                    
+
                     total_events += room_events
                     total_issues += future_events + missing_states
-                    
+
                     if future_events > 0:
                         integrity_report["issues_found"].append(
                             f"Room {row.room_id}: {future_events} events with future timestamps"
                         )
-                    
+
                     if missing_states > 0:
                         integrity_report["issues_found"].append(
                             f"Room {row.room_id}: {missing_states} events with missing states"
                         )
-                
-                integrity_report["checks_performed"].extend([
-                    "Temporal consistency check",
-                    "State completeness check",
-                    "Data quality validation"
-                ])
-                
+
+                integrity_report["checks_performed"].extend(
+                    [
+                        "Temporal consistency check",
+                        "State completeness check",
+                        "Data quality validation",
+                    ]
+                )
+
                 # Calculate integrity score
                 if total_events > 0:
                     integrity_score = max(0, 1 - (total_issues / total_events))
                     integrity_report["overall_integrity_score"] = integrity_score
                 else:
                     integrity_report["overall_integrity_score"] = 0.0
-                
+
                 # Add recommendations
                 if integrity_score < 0.95:
                     integrity_report["issues_found"].append(
@@ -939,20 +944,22 @@ class BulkImporter:
                     )
                 elif integrity_score >= 0.99:
                     integrity_report["issues_found"].append("Data integrity excellent")
-                
+
         except Exception as e:
-            integrity_report["issues_found"].append(f"Integrity verification failed: {str(e)}")
+            integrity_report["issues_found"].append(
+                f"Integrity verification failed: {str(e)}"
+            )
             integrity_report["overall_integrity_score"] = 0.0
-        
+
         return integrity_report
-    
+
     async def create_import_checkpoint(self, checkpoint_name: str) -> bool:
         """
         Create a checkpoint of current import progress for recovery.
-        
+
         Args:
             checkpoint_name: Name for the checkpoint
-            
+
         Returns:
             True if checkpoint created successfully
         """
@@ -967,17 +974,17 @@ class BulkImporter:
                     "months_to_import": self.import_config.months_to_import,
                     "batch_size": self.import_config.batch_size,
                     "entity_batch_size": self.import_config.entity_batch_size,
-                    "max_concurrent_entities": self.import_config.max_concurrent_entities
-                }
+                    "max_concurrent_entities": self.import_config.max_concurrent_entities,
+                },
             }
-            
+
             checkpoint_file = f"checkpoint_{checkpoint_name}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
-            with open(checkpoint_file, 'w') as f:
+            with open(checkpoint_file, "w") as f:
                 json.dump(checkpoint_data, f, indent=2, default=str)
-            
+
             logger.info(f"Created import checkpoint: {checkpoint_file}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to create checkpoint {checkpoint_name}: {e}")
             return False

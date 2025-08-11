@@ -49,7 +49,7 @@ class FeatureEngineeringEngine:
         self.config = config or get_config()
         self.enable_parallel = enable_parallel
         self.max_workers = max_workers
-        
+
         # Validate configuration
         self._validate_configuration()
 
@@ -576,116 +576,133 @@ class FeatureEngineeringEngine:
             )
 
         return validation_results
-    
-    def compute_feature_correlations(self, feature_matrix: pd.DataFrame) -> Dict[str, Any]:
+
+    def compute_feature_correlations(
+        self, feature_matrix: pd.DataFrame
+    ) -> Dict[str, Any]:
         """Compute correlation matrix between features using pandas and numpy."""
         if feature_matrix.empty:
             return {"correlation_matrix": None, "high_correlations": []}
-            
+
         # Compute correlation matrix using pandas
         corr_matrix = feature_matrix.corr()
-        
+
         # Find highly correlated feature pairs using numpy operations
         high_corr_threshold = 0.8
         high_correlations = []
-        
+
         # Convert to numpy for efficient computation
         corr_values = corr_matrix.values
         feature_names = corr_matrix.columns.tolist()
-        
+
         # Find high correlations using numpy
         rows, cols = np.where(np.abs(corr_values) > high_corr_threshold)
-        
+
         for i, j in zip(rows, cols):
             if i < j:  # Avoid duplicates and self-correlations
-                high_correlations.append({
-                    "feature1": feature_names[i],
-                    "feature2": feature_names[j],
-                    "correlation": float(corr_values[i, j])
-                })
-                
+                high_correlations.append(
+                    {
+                        "feature1": feature_names[i],
+                        "feature2": feature_names[j],
+                        "correlation": float(corr_values[i, j]),
+                    }
+                )
+
         return {
             "correlation_matrix": corr_matrix.to_dict(),
             "high_correlations": high_correlations,
             "mean_abs_correlation": float(np.mean(np.abs(corr_values))),
-            "max_correlation": float(np.max(corr_values[corr_values < 1.0]))  # Exclude self-correlation
+            "max_correlation": float(
+                np.max(corr_values[corr_values < 1.0])
+            ),  # Exclude self-correlation
         }
-        
-    def analyze_feature_importance(self, features_df: pd.DataFrame, targets_df: pd.DataFrame) -> Dict[str, Any]:
+
+    def analyze_feature_importance(
+        self, features_df: pd.DataFrame, targets_df: pd.DataFrame
+    ) -> Dict[str, Any]:
         """Analyze feature importance using statistical methods with numpy and pandas."""
         if features_df.empty or targets_df.empty:
             return {"feature_importance": {}, "top_features": []}
-            
+
         # Convert target to numeric if needed
         if "next_transition_time" in targets_df.columns:
             # Convert datetime to seconds since epoch for correlation analysis
-            target_numeric = pd.to_numeric(targets_df["next_transition_time"].map(
-                lambda x: x.timestamp() if hasattr(x, 'timestamp') else float(x)
-            ), errors='coerce')
+            target_numeric = pd.to_numeric(
+                targets_df["next_transition_time"].map(
+                    lambda x: x.timestamp() if hasattr(x, "timestamp") else float(x)
+                ),
+                errors="coerce",
+            )
         else:
             target_numeric = targets_df.iloc[:, 0]  # Use first column
-            
+
         # Calculate feature importance using correlation with target
         feature_importance = {}
-        
+
         for feature_name in features_df.columns:
             feature_values = features_df[feature_name].fillna(0)
-            
+
             # Use numpy for correlation calculation
             if len(feature_values) > 1 and len(target_numeric) > 1:
                 # Ensure same length
                 min_len = min(len(feature_values), len(target_numeric))
                 feature_vals = feature_values[:min_len].values
                 target_vals = target_numeric[:min_len].values
-                
+
                 # Remove NaN values
                 mask = ~(np.isnan(feature_vals) | np.isnan(target_vals))
                 if np.sum(mask) > 1:
                     corr_coef = np.corrcoef(feature_vals[mask], target_vals[mask])[0, 1]
-                    feature_importance[feature_name] = float(abs(corr_coef) if not np.isnan(corr_coef) else 0.0)
+                    feature_importance[feature_name] = float(
+                        abs(corr_coef) if not np.isnan(corr_coef) else 0.0
+                    )
                 else:
                     feature_importance[feature_name] = 0.0
             else:
                 feature_importance[feature_name] = 0.0
-                
+
         # Sort features by importance
-        sorted_features = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)
+        sorted_features = sorted(
+            feature_importance.items(), key=lambda x: x[1], reverse=True
+        )
         top_features = [name for name, importance in sorted_features[:10]]  # Top 10
-        
+
         return {
             "feature_importance": feature_importance,
             "top_features": top_features,
             "mean_importance": float(np.mean(list(feature_importance.values()))),
-            "importance_std": float(np.std(list(feature_importance.values())))
+            "importance_std": float(np.std(list(feature_importance.values()))),
         }
-    
+
     def _validate_configuration(self):
         """Validate configuration during initialization."""
         if not self.config:
             raise ConfigurationError(
                 "System configuration is required for feature engineering",
-                error_code="FEATURE_ENGINE_NO_CONFIG"
+                error_code="FEATURE_ENGINE_NO_CONFIG",
             )
-        
-        if not hasattr(self.config, 'rooms') or not self.config.rooms:
-            logger.warning("No room configurations available - feature extraction may be limited")
-        
+
+        if not hasattr(self.config, "rooms") or not self.config.rooms:
+            logger.warning(
+                "No room configurations available - feature extraction may be limited"
+            )
+
         if self.max_workers < 1:
             raise ConfigurationError(
                 f"max_workers must be at least 1, got {self.max_workers}",
-                error_code="FEATURE_ENGINE_INVALID_WORKERS"
+                error_code="FEATURE_ENGINE_INVALID_WORKERS",
             )
-        
+
         logger.debug("Feature engineering configuration validated successfully")
 
     def compute_feature_statistics(self, features_df: pd.DataFrame) -> Dict[str, Any]:
         """Compute comprehensive statistics for extracted features using pandas and numpy."""
         if features_df.empty:
             return {"statistics": {}, "summary": {}}
-            
+
         # Use pandas for basic statistics
         basic_stats = features_df.describe().to_dict()
-        
+
         # Advanced statistics using numpy
         advanced_stats = {}
         for column in features_df.columns:
@@ -697,34 +714,42 @@ class FeatureEngineeringEngine:
                     "entropy": float(self._calculate_entropy(values)),
                     "range": float(np.max(values) - np.min(values)),
                     "iqr": float(np.percentile(values, 75) - np.percentile(values, 25)),
-                    "outlier_count": int(self._count_outliers(values))
+                    "outlier_count": int(self._count_outliers(values)),
                 }
             else:
                 advanced_stats[column] = {
                     "skewness": 0.0,
-                    "kurtosis": 0.0, 
+                    "kurtosis": 0.0,
                     "entropy": 0.0,
                     "range": 0.0,
                     "iqr": 0.0,
-                    "outlier_count": 0
+                    "outlier_count": 0,
                 }
-                
+
         # Overall summary
         summary = {
             "total_features": len(features_df.columns),
             "total_samples": len(features_df),
-            "missing_value_ratio": float(features_df.isnull().sum().sum() / (len(features_df) * len(features_df.columns))),
-            "constant_features": [col for col in features_df.columns if features_df[col].nunique() <= 1],
-            "high_variance_features": [col for col in features_df.columns 
-                                     if features_df[col].var() > features_df.var().quantile(0.9)]
+            "missing_value_ratio": float(
+                features_df.isnull().sum().sum()
+                / (len(features_df) * len(features_df.columns))
+            ),
+            "constant_features": [
+                col for col in features_df.columns if features_df[col].nunique() <= 1
+            ],
+            "high_variance_features": [
+                col
+                for col in features_df.columns
+                if features_df[col].var() > features_df.var().quantile(0.9)
+            ],
         }
-        
+
         return {
             "basic_statistics": basic_stats,
             "advanced_statistics": advanced_stats,
-            "summary": summary
+            "summary": summary,
         }
-    
+
     def _calculate_skewness(self, values: np.ndarray) -> float:
         """Calculate skewness using numpy."""
         if len(values) < 3:
@@ -734,7 +759,7 @@ class FeatureEngineeringEngine:
         if std == 0:
             return 0.0
         return np.mean(((values - mean) / std) ** 3)
-        
+
     def _calculate_kurtosis(self, values: np.ndarray) -> float:
         """Calculate kurtosis using numpy."""
         if len(values) < 4:
@@ -744,7 +769,7 @@ class FeatureEngineeringEngine:
         if std == 0:
             return 0.0
         return np.mean(((values - mean) / std) ** 4) - 3
-        
+
     def _calculate_entropy(self, values: np.ndarray) -> float:
         """Calculate entropy using numpy."""
         if len(values) == 0:
@@ -755,7 +780,7 @@ class FeatureEngineeringEngine:
         counts = counts + 1  # Add pseudocount
         probs = counts / np.sum(counts)
         return -np.sum(probs * np.log2(probs))
-        
+
     def _count_outliers(self, values: np.ndarray) -> int:
         """Count outliers using IQR method with numpy."""
         if len(values) < 4:

@@ -184,7 +184,7 @@ class TemporalFeatureExtractor:
                 "median_on_duration": 1800.0,
                 "median_off_duration": 1800.0,
                 "duration_percentile_75": 3600.0,
-                "duration_percentile_25": 900.0
+                "duration_percentile_25": 900.0,
             }
 
         # Current state duration
@@ -213,8 +213,12 @@ class TemporalFeatureExtractor:
                 state_start_time = event.timestamp
 
         # Convert to numpy arrays for efficient computation
-        on_durations_array = np.array(on_durations) if on_durations else np.array([1800.0])
-        off_durations_array = np.array(off_durations) if off_durations else np.array([1800.0])
+        on_durations_array = (
+            np.array(on_durations) if on_durations else np.array([1800.0])
+        )
+        off_durations_array = (
+            np.array(off_durations) if off_durations else np.array([1800.0])
+        )
         all_durations = np.concatenate([on_durations_array, off_durations_array])
 
         # Basic statistical features
@@ -226,12 +230,12 @@ class TemporalFeatureExtractor:
         # Advanced statistical features using numpy
         features["on_duration_std"] = float(np.std(on_durations_array))
         features["off_duration_std"] = float(np.std(off_durations_array))
-        
+
         # Duration ratio (on vs off)
         avg_on = float(np.mean(on_durations_array))
         avg_off = float(np.mean(off_durations_array))
         features["duration_ratio"] = avg_on / avg_off if avg_off > 0 else 1.0
-        
+
         # Percentile features
         features["median_on_duration"] = float(np.median(on_durations_array))
         features["median_off_duration"] = float(np.median(off_durations_array))
@@ -239,48 +243,50 @@ class TemporalFeatureExtractor:
         features["duration_percentile_25"] = float(np.percentile(all_durations, 25))
 
         return features
-    
-    def _extract_generic_sensor_features(self, events: List[SensorEvent]) -> Dict[str, float]:
+
+    def _extract_generic_sensor_features(
+        self, events: List[SensorEvent]
+    ) -> Dict[str, float]:
         """
         Extract features from generic sensor values using Any type for flexibility.
-        
+
         This method handles various sensor value types (numeric, boolean, string)
         and extracts meaningful features from them.
         """
         features = {}
-        
+
         if not events:
             return features
-        
+
         # Collect all sensor values with Any type
         sensor_values: List[Any] = []
         numeric_values: List[float] = []
         boolean_values: List[bool] = []
         string_values: List[str] = []
-        
+
         for event in events:
             # Handle different attribute types
-            if hasattr(event, 'attributes') and event.attributes:
+            if hasattr(event, "attributes") and event.attributes:
                 for key, value in event.attributes.items():
                     sensor_values.append(value)
-                    
+
                     # Type-specific processing
                     if isinstance(value, (int, float)):
                         numeric_values.append(float(value))
                     elif isinstance(value, bool):
                         boolean_values.append(value)
-                    elif isinstance(value, str) and value.replace('.', '').isdigit():
+                    elif isinstance(value, str) and value.replace(".", "").isdigit():
                         try:
                             numeric_values.append(float(value))
                         except ValueError:
                             string_values.append(value)
                     else:
                         string_values.append(str(value))
-            
+
             # Handle state as Any type
             state_value: Any = event.state
             sensor_values.append(state_value)
-            
+
             # Try to convert state to numeric if possible
             if isinstance(state_value, str):
                 try:
@@ -291,7 +297,7 @@ class TemporalFeatureExtractor:
                 numeric_values.append(float(state_value))
             elif isinstance(state_value, bool):
                 boolean_values.append(state_value)
-        
+
         # Extract numeric features
         if numeric_values:
             numeric_array = np.array(numeric_values)
@@ -299,35 +305,48 @@ class TemporalFeatureExtractor:
             features["numeric_std"] = float(np.std(numeric_array))
             features["numeric_min"] = float(np.min(numeric_array))
             features["numeric_max"] = float(np.max(numeric_array))
-            features["numeric_range"] = features["numeric_max"] - features["numeric_min"]
+            features["numeric_range"] = (
+                features["numeric_max"] - features["numeric_min"]
+            )
             features["numeric_count"] = len(numeric_values)
-        
-        # Extract boolean features  
+
+        # Extract boolean features
         if boolean_values:
             true_count = sum(1 for v in boolean_values if v)
             features["boolean_true_ratio"] = true_count / len(boolean_values)
             features["boolean_false_ratio"] = 1.0 - features["boolean_true_ratio"]
             features["boolean_count"] = len(boolean_values)
-        
+
         # Extract string features
         if string_values:
             unique_strings = set(string_values)
             features["string_unique_count"] = len(unique_strings)
             features["string_total_count"] = len(string_values)
-            features["string_diversity_ratio"] = len(unique_strings) / len(string_values)
-            
+            features["string_diversity_ratio"] = len(unique_strings) / len(
+                string_values
+            )
+
             # Most common string value
             from collections import Counter
+
             most_common = Counter(string_values).most_common(1)
             if most_common:
-                features["most_common_string_frequency"] = most_common[0][1] / len(string_values)
-        
+                features["most_common_string_frequency"] = most_common[0][1] / len(
+                    string_values
+                )
+
         # Overall sensor value statistics
         features["total_sensor_values"] = len(sensor_values)
-        features["numeric_value_ratio"] = len(numeric_values) / len(sensor_values) if sensor_values else 0.0
-        features["boolean_value_ratio"] = len(boolean_values) / len(sensor_values) if sensor_values else 0.0
-        features["string_value_ratio"] = len(string_values) / len(sensor_values) if sensor_values else 0.0
-        
+        features["numeric_value_ratio"] = (
+            len(numeric_values) / len(sensor_values) if sensor_values else 0.0
+        )
+        features["boolean_value_ratio"] = (
+            len(boolean_values) / len(sensor_values) if sensor_values else 0.0
+        )
+        features["string_value_ratio"] = (
+            len(string_values) / len(sensor_values) if sensor_values else 0.0
+        )
+
         return features
 
     def _extract_cyclical_features(self, target_time: datetime) -> Dict[str, float]:
@@ -383,78 +402,100 @@ class TemporalFeatureExtractor:
                 "pattern_strength": 0.0,
                 "activity_variance": 0.0,
                 "trend_coefficient": 0.0,
-                "seasonality_score": 0.0
+                "seasonality_score": 0.0,
             }
 
         # Convert events to pandas DataFrame for efficient analysis
         event_data = []
         for event in events:
             event_local = event.timestamp + timedelta(hours=self.timezone_offset)
-            event_data.append({
-                'timestamp': event.timestamp,
-                'hour': event_local.hour,
-                'day_of_week': event_local.weekday(),
-                'is_active': event.state == "on",
-                'day_of_year': event_local.timetuple().tm_yday
-            })
-        
+            event_data.append(
+                {
+                    "timestamp": event.timestamp,
+                    "hour": event_local.hour,
+                    "day_of_week": event_local.weekday(),
+                    "is_active": event.state == "on",
+                    "day_of_year": event_local.timetuple().tm_yday,
+                }
+            )
+
         df = pd.DataFrame(event_data)
-        
+
         # Adjust for timezone
         local_time = target_time + timedelta(hours=self.timezone_offset)
         current_hour = local_time.hour
         current_day_of_week = local_time.weekday()
 
         # Basic activity rates using pandas aggregation
-        hour_activity = df.groupby('hour')['is_active'].agg(['mean', 'std', 'count']).fillna(0)
-        day_activity = df.groupby('day_of_week')['is_active'].agg(['mean', 'std', 'count']).fillna(0)
-        
+        hour_activity = (
+            df.groupby("hour")["is_active"].agg(["mean", "std", "count"]).fillna(0)
+        )
+        day_activity = (
+            df.groupby("day_of_week")["is_active"]
+            .agg(["mean", "std", "count"])
+            .fillna(0)
+        )
+
         features["hour_activity_rate"] = float(
-            hour_activity.loc[current_hour, 'mean'] if current_hour in hour_activity.index else 0.5
+            hour_activity.loc[current_hour, "mean"]
+            if current_hour in hour_activity.index
+            else 0.5
         )
         features["day_activity_rate"] = float(
-            day_activity.loc[current_day_of_week, 'mean'] if current_day_of_week in day_activity.index else 0.5
+            day_activity.loc[current_day_of_week, "mean"]
+            if current_day_of_week in day_activity.index
+            else 0.5
         )
-        features["overall_activity_rate"] = float(df['is_active'].mean())
+        features["overall_activity_rate"] = float(df["is_active"].mean())
 
         # Time-of-day similarity score with weighted nearby hours
         nearby_hours = list(range(max(0, current_hour - 1), min(24, current_hour + 2)))
         similar_activities = []
         for hour in nearby_hours:
             if hour in hour_activity.index:
-                weight = 1.0 if hour == current_hour else 0.7  # Weight current hour more
-                similar_activities.extend([hour_activity.loc[hour, 'mean']] * int(weight * 10))
-        
+                weight = (
+                    1.0 if hour == current_hour else 0.7
+                )  # Weight current hour more
+                similar_activities.extend(
+                    [hour_activity.loc[hour, "mean"]] * int(weight * 10)
+                )
+
         features["similar_time_activity_rate"] = float(
             np.mean(similar_activities) if similar_activities else 0.5
         )
 
         # Advanced statistical features using numpy
-        activity_values = df['is_active'].values.astype(float)
-        
+        activity_values = df["is_active"].values.astype(float)
+
         # Pattern strength (consistency of activity at similar times)
         if len(hour_activity) > 1:
-            hour_stds = hour_activity['std'].fillna(0).values
-            features["pattern_strength"] = float(1.0 - np.mean(hour_stds))  # Lower std = stronger pattern
+            hour_stds = hour_activity["std"].fillna(0).values
+            features["pattern_strength"] = float(
+                1.0 - np.mean(hour_stds)
+            )  # Lower std = stronger pattern
         else:
             features["pattern_strength"] = 0.0
-            
+
         # Activity variance
         features["activity_variance"] = float(np.var(activity_values))
-        
+
         # Trend coefficient using linear regression
         if len(df) > 2:
             time_indices = np.arange(len(df))
             trend_coeff = np.corrcoef(time_indices, activity_values)[0, 1]
-            features["trend_coefficient"] = float(trend_coeff if not np.isnan(trend_coeff) else 0.0)
+            features["trend_coefficient"] = float(
+                trend_coeff if not np.isnan(trend_coeff) else 0.0
+            )
         else:
             features["trend_coefficient"] = 0.0
-            
+
         # Seasonality score (day-of-year pattern strength)
         if len(df) > 7:
-            day_of_year_activity = df.groupby('day_of_year')['is_active'].mean()
+            day_of_year_activity = df.groupby("day_of_year")["is_active"].mean()
             if len(day_of_year_activity) > 1:
-                features["seasonality_score"] = float(np.std(day_of_year_activity.values))
+                features["seasonality_score"] = float(
+                    np.std(day_of_year_activity.values)
+                )
             else:
                 features["seasonality_score"] = 0.0
         else:
@@ -617,22 +658,24 @@ class TemporalFeatureExtractor:
     def get_feature_names(self) -> List[str]:
         """Get list of all temporal feature names using standardized names."""
         return list(self._get_default_features().keys())
-    
-    def validate_feature_names(self, extracted_features: Dict[str, Any]) -> Dict[str, Any]:
+
+    def validate_feature_names(
+        self, extracted_features: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Validate and standardize feature names using TEMPORAL_FEATURE_NAMES constant."""
         validated_features = {}
-        
+
         # Map extracted features to standardized names where possible
         name_mappings = {
-            'time_since_last_of': 'time_since_last_change',
-            'current_state_duration': 'current_state_duration',
-            'hour_sin': 'hour_sin',
-            'hour_cos': 'hour_cos', 
-            'day_sin': 'day_sin',
-            'day_cos': 'day_cos',
-            'is_weekend': 'is_weekend'
+            "time_since_last_of": "time_since_last_change",
+            "current_state_duration": "current_state_duration",
+            "hour_sin": "hour_sin",
+            "hour_cos": "hour_cos",
+            "day_sin": "day_sin",
+            "day_cos": "day_cos",
+            "is_weekend": "is_weekend",
         }
-        
+
         # Use TEMPORAL_FEATURE_NAMES for standardization
         for standard_name in TEMPORAL_FEATURE_NAMES:
             if standard_name in extracted_features:
@@ -640,15 +683,23 @@ class TemporalFeatureExtractor:
             else:
                 # Try to find mapped equivalent
                 for extracted_name, mapped_name in name_mappings.items():
-                    if mapped_name == standard_name and extracted_name in extracted_features:
-                        validated_features[standard_name] = extracted_features[extracted_name]
+                    if (
+                        mapped_name == standard_name
+                        and extracted_name in extracted_features
+                    ):
+                        validated_features[standard_name] = extracted_features[
+                            extracted_name
+                        ]
                         break
-        
+
         # Add any additional features that don't have standard mappings
         for feature_name, value in extracted_features.items():
-            if feature_name not in validated_features and feature_name not in name_mappings:
+            if (
+                feature_name not in validated_features
+                and feature_name not in name_mappings
+            ):
                 validated_features[feature_name] = value
-                
+
         return validated_features
 
     def clear_cache(self):

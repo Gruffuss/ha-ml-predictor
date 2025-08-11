@@ -150,13 +150,13 @@ class ContextualFeatureExtractor:
             "light": [],
             "climate": [],
         }
-        
+
         # Track unique sensor types using Set
         detected_sensor_types: Set[str] = set()
 
         for event in events:
             detected_sensor_types.add(event.sensor_type)
-            
+
             # Use SensorType enum for proper filtering
             if event.sensor_type == SensorType.CLIMATE.value:
                 env_events["climate"].append(event)
@@ -280,10 +280,13 @@ class ContextualFeatureExtractor:
         # Filter door events using SensorType enum
         door_events = []
         door_sensor_ids: Set[str] = set()
-        
+
         for event in events:
             # Use SensorType enum for proper door sensor filtering
-            if event.sensor_type == SensorType.DOOR.value or "door" in event.sensor_id.lower():
+            if (
+                event.sensor_type == SensorType.DOOR.value
+                or "door" in event.sensor_id.lower()
+            ):
                 door_events.append(event)
                 door_sensor_ids.add(event.sensor_id)
 
@@ -530,7 +533,7 @@ class ContextualFeatureExtractor:
             room_id = event.room_id
             room_sensor_counts[room_id] += 1
             room_sensor_types[room_id].add(event.sensor_type)
-            
+
             # Count distribution of different sensor types using SensorType validation
             if event.sensor_type in [t.value for t in SensorType]:
                 sensor_type_distribution[event.sensor_type] += 1
@@ -556,22 +559,24 @@ class ContextualFeatureExtractor:
                 if len(room_sensor_counts) > 1
                 else 0.0
             )
-            
+
             # Sensor type diversity features using SensorType enum
             features["sensor_type_diversity"] = len(sensor_type_distribution)
-            
+
             # Calculate sensor type ratios
             total_sensor_events = sum(sensor_type_distribution.values())
             if total_sensor_events > 0:
                 features["presence_sensor_ratio"] = (
-                    sensor_type_distribution.get(SensorType.PRESENCE.value, 0) +
-                    sensor_type_distribution.get(SensorType.MOTION.value, 0)
+                    sensor_type_distribution.get(SensorType.PRESENCE.value, 0)
+                    + sensor_type_distribution.get(SensorType.MOTION.value, 0)
                 ) / total_sensor_events
                 features["door_sensor_ratio"] = (
-                    sensor_type_distribution.get(SensorType.DOOR.value, 0) / total_sensor_events
+                    sensor_type_distribution.get(SensorType.DOOR.value, 0)
+                    / total_sensor_events
                 )
                 features["climate_sensor_ratio"] = (
-                    sensor_type_distribution.get(SensorType.CLIMATE.value, 0) / total_sensor_events
+                    sensor_type_distribution.get(SensorType.CLIMATE.value, 0)
+                    / total_sensor_events
                 )
             else:
                 features["presence_sensor_ratio"] = 0.0

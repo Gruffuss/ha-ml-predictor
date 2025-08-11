@@ -122,26 +122,34 @@ class EventValidator:
         # Enhanced state validation using imported constants
         if event.state in INVALID_STATES:
             errors.append(f"Invalid state: {event.state}")
-        
+
         # Validate state transitions using PRESENCE_STATES and ABSENCE_STATES
         if event.state and event.previous_state:
             valid_presence_transition = (
-                event.previous_state in ABSENCE_STATES and event.state in PRESENCE_STATES
+                event.previous_state in ABSENCE_STATES
+                and event.state in PRESENCE_STATES
             )
             valid_absence_transition = (
-                event.previous_state in PRESENCE_STATES and event.state in ABSENCE_STATES
+                event.previous_state in PRESENCE_STATES
+                and event.state in ABSENCE_STATES
             )
             valid_same_category = (
-                (event.previous_state in PRESENCE_STATES and event.state in PRESENCE_STATES) or
-                (event.previous_state in ABSENCE_STATES and event.state in ABSENCE_STATES)
+                event.previous_state in PRESENCE_STATES
+                and event.state in PRESENCE_STATES
+            ) or (
+                event.previous_state in ABSENCE_STATES and event.state in ABSENCE_STATES
             )
-            
-            if not (valid_presence_transition or valid_absence_transition or valid_same_category):
+
+            if not (
+                valid_presence_transition
+                or valid_absence_transition
+                or valid_same_category
+            ):
                 warnings.append(
                     f"Unusual state transition: {event.previous_state} -> {event.state}"
                 )
                 confidence_score *= 0.9
-        
+
         # Validate sensor state consistency with SensorState enum
         if hasattr(SensorState, event.state.upper()):
             # State is valid according to SensorState enum
@@ -264,17 +272,19 @@ class MovementPatternClassifier:
         # Timing metrics with advanced mathematical analysis
         metrics["avg_sensor_dwell_time"] = self._calculate_avg_dwell_time(sequence)
         metrics["inter_event_variance"] = self._calculate_timing_variance(sequence)
-        
+
         # Advanced mathematical metrics
         metrics["movement_entropy"] = self._calculate_movement_entropy(sequence)
-        metrics["spatial_dispersion"] = self._calculate_spatial_dispersion(sequence, room_config)
-        
+        metrics["spatial_dispersion"] = self._calculate_spatial_dispersion(
+            sequence, room_config
+        )
+
         # Mathematical complexity metrics
         if sequence.duration_seconds > 0:
             metrics["movement_complexity"] = (
-                metrics["movement_entropy"] * 
-                math.log(1 + metrics["spatial_dispersion"]) *
-                math.sqrt(metrics["inter_event_variance"] + 1)
+                metrics["movement_entropy"]
+                * math.log(1 + metrics["spatial_dispersion"])
+                * math.sqrt(metrics["inter_event_variance"] + 1)
             )
         else:
             metrics["movement_complexity"] = 0.0
@@ -353,13 +363,13 @@ class MovementPatternClassifier:
 
         # Use mathematical statistics for better precision
         mean_dwell = statistics.mean(dwell_times)
-        
+
         # Apply mathematical normalization using log function if needed
         if mean_dwell > 0:
             # Use math.log to normalize extreme values
             normalized_dwell = mean_dwell * (1 + math.log(1 + mean_dwell / 60))
             return normalized_dwell
-        
+
         return mean_dwell
 
     def _calculate_timing_variance(self, sequence: MovementSequence) -> float:
@@ -379,7 +389,7 @@ class MovementPatternClassifier:
 
         # Calculate mathematical variance with additional statistical measures
         variance = statistics.variance(intervals)
-        
+
         # Apply mathematical transformations for better analysis
         if variance > 0:
             # Use coefficient of variation for normalized comparison
@@ -388,9 +398,9 @@ class MovementPatternClassifier:
                 coefficient_of_variation = math.sqrt(variance) / mean_interval
                 # Apply mathematical scaling using exponential function
                 return variance * (1 + math.exp(-coefficient_of_variation))
-        
+
         return variance
-    
+
     def _calculate_movement_entropy(self, sequence: MovementSequence) -> float:
         """
         Calculate movement entropy to measure randomness of movement patterns.
@@ -398,41 +408,43 @@ class MovementPatternClassifier:
         """
         if len(sequence.events) < 3:
             return 0.0
-        
+
         # Count sensor transitions
         transitions = defaultdict(int)
         total_transitions = 0
-        
+
         for i in range(1, len(sequence.events)):
-            from_sensor = sequence.events[i-1].sensor_id
+            from_sensor = sequence.events[i - 1].sensor_id
             to_sensor = sequence.events[i].sensor_id
             if from_sensor != to_sensor:
                 transitions[(from_sensor, to_sensor)] += 1
                 total_transitions += 1
-        
+
         if total_transitions == 0:
             return 0.0
-        
+
         # Calculate entropy using Shannon's formula: H = -Σ(p * log2(p))
         entropy = 0.0
         for count in transitions.values():
             probability = count / total_transitions
             if probability > 0:
                 entropy -= probability * math.log2(probability)
-        
+
         return entropy
-    
-    def _calculate_spatial_dispersion(self, sequence: MovementSequence, room_config) -> float:
+
+    def _calculate_spatial_dispersion(
+        self, sequence: MovementSequence, room_config
+    ) -> float:
         """
         Calculate spatial dispersion of movement using mathematical distance metrics.
         """
         if len(sequence.sensors_triggered) < 2:
             return 0.0
-        
+
         # Create a simplified spatial mapping (this could be enhanced with real coordinates)
         sensor_positions = {}
         position_index = 0
-        
+
         # Assign positions based on sensor type and order in configuration
         for sensor_type, sensors in room_config.sensors.items():
             if isinstance(sensors, dict):
@@ -442,17 +454,20 @@ class MovementPatternClassifier:
             elif isinstance(sensors, str):
                 sensor_positions[sensors] = position_index
                 position_index += 1
-        
+
         # Calculate dispersion using mathematical distance metrics
-        positions = [sensor_positions.get(sensor_id, 0) for sensor_id in sequence.sensors_triggered]
-        
+        positions = [
+            sensor_positions.get(sensor_id, 0)
+            for sensor_id in sequence.sensors_triggered
+        ]
+
         if len(positions) < 2:
             return 0.0
-        
+
         # Calculate standard deviation of positions as dispersion measure
         mean_position = statistics.mean(positions)
         variance = sum((pos - mean_position) ** 2 for pos in positions) / len(positions)
-        
+
         # Apply mathematical transformation using square root (standard deviation)
         return math.sqrt(variance)
 
@@ -556,20 +571,20 @@ class MovementPatternClassifier:
     ) -> Tuple[str, float, Dict[str, float]]:
         """
         Analyze movement sequence patterns returning classification, confidence, and metrics.
-        
+
         Args:
             sequence: Movement sequence to analyze
             room_config: Room configuration for context
-            
+
         Returns:
             Tuple of (classification, confidence, detailed_metrics)
         """
         # Get classification result
         result = self.classify_movement_sequence(sequence, room_config)
-        
+
         # Calculate detailed metrics
         metrics = self._calculate_movement_metrics(sequence, room_config)
-        
+
         # Add statistical analysis
         detailed_metrics = {
             **metrics,
@@ -577,98 +592,103 @@ class MovementPatternClassifier:
             "pattern_consistency": self._calculate_pattern_consistency(sequence),
             "anomaly_score": self._calculate_anomaly_score(metrics),
         }
-        
+
         classification = "human" if result.is_human_triggered else "cat"
-        
+
         return classification, result.confidence_score, detailed_metrics
-    
+
     def get_sequence_time_analysis(
         self, sequence: MovementSequence
     ) -> Tuple[float, float, float, int]:
         """
         Analyze timing patterns in a movement sequence.
-        
+
         Args:
             sequence: Movement sequence to analyze
-            
+
         Returns:
             Tuple of (min_interval, max_interval, avg_interval, total_gaps)
         """
         if len(sequence.events) < 2:
             return 0.0, 0.0, 0.0, 0
-        
+
         intervals = []
         total_gaps = 0
-        
+
         for i in range(1, len(sequence.events)):
             interval = (
                 sequence.events[i].timestamp - sequence.events[i - 1].timestamp
             ).total_seconds()
             intervals.append(interval)
-            
+
             # Count significant gaps (> 5 seconds)
             if interval > 5.0:
                 total_gaps += 1
-        
+
         if intervals:
             min_interval = min(intervals)
             max_interval = max(intervals)
             avg_interval = sum(intervals) / len(intervals)
         else:
             min_interval = max_interval = avg_interval = 0.0
-        
+
         return min_interval, max_interval, avg_interval, total_gaps
-    
+
     def extract_movement_signature(
         self, sequence: MovementSequence, room_config: RoomConfig
     ) -> Tuple[List[str], Dict[str, int], float]:
         """
         Extract movement signature for pattern matching.
-        
+
         Args:
             sequence: Movement sequence to analyze
             room_config: Room configuration
-            
+
         Returns:
             Tuple of (sensor_path, sensor_frequencies, uniqueness_score)
         """
         # Extract sensor path
         sensor_path = [event.sensor_id.split(".")[-1] for event in sequence.events]
-        
+
         # Count sensor frequencies
         sensor_frequencies = {}
         for sensor in sensor_path:
             sensor_frequencies[sensor] = sensor_frequencies.get(sensor, 0) + 1
-        
+
         # Calculate uniqueness score (0.0 = highly repetitive, 1.0 = all unique)
         unique_sensors = len(set(sensor_path))
         total_sensors = len(sensor_path)
-        uniqueness_score = unique_sensors / max(total_sensors, 1) if total_sensors > 0 else 0.0
-        
+        uniqueness_score = (
+            unique_sensors / max(total_sensors, 1) if total_sensors > 0 else 0.0
+        )
+
         return sensor_path, sensor_frequencies, uniqueness_score
-    
+
     def compare_movement_patterns(
-        self, sequence1: MovementSequence, sequence2: MovementSequence, room_config: RoomConfig
+        self,
+        sequence1: MovementSequence,
+        sequence2: MovementSequence,
+        room_config: RoomConfig,
     ) -> Tuple[float, Dict[str, float], bool]:
         """
         Compare two movement sequences for similarity.
-        
+
         Args:
             sequence1: First movement sequence
-            sequence2: Second movement sequence  
+            sequence2: Second movement sequence
             room_config: Room configuration
-            
+
         Returns:
             Tuple of (similarity_score, comparison_metrics, is_same_pattern_type)
         """
         # Get metrics for both sequences
         metrics1 = self._calculate_movement_metrics(sequence1, room_config)
         metrics2 = self._calculate_movement_metrics(sequence2, room_config)
-        
+
         # Calculate similarity score
         similarity_components = []
         comparison_metrics = {}
-        
+
         for key in metrics1.keys():
             if key in metrics2:
                 val1, val2 = metrics1[key], metrics2[key]
@@ -677,42 +697,48 @@ class MovementPatternClassifier:
                 similarity = 1.0 - min(diff_ratio, 1.0)
                 similarity_components.append(similarity)
                 comparison_metrics[f"{key}_similarity"] = similarity
-        
-        overall_similarity = sum(similarity_components) / len(similarity_components) if similarity_components else 0.0
-        
+
+        overall_similarity = (
+            sum(similarity_components) / len(similarity_components)
+            if similarity_components
+            else 0.0
+        )
+
         # Determine if same pattern type
         class1 = self.classify_movement_sequence(sequence1, room_config)
         class2 = self.classify_movement_sequence(sequence2, room_config)
         is_same_pattern = class1.is_human_triggered == class2.is_human_triggered
-        
+
         return overall_similarity, comparison_metrics, is_same_pattern
-    
+
     def _calculate_pattern_consistency(self, sequence: MovementSequence) -> float:
         """Calculate how consistent the movement pattern is."""
         if len(sequence.events) < 3:
             return 1.0
-        
+
         intervals = []
         for i in range(1, len(sequence.events)):
-            interval = (sequence.events[i].timestamp - sequence.events[i - 1].timestamp).total_seconds()
+            interval = (
+                sequence.events[i].timestamp - sequence.events[i - 1].timestamp
+            ).total_seconds()
             intervals.append(interval)
-        
+
         if not intervals:
             return 1.0
-        
+
         # Calculate coefficient of variation (lower = more consistent)
         mean_interval = sum(intervals) / len(intervals)
         if mean_interval == 0:
             return 1.0
-        
+
         variance = sum((x - mean_interval) ** 2 for x in intervals) / len(intervals)
         std_dev = math.sqrt(variance)
         cv = std_dev / mean_interval
-        
+
         # Convert to consistency score (0 = inconsistent, 1 = perfectly consistent)
         consistency = 1.0 / (1.0 + cv)
         return consistency
-    
+
     def _calculate_anomaly_score(self, metrics: Dict[str, float]) -> float:
         """Calculate anomaly score based on metric values."""
         # Define expected ranges for normal behavior
@@ -722,7 +748,7 @@ class MovementPatternClassifier:
             "movement_entropy": (0.0, 3.0),
             "spatial_dispersion": (0.0, 10.0),
         }
-        
+
         anomaly_components = []
         for key, (min_val, max_val) in expected_ranges.items():
             if key in metrics:
@@ -734,8 +760,12 @@ class MovementPatternClassifier:
                 else:
                     anomaly = 0.0
                 anomaly_components.append(min(anomaly, 1.0))
-        
-        return sum(anomaly_components) / len(anomaly_components) if anomaly_components else 0.0
+
+        return (
+            sum(anomaly_components) / len(anomaly_components)
+            if anomaly_components
+            else 0.0
+        )
 
 
 class EventProcessor:
@@ -1074,19 +1104,17 @@ class EventProcessor:
             "cat_classified": 0,
             "duplicates_filtered": 0,
         }
-    
+
     async def validate_event_sequence_integrity(
-        self,
-        events: List[SensorEvent],
-        tolerance_seconds: float = 1.0
+        self, events: List[SensorEvent], tolerance_seconds: float = 1.0
     ) -> Dict[str, Any]:
         """
         Validate the integrity of an event sequence using mathematical analysis.
-        
+
         Args:
             events: List of sensor events to validate
             tolerance_seconds: Tolerance for timing anomalies
-            
+
         Returns:
             Dictionary with integrity analysis results
         """
@@ -1095,81 +1123,95 @@ class EventProcessor:
                 "valid": True,
                 "issues": [],
                 "confidence": 1.0,
-                "analysis": "Insufficient events for sequence analysis"
+                "analysis": "Insufficient events for sequence analysis",
             }
-        
+
         issues = []
         confidence = 1.0
-        
+
         try:
             # Check temporal ordering
             for i in range(1, len(events)):
-                if events[i].timestamp < events[i-1].timestamp:
+                if events[i].timestamp < events[i - 1].timestamp:
                     issues.append(f"Temporal ordering violation at index {i}")
                     confidence *= 0.8
-            
+
             # Check for timing anomalies using mathematical analysis
             intervals = []
             for i in range(1, len(events)):
-                interval = (events[i].timestamp - events[i-1].timestamp).total_seconds()
+                interval = (
+                    events[i].timestamp - events[i - 1].timestamp
+                ).total_seconds()
                 intervals.append(interval)
-            
+
             if intervals:
                 mean_interval = statistics.mean(intervals)
                 std_interval = statistics.stdev(intervals) if len(intervals) > 1 else 0
-                
+
                 # Use mathematical z-score to detect anomalies
                 for i, interval in enumerate(intervals):
                     if std_interval > 0:
                         z_score = abs((interval - mean_interval) / std_interval)
                         if z_score > 3:  # Statistical threshold for outliers
-                            issues.append(f"Timing anomaly at interval {i+1}: z-score = {z_score:.2f}")
+                            issues.append(
+                                f"Timing anomaly at interval {i+1}: z-score = {z_score:.2f}"
+                            )
                             confidence *= 0.9
-            
+
             # Check state transition patterns using mathematical entropy
             state_transitions = []
             for i in range(1, len(events)):
-                if events[i].state != events[i-1].state:
-                    state_transitions.append((events[i-1].state, events[i].state))
-            
+                if events[i].state != events[i - 1].state:
+                    state_transitions.append((events[i - 1].state, events[i].state))
+
             if state_transitions:
                 # Calculate transition entropy
                 transition_counts = defaultdict(int)
                 for transition in state_transitions:
                     transition_counts[transition] += 1
-                
+
                 total_transitions = len(state_transitions)
                 entropy = 0.0
                 for count in transition_counts.values():
                     probability = count / total_transitions
                     if probability > 0:
                         entropy -= probability * math.log2(probability)
-                
+
                 # Unusually low entropy might indicate data quality issues
                 if entropy < 0.5 and len(transition_counts) > 1:
-                    issues.append(f"Low transition entropy: {entropy:.2f} (possible repetitive pattern)")
+                    issues.append(
+                        f"Low transition entropy: {entropy:.2f} (possible repetitive pattern)"
+                    )
                     confidence *= 0.95
-            
+
             # Check for missing required state information
             missing_states = sum(1 for event in events if not event.state)
             if missing_states > 0:
                 issues.append(f"{missing_states} events missing state information")
-                confidence *= (1 - missing_states / len(events))
-            
+                confidence *= 1 - missing_states / len(events)
+
             return {
                 "valid": len(issues) == 0,
                 "issues": issues,
                 "confidence": confidence,
                 "analysis": {
                     "total_events": len(events),
-                    "temporal_span_seconds": (events[-1].timestamp - events[0].timestamp).total_seconds(),
-                    "unique_states": len(set(event.state for event in events if event.state)),
+                    "temporal_span_seconds": (
+                        events[-1].timestamp - events[0].timestamp
+                    ).total_seconds(),
+                    "unique_states": len(
+                        set(event.state for event in events if event.state)
+                    ),
                     "transition_count": len(state_transitions),
-                    "mean_interval_seconds": statistics.mean(intervals) if intervals else 0,
-                    "interval_std_seconds": statistics.stdev(intervals) if len(intervals) > 1 else 0
-                }
+                    "mean_interval_seconds": (
+                        statistics.mean(intervals) if intervals else 0
+                    ),
+                    "interval_std_seconds": (
+                        statistics.stdev(intervals) if len(intervals) > 1 else 0
+                    ),
+                },
             }
-            
+
         except (ConfigurationError, DataValidationError, FeatureExtractionError) as e:
             # Handle domain-specific errors
             logger.error(f"Domain-specific error during sequence validation: {e}")
@@ -1177,7 +1219,7 @@ class EventProcessor:
                 "valid": False,
                 "issues": [f"Domain error: {str(e)}"],
                 "confidence": 0.0,
-                "analysis": "Validation failed due to domain-specific error"
+                "analysis": "Validation failed due to domain-specific error",
             }
         except Exception as e:
             # Handle unexpected errors with proper exception handling
@@ -1185,7 +1227,7 @@ class EventProcessor:
             raise FeatureExtractionError(
                 f"Event sequence validation failed: {str(e)}",
                 feature_type="sequence_validation",
-                context={"event_count": len(events)}
+                context={"event_count": len(events)},
             )
 
     async def validate_room_configuration(self, room_id: str) -> Dict[str, Any]:
