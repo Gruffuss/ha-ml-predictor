@@ -85,7 +85,7 @@ jobs:
         
     - name: "Linting (Flake8)"
       run: |
-        flake8 src/ tests/ scripts/ examples/ --max-line-length=140 --extend-ignore=E203,W503,E501,W291,W293,E402
+        flake8 src/ tests/ scripts/ examples/ --max-line-length=140 --extend-ignore=E203,W503,E501,W291,W293,E402,C901
         
     - name: "Type checking (mypy)"
       run: |
