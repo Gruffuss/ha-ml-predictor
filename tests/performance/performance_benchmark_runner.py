@@ -13,6 +13,7 @@ Features:
 - Performance monitoring integration
 """
 
+import argparse
 import asyncio
 from datetime import datetime, timedelta
 import json
@@ -617,8 +618,6 @@ class PerformanceBenchmarkRunner:
 # CLI Interface for running benchmarks
 async def main():
     """Main function for running performance benchmarks."""
-    import argparse
-
     parser = argparse.ArgumentParser(description="Run performance benchmarks")
     parser.add_argument("--baseline", help="Baseline metrics file path")
     parser.add_argument(

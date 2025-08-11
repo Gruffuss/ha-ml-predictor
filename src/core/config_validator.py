@@ -3,12 +3,20 @@ Configuration validation framework.
 Validates configuration files, environment settings, and system requirements.
 """
 
+import asyncio
+import asyncpg
 from dataclasses import dataclass
 import logging
 from pathlib import Path
+import psutil
 import re
+import shutil
+import sys
+import time
 from typing import Any, Dict, List
 from urllib.parse import urlparse
+
+import paho.mqtt.client as mqtt
 import requests
 import yaml
 
@@ -230,9 +238,6 @@ class DatabaseConfigValidator:
             return result
 
         try:
-            import asyncio
-
-            import asyncpg
 
             async def test_db():
                 try:
@@ -357,8 +362,6 @@ class MQTTConfigValidator:
             return result
 
         try:
-            import paho.mqtt.client as mqtt
-
             connection_result = {"success": False, "error": None}
 
             def on_connect(client, userdata, flags, rc):
@@ -386,8 +389,6 @@ class MQTTConfigValidator:
             client.loop_start()
 
             # Wait for connection result
-            import time
-
             for _ in range(50):  # Wait up to 5 seconds
                 if connection_result["success"] or connection_result["error"]:
                     break
@@ -523,8 +524,6 @@ class SystemRequirementsValidator:
         result = ValidationResult(is_valid=True, errors=[], warnings=[], info=[])
 
         # Check Python version
-        import sys
-
         python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
         result.add_info(f"Python version: {python_version}")
 
@@ -561,8 +560,6 @@ class SystemRequirementsValidator:
 
         # Check disk space
         try:
-            import shutil
-
             total, used, free = shutil.disk_usage(".")
             free_gb = free / (1024**3)
 
@@ -577,8 +574,6 @@ class SystemRequirementsValidator:
 
         # Check memory
         try:
-            import psutil
-
             memory = psutil.virtual_memory()
             memory_gb = memory.total / (1024**3)
             available_gb = memory.available / (1024**3)

@@ -8,6 +8,7 @@ health checks, retry logic, and proper cleanup for PostgreSQL with TimescaleDB.
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
+import hashlib
 import logging
 import time
 from typing import Any, AsyncGenerator, Dict, List, Optional
@@ -401,8 +402,6 @@ class DatabaseManager:
                 # Prepare statement if requested (PostgreSQL specific)
                 if use_prepared_statement and parameters:
                     # Create prepared statement name
-                    import hashlib
-
                     statement_name = (
                         f"stmt_{hashlib.md5(query.encode()).hexdigest()[:8]}"
                     )
@@ -483,8 +482,6 @@ class DatabaseManager:
                         analysis["execution_plan_error"] = str(e)
 
                 # Measure execution time
-                import time
-
                 start_time = time.time()
 
                 try:

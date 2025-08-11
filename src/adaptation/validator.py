@@ -14,9 +14,11 @@ from enum import Enum
 import json
 import logging
 from pathlib import Path
+import statistics
 import threading
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+import numpy as np
 from sqlalchemy import and_, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1039,9 +1041,6 @@ class PredictionValidator:
         confidences = [r.confidence_score for r in validated_records]
 
         if errors:
-            import numpy as np
-            import statistics
-
             metrics.mean_error_minutes = statistics.mean(errors)
             metrics.median_error_minutes = statistics.median(errors)
             metrics.std_error_minutes = (
@@ -1082,8 +1081,6 @@ class PredictionValidator:
 
             # Confidence-accuracy correlation
             if errors and len(errors) == len(confidences):
-                import numpy as np
-
                 # Calculate correlation between confidence and accuracy (inverse of error)
                 accuracies = [
                     1 / (1 + e) for e in errors

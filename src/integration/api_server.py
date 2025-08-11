@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 import logging
 import traceback
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
+import uuid
 
 from fastapi import (
     BackgroundTasks,
@@ -532,8 +533,6 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def request_middleware(request: Request, call_next):
         # Generate request ID
-        import uuid
-
         request.request_id = str(uuid.uuid4())
 
         # Log request if enabled

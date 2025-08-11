@@ -12,6 +12,7 @@ import json
 import logging
 from pathlib import Path
 import pickle
+import psutil
 import traceback
 from typing import Any, Dict, List, Optional
 
@@ -845,8 +846,6 @@ class BulkImporter:
 
         # Check for memory usage patterns
         try:
-            import psutil
-
             process = psutil.Process()
             memory_mb = process.memory_info().rss / 1024 / 1024
             optimization_report["performance_metrics"]["memory_usage_mb"] = memory_mb

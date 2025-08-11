@@ -6,6 +6,7 @@ providing detailed error context and actionable debugging information.
 """
 
 from enum import Enum
+import re
 from typing import Any, Dict, List, Optional
 
 
@@ -253,8 +254,6 @@ class DatabaseConnectionError(DatabaseError):
     @staticmethod
     def _mask_password(connection_string: str) -> str:
         """Mask password in connection string for safe logging."""
-        import re
-
         return re.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", connection_string)
 
 

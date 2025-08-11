@@ -9,6 +9,8 @@ requirements for automatic component integration.
 import asyncio
 from datetime import datetime
 import logging
+import sys
+import traceback
 
 from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
 from src.core.config import APIConfig, get_config
@@ -85,8 +87,6 @@ async def test_api_integration():
 
     except Exception as e:
         print(f"💥 ERROR: Integration test failed: {e}")
-        import traceback
-
         traceback.print_exc()
         return "ERROR"
 
@@ -116,7 +116,5 @@ async def main():
 
 
 if __name__ == "__main__":
-    import sys
-
     exit_code = asyncio.run(main())
     sys.exit(exit_code)
