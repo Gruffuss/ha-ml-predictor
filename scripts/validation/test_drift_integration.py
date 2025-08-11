@@ -49,7 +49,7 @@ async def test_drift_integration():
     assert hasattr(
         config, "drift_baseline_days"
     ), "TrackingConfig missing drift_baseline_days"
-    assert config.drift_detection_enabled == True, "Drift detection should be enabled"
+    assert config.drift_detection_enabled is True, "Drift detection should be enabled"
 
     logger.info("✅ TrackingConfig properly includes drift detection settings")
 
@@ -95,10 +95,10 @@ async def test_drift_integration():
     ), "Status should include drift_detector_available"
     assert "drift_config" in drift_status, "Status should include drift_config"
     assert (
-        drift_status["drift_detection_enabled"] == True
+        drift_status["drift_detection_enabled"] is True
     ), "Should show drift detection enabled"
     assert (
-        drift_status["drift_detector_available"] == True
+        drift_status["drift_detector_available"] is True
     ), "Should show drift detector available"
 
     logger.info("✅ Drift status reporting works correctly")
@@ -168,10 +168,10 @@ async def test_drift_configuration_integration():
 
     drift_status = await manager_disabled.get_drift_status()
     assert (
-        drift_status["drift_detection_enabled"] == False
+        drift_status["drift_detection_enabled"] is False
     ), "Status should show disabled"
     assert (
-        drift_status["drift_detector_available"] == False
+        drift_status["drift_detector_available"] is False
     ), "Should show detector not available"
 
     logger.info("✅ Properly handles drift detection disabled configuration")

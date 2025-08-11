@@ -81,7 +81,7 @@ async def validate_realtime_integration():
         # Verify configuration was applied
         realtime_status = tracking_manager.get_realtime_publishing_status()
         assert (
-            realtime_status["enabled"] == True
+            realtime_status["enabled"] is True
         ), "Real-time publishing should be enabled"
         print(
             f"   ✅ Real-time publishing configured: {realtime_status['enabled_channels']}"
@@ -145,7 +145,7 @@ async def validate_realtime_integration():
         # Verify real-time publisher was shut down
         realtime_status = tracking_manager.get_realtime_publishing_status()
         assert (
-            realtime_status["active"] == False
+            realtime_status["active"] is False
         ), "Real-time publishing should be inactive after shutdown"
         print("   ✅ Real-time publishing shut down gracefully")
 

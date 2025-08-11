@@ -64,7 +64,7 @@ def test_basic_structure():
         assert ensemble.model_type == ModelType.ENSEMBLE
 
         assert all(pred.room_id == "test_room" for pred in [lstm, xgb, hmm, ensemble])
-        assert all(pred.is_trained == False for pred in [lstm, xgb, hmm, ensemble])
+        assert all(pred.is_trained is False for pred in [lstm, xgb, hmm, ensemble])
 
         print("[PASS] Basic model structure test passed")
         return True
@@ -123,7 +123,7 @@ def test_training_result():
             validation_score=0.85,
         )
 
-        assert result.success == True
+        assert result.success is True
         assert result.training_time_seconds == 120.5
         assert result.model_version == "v1.0"
         assert result.training_samples == 1000
@@ -165,7 +165,7 @@ def test_model_methods():
         info = predictor.get_model_info()
         assert isinstance(info, dict)
         assert info["room_id"] == "test_room"
-        assert info["is_trained"] == False
+        assert info["is_trained"] is False
 
         print("[PASS] Model method interfaces test passed")
         return True
@@ -240,7 +240,6 @@ def test_model_serialization():
     print("\nTesting model serialization...")
 
     try:
-        import os
         import tempfile
 
         from models.base.xgboost_predictor import XGBoostPredictor
@@ -357,7 +356,7 @@ def test_feature_validation_interface():
         # Test with untrained model (should return False with warning)
         mock_features = MockDataFrame(["feature1", "feature2"])
         result = predictor.validate_features(mock_features)
-        assert result == False, "Untrained model should fail feature validation"
+        assert result is False, "Untrained model should fail feature validation"
 
         # Test that method exists
         assert hasattr(predictor, "validate_features")
@@ -400,7 +399,7 @@ def test_model_info_completeness():
 
         # Test specific values
         assert info["room_id"] == "test_room"
-        assert info["is_trained"] == False
+        assert info["is_trained"] is False
         assert info["training_sessions"] == 0
         assert info["predictions_made"] == 0
 
@@ -491,7 +490,7 @@ def main():
             failed += 1
 
     print("\n" + "=" * 60)
-    print(f"Sprint 3 Validation Results:")
+    print("Sprint 3 Validation Results:")
     print(f"   [PASS] Passed: {passed}")
     print(f"   [FAIL] Failed: {failed}")
     print(f"   Success Rate: {passed/(passed+failed)*100:.1f}%")

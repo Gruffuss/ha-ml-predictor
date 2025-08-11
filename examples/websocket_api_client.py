@@ -362,7 +362,7 @@ class WebSocketAPIClient:
         # Handle alternatives if present
         alternatives = data.get("alternatives", [])
         if alternatives:
-            logger.info(f"   Alternatives:")
+            logger.info("   Alternatives:")
             for i, alt in enumerate(alternatives[:3], 1):
                 logger.info(
                     f"     {i}. {alt['predicted_time']} (confidence: {alt['confidence']:.2%})"
@@ -371,7 +371,7 @@ class WebSocketAPIClient:
     async def _handle_system_status_update(self, message: Dict):
         """Handle system status updates."""
         data = message.get("data", {})
-        logger.info(f"📊 System Status Update:")
+        logger.info("📊 System Status Update:")
 
         # Log key system metrics
         for key, value in data.items():
@@ -388,7 +388,7 @@ class WebSocketAPIClient:
         room_id = message.get("room_id")
 
         logger.warning(
-            f"🚨 Alert Notification" + (f" - Room: {room_id}" if room_id else "")
+            "🚨 Alert Notification" + (f" - Room: {room_id}" if room_id else "")
         )
         logger.warning(f"   Type: {data.get('alert_type', 'Unknown')}")
         logger.warning(f"   Severity: {data.get('severity', 'Unknown')}")
@@ -441,7 +441,7 @@ class WebSocketAPIClient:
     async def _handle_rate_limit_warning(self, message: Dict):
         """Handle rate limit warnings."""
         data = message.get("data", {})
-        logger.warning(f"⚠️  Rate Limit Warning:")
+        logger.warning("⚠️  Rate Limit Warning:")
         logger.warning(
             f"   Max messages per minute: {data.get('max_messages_per_minute')}"
         )

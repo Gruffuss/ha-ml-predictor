@@ -1293,7 +1293,7 @@ class Sprint4SystemValidator:
         print("🎯 SPRINT 4: SELF-ADAPTATION SYSTEM - VALIDATION REPORT")
         print("=" * 80)
 
-        print(f"\n📈 OVERALL RESULTS:")
+        print("\n📈 OVERALL RESULTS:")
         print(
             f"   ✅ Overall Success: {'YES' if self.report.overall_success else 'NO'}"
         )
@@ -1302,23 +1302,23 @@ class Sprint4SystemValidator:
         )
         print(f"   ⏱️  Total Duration: {self.report.total_duration_seconds:.2f} seconds")
 
-        print(f"\n🧩 COMPONENT VALIDATION:")
+        print("\n🧩 COMPONENT VALIDATION:")
         for component, status in self.report.component_coverage.items():
             print(
                 f"   {'✅' if status else '❌'} {component}: {'PASS' if status else 'FAIL'}"
             )
 
-        print(f"\n🔗 INTEGRATION VALIDATION:")
+        print("\n🔗 INTEGRATION VALIDATION:")
         for integration, status in self.report.integration_coverage.items():
             print(
                 f"   {'✅' if status else '❌'} {integration}: {'PASS' if status else 'FAIL'}"
             )
 
-        print(f"\n⚡ PERFORMANCE METRICS:")
+        print("\n⚡ PERFORMANCE METRICS:")
         for metric, value in self.report.performance_metrics.items():
             print(f"   📈 {metric}: {value:.2f}")
 
-        print(f"\n🛡️  SYSTEM VALIDATION:")
+        print("\n🛡️  SYSTEM VALIDATION:")
         validations = [
             ("Import Validation", self.report.import_validation),
             ("Configuration System", self.report.configuration_validation),
@@ -1332,13 +1332,13 @@ class Sprint4SystemValidator:
                 )
 
         if self.report.overall_success:
-            print(f"\n🎉 SPRINT 4 COMPLETE! ✅")
+            print("\n🎉 SPRINT 4 COMPLETE! ✅")
             print(
-                f"   All Sprint 4 components are successfully integrated and working as a unified self-adaptation system."
+                "   All Sprint 4 components are successfully integrated and working as a unified self-adaptation system."
             )
-            print(f"   System ready for Sprint 5: Integration & API Development")
+            print("   System ready for Sprint 5: Integration & API Development")
         else:
-            print(f"\n⚠️  SPRINT 4 INCOMPLETE")
+            print("\n⚠️  SPRINT 4 INCOMPLETE")
             print(
                 f"   {self.report.failed_tests} test(s) failed. Review validation details and fix issues."
             )

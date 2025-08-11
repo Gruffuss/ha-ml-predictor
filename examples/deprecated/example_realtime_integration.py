@@ -248,7 +248,7 @@ class RealtimeIntegrationExample:
                 enhanced_stats = stats.get("enhanced_mqtt_stats", {})
                 connection_info = enhanced_stats.get("connections", {})
 
-                logger.info(f"System Status:")
+                logger.info("System Status:")
                 logger.info(
                     f"  - Integration Active: {stats.get('integration_active', False)}"
                 )

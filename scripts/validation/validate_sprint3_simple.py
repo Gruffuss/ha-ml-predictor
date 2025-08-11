@@ -179,7 +179,7 @@ def check_required_methods():
                 print(f"  [FAIL] {method} not found in BasePredictor")
         else:
             method_checks.append((method, False))
-            print(f"  [FAIL] BasePredictor file not found")
+            print("  [FAIL] BasePredictor file not found")
 
     passed_methods = sum(1 for _, passed in method_checks if passed)
     return passed_methods == len(base_methods), method_checks

@@ -146,7 +146,7 @@ class ComprehensiveHAIntegrationDemo:
 
             self.demo_active = True
 
-            logger.info(f"Complete HA integration system initialized successfully")
+            logger.info("Complete HA integration system initialized successfully")
             logger.info(f"Published {successful_entities}/{len(entities)} entities")
             logger.info(f"Published {successful_services}/{len(services)} services")
 

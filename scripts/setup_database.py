@@ -480,7 +480,7 @@ class DatabaseSetup:
         await db_manager.initialize()
 
         try:
-            from datetime import datetime, timedelta
+            from datetime import timedelta
             import random
 
             sample_rooms = ["living_room", "bedroom", "kitchen", "office"]

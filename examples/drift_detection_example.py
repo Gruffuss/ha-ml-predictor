@@ -157,7 +157,7 @@ def print_drift_analysis(drift_metrics):
     )
 
     # Statistical test results
-    print(f"\nSTATISTICAL TEST RESULTS:")
+    print("\nSTATISTICAL TEST RESULTS:")
     print(
         f"Kolmogorov-Smirnov: statistic={drift_metrics.ks_statistic:.4f}, p={drift_metrics.ks_p_value:.6f}"
     )
@@ -171,21 +171,21 @@ def print_drift_analysis(drift_metrics):
 
     # Drift types detected
     if drift_metrics.drift_types:
-        print(f"\nDRIFT TYPES DETECTED:")
+        print("\nDRIFT TYPES DETECTED:")
         for drift_type in drift_metrics.drift_types:
             print(f"  - {drift_type.value}")
     else:
-        print(f"\nNo significant drift detected")
+        print("\nNo significant drift detected")
 
     # Feature drift analysis
     if drift_metrics.drifting_features:
-        print(f"\nDRIFTING FEATURES:")
+        print("\nDRIFTING FEATURES:")
         for feature in drift_metrics.drifting_features:
             score = drift_metrics.feature_drift_scores.get(feature, 0)
             print(f"  - {feature}: drift_score={score:.3f}")
 
     # Performance analysis
-    print(f"\nPREDICTION PERFORMANCE ANALYSIS:")
+    print("\nPREDICTION PERFORMANCE ANALYSIS:")
     print(f"Accuracy Degradation: {drift_metrics.accuracy_degradation:.1f} minutes")
     print(f"Error Distribution Change: {drift_metrics.error_distribution_change:.4f}")
     print(
@@ -193,12 +193,12 @@ def print_drift_analysis(drift_metrics):
     )
 
     # Pattern analysis
-    print(f"\nPATTERN ANALYSIS:")
+    print("\nPATTERN ANALYSIS:")
     print(f"Temporal Pattern Drift: {drift_metrics.temporal_pattern_drift:.4f}")
     print(f"Frequency Pattern Drift: {drift_metrics.frequency_pattern_drift:.4f}")
 
     # Recommendations
-    print(f"\nRECOMMENDATIONS:")
+    print("\nRECOMMENDATIONS:")
     print(
         f"Retraining Recommended: {'YES' if drift_metrics.retraining_recommended else 'NO'}"
     )
@@ -247,14 +247,14 @@ async def demonstrate_integrated_monitoring():
             # Check if drift explains the poor accuracy
             if drift_metrics.drift_severity.value in ["major", "critical"]:
                 logger.error(
-                    f"Significant drift detected - this explains the accuracy degradation"
+                    "Significant drift detected - this explains the accuracy degradation"
                 )
 
                 # In production, this would trigger model retraining
                 logger.info(f"Would trigger automatic retraining for {room_id}")
             else:
                 logger.info(
-                    f"No significant drift detected - accuracy issues may be due to other factors"
+                    "No significant drift detected - accuracy issues may be due to other factors"
                 )
 
         else:

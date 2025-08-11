@@ -471,7 +471,7 @@ async def validate_training_setup():
             print(f"❌ Feature engineering engine: FAILED - {e}")
 
         # Summary
-        print(f"\n=== Validation Summary ===")
+        print("\n=== Validation Summary ===")
         print(f"Errors: {len(validation_errors)}")
         print(f"Warnings: {len(validation_warnings)}")
 

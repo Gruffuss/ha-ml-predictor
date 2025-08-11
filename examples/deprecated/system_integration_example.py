@@ -145,7 +145,7 @@ async def demonstrate_mqtt_integration():
         logger.info("\n6. Final Integration Statistics:")
         final_stats = mqtt_manager.get_integration_stats()
 
-        logger.info(f"✅ MQTT Integration Summary:")
+        logger.info("✅ MQTT Integration Summary:")
         logger.info(f"  - Initialized: {final_stats['initialized']}")
         logger.info(f"  - MQTT Connected: {final_stats['mqtt_connected']}")
         logger.info(f"  - Discovery Published: {final_stats['discovery_published']}")
