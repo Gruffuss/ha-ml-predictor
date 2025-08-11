@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 import json
 import logging
+from typing import Any, Dict, List
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 from aiohttp import ClientSession, web
@@ -24,7 +25,6 @@ from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
 from src.core.config import APIConfig, MQTTConfig, SystemConfig
 from src.integration.enhanced_mqtt_manager import EnhancedIntegrationStats
 from src.integration.mqtt_integration_manager import MQTTIntegrationStats
-from typing import Any, Dict, List
 
 from src.integration.realtime_publisher import (
     PublishingChannel,

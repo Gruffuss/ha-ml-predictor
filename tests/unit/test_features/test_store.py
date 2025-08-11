@@ -7,7 +7,9 @@ LRU eviction, training data generation, and performance management.
 
 import asyncio
 from datetime import datetime, timedelta
+import gc
 import hashlib
+import sys
 from typing import List
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
@@ -770,9 +772,6 @@ class TestFeatureStore:
     @pytest.mark.asyncio
     async def test_memory_efficiency_caching(self, store):
         """Test that caching doesn't cause memory leaks."""
-        import gc
-        import sys
-
         gc.collect()
         initial_size = sys.getsizeof(store.cache)
 
