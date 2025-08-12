@@ -21,14 +21,14 @@ import numpy as np
 import pandas as pd
 import psutil
 import pytest
-import resource
+# import resource  # Not available on Windows, using psutil instead
 import statistics
 
 from src.data.ingestion.event_processor import EventProcessor
 from src.data.storage.database import get_database_manager
 from src.integration.api_server import app
 from src.integration.mqtt_publisher import MQTTPublisher
-from src.models.predictor import OccupancyPredictor
+from src.models.ensemble import OccupancyEnsemble
 
 
 class TestSystemThroughput:
@@ -37,7 +37,7 @@ class TestSystemThroughput:
     @pytest.fixture
     async def mock_predictor(self):
         """Create mock predictor with realistic response times."""
-        predictor = MagicMock(spec=OccupancyPredictor)
+        predictor = MagicMock(spec=OccupancyEnsemble)
 
         async def mock_predict(room_id):
             # Simulate realistic prediction time (50-100ms)

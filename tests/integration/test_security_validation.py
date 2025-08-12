@@ -28,7 +28,7 @@ from urllib.parse import quote
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 import httpx
-import jwt
+# JWT functionality mocked - no actual JWT library needed for testing
 import pytest
 import pytest_asyncio
 import secrets
@@ -91,7 +91,9 @@ async def mock_authentication_system():
                 "exp": datetime.utcnow() + timedelta(hours=1),
                 "iat": datetime.utcnow(),
             }
-            token = jwt.encode(payload, self.jwt_secret, algorithm="HS256")
+            # Mock token for testing - format: base64(user_id:exp_time)
+            token_data = f"{user_id}:{payload['exp'].timestamp()}"
+            token = base64.b64encode(token_data.encode()).decode()
             self.valid_tokens.add(token)
             return token
 
@@ -102,7 +104,9 @@ async def mock_authentication_system():
                 "exp": datetime.utcnow() - timedelta(hours=1),
                 "iat": datetime.utcnow() - timedelta(hours=2),
             }
-            return jwt.encode(payload, self.jwt_secret, algorithm="HS256")
+            # Mock expired token for testing
+            token_data = f"{user_id}:{payload['exp'].timestamp()}"
+            return base64.b64encode(token_data.encode()).decode()
 
         def validate_token(self, token: str) -> Dict[str, Any]:
             """Validate a JWT token."""
@@ -110,11 +114,16 @@ async def mock_authentication_system():
                 raise APIAuthenticationError("Token has been revoked")
 
             try:
-                payload = jwt.decode(token, self.jwt_secret, algorithms=["HS256"])
-                return payload
-            except jwt.ExpiredSignatureError:
-                raise APIAuthenticationError("Token has expired")
-            except jwt.InvalidTokenError:
+                # Mock token validation - decode base64
+                token_data = base64.b64decode(token.encode()).decode()
+                user_id, exp_time = token_data.split(':')
+                exp_timestamp = float(exp_time)
+                
+                if exp_timestamp < datetime.utcnow().timestamp():
+                    raise APIAuthenticationError("Token has expired")
+                    
+                return {"user_id": user_id, "exp": exp_timestamp}
+            except (ValueError, UnicodeDecodeError):
                 raise APIAuthenticationError("Invalid token")
 
         def revoke_token(self, token: str):
@@ -128,7 +137,6 @@ async def mock_authentication_system():
 class TestAuthenticationSecurity:
     """Test authentication security and bypass attempts."""
 
-    @pytest_asyncio.async_test
     async def test_authentication_bypass_attempts(
         self, security_test_config, mock_authentication_system
     ):
@@ -214,7 +222,6 @@ class TestAuthenticationSecurity:
                 f"Authentication bypass test completed: {len(bypass_attempts)} attempts blocked"
             )
 
-    @pytest_asyncio.async_test
     async def test_token_validation_and_expiration(
         self, security_test_config, mock_authentication_system
     ):
@@ -263,7 +270,6 @@ class TestAuthenticationSecurity:
 
             logger.info("Token validation and expiration test completed successfully")
 
-    @pytest_asyncio.async_test
     async def test_rate_limiting_security(self, security_test_config):
         """Test rate limiting to prevent abuse and DoS attacks."""
         rate_limit = security_test_config["rate_limit_per_minute"]
@@ -331,7 +337,6 @@ class TestAuthenticationSecurity:
 class TestInputValidationSecurity:
     """Test input validation and injection attack prevention."""
 
-    @pytest_asyncio.async_test
     async def test_sql_injection_prevention(self, security_test_config):
         """Test protection against SQL injection attacks."""
         sql_payloads = security_test_config["sql_injection_payloads"]
@@ -424,7 +429,6 @@ class TestInputValidationSecurity:
                 f"SQL injection prevention test: {sql_injection_blocked} attacks blocked"
             )
 
-    @pytest_asyncio.async_test
     async def test_xss_prevention(self, security_test_config):
         """Test protection against cross-site scripting (XSS) attacks."""
         xss_payloads = security_test_config["xss_payloads"]
@@ -505,7 +509,6 @@ class TestInputValidationSecurity:
 
             logger.info(f"XSS prevention test: {xss_attacks_blocked} attacks blocked")
 
-    @pytest_asyncio.async_test
     async def test_input_size_and_format_validation(self, security_test_config):
         """Test input size limits and format validation."""
 
@@ -608,7 +611,6 @@ class TestInputValidationSecurity:
 class TestAPISecurityBoundaries:
     """Test API security boundaries and access controls."""
 
-    @pytest_asyncio.async_test
     async def test_unauthorized_endpoint_access(
         self, security_test_config, mock_authentication_system
     ):
@@ -744,7 +746,6 @@ class TestAPISecurityBoundaries:
                 f"API security boundaries test: {unauthorized_access_blocked} access attempts blocked"
             )
 
-    @pytest_asyncio.async_test
     async def test_sensitive_data_exposure_prevention(self, security_test_config):
         """Test prevention of sensitive data exposure in API responses."""
 
@@ -855,7 +856,6 @@ class TestAPISecurityBoundaries:
 class TestSecurityHeadersAndHTTPS:
     """Test security headers and HTTPS enforcement."""
 
-    @pytest_asyncio.async_test
     async def test_security_headers_validation(self, security_test_config):
         """Test presence and configuration of security headers."""
 

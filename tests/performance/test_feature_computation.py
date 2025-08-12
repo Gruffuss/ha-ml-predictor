@@ -25,7 +25,7 @@ import statistics
 from src.core.config import get_config
 from src.data.storage.models import SensorEvent
 from src.features.contextual import ContextualFeatureExtractor
-from src.features.engineering import FeatureEngineer
+from src.features.engineering import FeatureEngineeringEngine
 from src.features.sequential import SequentialFeatureExtractor
 from src.features.store import FeatureStore
 from src.features.temporal import TemporalFeatureExtractor

@@ -29,7 +29,7 @@ from src.data.ingestion.event_processor import EventProcessor
 from src.data.storage.models import SensorEvent
 from src.features.store import FeatureStore
 from src.integration.mqtt_publisher import MQTTPublisher
-from src.models.predictor import OccupancyPredictor
+from src.models.ensemble import OccupancyEnsemble
 
 
 class MemoryProfiler:
@@ -160,7 +160,7 @@ class TestMemoryProfiling:
             patch("src.models.predictor.OccupancyEnsemble"),
         ):
 
-            predictor = OccupancyPredictor()
+            predictor = OccupancyEnsemble()
             room_id = "living_room"
 
             # Mock predictor methods
@@ -356,7 +356,7 @@ class TestMemoryProfiling:
             patch("src.models.predictor.OccupancyEnsemble"),
         ):
 
-            predictor = OccupancyPredictor()
+            predictor = OccupancyEnsemble()
 
             async def mock_predict(room_id):
                 # Simulate prediction with temporary data structures

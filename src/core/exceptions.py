@@ -779,6 +779,24 @@ class APIAuthenticationError(APIError):
         )
 
 
+class APIAuthorizationError(APIError):
+    """Raised when API access is denied due to insufficient permissions."""
+
+    def __init__(self, required_permission: str, user_id: Optional[str] = None):
+        message = f"Access denied: required permission '{required_permission}'"
+        if user_id:
+            message += f" for user '{user_id}'"
+        super().__init__(
+            message=message,
+            error_code="API_AUTHORIZATION_ERROR",
+            context={
+                "required_permission": required_permission,
+                "user_id": user_id,
+            },
+            severity=ErrorSeverity.MEDIUM,
+        )
+
+
 class APIRateLimitError(APIError):
     """Raised when API rate limit is exceeded."""
 
@@ -791,6 +809,21 @@ class APIRateLimitError(APIError):
             error_code="API_RATE_LIMIT_ERROR",
             context={"client_ip": client_ip, "limit": limit, "window": window},
             severity=ErrorSeverity.MEDIUM,
+        )
+
+
+class APISecurityError(APIError):
+    """Raised when a security violation is detected in API usage."""
+
+    def __init__(self, violation_type: str, details: Optional[str] = None):
+        message = f"Security violation detected: {violation_type}"
+        if details:
+            message += f" - {details}"
+        super().__init__(
+            message=message,
+            error_code="API_SECURITY_ERROR",
+            context={"violation_type": violation_type, "details": details},
+            severity=ErrorSeverity.HIGH,
         )
 
 
@@ -836,6 +869,39 @@ class APIServerError(APIError):
             message=message,
             error_code="API_SERVER_ERROR",
             context={"operation": operation},
+            severity=ErrorSeverity.HIGH,
+            cause=cause,
+        )
+
+
+# System Resource Errors
+
+
+class SystemResourceError(OccupancyPredictionError):
+    """Raised when system resource limits are exceeded or monitoring fails."""
+
+    def __init__(
+        self,
+        resource_type: str,
+        current_usage: Optional[float] = None,
+        limit: Optional[float] = None,
+        cause: Optional[Exception] = None,
+    ):
+        if current_usage is not None and limit is not None:
+            message = f"System resource limit exceeded: {resource_type} usage {current_usage:.2f} exceeds limit {limit:.2f}"
+        else:
+            message = f"System resource error: {resource_type}"
+        
+        context = {"resource_type": resource_type}
+        if current_usage is not None:
+            context["current_usage"] = current_usage
+        if limit is not None:
+            context["limit"] = limit
+
+        super().__init__(
+            message=message,
+            error_code="SYSTEM_RESOURCE_ERROR",
+            context=context,
             severity=ErrorSeverity.HIGH,
             cause=cause,
         )

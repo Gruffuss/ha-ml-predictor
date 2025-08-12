@@ -22,7 +22,7 @@ import statistics
 from src.core.config import get_config
 from src.features.store import FeatureStore
 from src.models.ensemble import OccupancyEnsemble
-from src.models.predictor import OccupancyPredictor
+# from src.models.predictor import OccupancyPredictor  # Not needed, using OccupancyEnsemble
 
 
 class TestPredictionLatency:
@@ -94,7 +94,7 @@ class TestPredictionLatency:
             ),
         ):
 
-            predictor = OccupancyPredictor()
+            predictor = OccupancyEnsemble()
             predictor.feature_store = mock_feature_store
             predictor.ensemble = mock_ensemble_model
             return predictor

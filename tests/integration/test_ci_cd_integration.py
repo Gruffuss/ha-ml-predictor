@@ -39,7 +39,7 @@ from src.integration.api_server import create_app
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def ci_test_config():
     """Configuration for CI/CD integration testing."""
     return {
@@ -66,7 +66,7 @@ async def ci_test_config():
     }
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def mock_ci_environment():
     """Mock CI/CD environment setup."""
 
@@ -123,7 +123,6 @@ async def mock_ci_environment():
 class TestAutomatedTestExecution:
     """Test automated test execution and parallel processing."""
 
-    @pytest_asyncio.async_test
     async def test_parallel_test_execution_validation(
         self, ci_test_config, mock_ci_environment
     ):
@@ -225,7 +224,6 @@ class TestAutomatedTestExecution:
             f"Success rate: {overall_success_rate:.2%}"
         )
 
-    @pytest_asyncio.async_test
     async def test_test_environment_setup_validation(
         self, ci_test_config, mock_ci_environment
     ):
@@ -298,7 +296,6 @@ class TestAutomatedTestExecution:
 class TestCoverageReportingAndQualityGates:
     """Test code coverage reporting and quality gate enforcement."""
 
-    @pytest_asyncio.async_test
     async def test_coverage_threshold_enforcement(
         self, ci_test_config, mock_ci_environment
     ):
@@ -372,7 +369,6 @@ class TestCoverageReportingAndQualityGates:
             f"Coverage validation passed: {overall_coverage:.1f}% (threshold: {min_threshold}%)"
         )
 
-    @pytest_asyncio.async_test
     async def test_quality_gates_enforcement(self, ci_test_config, mock_ci_environment):
         """Test quality gates and build failure conditions."""
         quality_gates = ci_test_config["quality_gates"]
@@ -454,7 +450,6 @@ class TestCoverageReportingAndQualityGates:
 class TestDeploymentReadinessValidation:
     """Test deployment readiness and health check validation."""
 
-    @pytest_asyncio.async_test
     async def test_database_migration_validation(
         self, ci_test_config, mock_ci_environment
     ):
@@ -532,7 +527,6 @@ class TestDeploymentReadinessValidation:
             f"Database migration validation: {len(migration_steps)} steps completed successfully"
         )
 
-    @pytest_asyncio.async_test
     async def test_application_health_validation(
         self, ci_test_config, mock_ci_environment
     ):
@@ -634,7 +628,6 @@ class TestDeploymentReadinessValidation:
 class TestCIArtifactsAndReporting:
     """Test CI artifact generation and reporting."""
 
-    @pytest_asyncio.async_test
     async def test_test_artifact_generation(self, ci_test_config, mock_ci_environment):
         """Test generation of test artifacts and reports."""
 

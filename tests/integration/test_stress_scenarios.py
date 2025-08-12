@@ -119,7 +119,6 @@ async def system_monitor():
 class TestConcurrentRequestStress:
     """Test system behavior under concurrent request stress."""
 
-    @pytest_asyncio.async_test
     async def test_concurrent_api_request_handling(
         self, stress_test_config, system_monitor
     ):
@@ -216,7 +215,6 @@ class TestConcurrentRequestStress:
             f"Memory: {resource_metrics['peak_memory_mb']:.1f}MB"
         )
 
-    @pytest_asyncio.async_test
     async def test_database_connection_pool_stress(
         self, stress_test_config, system_monitor
     ):
@@ -298,7 +296,6 @@ class TestConcurrentRequestStress:
 class TestDataVolumeStress:
     """Test system behavior with large volumes of event data."""
 
-    @pytest_asyncio.async_test
     async def test_large_event_stream_processing(
         self, stress_test_config, system_monitor
     ):
@@ -394,7 +391,6 @@ class TestDataVolumeStress:
                 f"{events_per_second:.1f} events/sec"
             )
 
-    @pytest_asyncio.async_test
     async def test_memory_usage_under_sustained_load(
         self, stress_test_config, system_monitor
     ):
@@ -462,7 +458,6 @@ class TestDataVolumeStress:
 class TestMultiComponentStress:
     """Test stress scenarios involving multiple system components."""
 
-    @pytest_asyncio.async_test
     async def test_tracking_manager_api_mqtt_integration_stress(
         self, stress_test_config, system_monitor
     ):
@@ -572,7 +567,6 @@ class TestMultiComponentStress:
                 f"Multi-component stress test: {successful_operations}/{concurrent_operations} successful"
             )
 
-    @pytest_asyncio.async_test
     async def test_system_resource_limit_handling(
         self, stress_test_config, system_monitor
     ):
@@ -648,7 +642,6 @@ class TestMultiComponentStress:
 class TestFailureRecoveryStress:
     """Test system behavior under component failure and recovery scenarios."""
 
-    @pytest_asyncio.async_test
     async def test_database_connection_failure_recovery(
         self, stress_test_config, system_monitor
     ):
@@ -713,7 +706,6 @@ class TestFailureRecoveryStress:
             f"Database failure recovery test: {successful_operations}/{operations_count} recovered"
         )
 
-    @pytest_asyncio.async_test
     async def test_mqtt_connection_resilience_stress(
         self, stress_test_config, system_monitor
     ):
