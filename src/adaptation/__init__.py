@@ -31,6 +31,20 @@ from .validator import (
     ValidationRecord,
     ValidationStatus,
 )
+from .retrainer import (
+    AdaptiveRetrainer,
+    RetrainingRequest,
+    RetrainingStatus,
+)
+from .optimizer import (
+    ModelOptimizer,
+    OptimizationConfig,
+    OptimizationResult,
+)
+from .tracking_manager import (
+    TrackingManager,
+    TrackingConfig,
+)
 
 __all__ = [
     # Validation components
@@ -56,4 +70,15 @@ __all__ = [
     "ConceptDriftDetector",
     "FeatureDriftDetector",
     "DriftDetectionError",
+    # Retraining components
+    "AdaptiveRetrainer",
+    "RetrainingRequest",
+    "RetrainingStatus",
+    # Optimization components
+    "ModelOptimizer",
+    "OptimizationConfig",
+    "OptimizationResult",
+    # Tracking management components
+    "TrackingManager",
+    "TrackingConfig",
 ]
