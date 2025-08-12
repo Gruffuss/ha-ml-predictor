@@ -17,6 +17,9 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
+# Global environment manager instance
+_env_manager_instance: Optional[EnvironmentManager] = None
+
 
 class Environment(Enum):
     """Supported deployment environments."""
@@ -85,10 +88,11 @@ class SecretsManager:
         key_file = self.secrets_dir / "master.key"
 
         if key_file.exists():
-            return base64.b64decode(key_file.read_text().strip())
+            key_data: bytes = base64.b64decode(key_file.read_text().strip())
+            return key_data
         else:
             # Generate new key
-            key = Fernet.generate_key()
+            key: bytes = Fernet.generate_key()
             key_file.write_text(base64.b64encode(key).decode())
             key_file.chmod(0o600)  # Restrict permissions
             logger.info(f"Generated new encryption key: {key_file}")
@@ -102,7 +106,8 @@ class SecretsManager:
     def decrypt_secret(self, encrypted_value: str) -> str:
         """Decrypt a secret value."""
         encrypted_bytes = base64.b64decode(encrypted_value.encode())
-        return self._cipher.decrypt(encrypted_bytes).decode()
+        decrypted_data: str = self._cipher.decrypt(encrypted_bytes).decode()
+        return decrypted_data
 
     def store_secret(
         self, environment: Environment, key: str, value: str, encrypt: bool = True
@@ -150,7 +155,7 @@ class SecretsManager:
             except Exception as e:
                 logger.error(f"Failed to decrypt secret '{key}': {e}")
                 return default
-        return value
+        return str(value) if value is not None else default
 
     def list_secrets(self, environment: Environment) -> List[str]:
         """List all secret keys for an environment."""
@@ -377,7 +382,8 @@ class EnvironmentManager:
             raise FileNotFoundError(f"Configuration file not found: {config_file}")
 
         with open(config_file, "r") as f:
-            config = yaml.safe_load(f)
+            loaded_config = yaml.safe_load(f)
+            config = loaded_config if isinstance(loaded_config, dict) else {}
 
         # Apply environment-specific overrides
         self._apply_environment_overrides(config)
@@ -458,7 +464,7 @@ class EnvironmentManager:
         # Check secrets manager
         return self.secrets_manager.get_secret(self.current_environment, key, default)
 
-    def set_secret(self, key: str, value: str, encrypt: bool = None) -> None:
+    def set_secret(self, key: str, value: str, encrypt: Optional[bool] = None) -> None:
         """Set a secret value for the current environment."""
         if encrypt is None:
             settings = self.get_environment_settings()
@@ -569,7 +575,7 @@ class EnvironmentManager:
         self, target_environment: Environment, output_file: str
     ) -> None:
         """Export environment configuration template."""
-        template = {
+        template: Dict[str, Any] = {
             "environment": target_environment.value,
             "settings": self.ENVIRONMENT_SETTINGS[target_environment].__dict__.copy(),
             "required_secrets": [],
@@ -577,7 +583,9 @@ class EnvironmentManager:
 
         # Add required secrets (without values)
         for secret_config in self.REQUIRED_SECRETS.get(target_environment, []):
-            template["required_secrets"].append(
+            required_secrets = template["required_secrets"]
+            assert isinstance(required_secrets, list)
+            required_secrets.append(
                 {
                     "key": secret_config.key,
                     "required": secret_config.required,
@@ -594,6 +602,6 @@ class EnvironmentManager:
 def get_environment_manager() -> EnvironmentManager:
     """Get global environment manager instance."""
     global _env_manager_instance
-    if "_env_manager_instance" not in globals():
+    if _env_manager_instance is None:
         _env_manager_instance = EnvironmentManager()
     return _env_manager_instance

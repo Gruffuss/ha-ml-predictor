@@ -36,7 +36,7 @@ class HealthCheckResult:
     status: str  # 'healthy', 'warning', 'critical'
     response_time: float
     message: str
-    details: Dict[str, Any] = None
+    details: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -50,7 +50,7 @@ class AlertEvent:
     metric_name: str
     current_value: float
     threshold: float
-    additional_info: Dict[str, Any] = None
+    additional_info: Optional[Dict[str, Any]] = None
 
 
 class PerformanceMonitor:
@@ -120,7 +120,7 @@ class PerformanceMonitor:
         metric_name: str,
         value: float,
         room_id: Optional[str] = None,
-        additional_info: Dict[str, Any] = None,
+        additional_info: Optional[Dict[str, Any]] = None,
     ):
         """Record a performance metric and check thresholds."""
         timestamp = datetime.now()
@@ -146,7 +146,7 @@ class PerformanceMonitor:
         metric_name: str,
         value: float,
         room_id: Optional[str] = None,
-        additional_info: Dict[str, Any] = None,
+        additional_info: Optional[Dict[str, Any]] = None,
     ):
         """Check if metric value exceeds thresholds."""
         threshold = self.thresholds[metric_name]
@@ -617,8 +617,8 @@ class MonitoringManager:
         self, health_check_interval: int, performance_summary_interval: int
     ):
         """Main monitoring loop."""
-        last_health_check = 0
-        last_performance_summary = 0
+        last_health_check = 0.0
+        last_performance_summary = 0.0
 
         while self._running:
             try:

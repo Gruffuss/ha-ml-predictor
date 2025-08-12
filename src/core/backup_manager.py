@@ -31,7 +31,7 @@ class BackupMetadata:
     compressed: bool
     checksum: Optional[str] = None
     retention_date: Optional[datetime] = None
-    tags: Dict[str, str] = None
+    tags: Optional[Dict[str, str]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""

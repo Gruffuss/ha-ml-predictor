@@ -357,7 +357,7 @@ class MLMetricsCollector:
         model_type: str,
         training_type: str,
         duration: float,
-        accuracy_metrics: Dict[str, float] = None,
+        accuracy_metrics: Optional[Dict[str, float]] = None,
         trigger_reason: str = "scheduled",
     ):
         """Record model training metrics."""
@@ -551,7 +551,8 @@ class MetricsManager:
     def get_metrics(self) -> str:
         """Get current metrics in Prometheus format."""
         if PROMETHEUS_AVAILABLE:
-            return generate_latest(self.registry).decode("utf-8")
+            result: str = generate_latest(self.registry).decode("utf-8")
+            return result
         else:
             return "# Prometheus client not available\n"
 
@@ -660,7 +661,7 @@ class MultiProcessMetricsManager:
         Returns:
             Dictionary containing aggregated metrics from all processes.
         """
-        if not self.multiprocess_enabled:
+        if not self.multiprocess_enabled or self.registry is None:
             return {"error": "Multi-process metrics not available"}
 
         try:
@@ -704,7 +705,8 @@ class MultiProcessMetricsManager:
             return "# Multi-process metrics not available\n"
 
         try:
-            return generate_latest(self.registry).decode("utf-8")
+            result: str = generate_latest(self.registry).decode("utf-8")
+            return result
         except Exception as e:
             return f"# Error generating multi-process metrics: {e}\n"
 
@@ -768,7 +770,7 @@ def get_aggregated_metrics() -> Dict[str, Any]:
         multiprocess_metrics = manager.aggregate_multiprocess_metrics()
 
         # Also include single-process metrics for completeness
-        single_process_metrics = get_metrics_collector().get_metrics()
+        single_process_metrics = get_metrics_manager().get_metrics()
 
         return {
             "multiprocess_metrics": multiprocess_metrics,
@@ -778,7 +780,7 @@ def get_aggregated_metrics() -> Dict[str, Any]:
     else:
         # Fall back to single-process metrics
         return {
-            "single_process_metrics": get_metrics_collector().get_metrics(),
+            "single_process_metrics": get_metrics_manager().get_metrics(),
             "collection_mode": "single_process",
         }
 
@@ -796,5 +798,5 @@ def export_multiprocess_metrics() -> str:
         return manager.generate_multiprocess_metrics()
     else:
         # Fall back to single-process export
-        collector = get_metrics_collector()
-        return collector.get_prometheus_metrics()
+        metrics_manager = get_metrics_manager()
+        return metrics_manager.get_metrics()

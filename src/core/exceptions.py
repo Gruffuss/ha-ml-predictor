@@ -337,7 +337,7 @@ class ModelTrainingError(ModelError):
         training_data_size: Optional[int] = None,
     ):
         message = f"Model training failed for {model_type} model in room '{room_id}'"
-        context = {"model_type": model_type, "room_id": room_id}
+        context: Dict[str, Any] = {"model_type": model_type, "room_id": room_id}
         if training_data_size is not None:
             context["training_data_size"] = training_data_size
 
@@ -361,7 +361,7 @@ class ModelPredictionError(ModelError):
         cause: Optional[Exception] = None,
     ):
         message = f"Model prediction failed for {model_type} model in room '{room_id}'"
-        context = {"model_type": model_type, "room_id": room_id}
+        context: Dict[str, Any] = {"model_type": model_type, "room_id": room_id}
         if feature_shape:
             context["feature_shape"] = feature_shape
 
@@ -638,7 +638,7 @@ class DataValidationError(IntegrationError):
         message = (
             f"Data validation failed from {data_source}: {'; '.join(validation_errors)}"
         )
-        context = {
+        context: Dict[str, Any] = {
             "data_source": data_source,
             "validation_errors": validation_errors,
         }
@@ -725,7 +725,7 @@ class ServiceUnavailableError(SystemError):
         retry_after: Optional[int] = None,
     ):
         message = f"Service unavailable: {service_name}"
-        context = {"service_name": service_name}
+        context: Dict[str, Any] = {"service_name": service_name}
         if endpoint:
             context["endpoint"] = endpoint
         if retry_after:

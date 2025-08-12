@@ -11,7 +11,7 @@ import re
 import shutil
 import sys
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 import asyncpg
@@ -362,7 +362,7 @@ class MQTTConfigValidator:
             return result
 
         try:
-            connection_result = {"success": False, "error": None}
+            connection_result: Dict[str, Any] = {"success": False, "error": None}
 
             def on_connect(client, userdata, flags, rc):
                 if rc == 0:
@@ -690,7 +690,7 @@ class ConfigurationValidator:
     def validate_config_files(
         self,
         config_dir: str = "config",
-        environment: str = None,
+        environment: Optional[str] = None,
         test_connections: bool = False,
     ) -> ValidationResult:
         """Validate configuration files for a specific environment."""

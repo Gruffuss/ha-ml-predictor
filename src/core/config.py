@@ -103,7 +103,7 @@ class TrackingConfig:
     max_stored_alerts: int = 1000
     trend_analysis_points: int = 10
     cleanup_interval_hours: int = 24
-    alert_thresholds: Dict[str, float] = None
+    alert_thresholds: Optional[Dict[str, float]] = None
 
     def __post_init__(self):
         """Set default alert thresholds if not provided."""
@@ -130,7 +130,7 @@ class APIConfig:
 
     # Security configuration
     enable_cors: bool = True
-    cors_origins: List[str] = None
+    cors_origins: Optional[List[str]] = None
     api_key_enabled: bool = False
     api_key: Optional[str] = None
 
@@ -311,7 +311,8 @@ class ConfigLoader:
             raise FileNotFoundError(f"Configuration file not found: {file_path}")
 
         with open(file_path, "r", encoding="utf-8") as file:
-            return yaml.safe_load(file)
+            result = yaml.safe_load(file)
+            return result if isinstance(result, dict) else {}
 
     def _create_system_config(self, config_dict: Dict[str, Any]) -> SystemConfig:
         """Create SystemConfig from dictionary (used by environment manager)."""

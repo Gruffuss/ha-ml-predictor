@@ -170,7 +170,7 @@ class ErrorTracker:
     def track_error(
         self,
         error: Exception,
-        context: Dict[str, Any] = None,
+        context: Optional[Dict[str, Any]] = None,
         severity: str = "error",
         alert: bool = False,
     ):
@@ -243,7 +243,7 @@ class MLOperationsLogger:
         room_id: str,
         model_type: str,
         event_type: str,
-        metrics: Dict[str, float] = None,
+        metrics: Optional[Dict[str, float]] = None,
     ):
         """Log model training events."""
         self.logger.info(
