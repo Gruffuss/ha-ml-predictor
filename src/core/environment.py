@@ -18,7 +18,7 @@ import yaml
 logger = logging.getLogger(__name__)
 
 # Global environment manager instance
-_env_manager_instance: Optional[EnvironmentManager] = None
+_env_manager_instance: Optional["EnvironmentManager"] = None
 
 
 class Environment(Enum):
