@@ -427,13 +427,26 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Add middleware
+    # Add security middleware
+    from .auth.middleware import SecurityHeadersMiddleware, AuthenticationMiddleware, RequestLoggingMiddleware
+    
+    # Request logging middleware (outermost)
+    app.add_middleware(RequestLoggingMiddleware, log_body=api_config.debug)
+    
+    # Security headers middleware
+    app.add_middleware(SecurityHeadersMiddleware, debug=api_config.debug)
+    
+    # Authentication middleware (if JWT is enabled)
+    if api_config.jwt.enabled:
+        app.add_middleware(AuthenticationMiddleware)
+    
+    # CORS middleware
     if api_config.enable_cors:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=api_config.cors_origins,
             allow_credentials=True,
-            allow_methods=["GET", "POST", "PUT", "DELETE"],
+            allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             allow_headers=["*"],
         )
 
@@ -579,6 +592,11 @@ def create_app() -> FastAPI:
                     request_id=request.request_id,
                 ).dict(),
             )
+
+    # Include authentication router if JWT is enabled
+    if api_config.jwt.enabled:
+        from .auth.endpoints import auth_router
+        app.include_router(auth_router)
 
     return app
 

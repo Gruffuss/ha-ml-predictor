@@ -129,6 +129,36 @@ class TrackingConfig:
 
 
 @dataclass
+class JWTConfig:
+    """JWT authentication configuration."""
+    
+    enabled: bool = True
+    secret_key: str = ""  # Must be set via environment variable
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+    refresh_token_expire_days: int = 30
+    issuer: str = "ha-ml-predictor"
+    audience: str = "ha-ml-predictor-api"
+    
+    # Security settings
+    require_https: bool = False  # Set to True in production
+    secure_cookies: bool = False  # Set to True in production
+    blacklist_enabled: bool = True
+    
+    def __post_init__(self):
+        """Validate JWT configuration."""
+        if self.enabled and not self.secret_key:
+            # Try to get from environment
+            import os
+            self.secret_key = os.getenv("JWT_SECRET_KEY", "")
+            if not self.secret_key:
+                raise ValueError("JWT is enabled but JWT_SECRET_KEY environment variable is not set")
+        
+        if self.enabled and len(self.secret_key) < 32:
+            raise ValueError("JWT secret key must be at least 32 characters long")
+
+
+@dataclass
 class APIConfig:
     """REST API server configuration."""
 
@@ -142,6 +172,9 @@ class APIConfig:
     cors_origins: Optional[List[str]] = None
     api_key_enabled: bool = False
     api_key: Optional[str] = None
+    
+    # JWT authentication
+    jwt: JWTConfig = field(default_factory=JWTConfig)
 
     # Rate limiting
     rate_limit_enabled: bool = True
@@ -277,7 +310,13 @@ class ConfigLoader:
         features_config = FeaturesConfig(**main_config["features"])
         logging_config = LoggingConfig(**main_config["logging"])
         tracking_config = TrackingConfig(**main_config.get("tracking", {}))
-        api_config = APIConfig(**main_config.get("api", {}))
+        
+        # Handle API config with JWT configuration
+        api_config_data = main_config.get("api", {})
+        jwt_config_data = api_config_data.get("jwt", {})
+        jwt_config = JWTConfig(**jwt_config_data)
+        api_config_data["jwt"] = jwt_config
+        api_config = APIConfig(**api_config_data)
 
         # Process rooms configuration
         rooms = {}
@@ -336,7 +375,13 @@ class ConfigLoader:
         features_config = FeaturesConfig(**config_dict.get("features", {}))
         logging_config = LoggingConfig(**config_dict.get("logging", {}))
         tracking_config = TrackingConfig(**config_dict.get("tracking", {}))
-        api_config = APIConfig(**config_dict.get("api", {}))
+        
+        # Handle API config with JWT configuration
+        api_config_data = config_dict.get("api", {})
+        jwt_config_data = api_config_data.get("jwt", {})
+        jwt_config = JWTConfig(**jwt_config_data)
+        api_config_data["jwt"] = jwt_config
+        api_config = APIConfig(**api_config_data)
 
         # Process rooms configuration
         rooms = {}

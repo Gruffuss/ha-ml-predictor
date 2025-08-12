@@ -1,0 +1,51 @@
+# Test configuration for JWT authentication system
+home_assistant:
+  url: "http://localhost:8123"
+  token: "test_token"
+
+database:
+  connection_string: "postgresql://test:test@localhost/test_db"
+
+mqtt:
+  broker: "localhost"
+  port: 1883
+
+prediction:
+  interval_seconds: 300
+  accuracy_threshold_minutes: 15
+  confidence_threshold: 0.7
+
+features:
+  lookback_hours: 24
+  sequence_length: 50
+
+logging:
+  level: "INFO"
+
+tracking:
+  enabled: true
+
+api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+  
+  # JWT configuration for testing
+  jwt:
+    enabled: true
+    secret_key: "test_jwt_secret_key_for_security_validation_testing_at_least_32_characters_long"
+    algorithm: "HS256"
+    access_token_expire_minutes: 60
+    refresh_token_expire_days: 30
+    issuer: "ha-ml-predictor-test"
+    audience: "ha-ml-predictor-api-test"
+    require_https: false
+    secure_cookies: false
+    blacklist_enabled: true
+  
+  # CORS and rate limiting
+  enable_cors: true
+  cors_origins: ["*"]
+  rate_limit_enabled: true
+  requests_per_minute: 60

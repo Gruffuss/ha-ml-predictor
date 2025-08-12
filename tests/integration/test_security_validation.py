@@ -72,76 +72,47 @@ async def security_test_config():
 
 
 @pytest.fixture
-async def mock_authentication_system():
-    """Mock authentication system for security testing."""
-
-    class MockAuthSystem:
-        def __init__(self, jwt_secret: str):
-            self.jwt_secret = jwt_secret
-            self.valid_tokens = set()
-            self.revoked_tokens = set()
-
-        def create_valid_token(
-            self, user_id: str, permissions: List[str] = None
-        ) -> str:
-            """Create a valid JWT token."""
-            payload = {
-                "user_id": user_id,
-                "permissions": permissions or ["read", "write"],
-                "exp": datetime.utcnow() + timedelta(hours=1),
-                "iat": datetime.utcnow(),
-            }
-            # Mock token for testing - format: base64(user_id:exp_time)
-            token_data = f"{user_id}:{payload['exp'].timestamp()}"
-            token = base64.b64encode(token_data.encode()).decode()
-            self.valid_tokens.add(token)
-            return token
-
-        def create_expired_token(self, user_id: str) -> str:
-            """Create an expired JWT token."""
-            payload = {
-                "user_id": user_id,
-                "exp": datetime.utcnow() - timedelta(hours=1),
-                "iat": datetime.utcnow() - timedelta(hours=2),
-            }
-            # Mock expired token for testing
-            token_data = f"{user_id}:{payload['exp'].timestamp()}"
-            return base64.b64encode(token_data.encode()).decode()
-
-        def validate_token(self, token: str) -> Dict[str, Any]:
-            """Validate a JWT token."""
-            if token in self.revoked_tokens:
-                raise APIAuthenticationError("Token has been revoked")
-
-            try:
-                # Mock token validation - decode base64
-                token_data = base64.b64decode(token.encode()).decode()
-                user_id, exp_time = token_data.split(':')
-                exp_timestamp = float(exp_time)
-                
-                if exp_timestamp < datetime.utcnow().timestamp():
-                    raise APIAuthenticationError("Token has expired")
-                    
-                return {"user_id": user_id, "exp": exp_timestamp}
-            except (ValueError, UnicodeDecodeError):
-                raise APIAuthenticationError("Invalid token")
-
-        def revoke_token(self, token: str):
-            """Revoke a valid token."""
-            self.revoked_tokens.add(token)
-            self.valid_tokens.discard(token)
-
-    return MockAuthSystem
+async def real_jwt_manager():
+    """Real JWT manager for security testing."""
+    from src.integration.auth.jwt_manager import JWTManager
+    from src.core.config import JWTConfig
+    
+    # Create test JWT configuration
+    jwt_config = JWTConfig(
+        enabled=True,
+        secret_key="test_jwt_secret_key_for_testing_security_validation_at_least_32_chars",
+        algorithm="HS256",
+        access_token_expire_minutes=60,
+        refresh_token_expire_days=30,
+        issuer="ha-ml-predictor-test",
+        audience="ha-ml-predictor-api-test",
+        blacklist_enabled=True,
+    )
+    
+    return JWTManager(jwt_config)
 
 
 class TestAuthenticationSecurity:
     """Test authentication security and bypass attempts."""
+    
+    def _create_expired_token(self, jwt_manager, user_id: str) -> str:
+        """Create an expired JWT token for testing."""
+        # Temporarily modify the expiration time to create an expired token
+        original_expire_minutes = jwt_manager.config.access_token_expire_minutes
+        jwt_manager.config.access_token_expire_minutes = -1  # Expired immediately
+        
+        try:
+            token = jwt_manager.generate_access_token(user_id, ["read", "write"])
+            return token
+        finally:
+            # Restore original expiration time
+            jwt_manager.config.access_token_expire_minutes = original_expire_minutes
 
     async def test_authentication_bypass_attempts(
-        self, security_test_config, mock_authentication_system
+        self, security_test_config, real_jwt_manager
     ):
         """Test various authentication bypass attempts."""
-        auth_system = mock_authentication_system(security_test_config["jwt_secret"])
+        jwt_manager = real_jwt_manager
 
         # Create test app with authentication
         with patch("src.integration.api_server.get_tracking_manager") as mock_tm:
@@ -170,10 +141,10 @@ class TestAuthenticationSecurity:
                     "headers": {"Authorization": "Bearer invalid.jwt.token"},
                     "expected_status": 401,
                 },
-                # Expired token
+                # Expired token (create one manually by modifying JWT manager config temporarily)
                 {
                     "headers": {
-                        "Authorization": f'Bearer {auth_system.create_expired_token("test_user")}'
+                        "Authorization": f'Bearer {self._create_expired_token(jwt_manager, "test_user")}'
                     },
                     "expected_status": 401,
                 },
@@ -223,10 +194,10 @@ class TestAuthenticationSecurity:
             )
 
     async def test_token_validation_and_expiration(
-        self, security_test_config, mock_authentication_system
+        self, security_test_config, real_jwt_manager
     ):
         """Test proper token validation and expiration handling."""
-        auth_system = mock_authentication_system(security_test_config["jwt_secret"])
+        jwt_manager = real_jwt_manager
 
         with patch("src.integration.api_server.get_tracking_manager") as mock_tm:
             mock_tracking_manager = AsyncMock(spec=TrackingManager)
@@ -236,7 +207,7 @@ class TestAuthenticationSecurity:
             app = create_app()
 
             # Create valid token
-            valid_token = auth_system.create_valid_token("test_user", ["read", "write"])
+            valid_token = jwt_manager.generate_access_token("test_user", ["read", "write"])
 
             async with httpx.AsyncClient(
                 app=app, base_url="http://testserver"
@@ -250,20 +221,20 @@ class TestAuthenticationSecurity:
                 assert response.status_code == 200, "Valid token should allow access"
 
                 # Test token revocation
-                auth_system.revoke_token(valid_token)
+                jwt_manager.revoke_token(valid_token)
 
                 # Simulate token validation with revoked token
                 try:
-                    auth_system.validate_token(valid_token)
+                    jwt_manager.validate_token(valid_token)
                     assert False, "Revoked token should not validate"
                 except APIAuthenticationError as e:
                     assert "revoked" in str(e).lower()
 
                 # Test expired token
-                expired_token = auth_system.create_expired_token("test_user")
+                expired_token = self._create_expired_token(jwt_manager, "test_user")
 
                 try:
-                    auth_system.validate_token(expired_token)
+                    jwt_manager.validate_token(expired_token)
                     assert False, "Expired token should not validate"
                 except APIAuthenticationError as e:
                     assert "expired" in str(e).lower()
@@ -612,10 +583,10 @@ class TestAPISecurityBoundaries:
     """Test API security boundaries and access controls."""
 
     async def test_unauthorized_endpoint_access(
-        self, security_test_config, mock_authentication_system
+        self, security_test_config, real_jwt_manager
     ):
         """Test access controls on protected endpoints."""
-        auth_system = mock_authentication_system(security_test_config["jwt_secret"])
+        jwt_manager = real_jwt_manager
 
         with patch("src.integration.api_server.get_tracking_manager") as mock_tm:
             mock_tracking_manager = AsyncMock(spec=TrackingManager)
@@ -688,7 +659,7 @@ class TestAPISecurityBoundaries:
                         )
 
                 # Test insufficient permissions
-                read_only_token = auth_system.create_valid_token("read_user", ["read"])
+                read_only_token = jwt_manager.generate_access_token("read_user", ["read"])
 
                 for endpoint in protected_endpoints:
                     if endpoint["required_perm"] in ["write", "admin"]:
