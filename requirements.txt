@@ -15,8 +15,8 @@ asyncpg>=0.29.0,<1.0.0
 sqlalchemy>=2.0.0,<2.1.0
 alembic>=1.13.0,<2.0.0
 
-# Machine Learning - stable versions
-scikit-learn>=1.4.0,<1.5.0
+# Machine Learning - stable versions (updated for CVE-2024-5206 security fix)
+scikit-learn>=1.5.0,<2.0.0
 xgboost>=2.0.0,<3.0.0
 numpy>=1.24.0,<2.0.0
 pandas>=2.1.0,<3.0.0
