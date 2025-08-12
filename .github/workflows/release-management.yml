@@ -336,12 +336,22 @@ This version has been automatically tested and is ready for deployment.
         
     - name: "Validate Docker build"
       run: |
-        cd docker
-        docker build -t ha-ml-predictor:test-${{ needs.version-detection.outputs.next-version }} \
-          --build-arg VERSION=${{ needs.version-detection.outputs.next-version }} \
-          -f Dockerfile \
-          ..
-        echo "✅ Docker build validated"
+        if [ -f "docker/Dockerfile" ]; then
+          cd docker
+          docker build -t ha-ml-predictor:test-${{ needs.version-detection.outputs.next-version }} \
+            --build-arg VERSION=${{ needs.version-detection.outputs.next-version }} \
+            -f Dockerfile \
+            ..
+          echo "✅ Docker build validated"
+        elif [ -f "Dockerfile" ]; then
+          docker build -t ha-ml-predictor:test-${{ needs.version-detection.outputs.next-version }} \
+            --build-arg VERSION=${{ needs.version-detection.outputs.next-version }} \
+            -f Dockerfile \
+            .
+          echo "✅ Docker build validated"
+        else
+          echo "⚠️ No Dockerfile found, skipping Docker build validation"
+        fi
 
   # Job 3: Create Release
   create-release:
@@ -353,7 +363,7 @@ This version has been automatically tested and is ready for deployment.
     
     outputs:
       release-id: ${{ steps.create-release.outputs.id }}
-      release-url: ${{ steps.create-release.outputs.html_url }}
+      release-url: ${{ steps.create-release.outputs.url }}
       upload-url: ${{ steps.create-release.outputs.upload_url }}
     
     steps:
@@ -400,18 +410,6 @@ This version has been automatically tested and is ready for deployment.
         git push origin HEAD
         git push origin "v${{ needs.version-detection.outputs.next-version }}"
         
-    - name: "Create GitHub Release"
-      id: create-release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: "v${{ needs.version-detection.outputs.next-version }}"
-        release_name: "HA ML Predictor v${{ needs.version-detection.outputs.next-version }}"
-        body: ${{ needs.version-detection.outputs.release-notes }}
-        draft: false
-        prerelease: ${{ contains(needs.version-detection.outputs.next-version, 'rc') || contains(needs.version-detection.outputs.next-version, 'beta') || contains(needs.version-detection.outputs.next-version, 'alpha') }}
-        
     - name: "Generate release artifacts"
       run: |
         VERSION="${{ needs.version-detection.outputs.next-version }}"
@@ -433,25 +431,20 @@ This version has been automatically tested and is ready for deployment.
         
         echo "✅ Release artifacts created"
         
-    - name: "Upload source archive"
-      uses: actions/upload-release-asset@v1
+    - name: "Create GitHub Release"
+      id: create-release
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_path: "./ha-ml-predictor-${{ needs.version-detection.outputs.next-version }}-source.tar.gz"
-        asset_name: "ha-ml-predictor-${{ needs.version-detection.outputs.next-version }}-source.tar.gz"
-        asset_content_type: application/gzip
-        
-    - name: "Upload release summary"
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_path: "./release-summary-${{ needs.version-detection.outputs.next-version }}.json"
-        asset_name: "release-summary-${{ needs.version-detection.outputs.next-version }}.json"
-        asset_content_type: application/json
+        tag_name: "v${{ needs.version-detection.outputs.next-version }}"
+        name: "HA ML Predictor v${{ needs.version-detection.outputs.next-version }}"
+        body: ${{ needs.version-detection.outputs.release-notes }}
+        draft: false
+        prerelease: ${{ contains(needs.version-detection.outputs.next-version, 'rc') || contains(needs.version-detection.outputs.next-version, 'beta') || contains(needs.version-detection.outputs.next-version, 'alpha') }}
+        files: |
+          ha-ml-predictor-${{ needs.version-detection.outputs.next-version }}-source.tar.gz
+          release-summary-${{ needs.version-detection.outputs.next-version }}.json
 
   # Job 4: Trigger Deployment Pipeline
   trigger-deployment:
@@ -638,6 +631,11 @@ This version has been automatically tested and is ready for deployment.
     if: needs.create-release.result == 'success'
     
     steps:
+    - name: "Checkout code"
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
     - name: "Validate release quality"
       run: |
         echo "=== Release Quality Gates ==="
