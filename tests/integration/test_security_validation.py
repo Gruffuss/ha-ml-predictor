@@ -28,6 +28,7 @@ from urllib.parse import quote
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 import httpx
+
 # JWT functionality mocked - no actual JWT library needed for testing
 import pytest
 import pytest_asyncio
@@ -74,9 +75,9 @@ async def security_test_config():
 @pytest.fixture
 async def real_jwt_manager():
     """Real JWT manager for security testing."""
-    from src.integration.auth.jwt_manager import JWTManager
     from src.core.config import JWTConfig
-    
+    from src.integration.auth.jwt_manager import JWTManager
+
     # Create test JWT configuration
     jwt_config = JWTConfig(
         enabled=True,
@@ -88,19 +89,19 @@ async def real_jwt_manager():
         audience="ha-ml-predictor-api-test",
         blacklist_enabled=True,
     )
-    
+
     return JWTManager(jwt_config)
 
 
 class TestAuthenticationSecurity:
     """Test authentication security and bypass attempts."""
-    
+
     def _create_expired_token(self, jwt_manager, user_id: str) -> str:
         """Create an expired JWT token for testing."""
         # Temporarily modify the expiration time to create an expired token
         original_expire_minutes = jwt_manager.config.access_token_expire_minutes
         jwt_manager.config.access_token_expire_minutes = -1  # Expired immediately
-        
+
         try:
             token = jwt_manager.generate_access_token(user_id, ["read", "write"])
             return token
@@ -207,7 +208,9 @@ class TestAuthenticationSecurity:
             app = create_app()
 
             # Create valid token
-            valid_token = jwt_manager.generate_access_token("test_user", ["read", "write"])
+            valid_token = jwt_manager.generate_access_token(
+                "test_user", ["read", "write"]
+            )
 
             async with httpx.AsyncClient(
                 app=app, base_url="http://testserver"
@@ -659,7 +662,9 @@ class TestAPISecurityBoundaries:
                         )
 
                 # Test insufficient permissions
-                read_only_token = jwt_manager.generate_access_token("read_user", ["read"])
+                read_only_token = jwt_manager.generate_access_token(
+                    "read_user", ["read"]
+                )
 
                 for endpoint in protected_endpoints:
                     if endpoint["required_perm"] in ["write", "admin"]:

@@ -1277,11 +1277,8 @@ class HealthMonitor:
     ) -> Dict[str, ComponentHealth]:
         """Get health status for specific component or all components."""
         if component_name:
-            return (
-                {component_name: self.component_health.get(component_name)}
-                if component_name in self.component_health
-                else {}
-            )
+            health = self.component_health.get(component_name)
+            return {component_name: health} if health is not None else {}
         return self.component_health.copy()
 
     def get_health_history(

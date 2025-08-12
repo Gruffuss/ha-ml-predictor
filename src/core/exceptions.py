@@ -891,7 +891,7 @@ class SystemResourceError(OccupancyPredictionError):
             message = f"System resource limit exceeded: {resource_type} usage {current_usage:.2f} exceeds limit {limit:.2f}"
         else:
             message = f"System resource error: {resource_type}"
-        
+
         context = {"resource_type": resource_type}
         if current_usage is not None:
             context["current_usage"] = current_usage

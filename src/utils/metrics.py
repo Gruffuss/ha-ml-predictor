@@ -95,10 +95,10 @@ except ImportError:
     class _MockCollectorRegistry:
         def __init__(self, *args, **kwargs):
             pass
-        
+
         def register(self, *args, **kwargs):
             pass
-        
+
         def unregister(self, *args, **kwargs):
             pass
 
