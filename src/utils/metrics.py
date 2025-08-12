@@ -92,12 +92,26 @@ except ImportError:
         def labels(self, *args, **kwargs):
             return self
 
+    class _MockCollectorRegistry:
+        def __init__(self, *args, **kwargs):
+            pass
+        
+        def register(self, *args, **kwargs):
+            pass
+        
+        def unregister(self, *args, **kwargs):
+            pass
+
     # Assign mock classes to original names
     Counter = _MockCounter
     Gauge = _MockGauge
     Histogram = _MockHistogram
     Summary = _MockSummary
     Info = _MockInfo
+    CollectorRegistry = _MockCollectorRegistry
+    REGISTRY = _MockCollectorRegistry()
+    generate_latest = lambda *args, **kwargs: b""
+    multiprocess = None
 
 
 class MLMetricsCollector:

@@ -27,6 +27,8 @@ class DatabaseConfig:
     connection_string: str
     pool_size: int = 10
     max_overflow: int = 20
+    pool_timeout: int = 30
+    pool_recycle: int = 3600
 
 
 @dataclass
@@ -90,6 +92,13 @@ class LoggingConfig:
 
     level: str = "INFO"
     format: str = "structured"
+    file_logging: bool = False
+    enable_json_logging: bool = False
+    include_request_id: bool = False
+    log_sql_queries: bool = False
+    file_path: Optional[str] = None
+    file_max_size: str = "10MB"
+    file_backup_count: int = 5
 
 
 @dataclass
