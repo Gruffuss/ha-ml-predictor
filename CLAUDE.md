@@ -58,6 +58,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Remember: You are the technical leader. Agents work FOR you, not WITH you. Set high standards and enforce them rigorously.**
 
+### MANDATORY: Code Quality Pipeline After Every Agent Change
+**After ANY agent makes code changes, you MUST immediately run:**
+
+1. **python-pro agent** to execute complete quality pipeline:
+   - `black --check --diff --line-length 88 src/ tests/ scripts/ examples/`
+   - `isort --check-only --diff --profile black src/ tests/ scripts/ examples/`
+   - `flake8 src/ tests/ scripts/ examples/ --max-line-length=140 --extend-ignore=E203,W503,E501,W291,W293,E402,C901`
+
+2. **Fix any issues found** and achieve zero errors across all three tools
+
+3. **Commit quality fixes** before proceeding
+
+**NO EXCEPTIONS: Every agent code change must be followed by quality pipeline enforcement.**
+
 ## ⚠️ CRITICAL: Error Handling Philosophy
 
 **NEVER downplay errors, warnings, or test failures. This pattern has caused significant wasted time and broken systems.**
