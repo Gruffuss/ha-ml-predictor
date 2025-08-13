@@ -16,7 +16,7 @@ import pytest
 from sklearn.datasets import make_classification, make_regression
 from sklearn.model_selection import train_test_split
 
-from src.adaptation.drift_detector import DriftMetrics
+from src.adaptation.drift_detector import DriftMetrics, DriftSeverity
 from src.adaptation.optimizer import (
     ModelOptimizer,
     OptimizationConfig,
@@ -66,7 +66,7 @@ def mock_drift_detector():
             datetime.now() - timedelta(days=3),
         ),
         current_period=(datetime.now() - timedelta(days=3), datetime.now()),
-        drift_severity=DriftMetrics.DriftSeverity.MODERATE,
+        drift_severity=DriftSeverity.MODERATE,
         drifting_features=["feature_1", "feature_2"],
     )
     detector.get_recent_drift_metrics = AsyncMock(return_value=drift_metrics)

@@ -13,6 +13,7 @@ import heapq
 import numpy as np
 import pandas as pd
 import pytest
+import pytest_asyncio
 
 from src.adaptation.drift_detector import (
     DriftMetrics,
@@ -30,6 +31,7 @@ from src.adaptation.retrainer import (
 )
 from src.adaptation.tracking_manager import TrackingConfig
 from src.adaptation.validator import AccuracyMetrics, PredictionValidator
+from src.core.constants import ModelType
 from src.models.base.predictor import TrainingResult
 
 # Test fixtures and utilities
@@ -71,7 +73,9 @@ def mock_model_registry():
                 training_time_seconds=30.0,
                 validation_score=0.85,
                 training_score=0.88,
-                model_metrics={
+                model_version="v1.0",
+                training_samples=1000,
+                training_metrics={
                     "accuracy": 0.85,
                     "precision": 0.82,
                     "recall": 0.87,
@@ -146,7 +150,7 @@ def mock_notification_callbacks():
     return callbacks
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def adaptive_retrainer(
     tracking_config,
     mock_model_registry,
@@ -259,7 +263,7 @@ class TestRetrainingNeedEvaluation:
     ):
         """Test retraining need evaluation based on accuracy degradation."""
         room_id = "living_room"
-        model_type = "lstm"
+        model_type = ModelType.LSTM
 
         # Evaluate retraining need
         request = await adaptive_retrainer.evaluate_retraining_need(
@@ -281,7 +285,7 @@ class TestRetrainingNeedEvaluation:
     ):
         """Test retraining need evaluation based on drift detection."""
         room_id = "bedroom"
-        model_type = "xgboost"
+        model_type = ModelType.XGBOOST
 
         # Evaluate with drift metrics
         request = await adaptive_retrainer.evaluate_retraining_need(
@@ -300,7 +304,7 @@ class TestRetrainingNeedEvaluation:
     async def test_no_retraining_needed(self, adaptive_retrainer):
         """Test when no retraining is needed."""
         room_id = "kitchen"
-        model_type = "ensemble"
+        model_type = ModelType.ENSEMBLE
 
         # Good accuracy metrics
         good_metrics = AccuracyMetrics(
@@ -328,7 +332,7 @@ class TestRetrainingNeedEvaluation:
     ):
         """Test that cooldown periods prevent too frequent retraining."""
         room_id = "bathroom"
-        model_type = "lstm"
+        model_type = ModelType.LSTM
         model_key = f"{room_id}_{model_type}"
 
         # Set recent retraining time
@@ -352,7 +356,7 @@ class TestRetrainingNeedEvaluation:
     ):
         """Test automatic retraining strategy selection."""
         room_id = "living_room"
-        model_type = "xgboost"
+        model_type = ModelType.XGBOOST
 
         # Test with moderate accuracy (should use incremental)
         moderate_metrics = AccuracyMetrics(
@@ -392,7 +396,7 @@ class TestRetrainingRequestManagement:
     async def test_manual_retraining_request(self, adaptive_retrainer):
         """Test manual retraining request submission."""
         room_id = "office"
-        model_type = "ensemble"
+        model_type = ModelType.ENSEMBLE
 
         request_id = await adaptive_retrainer.request_retraining(
             room_id=room_id,
@@ -456,7 +460,7 @@ class TestRetrainingRequestManagement:
         # Submit a request
         request_id = await adaptive_retrainer.request_retraining(
             room_id="cancellation_room",
-            model_type="lstm",
+            model_type=ModelType.LSTM,
             trigger=RetrainingTrigger.MANUAL_REQUEST,
         )
 
@@ -480,7 +484,7 @@ class TestRetrainingExecution:
     ):
         """Test full model retraining execution."""
         room_id = "execution_room"
-        model_type = "lstm"
+        model_type = ModelType.LSTM
         model_key = f"{room_id}_{model_type}"
 
         # Create retraining request
@@ -509,7 +513,7 @@ class TestRetrainingExecution:
     async def test_incremental_retraining_execution(self, adaptive_retrainer):
         """Test incremental model retraining."""
         room_id = "incremental_room"
-        model_type = "xgboost"
+        model_type = ModelType.XGBOOST
 
         request = RetrainingRequest(
             request_id="test_incremental_001",
@@ -532,7 +536,7 @@ class TestRetrainingExecution:
     async def test_feature_refresh_execution(self, adaptive_retrainer):
         """Test feature refresh retraining strategy."""
         room_id = "feature_room"
-        model_type = "ensemble"
+        model_type = ModelType.ENSEMBLE
 
         request = RetrainingRequest(
             request_id="test_feature_001",
@@ -555,7 +559,7 @@ class TestRetrainingExecution:
     async def test_ensemble_rebalance_execution(self, adaptive_retrainer):
         """Test ensemble rebalancing strategy."""
         room_id = "ensemble_room"
-        model_type = "ensemble"
+        model_type = ModelType.ENSEMBLE
 
         request = RetrainingRequest(
             request_id="test_ensemble_001",
@@ -580,7 +584,7 @@ class TestRetrainingExecution:
     ):
         """Test retraining with hyperparameter optimization."""
         room_id = "optimization_room"
-        model_type = "lstm"
+        model_type = ModelType.LSTM
 
         request = RetrainingRequest(
             request_id="test_optimization_001",
@@ -611,7 +615,7 @@ class TestRetrainingProgressTracking:
         """Test retraining progress tracking creation."""
         request_id = "progress_test_001"
         room_id = "progress_room"
-        model_type = "lstm"
+        model_type = ModelType.LSTM
 
         # Create progress tracker
         progress = RetrainingProgress(
@@ -632,7 +636,7 @@ class TestRetrainingProgressTracking:
         request = RetrainingRequest(
             request_id="progress_integration_001",
             room_id="progress_room",
-            model_type="xgboost",
+            model_type=ModelType.XGBOOST,
             trigger=RetrainingTrigger.MANUAL_REQUEST,
             strategy=RetrainingStrategy.FULL_RETRAIN,
             priority=5.0,
@@ -654,7 +658,7 @@ class TestRetrainingProgressTracking:
         progress = RetrainingProgress(
             request_id=request_id,
             room_id="test_room",
-            model_type="ensemble",
+            model_type=ModelType.ENSEMBLE,
             phase="validation",
             progress_percentage=75.0,
             current_step="cross_validation_fold_3",
@@ -680,7 +684,7 @@ class TestRetrainingStatusAndMetrics:
         # Submit a request to have status to retrieve
         request_id = await adaptive_retrainer.request_retraining(
             room_id="status_room",
-            model_type="hmm",
+            model_type=ModelType.HMM,
             trigger=RetrainingTrigger.MANUAL_REQUEST,
         )
 
@@ -700,7 +704,7 @@ class TestRetrainingStatusAndMetrics:
         for i in range(3):
             await adaptive_retrainer.request_retraining(
                 room_id=f"status_room_{i}",
-                model_type="lstm",
+                model_type=ModelType.LSTM,
                 trigger=RetrainingTrigger.MANUAL_REQUEST,
             )
 
@@ -748,7 +752,7 @@ class TestBackgroundTasks:
         # Submit a request
         await adaptive_retrainer.request_retraining(
             room_id="background_room",
-            model_type="lstm",
+            model_type=ModelType.LSTM,
             trigger=RetrainingTrigger.ACCURACY_DEGRADATION,
             priority=9.0,
         )
@@ -771,7 +775,7 @@ class TestBackgroundTasks:
                 RetrainingRequest(
                     request_id="auto_trigger_001",
                     room_id="auto_room",
-                    model_type="xgboost",
+                    model_type=ModelType.XGBOOST,
                     trigger=RetrainingTrigger.SCHEDULED_UPDATE,
                     strategy=RetrainingStrategy.INCREMENTAL,
                     priority=4.0,
@@ -801,7 +805,7 @@ class TestBackgroundTasks:
         # Submit failing request
         await adaptive_retrainer.request_retraining(
             room_id="fail_room",
-            model_type="lstm",
+            model_type=ModelType.LSTM,
             trigger=RetrainingTrigger.MANUAL_REQUEST,
         )
 
@@ -824,7 +828,7 @@ class TestNotificationIntegration:
         # Submit and complete a retraining
         request_id = await adaptive_retrainer.request_retraining(
             room_id="notification_room",
-            model_type="ensemble",
+            model_type=ModelType.ENSEMBLE,
             trigger=RetrainingTrigger.CONCEPT_DRIFT,
             priority=6.0,
         )
@@ -833,7 +837,7 @@ class TestNotificationIntegration:
         completed_request = RetrainingRequest(
             request_id=request_id,
             room_id="notification_room",
-            model_type="ensemble",
+            model_type=ModelType.ENSEMBLE,
             trigger=RetrainingTrigger.CONCEPT_DRIFT,
             strategy=RetrainingStrategy.FULL_RETRAIN,
             priority=6.0,
@@ -857,7 +861,7 @@ class TestNotificationIntegration:
         failed_request = RetrainingRequest(
             request_id="failed_request_001",
             room_id="failure_room",
-            model_type="lstm",
+            model_type=ModelType.LSTM,
             trigger=RetrainingTrigger.ACCURACY_DEGRADATION,
             strategy=RetrainingStrategy.FULL_RETRAIN,
             priority=8.0,
@@ -883,7 +887,7 @@ class TestErrorHandlingAndRecovery:
     ):
         """Test handling of model training failures."""
         room_id = "failure_room"
-        model_type = "lstm"
+        model_type = ModelType.LSTM
         model_key = f"{room_id}_{model_type}"
 
         # Mock model that fails training
@@ -915,7 +919,7 @@ class TestErrorHandlingAndRecovery:
         request = RetrainingRequest(
             request_id="missing_model_001",
             room_id="nonexistent_room",
-            model_type="nonexistent_model",
+            model_type="nonexistent_model",  # Keep as string for error testing
             trigger=RetrainingTrigger.MANUAL_REQUEST,
             strategy=RetrainingStrategy.FULL_RETRAIN,
             priority=5.0,
@@ -942,7 +946,7 @@ class TestErrorHandlingAndRecovery:
         request = RetrainingRequest(
             request_id="insufficient_data_001",
             room_id="empty_room",
-            model_type="lstm",
+            model_type=ModelType.LSTM,
             trigger=RetrainingTrigger.ACCURACY_DEGRADATION,
             strategy=RetrainingStrategy.FULL_RETRAIN,
             priority=7.0,
@@ -972,7 +976,7 @@ class TestErrorHandlingAndRecovery:
         request = RetrainingRequest(
             request_id="timeout_test_001",
             room_id="timeout_room",
-            model_type="slow_model",
+            model_type="slow_model",  # Keep as string for error testing
             trigger=RetrainingTrigger.MANUAL_REQUEST,
             strategy=RetrainingStrategy.FULL_RETRAIN,
             priority=5.0,
@@ -1069,7 +1073,7 @@ class TestPerformanceAndScalability:
         for i in range(5):
             req_id = await adaptive_retrainer.request_retraining(
                 room_id=f"concurrent_room_{i}",
-                model_type="lstm",
+                model_type=ModelType.LSTM,
                 trigger=RetrainingTrigger.MANUAL_REQUEST,
                 priority=5.0 + i,
             )
@@ -1091,7 +1095,7 @@ class TestPerformanceAndScalability:
         for i in range(20):
             await adaptive_retrainer.request_retraining(
                 room_id=f"memory_room_{i}",
-                model_type="xgboost",
+                model_type=ModelType.XGBOOST,
                 trigger=RetrainingTrigger.SCHEDULED_UPDATE,
                 priority=3.0,
             )
@@ -1112,7 +1116,7 @@ class TestPerformanceAndScalability:
         for i in range(100):
             await adaptive_retrainer.request_retraining(
                 room_id=f"queue_room_{i}",
-                model_type="ensemble",
+                model_type=ModelType.ENSEMBLE,
                 trigger=RetrainingTrigger.PERFORMANCE_ANOMALY,
                 priority=float(i % 10),
             )

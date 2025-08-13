@@ -534,6 +534,19 @@ class AdaptiveRetrainer:
                     RetrainingStrategy.FULL_RETRAIN
                 )  # Default for manual requests
 
+            # Build retraining parameters dict
+            retraining_params = {
+                "lookback_days": kwargs.get(
+                    "lookback_days", self.config.retraining_lookback_days
+                ),
+                "validation_split": kwargs.get(
+                    "validation_split", self.config.retraining_validation_split
+                ),
+                "feature_refresh": kwargs.get(
+                    "feature_refresh", self.config.auto_feature_refresh
+                ),
+            }
+
             request = RetrainingRequest(
                 request_id=request_id,
                 room_id=room_id,
@@ -542,15 +555,7 @@ class AdaptiveRetrainer:
                 strategy=strategy,
                 priority=priority,
                 created_time=datetime.utcnow(),
-                lookback_days=kwargs.get(
-                    "lookback_days", self.config.retraining_lookback_days
-                ),
-                validation_split=kwargs.get(
-                    "validation_split", self.config.retraining_validation_split
-                ),
-                feature_refresh=kwargs.get(
-                    "feature_refresh", self.config.auto_feature_refresh
-                ),
+                retraining_parameters=retraining_params,
             )
 
             # Add to queue

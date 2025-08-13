@@ -93,10 +93,17 @@ def synthetic_feature_data():
     """Generate synthetic feature data with and without drift."""
     np.random.seed(42)
 
-    # Stable feature data (no drift)
+    # Use recent timestamps that fit the detector's time windows
+    # Comparison data: 72-24 hours ago (48 hour window)
+    # Monitor data: last 24 hours
+    now = datetime.now()
+    comparison_start = now - timedelta(hours=72)
+    monitor_start = now - timedelta(hours=24)
+
+    # Stable feature data (comparison window)
     stable_data = pd.DataFrame(
         {
-            "timestamp": pd.date_range("2024-01-01", periods=100, freq="1h"),
+            "timestamp": pd.date_range(comparison_start, monitor_start, periods=100),
             "feature_1": np.random.normal(50, 10, 100),
             "feature_2": np.random.normal(25, 5, 100),
             "feature_3": np.random.choice(["A", "B", "C"], 100),
@@ -104,10 +111,10 @@ def synthetic_feature_data():
         }
     )
 
-    # Drifted feature data (distribution shift)
+    # Drifted feature data (monitor window)
     drifted_data = pd.DataFrame(
         {
-            "timestamp": pd.date_range("2024-01-05", periods=100, freq="1h"),
+            "timestamp": pd.date_range(monitor_start, now, periods=100),
             "feature_1": np.random.normal(70, 15, 100),  # Mean shift
             "feature_2": np.random.normal(25, 12, 100),  # Variance increase
             "feature_3": np.random.choice(["A", "D", "E"], 100),  # Category change
@@ -834,10 +841,13 @@ class TestDriftDetectionEdgeCases:
     @pytest.mark.asyncio
     async def test_feature_drift_with_mixed_data_types(self, feature_drift_detector):
         """Test feature drift detection with mixed data types."""
-        # Create data with various types
+        # Create data with various types using recent timestamps
+        now = datetime.now()
+        start_time = now - timedelta(hours=72)  # 72 hours ago to cover both windows
+
         mixed_data = pd.DataFrame(
             {
-                "timestamp": pd.date_range("2024-01-01", periods=200, freq="1h"),
+                "timestamp": pd.date_range(start_time, now, periods=200),
                 "numeric_int": np.random.randint(1, 100, 200),
                 "numeric_float": np.random.normal(50, 10, 200),
                 "categorical": np.random.choice(["X", "Y", "Z"], 200),
