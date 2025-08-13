@@ -414,12 +414,18 @@ class ConceptDriftDetector:
                 # Only if detailed error records are available
                 baseline_errors = []
                 current_errors = []
-                
-                if hasattr(baseline_metrics, 'recent_records') and baseline_metrics.recent_records:
+
+                if (
+                    hasattr(baseline_metrics, "recent_records")
+                    and baseline_metrics.recent_records
+                ):
                     baseline_errors = [
                         r.error_minutes for r in baseline_metrics.recent_records
                     ]
-                if hasattr(current_metrics, 'recent_records') and current_metrics.recent_records:
+                if (
+                    hasattr(current_metrics, "recent_records")
+                    and current_metrics.recent_records
+                ):
                     current_errors = [
                         r.error_minutes for r in current_metrics.recent_records
                     ]

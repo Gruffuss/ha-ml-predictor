@@ -122,6 +122,7 @@ class TestEnvironmentManager:
         }
 
         import copy
+
         prod_config = copy.deepcopy(base_config)
         prod_config["logging"]["level"] = "WARNING"
         prod_config["home_assistant"]["url"] = "https://ha.example.com"
@@ -181,7 +182,7 @@ class TestEnvironmentManager:
         env_manager = EnvironmentManager(
             config_dir=self.temp_config_dir, secrets_dir=self.temp_secrets_dir
         )
-        
+
         # Test development (uses base config)
         env_manager.current_environment = Environment.DEVELOPMENT
         config = env_manager.load_environment_config()

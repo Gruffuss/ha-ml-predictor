@@ -613,7 +613,10 @@ def create_app() -> FastAPI:
 try:
     app = create_app()
 except ValueError as e:
-    if "JWT_SECRET_KEY" in str(e) and "test" in os.environ.get("ENVIRONMENT", "").lower():
+    if (
+        "JWT_SECRET_KEY" in str(e)
+        and "test" in os.environ.get("ENVIRONMENT", "").lower()
+    ):
         # In test environment, create a placeholder app that can be initialized later
         app = FastAPI(title="HA ML Predictor API (Test Mode)")
         print(f"Warning: API app created in test mode due to: {e}")

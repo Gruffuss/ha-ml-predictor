@@ -57,14 +57,16 @@ def set_test_environment():
     print(f"  ENVIRONMENT: {os.environ['ENVIRONMENT']}")
     print(f"  DEBUG: {os.environ['DEBUG']}")
     print(f"  CI: {os.environ['CI']}")
-    
+
     # Validate JWT configuration
     jwt_secret = os.environ["JWT_SECRET_KEY"]
     if len(jwt_secret) < 32:
-        print(f"WARNING: JWT secret key is only {len(jwt_secret)} characters, should be at least 32")
+        print(
+            f"WARNING: JWT secret key is only {len(jwt_secret)} characters, should be at least 32"
+        )
     else:
         print(f"  JWT Secret Key Length: {len(jwt_secret)} characters [OK]")
-        
+
     print("\n[SUCCESS] All environment variables configured for security testing")
 
 

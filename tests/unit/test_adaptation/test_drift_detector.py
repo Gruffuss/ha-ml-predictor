@@ -215,9 +215,7 @@ class TestConceptDriftDetector:
 
         async def degraded_metrics(room_id, start_time, end_time):
             if start_time < datetime.now() - timedelta(days=10):
-                return AccuracyMetrics(
-                    accuracy_rate=85.0, mae_minutes=12.0
-                )
+                return AccuracyMetrics(accuracy_rate=85.0, mae_minutes=12.0)
             return degraded_current
 
         mock_prediction_validator.get_accuracy_metrics = AsyncMock(
@@ -235,7 +233,7 @@ class TestConceptDriftDetector:
         assert drift_metrics is not None
         # Check that drift was detected (should have prediction drift type)
         assert DriftType.PREDICTION_DRIFT in drift_metrics.drift_types
-        # Check accuracy degradation was calculated correctly 
+        # Check accuracy degradation was calculated correctly
         assert drift_metrics.accuracy_degradation > 20
         # Severity depends on overall scoring algorithm
         assert drift_metrics.drift_severity in [

@@ -159,7 +159,9 @@ class JWTConfig:
                 if env == "test" or ci:
                     # Use a default test secret key
                     self.secret_key = "test_jwt_secret_key_for_security_validation_testing_at_least_32_characters_long"
-                    print(f"Warning: Using default test JWT secret key in {env} environment")
+                    print(
+                        f"Warning: Using default test JWT secret key in {env} environment"
+                    )
                 else:
                     raise ValueError(
                         "JWT is enabled but JWT_SECRET_KEY environment variable is not set"
