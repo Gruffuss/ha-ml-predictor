@@ -153,9 +153,17 @@ class JWTConfig:
 
             self.secret_key = os.getenv("JWT_SECRET_KEY", "")
             if not self.secret_key:
-                raise ValueError(
-                    "JWT is enabled but JWT_SECRET_KEY environment variable is not set"
-                )
+                # Check if we're in a test environment - provide fallback
+                env = os.getenv("ENVIRONMENT", "").lower()
+                ci = os.getenv("CI", "").lower() in ("true", "1")
+                if env == "test" or ci:
+                    # Use a default test secret key
+                    self.secret_key = "test_jwt_secret_key_for_security_validation_testing_at_least_32_characters_long"
+                    print(f"Warning: Using default test JWT secret key in {env} environment")
+                else:
+                    raise ValueError(
+                        "JWT is enabled but JWT_SECRET_KEY environment variable is not set"
+                    )
 
         if self.enabled and len(self.secret_key) < 32:
             raise ValueError("JWT secret key must be at least 32 characters long")

@@ -385,7 +385,24 @@ jobs:
         pip install -r requirements.txt
         pip install pytest-xdist
         
+    - name: "Set up test environment for security tests"
+      run: |
+        python scripts/set_test_env.py
+        
     - name: "Run security validation tests"
+      env:
+        CI: true
+        JWT_SECRET_KEY: "test_jwt_secret_key_for_github_actions_security_integration_testing_at_least_32_characters_long"
+        JWT_ALGORITHM: "HS256"
+        JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+        JWT_REFRESH_TOKEN_EXPIRE_DAYS: "30"
+        JWT_ISSUER: "ha-ml-predictor-test"
+        JWT_AUDIENCE: "ha-ml-predictor-api-test"
+        JWT_REQUIRE_HTTPS: "false"
+        API_KEY_ENABLED: "true"
+        API_KEY: "test_api_key_for_github_actions_testing"
+        ENVIRONMENT: "test"
+        DEBUG: "true"
       run: |
         pytest tests/integration/test_security_validation.py \
           --junitxml=junit-security.xml \

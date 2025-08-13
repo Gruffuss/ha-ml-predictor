@@ -15,6 +15,22 @@ Test Coverage:
 - Sensitive data exposure prevention
 """
 
+# CRITICAL: Set test environment variables BEFORE any imports
+# This prevents JWT configuration errors during module imports
+import os
+os.environ["ENVIRONMENT"] = "test"
+os.environ["CI"] = "true"
+os.environ["JWT_SECRET_KEY"] = "test_jwt_secret_key_for_security_validation_testing_at_least_32_characters_long"
+os.environ["JWT_ALGORITHM"] = "HS256"
+os.environ["JWT_ACCESS_TOKEN_EXPIRE_MINUTES"] = "60"
+os.environ["JWT_REFRESH_TOKEN_EXPIRE_DAYS"] = "30"
+os.environ["JWT_ISSUER"] = "ha-ml-predictor-test"
+os.environ["JWT_AUDIENCE"] = "ha-ml-predictor-api-test"
+os.environ["JWT_REQUIRE_HTTPS"] = "false"
+os.environ["API_KEY_ENABLED"] = "true"
+os.environ["API_KEY"] = "test_api_key_for_security_validation_testing"
+os.environ["DEBUG"] = "true"
+
 import asyncio
 import base64
 from datetime import datetime, timedelta

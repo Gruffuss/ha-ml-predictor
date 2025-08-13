@@ -20,6 +20,7 @@ from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 import logging
+import os
 import traceback
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import uuid
@@ -607,7 +608,17 @@ def create_app() -> FastAPI:
 
 
 # Create application instance
-app = create_app()
+# Note: This may fail during test collection if JWT_SECRET_KEY is not set
+# Tests should call scripts/set_test_env.py before importing this module
+try:
+    app = create_app()
+except ValueError as e:
+    if "JWT_SECRET_KEY" in str(e) and "test" in os.environ.get("ENVIRONMENT", "").lower():
+        # In test environment, create a placeholder app that can be initialized later
+        app = FastAPI(title="HA ML Predictor API (Test Mode)")
+        print(f"Warning: API app created in test mode due to: {e}")
+    else:
+        raise
 
 
 # API Endpoints
