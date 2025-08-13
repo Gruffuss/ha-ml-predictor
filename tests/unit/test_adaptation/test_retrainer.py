@@ -178,7 +178,7 @@ def sample_accuracy_metrics():
         accuracy_rate=52.9,  # Below threshold
         mean_error_minutes=28.5,  # Above threshold
         median_error_minutes=25.0,
-        confidence_vs_accuracy_correlation=0.68,
+        confidence_accuracy_correlation=0.68,
         measurement_period_start=datetime.now() - timedelta(hours=24),
         measurement_period_end=datetime.now(),
     )
@@ -309,7 +309,7 @@ class TestRetrainingNeedEvaluation:
             accurate_predictions=88,
             accuracy_rate=92.6,  # Above threshold
             mean_error_minutes=8.5,  # Below threshold
-            confidence_vs_accuracy_correlation=0.85,
+            confidence_accuracy_correlation=0.85,
         )
 
         # Evaluate retraining need

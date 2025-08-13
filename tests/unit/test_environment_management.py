@@ -121,7 +121,8 @@ class TestEnvironmentManager:
             "api": {},
         }
 
-        prod_config = base_config.copy()
+        import copy
+        prod_config = copy.deepcopy(base_config)
         prod_config["logging"]["level"] = "WARNING"
         prod_config["home_assistant"]["url"] = "https://ha.example.com"
 
@@ -173,18 +174,24 @@ class TestEnvironmentManager:
         assert settings.monitoring_enabled is True
         assert settings.backup_enabled is True
 
+    @patch.dict("os.environ", {}, clear=True)
     def test_load_environment_config(self):
         """Test loading environment-specific configuration."""
+        # Create a fresh environment manager with cleared env vars
+        env_manager = EnvironmentManager(
+            config_dir=self.temp_config_dir, secrets_dir=self.temp_secrets_dir
+        )
+        
         # Test development (uses base config)
-        self.env_manager.current_environment = Environment.DEVELOPMENT
-        config = self.env_manager.load_environment_config()
+        env_manager.current_environment = Environment.DEVELOPMENT
+        config = env_manager.load_environment_config()
 
         assert config["home_assistant"]["url"] == "http://localhost:8123"
         assert config["logging"]["level"] == "DEBUG"  # Override applied
 
         # Test production (uses production config)
-        self.env_manager.current_environment = Environment.PRODUCTION
-        config = self.env_manager.load_environment_config()
+        env_manager.current_environment = Environment.PRODUCTION
+        config = env_manager.load_environment_config()
 
         assert config["home_assistant"]["url"] == "https://ha.example.com"
         assert config["logging"]["level"] == "WARNING"

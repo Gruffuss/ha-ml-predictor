@@ -406,25 +406,34 @@ class ConceptDriftDetector:
 
             if baseline_metrics and current_metrics:
                 # Calculate accuracy degradation
-                baseline_error = baseline_metrics.mean_absolute_error_minutes
-                current_error = current_metrics.mean_absolute_error_minutes
+                baseline_error = baseline_metrics.mae_minutes
+                current_error = current_metrics.mae_minutes
                 drift_metrics.accuracy_degradation = current_error - baseline_error
 
                 # Analyze error distribution changes using KS test
-                baseline_errors = [
-                    r.error_minutes for r in baseline_metrics.recent_records
-                ]
-                current_errors = [
-                    r.error_minutes for r in current_metrics.recent_records
-                ]
+                # Only if detailed error records are available
+                baseline_errors = []
+                current_errors = []
+                
+                if hasattr(baseline_metrics, 'recent_records') and baseline_metrics.recent_records:
+                    baseline_errors = [
+                        r.error_minutes for r in baseline_metrics.recent_records
+                    ]
+                if hasattr(current_metrics, 'recent_records') and current_metrics.recent_records:
+                    current_errors = [
+                        r.error_minutes for r in current_metrics.recent_records
+                    ]
 
                 if len(baseline_errors) >= 10 and len(current_errors) >= 10:
                     ks_stat, ks_p = stats.ks_2samp(baseline_errors, current_errors)
                     drift_metrics.error_distribution_change = ks_stat
+                else:
+                    # Fallback: use available aggregate metrics
+                    drift_metrics.error_distribution_change = 0.0
 
                 # Analyze confidence calibration drift
-                baseline_conf = baseline_metrics.confidence_vs_accuracy_correlation
-                current_conf = current_metrics.confidence_vs_accuracy_correlation
+                baseline_conf = baseline_metrics.confidence_accuracy_correlation
+                current_conf = current_metrics.confidence_accuracy_correlation
                 drift_metrics.confidence_calibration_drift = abs(
                     current_conf - baseline_conf
                 )

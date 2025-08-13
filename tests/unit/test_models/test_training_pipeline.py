@@ -125,7 +125,7 @@ def sample_raw_data():
     dates = pd.date_range(
         start=datetime.utcnow() - timedelta(days=30),
         end=datetime.utcnow(),
-        freq="1H",
+        freq="1h",
     )
 
     return pd.DataFrame(
@@ -330,7 +330,7 @@ class TestDataQualityValidation:
         """Test data quality validation with insufficient data."""
         small_data = pd.DataFrame(
             {
-                "timestamp": pd.date_range("2024-01-01", periods=10, freq="1H"),
+                "timestamp": pd.date_range("2024-01-01", periods=10, freq="1h"),
                 "room_id": "test_room",
                 "sensor_type": "motion",
                 "state": ["on"] * 10,
@@ -350,7 +350,7 @@ class TestDataQualityValidation:
         """Test data quality validation with missing required columns."""
         incomplete_data = pd.DataFrame(
             {
-                "timestamp": pd.date_range("2024-01-01", periods=100, freq="1H"),
+                "timestamp": pd.date_range("2024-01-01", periods=100, freq="1h"),
                 "room_id": "test_room",
                 # Missing sensor_type and state columns
             }
@@ -368,7 +368,7 @@ class TestDataQualityValidation:
     async def test_data_quality_validation_temporal_issues(self, training_pipeline):
         """Test data quality validation with temporal consistency issues."""
         # Create data with non-monotonic timestamps
-        timestamps = pd.date_range("2024-01-01", periods=50, freq="1H").tolist()
+        timestamps = pd.date_range("2024-01-01", periods=50, freq="1h").tolist()
         timestamps[20] = timestamps[10]  # Create temporal inconsistency
 
         inconsistent_data = pd.DataFrame(
@@ -392,7 +392,7 @@ class TestDataQualityValidation:
         """Test data quality validation with missing values."""
         data_with_nulls = pd.DataFrame(
             {
-                "timestamp": pd.date_range("2024-01-01", periods=100, freq="1H"),
+                "timestamp": pd.date_range("2024-01-01", periods=100, freq="1h"),
                 "room_id": "test_room",
                 "sensor_type": ["motion"] * 50 + [None] * 50,  # 50% missing
                 "state": ["on"] * 100,
@@ -984,7 +984,7 @@ class TestFullTrainingWorkflow:
         # Mock insufficient data
         small_data = pd.DataFrame(
             {
-                "timestamp": pd.date_range("2024-01-01", periods=10, freq="1H"),
+                "timestamp": pd.date_range("2024-01-01", periods=10, freq="1h"),
                 "room_id": "test_room",
                 "sensor_type": "motion",
                 "state": ["on"] * 10,
@@ -1278,7 +1278,7 @@ class TestTrainingPipelineErrorHandling:
         training_pipeline._query_room_events = AsyncMock(
             return_value=pd.DataFrame(
                 {
-                    "timestamp": pd.date_range("2024-01-01", periods=100, freq="1H"),
+                    "timestamp": pd.date_range("2024-01-01", periods=100, freq="1h"),
                     "room_id": "test_room",
                     "sensor_type": "motion",
                     "state": ["on"] * 100,

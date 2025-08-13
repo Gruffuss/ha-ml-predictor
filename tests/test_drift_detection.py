@@ -204,16 +204,16 @@ class TestConceptDriftDetector:
 
         # Mock accuracy metrics
         baseline_metrics = Mock(spec=AccuracyMetrics)
-        baseline_metrics.mean_absolute_error_minutes = 10.0
-        baseline_metrics.confidence_vs_accuracy_correlation = 0.8
+        baseline_metrics.mae_minutes = 10.0
+        baseline_metrics.confidence_accuracy_correlation = 0.8
         baseline_metrics.recent_records = [
             Mock(error_minutes=8.0),
             Mock(error_minutes=12.0),
         ]
 
         current_metrics = Mock(spec=AccuracyMetrics)
-        current_metrics.mean_absolute_error_minutes = 20.0
-        current_metrics.confidence_vs_accuracy_correlation = 0.6
+        current_metrics.mae_minutes = 20.0
+        current_metrics.confidence_accuracy_correlation = 0.6
         current_metrics.recent_records = [
             Mock(error_minutes=18.0),
             Mock(error_minutes=22.0),
@@ -507,13 +507,13 @@ class TestIntegration:
 
         mock_validator = Mock(spec=PredictionValidator)
         baseline_metrics = Mock(spec=AccuracyMetrics)
-        baseline_metrics.mean_absolute_error_minutes = 10.0
-        baseline_metrics.confidence_vs_accuracy_correlation = 0.8
+        baseline_metrics.mae_minutes = 10.0
+        baseline_metrics.confidence_accuracy_correlation = 0.8
         baseline_metrics.recent_records = []
 
         current_metrics = Mock(spec=AccuracyMetrics)
-        current_metrics.mean_absolute_error_minutes = 25.0  # Degraded performance
-        current_metrics.confidence_vs_accuracy_correlation = 0.5
+        current_metrics.mae_minutes = 25.0  # Degraded performance
+        current_metrics.confidence_accuracy_correlation = 0.5
         current_metrics.recent_records = []
 
         mock_validator.get_accuracy_metrics = AsyncMock(

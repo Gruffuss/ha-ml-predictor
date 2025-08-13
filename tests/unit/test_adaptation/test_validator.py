@@ -682,7 +682,7 @@ class TestAccuracyMetricsCalculation:
         # Calculate confidence-accuracy correlation
         if len(confidences) > 1:
             correlation = np.corrcoef(confidences, accuracies)[0, 1]
-            metrics.confidence_vs_accuracy_correlation = (
+            metrics.confidence_accuracy_correlation = (
                 correlation if not np.isnan(correlation) else 0.0
             )
 
@@ -703,7 +703,7 @@ class TestAccuracyMetricsCalculation:
 
         # Verify confidence analysis
         assert 0 <= metrics.mean_confidence <= 1
-        assert -1 <= metrics.confidence_vs_accuracy_correlation <= 1
+        assert -1 <= metrics.confidence_accuracy_correlation <= 1
         assert 0 <= metrics.overconfidence_rate <= 1
         assert 0 <= metrics.underconfidence_rate <= 1
 
@@ -715,7 +715,7 @@ class TestAccuracyMetricsCalculation:
             accurate_predictions=68,
             accuracy_rate=80.0,
             mean_error_minutes=12.5,
-            confidence_vs_accuracy_correlation=0.72,
+            confidence_accuracy_correlation=0.72,
             error_percentiles={
                 25: 8.0,
                 50: 12.0,
