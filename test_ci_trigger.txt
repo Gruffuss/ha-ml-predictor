@@ -1,1 +1,0 @@
-This file is just to trigger CI and test formatting check.
