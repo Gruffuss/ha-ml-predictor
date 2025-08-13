@@ -72,7 +72,7 @@ async def test_jwt_authentication_system():
         # 4. Validate Access Token
         print("\n4. Validating Access Token...")
         payload = jwt_manager.validate_token(access_token, "access")
-        print(f"OK Token validated successfully")
+        print("OK Token validated successfully")
         print(f"  User ID: {payload['sub']}")
         print(f"  Permissions: {payload['permissions']}")
         print(f"  Is Admin: {payload.get('is_admin', False)}")
@@ -81,7 +81,7 @@ async def test_jwt_authentication_system():
         # 5. Test Token Info
         print("\n5. Getting Token Information...")
         token_info = jwt_manager.get_token_info(access_token)
-        print(f"OK Token info retrieved:")
+        print("OK Token info retrieved:")
         print(f"  User ID: {token_info['user_id']}")
         print(f"  Token Type: {token_info['token_type']}")
         print(f"  Is Expired: {token_info['is_expired']}")
@@ -92,7 +92,7 @@ async def test_jwt_authentication_system():
         new_access_token, new_refresh_token = jwt_manager.refresh_access_token(
             refresh_token
         )
-        print(f"OK Tokens refreshed successfully")
+        print("OK Tokens refreshed successfully")
         print(f"  New access token: {new_access_token[:50]}...")
         print(f"  New refresh token: {new_refresh_token[:50]}...")
 
@@ -121,7 +121,7 @@ async def test_jwt_authentication_system():
             is_active=True,
         )
 
-        print(f"OK AuthUser created:")
+        print("OK AuthUser created:")
         print(f"  Has 'admin' permission: {user.has_permission('admin')}")
         print(f"  Has 'admin' role: {user.has_role('admin')}")
         print(f"  Token claims: {user.to_token_claims()}")

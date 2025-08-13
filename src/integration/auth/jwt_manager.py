@@ -14,7 +14,6 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import uuid
 
 import hmac
-import secrets
 
 from ...core.config import JWTConfig
 from ...core.exceptions import APIAuthenticationError, APISecurityError

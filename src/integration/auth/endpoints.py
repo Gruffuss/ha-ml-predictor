@@ -5,7 +5,7 @@ This module provides FastAPI endpoints for user authentication, token management
 and user account operations.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 import hashlib
 import logging
 from typing import Dict, List, Optional
@@ -14,8 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials
 import secrets
 
-from ...core.config import get_config
-from ...core.exceptions import APIAuthenticationError, APIValidationError
+from ...core.exceptions import APIAuthenticationError
 from .auth_models import (
     AuthUser,
     LoginRequest,

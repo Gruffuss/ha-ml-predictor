@@ -6,13 +6,13 @@ permission checking, and user context injection in FastAPI endpoints.
 """
 
 import logging
-from typing import Any, List, Optional
+from typing import List, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from ...core.config import get_config
-from ...core.exceptions import APIAuthenticationError, APIAuthorizationError
+from ...core.exceptions import APIAuthenticationError
 from .auth_models import AuthUser
 from .jwt_manager import JWTManager
 

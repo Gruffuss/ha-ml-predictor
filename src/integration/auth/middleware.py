@@ -7,11 +7,10 @@ and request/response security processing.
 
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 import uuid
 
 from fastapi import Request, Response
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 

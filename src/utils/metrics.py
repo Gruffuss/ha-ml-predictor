@@ -110,7 +110,10 @@ except ImportError:
     Info = _MockInfo
     CollectorRegistry = _MockCollectorRegistry
     REGISTRY = _MockCollectorRegistry()
-    generate_latest = lambda *args, **kwargs: b""
+
+    def generate_latest(*args, **kwargs):
+        return b""
+
     multiprocess = None
 
 
