@@ -7,17 +7,17 @@ token generation, validation, refresh, and revocation.
 """
 
 import asyncio
+from datetime import datetime
 import os
 import sys
-from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.integration.auth.jwt_manager import JWTManager
-from src.integration.auth.auth_models import AuthUser, LoginRequest, LoginResponse
 from src.core.config import JWTConfig
 from src.core.exceptions import APIAuthenticationError
+from src.integration.auth.auth_models import AuthUser, LoginRequest, LoginResponse
+from src.integration.auth.jwt_manager import JWTManager
 
 
 async def test_jwt_authentication_system():
