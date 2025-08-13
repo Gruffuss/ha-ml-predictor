@@ -65,8 +65,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - `black --check --diff --line-length 88 src/ tests/ scripts/ examples/`
    - `isort --check-only --diff --profile black src/ tests/ scripts/ examples/`
    - `flake8 src/ tests/ scripts/ examples/ --max-line-length=140 --extend-ignore=E203,W503,E501,W291,W293,E402,C901`
+   - `mypy src/ --config-file=mypy.ini`
 
-2. **Fix any issues found** and achieve zero errors across all three tools
+2. **Fix any issues found** and achieve zero errors across all four tools
 
 3. **Commit quality fixes** before proceeding
 
