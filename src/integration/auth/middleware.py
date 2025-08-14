@@ -256,24 +256,51 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         except ValueError:
             raise APIAuthenticationError("Invalid Authorization header format")
 
-        # Validate token
+        # Try JWT authentication first, then fall back to API key
+        jwt_failed = False
         try:
             payload = self.jwt_manager.validate_token(token, "access")
+            # Create user object from token payload
+            user = AuthUser(
+                user_id=payload["sub"],
+                username=payload.get("username", payload["sub"]),
+                email=payload.get("email"),
+                permissions=payload.get("permissions", []),
+                roles=payload.get("roles", []),
+                is_admin=payload.get("is_admin", False),
+                is_active=True,  # Token is valid, so user is active
+            )
         except APIAuthenticationError:
-            raise
-        except Exception as e:
-            raise APIAuthenticationError(f"Token validation failed: {str(e)}")
+            jwt_failed = True
+        except Exception:
+            jwt_failed = True
 
-        # Create user object from token payload
-        user = AuthUser(
-            user_id=payload["sub"],
-            username=payload.get("username", payload["sub"]),
-            email=payload.get("email"),
-            permissions=payload.get("permissions", []),
-            roles=payload.get("roles", []),
-            is_admin=payload.get("is_admin", False),
-            is_active=True,  # Token is valid, so user is active
-        )
+        # If JWT failed, try API key authentication
+        if jwt_failed:
+            if not self.config.api.api_key_enabled:
+                raise APIAuthenticationError(
+                    "Authentication required but no valid authentication method configured"
+                )
+
+            if token != self.config.api.api_key:
+                raise APIAuthenticationError("Invalid API key")
+
+            # Create a system user for API key authentication
+            user = AuthUser(
+                user_id="api_key_user",
+                username="API Key User",
+                email=None,
+                permissions=[
+                    "read",
+                    "write",
+                    "prediction_view",
+                    "accuracy_view",
+                    "health_check",
+                ],
+                roles=["user"],
+                is_admin=False,
+                is_active=True,
+            )
 
         return user
 

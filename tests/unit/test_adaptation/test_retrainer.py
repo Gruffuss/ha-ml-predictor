@@ -969,11 +969,11 @@ class TestErrorHandlingAndRecovery:
         async def slow_train(*args, **kwargs):
             await asyncio.sleep(10)  # Very slow
             return TrainingResult(
-                success=True, 
+                success=True,
                 training_time_seconds=10.0,
                 model_version="v1.0",
                 training_samples=500,
-                validation_score=0.8
+                validation_score=0.8,
             )
 
         slow_model.train = slow_train

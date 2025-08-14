@@ -245,7 +245,9 @@ class TestConceptDriftDetector:
 
             assert drift_metrics.room_id == room_id
             assert drift_metrics.accuracy_degradation == 10.0  # 20 - 10
-            assert abs(drift_metrics.confidence_calibration_drift - 0.2) < 1e-10  # |0.6 - 0.8|
+            assert (
+                abs(drift_metrics.confidence_calibration_drift - 0.2) < 1e-10
+            )  # |0.6 - 0.8|
 
     @pytest.mark.asyncio
     async def test_numerical_feature_drift_test(self, drift_detector):

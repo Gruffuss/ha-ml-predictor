@@ -14,6 +14,31 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
+
+
+# Set up JWT test environment variables before any imports
+# This must happen before modules try to import api_server at collection time
+def _setup_jwt_test_env():
+    """Set up JWT test environment variables for test collection."""
+    if not os.environ.get("JWT_SECRET_KEY"):
+        os.environ["JWT_SECRET_KEY"] = (
+            "test_jwt_secret_key_for_security_validation_testing_at_least_32_characters_long"
+        )
+        os.environ["JWT_ALGORITHM"] = "HS256"
+        os.environ["JWT_ACCESS_TOKEN_EXPIRE_MINUTES"] = "60"
+        os.environ["JWT_REFRESH_TOKEN_EXPIRE_DAYS"] = "30"
+        os.environ["JWT_ISSUER"] = "ha-ml-predictor-test"
+        os.environ["JWT_AUDIENCE"] = "ha-ml-predictor-api-test"
+        os.environ["JWT_REQUIRE_HTTPS"] = "false"
+        os.environ["JWT_BLACKLIST_ENABLED"] = "true"
+        os.environ["API_KEY_ENABLED"] = "true"
+        os.environ["API_KEY"] = "test_api_key_for_security_validation_testing"
+        os.environ["ENVIRONMENT"] = "test"
+        os.environ["DEBUG"] = "true"
+
+
+# Set up environment variables immediately when conftest is imported
+_setup_jwt_test_env()
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,

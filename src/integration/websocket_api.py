@@ -29,9 +29,7 @@ from typing import Any, Dict, List, Optional, Set
 import uuid
 import weakref
 
-from pydantic import BaseModel, Field
-
-from pydantic import field_validator
+from pydantic import BaseModel, Field, field_validator
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse

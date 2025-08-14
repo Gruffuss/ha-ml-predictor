@@ -75,11 +75,19 @@ def test_sprint2_sequential_extractor_structure():
     assert isinstance(extractor.sequence_cache, dict)
 
     # Test with config
+    # Create mock config for testing
+    from src.core.config import (
+        APIConfig,
+        DatabaseConfig,
+        FeaturesConfig,
+        HomeAssistantConfig,
+        LoggingConfig,
+        MQTTConfig,
+        PredictionConfig,
+        TrackingConfig,
+    )
     from tests.conftest import test_system_config
 
-    # Create mock config for testing
-    from src.core.config import HomeAssistantConfig, DatabaseConfig, MQTTConfig, PredictionConfig, FeaturesConfig, LoggingConfig, TrackingConfig, APIConfig
-    
     mock_config = SystemConfig(
         home_assistant=HomeAssistantConfig(url="http://test", token="test"),
         database=DatabaseConfig(connection_string="test"),

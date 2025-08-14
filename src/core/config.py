@@ -211,9 +211,25 @@ class APIConfig:
     log_responses: bool = False  # Can be verbose
 
     def __post_init__(self):
-        """Set default CORS origins if not provided."""
+        """Set default CORS origins and load API key from environment if not provided."""
         if self.cors_origins is None:
             self.cors_origins = ["*"]  # Allow all origins by default
+
+        # Load API key configuration from environment variables if not set
+        if not self.api_key:
+            import os
+
+            self.api_key = os.getenv("API_KEY", "")
+            if self.api_key:
+                self.api_key_enabled = os.getenv(
+                    "API_KEY_ENABLED", "false"
+                ).lower() in ("true", "1")
+
+        # Ensure API key is set if enabled
+        if self.api_key_enabled and not self.api_key:
+            raise ValueError(
+                "API key is enabled but API_KEY environment variable is not set"
+            )
 
 
 @dataclass

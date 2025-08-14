@@ -514,6 +514,32 @@ class MLMetricsCollector:
         uptime = (datetime.now() - start_time).total_seconds()
         self.uptime_seconds.set(uptime)
 
+    def set_gauge(
+        self, gauge_name: str, value: float, labels: Optional[Dict[str, str]] = None
+    ):
+        """Set a gauge metric value with optional labels."""
+        try:
+            # Map common gauge names to actual metrics
+            gauge_map = {
+                "system_health_score": self.system_health_score,
+                "cpu_usage_percent": self.cpu_usage_percent,
+                "uptime_seconds": self.uptime_seconds,
+                "prediction_accuracy": self.prediction_accuracy,
+            }
+
+            gauge = gauge_map.get(gauge_name)
+            if gauge is None:
+                # Log that the gauge wasn't found but don't fail
+                return
+
+            if labels:
+                gauge.labels(**labels).set(value)
+            else:
+                gauge.set(value)
+        except Exception:
+            # Silently ignore metrics errors to prevent disrupting main functionality
+            pass
+
     @contextmanager
     def time_operation(self, room_id: str, operation_type: str):
         """Context manager to time operations."""

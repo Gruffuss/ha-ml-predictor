@@ -178,7 +178,7 @@ class DriftMetrics:
             or self.accuracy_degradation >= 15
             or self.overall_drift_score > 0.5
         )
-        
+
     def update_recommendations(self):
         """Update retraining recommendations based on current metrics."""
         # Retraining recommended for moderate+ drift or significant degradation
@@ -344,7 +344,7 @@ class ConceptDriftDetector:
             DriftMetrics with comprehensive drift analysis
         """
         logger.info(f"Starting drift detection for room {room_id}")
-        
+
         # Validate required parameters
         if prediction_validator is None:
             raise OccupancyPredictionError(
@@ -399,7 +399,7 @@ class ConceptDriftDetector:
                 error_context={"room_id": room_id, "error": str(e)},
                 severity=ErrorSeverity.MEDIUM,
             )
-            
+
         # Final update of recommendations based on all calculated metrics
         drift_metrics.update_recommendations()
 

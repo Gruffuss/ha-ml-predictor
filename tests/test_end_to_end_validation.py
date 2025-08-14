@@ -269,7 +269,7 @@ async def complete_system(e2e_system_config, e2e_room_configs, mock_external_ser
                             (Mock(**value) if isinstance(value, dict) else value),
                         )
 
-                    # Add API config to disable authentication and rate limiting for tests
+                    # Add API config to enable authentication for security testing
                     mock_config.api = Mock()
                     mock_config.api.enabled = True
                     mock_config.api.host = "0.0.0.0"
@@ -277,8 +277,10 @@ async def complete_system(e2e_system_config, e2e_room_configs, mock_external_ser
                     mock_config.api.debug = False
                     mock_config.api.enable_cors = True
                     mock_config.api.cors_origins = ["*"]
-                    mock_config.api.api_key_enabled = False
-                    mock_config.api.api_key = None
+                    mock_config.api.api_key_enabled = True
+                    mock_config.api.api_key = (
+                        "test_api_key_for_security_validation_testing"
+                    )
                     mock_config.api.rate_limit_enabled = False
                     mock_config.api.requests_per_minute = 60
                     mock_config.api.burst_limit = 100
@@ -287,6 +289,12 @@ async def complete_system(e2e_system_config, e2e_room_configs, mock_external_ser
                     mock_config.api.include_docs = True
                     mock_config.api.docs_url = "/docs"
                     mock_config.api.redoc_url = "/redoc"
+
+                    # Add JWT config
+                    mock_config.api.jwt = Mock()
+                    mock_config.api.jwt.enabled = True
+                    mock_config.api.jwt.secret_key = "test_jwt_secret_key_for_security_validation_testing_at_least_32_characters_long"
+                    mock_config.api.jwt.algorithm = "HS256"
 
                     mock_config.rooms = {}
                     for room_id, room_config in e2e_room_configs.items():
@@ -414,8 +422,15 @@ class TestCompleteSystemWorkflow:
 
         # Request prediction through API
         with TestClient(system["api_app"]) as client:
-            headers = {"Authorization": "Bearer test_api_key_for_security_validation_testing"}
+            headers = {
+                "Authorization": "Bearer test_api_key_for_security_validation_testing"
+            }
             response = client.get("/predictions/living_room", headers=headers)
+
+            if response.status_code != 200:
+                print(f"Response status: {response.status_code}")
+                print(f"Response body: {response.text}")
+
             assert response.status_code == 200
 
             data = response.json()

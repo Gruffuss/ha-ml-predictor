@@ -808,7 +808,7 @@ async def test_sprint3_end_to_end_modeling_pipeline():
 
     # Test model performance tracking
     assert len(ensemble.training_history) == 1
-    
+
     # Add some mock predictions to history for accuracy calculation
     mock_prediction_results = [
         (datetime.utcnow() - timedelta(hours=1), predictions[0]),
@@ -818,7 +818,7 @@ async def test_sprint3_end_to_end_modeling_pipeline():
         (datetime.utcnow() - timedelta(hours=5), predictions[4]),
     ]
     ensemble.prediction_history.extend(mock_prediction_results)
-    
+
     assert ensemble.get_prediction_accuracy() is not None
 
     # Test ensemble info

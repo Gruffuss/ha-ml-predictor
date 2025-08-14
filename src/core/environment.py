@@ -475,10 +475,10 @@ class EnvironmentManager:
     def validate_configuration(self, config: Dict[str, Any]) -> List[str]:
         """Validate configuration for current environment."""
         errors = []
-        
+
         # Validate configuration structure
         errors.extend(self._validate_config_structure(config))
-        
+
         # Check required secrets
         required_secrets = self.REQUIRED_SECRETS.get(self.current_environment, [])
         for secret_config in required_secrets:
@@ -500,26 +500,26 @@ class EnvironmentManager:
     def _validate_config_structure(self, config: Dict[str, Any]) -> List[str]:
         """Validate basic configuration structure."""
         errors = []
-        
+
         # Validate Home Assistant configuration
         ha_config = config.get("home_assistant", {})
         if not ha_config.get("url"):
             errors.append("Home Assistant URL is required")
         if not ha_config.get("token"):
             errors.append("Home Assistant token is required")
-            
-        # Validate database configuration  
+
+        # Validate database configuration
         db_config = config.get("database", {})
         if not db_config.get("connection_string"):
             errors.append("Database connection string is required")
         elif db_config.get("connection_string") == "invalid":
             errors.append("Database connection string is invalid")
-            
+
         # Validate MQTT configuration
         mqtt_config = config.get("mqtt", {})
         if not mqtt_config.get("broker"):
             errors.append("MQTT broker is required")
-            
+
         return errors
 
     def _validate_production_config(self, config: Dict[str, Any]) -> List[str]:

@@ -459,7 +459,9 @@ class HealthMonitor:
             self.component_health[check_name].consecutive_failures += 1
             self.component_health[check_name].error_count += 1
 
-        self.metrics_collector.record_error(f"health_check_{check_name}_failure", "health_monitor", "warning")
+        self.metrics_collector.record_error(
+            f"health_check_{check_name}_failure", "health_monitor", "warning"
+        )
 
     async def _check_system_resources(self) -> ComponentHealth:
         """Check system resource usage (CPU, memory, disk)."""
