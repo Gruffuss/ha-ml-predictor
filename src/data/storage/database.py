@@ -26,7 +26,6 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.pool import NullPool, QueuePool
 
 from src.core.config import DatabaseConfig, get_config
 from src.core.exceptions import (
@@ -103,7 +102,6 @@ class DatabaseManager:
             raise DatabaseConnectionError(
                 connection_string=self.config.connection_string,
                 cause=e,
-                severity=ErrorSeverity.CRITICAL,
             )
 
     async def _create_engine(self) -> None:
@@ -128,10 +126,12 @@ class DatabaseManager:
             "pool_pre_ping": True,  # Validate connections before use
         }
 
-        # Use QueuePool for production, NullPool for testing
-        if self.config.pool_size > 0:
-            engine_kwargs["poolclass"] = QueuePool
-        else:
+        # For async engines, don't specify poolclass - SQLAlchemy will use the correct async pool
+        # QueuePool is not compatible with async engines - SQLAlchemy will use AsyncAdaptedQueuePool automatically
+        if self.config.pool_size <= 0:
+            # Only set NullPool for testing scenarios
+            from sqlalchemy.pool import NullPool
+
             engine_kwargs["poolclass"] = NullPool
 
         self.engine = create_async_engine(**engine_kwargs)
@@ -265,7 +265,6 @@ class DatabaseManager:
                     raise DatabaseConnectionError(
                         connection_string=self.config.connection_string,
                         cause=e,
-                        severity=ErrorSeverity.HIGH,
                     )
 
                 # Exponential backoff

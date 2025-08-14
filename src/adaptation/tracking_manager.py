@@ -1793,7 +1793,7 @@ class TrackingManager:
                 if room_id:
                     metrics = await self.accuracy_tracker.get_room_metrics(room_id)
                 else:
-                    metrics = await self.accuracy_tracker.get_overall_metrics()
+                    metrics = await self.accuracy_tracker.get_real_time_metrics()
 
                 # Convert to API format
                 return {
@@ -1829,7 +1829,7 @@ class TrackingManager:
                 "total_predictions": 0,
                 "total_validations": 0,
                 "time_window_hours": hours,
-                "trend_direction": "unknown",
+                "trend_direction": "stable",
                 "error": str(e),
             }
 

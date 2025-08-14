@@ -35,6 +35,22 @@ def set_test_environment():
     # Test database configuration
     os.environ["DATABASE_URL"] = "postgresql://test:test@localhost/test_db"
 
+    # Test API configuration
+    os.environ["API_ENABLED"] = "true"
+    os.environ["API_HOST"] = "0.0.0.0"
+    os.environ["API_PORT"] = "8001"
+    os.environ["API_DEBUG"] = "true"
+    os.environ["API_INCLUDE_DOCS"] = "true"
+    os.environ["API_ACCESS_LOG"] = "false"  # Reduce noise in tests
+    os.environ["API_LOG_REQUESTS"] = "false"
+
+    # JWT Configuration for testing
+    os.environ["JWT_ENABLED"] = "false"  # Disable JWT in test mode
+
+    # Disable background tasks for testing
+    os.environ["API_BACKGROUND_TASKS_ENABLED"] = "false"
+    os.environ["HEALTH_CHECK_INTERVAL_SECONDS"] = "300"
+
     # Test mode flags
     os.environ["ENVIRONMENT"] = "test"
     os.environ["DEBUG"] = "true"

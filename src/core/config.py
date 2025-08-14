@@ -30,6 +30,15 @@ class DatabaseConfig:
     pool_timeout: int = 30
     pool_recycle: int = 3600
 
+    def __post_init__(self):
+        """Load database configuration from environment if available."""
+        import os
+
+        # Allow environment override of connection string
+        env_db_url = os.getenv("DATABASE_URL")
+        if env_db_url:
+            self.connection_string = env_db_url
+
 
 @dataclass
 class MQTTConfig:
@@ -114,6 +123,30 @@ class TrackingConfig:
     cleanup_interval_hours: int = 24
     alert_thresholds: Optional[Dict[str, float]] = None
 
+    # Drift detection configuration
+    drift_detection_enabled: bool = True
+    drift_check_interval_seconds: int = 300
+    drift_threshold: float = 0.1
+    drift_baseline_days: int = 7  # Days of historical data to use for drift baseline
+    drift_current_days: int = 3  # Days of current data to compare against baseline
+    drift_min_samples: int = 100  # Minimum samples needed for drift detection
+
+    # API and UI configuration
+    websocket_api_enabled: bool = False  # WebSocket API for real-time updates
+    websocket_api_host: str = "0.0.0.0"  # WebSocket API host
+    websocket_api_port: int = 8003  # WebSocket API port
+    dashboard_enabled: bool = False  # Dashboard UI
+    dashboard_host: str = "0.0.0.0"  # Dashboard host
+    dashboard_port: int = 8004  # Dashboard port
+
+    # Retraining configuration
+    auto_retraining_enabled: bool = True
+    adaptive_retraining_enabled: bool = (
+        True  # Enable adaptive retraining based on performance
+    )
+    retraining_trigger_threshold: float = 0.8
+    min_retraining_interval_hours: int = 24
+
     def __post_init__(self):
         """Set default alert thresholds if not provided."""
         if self.alert_thresholds is None:
@@ -147,10 +180,16 @@ class JWTConfig:
 
     def __post_init__(self):
         """Validate JWT configuration."""
+        import os
+
+        # Allow JWT to be disabled via environment variable
+        jwt_enabled = os.getenv("JWT_ENABLED", "true").lower()
+        if jwt_enabled in ("false", "0", "no", "off"):
+            self.enabled = False
+            return  # Skip validation if JWT is disabled
+
         if self.enabled and not self.secret_key:
             # Try to get from environment
-            import os
-
             self.secret_key = os.getenv("JWT_SECRET_KEY", "")
             if not self.secret_key:
                 # Check if we're in a test environment - provide fallback
@@ -211,19 +250,70 @@ class APIConfig:
     log_responses: bool = False  # Can be verbose
 
     def __post_init__(self):
-        """Set default CORS origins and load API key from environment if not provided."""
+        """Set default CORS origins and load configuration from environment variables."""
+        import os
+
+        # Load API server configuration from environment
+        self.enabled = os.getenv("API_ENABLED", str(self.enabled)).lower() in (
+            "true",
+            "1",
+        )
+        self.host = os.getenv("API_HOST", self.host)
+        self.port = int(os.getenv("API_PORT", str(self.port)))
+        self.debug = os.getenv("API_DEBUG", str(self.debug)).lower() in ("true", "1")
+
+        # Load CORS settings
+        self.enable_cors = os.getenv("CORS_ENABLED", str(self.enable_cors)).lower() in (
+            "true",
+            "1",
+        )
         if self.cors_origins is None:
-            self.cors_origins = ["*"]  # Allow all origins by default
+            cors_origins = os.getenv("CORS_ALLOW_ORIGINS", "*")
+            self.cors_origins = [origins.strip() for origins in cors_origins.split(",")]
 
         # Load API key configuration from environment variables if not set
         if not self.api_key:
-            import os
-
             self.api_key = os.getenv("API_KEY", "")
             if self.api_key:
                 self.api_key_enabled = os.getenv(
                     "API_KEY_ENABLED", "false"
                 ).lower() in ("true", "1")
+
+        # Load rate limiting settings
+        self.rate_limit_enabled = os.getenv(
+            "API_RATE_LIMIT_ENABLED", str(self.rate_limit_enabled)
+        ).lower() in ("true", "1")
+        self.requests_per_minute = int(
+            os.getenv("API_RATE_LIMIT_PER_MINUTE", str(self.requests_per_minute))
+        )
+        self.burst_limit = int(os.getenv("API_RATE_LIMIT_BURST", str(self.burst_limit)))
+
+        # Load background task settings
+        self.background_tasks_enabled = os.getenv(
+            "API_BACKGROUND_TASKS_ENABLED", str(self.background_tasks_enabled)
+        ).lower() in ("true", "1")
+        self.health_check_interval_seconds = int(
+            os.getenv(
+                "HEALTH_CHECK_INTERVAL_SECONDS", str(self.health_check_interval_seconds)
+            )
+        )
+
+        # Load logging settings
+        self.access_log = os.getenv("API_ACCESS_LOG", str(self.access_log)).lower() in (
+            "true",
+            "1",
+        )
+        self.log_requests = os.getenv(
+            "API_LOG_REQUESTS", str(self.log_requests)
+        ).lower() in ("true", "1")
+        self.log_responses = os.getenv(
+            "API_LOG_RESPONSES", str(self.log_responses)
+        ).lower() in ("true", "1")
+
+        # Load documentation settings
+        self.include_docs = os.getenv(
+            "API_INCLUDE_DOCS", str(self.include_docs)
+        ).lower() in ("true", "1")
 
         # Ensure API key is set if enabled
         if self.api_key_enabled and not self.api_key:

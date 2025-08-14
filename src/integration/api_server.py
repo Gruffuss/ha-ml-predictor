@@ -17,7 +17,7 @@ Features:
 
 import asyncio
 from contextlib import asynccontextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 import logging
 import os
@@ -211,6 +211,13 @@ class ErrorResponse(BaseModel):
     details: Optional[Dict[str, Any]]
     timestamp: datetime
     request_id: Optional[str]
+
+    def dict(self, **kwargs):
+        """Override dict method to handle datetime serialization."""
+        result = super().dict(**kwargs)
+        if "timestamp" in result and isinstance(result["timestamp"], datetime):
+            result["timestamp"] = result["timestamp"].isoformat()
+        return result
 
 
 # Rate Limiting
@@ -758,11 +765,13 @@ async def health_check():
         mqtt_health = {"status": "unknown"}
         try:
             mqtt_manager = await get_mqtt_manager()
-            mqtt_stats = await mqtt_manager.get_integration_stats()
+            mqtt_stats = mqtt_manager.get_integration_stats()
             mqtt_health = {
-                "status": ("healthy" if mqtt_stats.mqtt_connected else "degraded"),
-                "connected": mqtt_stats.mqtt_connected,
-                "predictions_published": mqtt_stats.predictions_published,
+                "status": (
+                    "healthy" if mqtt_stats.get("mqtt_connected", False) else "degraded"
+                ),
+                "connected": mqtt_stats.get("mqtt_connected", False),
+                "predictions_published": mqtt_stats.get("predictions_published", 0),
             }
         except Exception as e:
             mqtt_health = {"status": "error", "error": str(e)}
@@ -1360,7 +1369,7 @@ async def get_system_stats(
         db_health = await db_manager.health_check()
 
         mqtt_manager = await get_mqtt_manager()
-        mqtt_stats = await mqtt_manager.get_integration_stats()
+        mqtt_stats = mqtt_manager.get_integration_stats()
 
         tracking_manager = await get_tracking_manager()
         tracking_stats = await tracking_manager.get_system_stats()
@@ -1381,7 +1390,7 @@ async def get_system_stats(
                     "completed_retraining_jobs", 0
                 ),
             },
-            mqtt_stats=asdict(mqtt_stats),
+            mqtt_stats=mqtt_stats,
             database_stats=db_health,
             tracking_stats=tracking_stats["tracking_stats"],
         )
