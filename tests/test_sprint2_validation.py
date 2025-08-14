@@ -78,13 +78,17 @@ def test_sprint2_sequential_extractor_structure():
     from tests.conftest import test_system_config
 
     # Create mock config for testing
+    from src.core.config import HomeAssistantConfig, DatabaseConfig, MQTTConfig, PredictionConfig, FeaturesConfig, LoggingConfig, TrackingConfig, APIConfig
+    
     mock_config = SystemConfig(
-        home_assistant={"url": "http://test", "token": "test"},
-        database={"connection_string": "test"},
-        mqtt={"broker": "test"},
-        prediction={"interval_seconds": 300},
-        features={"lookback_hours": 24},
-        logging={"level": "INFO"},
+        home_assistant=HomeAssistantConfig(url="http://test", token="test"),
+        database=DatabaseConfig(connection_string="test"),
+        mqtt=MQTTConfig(broker="test"),
+        prediction=PredictionConfig(interval_seconds=300),
+        features=FeaturesConfig(lookback_hours=24),
+        logging=LoggingConfig(level="INFO"),
+        tracking=TrackingConfig(enabled=False),
+        api=APIConfig(enabled=False, host="localhost", port=8000),
         rooms={},
     )
 

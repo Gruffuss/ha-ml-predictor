@@ -31,11 +31,7 @@ import weakref
 
 from pydantic import BaseModel, Field
 
-try:
-    from pydantic import validator
-except ImportError:
-    # For Pydantic v2 compatibility
-    from pydantic import field_validator as validator
+from pydantic import field_validator
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse, PlainTextResponse
@@ -137,7 +133,8 @@ class ClientAuthRequest(BaseModel):
     capabilities: List[str] = Field(default_factory=list)
     room_filters: List[str] = Field(default_factory=list)
 
-    @validator("api_key")
+    @field_validator("api_key")
+    @classmethod
     def validate_api_key(cls, v):
         """Validate API key format."""
         if v and len(v) < 10:

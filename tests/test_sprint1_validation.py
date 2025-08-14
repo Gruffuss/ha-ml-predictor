@@ -369,7 +369,7 @@ def test_sprint1_end_to_end_workflow():
     assert ha_event.is_valid()
     assert ha_event.entity_id == "binary_sensor.e2e_test"
     assert ha_event.state == "on"
-    assert ha_event.previous_state == "of"
+    assert ha_event.previous_state == "off"
 
     # 2. Model instantiation validation
     sensor_event = SensorEvent(

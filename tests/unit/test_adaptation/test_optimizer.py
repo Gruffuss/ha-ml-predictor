@@ -116,9 +116,11 @@ def mock_base_predictor():
         return TrainingResult(
             success=True,
             training_time_seconds=np.random.uniform(1, 5),
+            model_version="v1.0",
+            training_samples=1000,
             validation_score=final_score,
             training_score=final_score + 0.05,
-            model_metrics={"accuracy": final_score},
+            training_metrics={"accuracy": final_score},
         )
 
     predictor.train = AsyncMock(side_effect=mock_train)

@@ -245,7 +245,7 @@ class TestConceptDriftDetector:
 
             assert drift_metrics.room_id == room_id
             assert drift_metrics.accuracy_degradation == 10.0  # 20 - 10
-            assert drift_metrics.confidence_calibration_drift == 0.2  # |0.6 - 0.8|
+            assert abs(drift_metrics.confidence_calibration_drift - 0.2) < 1e-10  # |0.6 - 0.8|
 
     @pytest.mark.asyncio
     async def test_numerical_feature_drift_test(self, drift_detector):
@@ -283,7 +283,7 @@ class TestConceptDriftDetector:
         assert drift_result.p_value < 0.05  # Should detect significant drift
         assert drift_result.drift_detected
         assert "mode" in drift_result.baseline_stats
-        assert "unique_values" in drift_result.baseline_stats
+        assert "unique_count" in drift_result.baseline_stats
 
     def test_numerical_psi_calculation(self, drift_detector):
         """Test Population Stability Index calculation for numerical features."""

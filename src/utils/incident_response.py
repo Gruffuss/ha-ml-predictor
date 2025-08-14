@@ -360,7 +360,7 @@ class IncidentResponseManager:
         self.health_monitor.add_incident_callback(self._handle_health_incident)
 
         # Record startup
-        self.metrics_collector.increment("incident_response_starts_total")
+        self.metrics_collector.record_error("startup", "incident_response", "info")
 
     async def stop_incident_response(self):
         """Stop automated incident response monitoring."""
@@ -378,7 +378,7 @@ class IncidentResponseManager:
                 pass
 
         # Record shutdown
-        self.metrics_collector.increment("incident_response_stops_total")
+        self.metrics_collector.record_error("shutdown", "incident_response", "info")
 
     async def _response_loop(self):
         """Main incident response loop."""

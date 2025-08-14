@@ -478,7 +478,7 @@ async def test_sprint3_ensemble_training():
 
     # Check ensemble-specific metrics
     assert "base_model_count" in result.training_metrics
-    assert result.training_metrics["base_model_count"] == 3
+    assert result.training_metrics["base_model_count"] == 4
     assert "model_weights" in result.training_metrics
     assert "base_model_performance" in result.training_metrics
 
@@ -491,7 +491,7 @@ async def test_sprint3_ensemble_training():
     info = ensemble.get_ensemble_info()
     assert info["ensemble_type"] == "stacking"
     assert info["is_trained"] is True
-    assert len(info["base_models"]) == 3
+    assert len(info["base_models"]) == 4
 
     # Test ensemble prediction
     predictions = await ensemble.predict(
@@ -808,6 +808,17 @@ async def test_sprint3_end_to_end_modeling_pipeline():
 
     # Test model performance tracking
     assert len(ensemble.training_history) == 1
+    
+    # Add some mock predictions to history for accuracy calculation
+    mock_prediction_results = [
+        (datetime.utcnow() - timedelta(hours=1), predictions[0]),
+        (datetime.utcnow() - timedelta(hours=2), predictions[1]),
+        (datetime.utcnow() - timedelta(hours=3), predictions[2]),
+        (datetime.utcnow() - timedelta(hours=4), predictions[3]),
+        (datetime.utcnow() - timedelta(hours=5), predictions[4]),
+    ]
+    ensemble.prediction_history.extend(mock_prediction_results)
+    
     assert ensemble.get_prediction_accuracy() is not None
 
     # Test ensemble info

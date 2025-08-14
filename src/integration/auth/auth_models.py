@@ -8,7 +8,7 @@ and user representations used throughout the authentication system.
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class AuthUser(BaseModel):
@@ -26,7 +26,8 @@ class AuthUser(BaseModel):
         default_factory=datetime.utcnow, description="Account creation time"
     )
 
-    @validator("permissions")
+    @field_validator("permissions")
+    @classmethod
     def validate_permissions(cls, v):
         """Validate permission strings."""
         valid_permissions = {
@@ -46,7 +47,8 @@ class AuthUser(BaseModel):
 
         return v
 
-    @validator("roles")
+    @field_validator("roles")
+    @classmethod
     def validate_roles(cls, v):
         """Validate role strings."""
         valid_roles = {"user", "admin", "operator", "viewer"}
@@ -86,7 +88,8 @@ class LoginRequest(BaseModel):
         False, description="Whether to issue long-lived refresh token"
     )
 
-    @validator("username")
+    @field_validator("username")
+    @classmethod
     def validate_username(cls, v):
         """Validate username format."""
         if not v.isalnum() and not all(c.isalnum() or c in "_-." for c in v):
@@ -95,7 +98,8 @@ class LoginRequest(BaseModel):
             )
         return v.lower()  # Normalize to lowercase
 
-    @validator("password")
+    @field_validator("password")
+    @classmethod
     def validate_password(cls, v):
         """Validate password strength."""
         if len(v) < 8:
@@ -150,7 +154,8 @@ class RefreshRequest(BaseModel):
 
     refresh_token: str = Field(..., description="Valid refresh token")
 
-    @validator("refresh_token")
+    @field_validator("refresh_token")
+    @classmethod
     def validate_refresh_token(cls, v):
         """Basic validation of refresh token format."""
         if not v or len(v) < 10:
@@ -205,14 +210,16 @@ class PasswordChangeRequest(BaseModel):
     )
     confirm_password: str = Field(..., description="Confirm new password")
 
-    @validator("confirm_password")
+    @field_validator("confirm_password")
+    @classmethod
     def passwords_match(cls, v, values):
         """Validate that passwords match."""
         if "new_password" in values and v != values["new_password"]:
             raise ValueError("Passwords do not match")
         return v
 
-    @validator("new_password")
+    @field_validator("new_password")
+    @classmethod
     def validate_new_password(cls, v):
         """Validate new password strength."""
         if len(v) < 8:
@@ -243,7 +250,8 @@ class UserCreateRequest(BaseModel):
     roles: List[str] = Field(default_factory=list, description="User roles")
     is_admin: bool = Field(False, description="Whether user has admin privileges")
 
-    @validator("email")
+    @field_validator("email")
+    @classmethod
     def validate_email(cls, v):
         """Basic email validation."""
         import re
@@ -253,7 +261,8 @@ class UserCreateRequest(BaseModel):
             raise ValueError("Invalid email format")
         return v.lower()
 
-    @validator("username")
+    @field_validator("username")
+    @classmethod
     def validate_username(cls, v):
         """Validate username format."""
         if not v.isalnum() and not all(c.isalnum() or c in "_-." for c in v):

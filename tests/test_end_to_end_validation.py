@@ -414,7 +414,8 @@ class TestCompleteSystemWorkflow:
 
         # Request prediction through API
         with TestClient(system["api_app"]) as client:
-            response = client.get("/predictions/living_room")
+            headers = {"Authorization": "Bearer test_api_key_for_security_validation_testing"}
+            response = client.get("/predictions/living_room", headers=headers)
             assert response.status_code == 200
 
             data = response.json()

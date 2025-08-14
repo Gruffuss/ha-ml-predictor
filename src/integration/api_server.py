@@ -37,7 +37,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 import uvicorn
 
 if TYPE_CHECKING:
@@ -76,14 +76,16 @@ class PredictionResponse(BaseModel):
     alternatives: List[Dict[str, Any]] = []
     model_info: Dict[str, Any] = {}
 
-    @validator("transition_type")
+    @field_validator("transition_type")
+    @classmethod
     def validate_transition_type(cls, v):
         """Validate transition type is valid."""
         if v is not None and v not in ["occupied", "vacant"]:
             raise ValueError("Transition type must be 'occupied' or 'vacant'")
         return v
 
-    @validator("confidence")
+    @field_validator("confidence")
+    @classmethod
     def validate_confidence(cls, v):
         """Validate confidence is between 0 and 1."""
         if not (0.0 <= v <= 1.0):
@@ -114,28 +116,32 @@ class AccuracyMetricsResponse(BaseModel):
     time_window_hours: int
     trend_direction: str  # 'improving', 'stable', 'degrading'
 
-    @validator("accuracy_rate", "confidence_calibration")
+    @field_validator("accuracy_rate", "confidence_calibration")
+    @classmethod
     def validate_rate(cls, v):
         """Validate rates are between 0 and 1."""
         if not (0.0 <= v <= 1.0):
             raise ValueError("Rate must be between 0.0 and 1.0")
         return v
 
-    @validator("average_error_minutes")
+    @field_validator("average_error_minutes")
+    @classmethod
     def validate_average_error(cls, v):
         """Validate average error is non-negative."""
         if v < 0.0:
             raise ValueError("Average error minutes must be non-negative")
         return v
 
-    @validator("total_predictions", "total_validations", "time_window_hours")
+    @field_validator("total_predictions", "total_validations", "time_window_hours")
+    @classmethod
     def validate_counts(cls, v):
         """Validate counts are non-negative."""
         if v < 0:
             raise ValueError("Count values must be non-negative")
         return v
 
-    @validator("trend_direction")
+    @field_validator("trend_direction")
+    @classmethod
     def validate_trend_direction(cls, v):
         """Validate trend direction is valid."""
         valid_trends = {"improving", "stable", "degrading"}
@@ -156,7 +162,8 @@ class ManualRetrainRequest(BaseModel):
     strategy: str = Field("auto", pattern="^(auto|incremental|full|feature_refresh)$")
     reason: str = Field("manual_request", description="Reason for retraining")
 
-    @validator("room_id")
+    @field_validator("room_id")
+    @classmethod
     def validate_room_id(cls, v):
         """Validate room_id exists in configuration."""
         if v is not None:
@@ -168,7 +175,8 @@ class ManualRetrainRequest(BaseModel):
                 raise ValueError(f"Room '{v}' not found in configuration")
         return v
 
-    @validator("strategy")
+    @field_validator("strategy")
+    @classmethod
     def validate_strategy(cls, v):
         """Validate strategy is supported."""
         valid_strategies = {"auto", "incremental", "full", "feature_refresh"}
@@ -176,7 +184,8 @@ class ManualRetrainRequest(BaseModel):
             raise ValueError(f"Strategy must be one of: {', '.join(valid_strategies)}")
         return v
 
-    @validator("reason")
+    @field_validator("reason")
+    @classmethod
     def validate_reason(cls, v):
         """Validate reason is not empty."""
         if not v or not v.strip():
