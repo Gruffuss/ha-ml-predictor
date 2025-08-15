@@ -1058,13 +1058,13 @@ class TestDataManagement:
         empty_X = pd.DataFrame()
         empty_y = pd.DataFrame()
 
-        is_valid = adaptive_retrainer._validate_training_data(empty_X, empty_y)
+        is_valid = await adaptive_retrainer._validate_training_data(empty_X, empty_y)
         assert not is_valid
 
         # Mismatched sizes
         mismatched_y = pd.DataFrame({"target": [0, 1]})  # Different size
 
-        is_valid = adaptive_retrainer._validate_training_data(valid_X, mismatched_y)
+        is_valid = await adaptive_retrainer._validate_training_data(valid_X, mismatched_y)
         assert not is_valid
 
 

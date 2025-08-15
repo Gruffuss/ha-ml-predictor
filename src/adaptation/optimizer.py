@@ -701,7 +701,7 @@ class ModelOptimizer:
             evaluations = 0
 
             for params in grid:
-                score = -objective_func(params)  # Convert from minimization
+                score = -(await objective_func(params))  # Convert from minimization
                 evaluations += 1
 
                 if score > best_score:
@@ -765,7 +765,7 @@ class ModelOptimizer:
                             params[name] = np.random.choice(param["categories"])
 
                 # Evaluate parameters
-                score = -objective_func(params)  # Convert from minimization
+                score = -(await objective_func(params))  # Convert from minimization
                 evaluations += 1
 
                 if score > best_score:

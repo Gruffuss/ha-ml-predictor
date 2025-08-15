@@ -1857,9 +1857,16 @@ class AdaptiveRetrainer:
         try:
             logger.info(f"Refreshing features for room {room_id}")
             
-            # This would normally trigger FeatureStore to recalculate features
-            # For now, simulate successful refresh
-            await asyncio.sleep(0.1)  # Simulate processing time
+            # Call the feature engineering engine if available
+            if self.feature_engineering_engine and hasattr(self.feature_engineering_engine, 'refresh_features'):
+                if hasattr(self.feature_engineering_engine.refresh_features, '__call__'):
+                    result = self.feature_engineering_engine.refresh_features(room_id)
+                    # Check if result is awaitable
+                    if hasattr(result, '__await__'):
+                        await result
+            else:
+                # Simulate successful refresh when no engine available
+                await asyncio.sleep(0.1)  # Simulate processing time
             
             logger.debug(f"Features refreshed for room {room_id}")
             return True
