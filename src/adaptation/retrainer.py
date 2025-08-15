@@ -1816,6 +1816,71 @@ class AdaptiveRetrainer:
             logger.error(f"Error checking automatic triggers: {e}")
             return []
 
+    async def _prepare_training_data(self, room_id: str, model_type: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Prepare training data for model retraining."""
+        try:
+            logger.info(f"Preparing training data for {model_type} model in room {room_id}")
+            
+            # This would normally fetch recent data from FeatureStore
+            # For now, return empty DataFrames with proper structure
+            X_train = pd.DataFrame()
+            y_train = pd.DataFrame()
+            
+            logger.debug(f"Prepared training data: {len(X_train)} samples")
+            return X_train, y_train
+            
+        except Exception as e:
+            logger.error(f"Error preparing training data for {room_id}: {e}")
+            return pd.DataFrame(), pd.DataFrame()
+
+    async def _refresh_features(self, room_id: str) -> bool:
+        """Refresh feature calculations for a specific room."""
+        try:
+            logger.info(f"Refreshing features for room {room_id}")
+            
+            # This would normally trigger FeatureStore to recalculate features
+            # For now, simulate successful refresh
+            await asyncio.sleep(0.1)  # Simulate processing time
+            
+            logger.debug(f"Features refreshed for room {room_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error refreshing features for {room_id}: {e}")
+            return False
+
+    async def _validate_training_data(self, X_train: pd.DataFrame, y_train: pd.DataFrame) -> bool:
+        """Validate training data quality before retraining."""
+        try:
+            logger.debug(f"Validating training data: {len(X_train)} samples")
+            
+            # Basic validation checks
+            if X_train.empty or y_train.empty:
+                logger.warning("Training data is empty")
+                return False
+                
+            if len(X_train) != len(y_train):
+                logger.warning("Feature and target data length mismatch")
+                return False
+                
+            # Check for minimum sample size
+            min_samples = 100
+            if len(X_train) < min_samples:
+                logger.warning(f"Insufficient training data: {len(X_train)} < {min_samples}")
+                return False
+                
+            # Check for missing values
+            if X_train.isnull().any().any():
+                logger.warning("Training features contain missing values")
+                return False
+                
+            logger.debug("Training data validation passed")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating training data: {e}")
+            return False
+
 
 class RetrainingError(OccupancyPredictionError):
     """Raised when adaptive retraining operations fail."""

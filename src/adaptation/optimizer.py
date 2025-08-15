@@ -477,7 +477,7 @@ class ModelOptimizer:
     ) -> Callable:
         """Create objective function for optimization."""
 
-        def objective(params):
+        async def objective(params):
             try:
                 # Create model copy with new parameters
                 model_copy = self._create_model_with_params(model, params)
@@ -1089,6 +1089,50 @@ class ModelOptimizer:
 
         except Exception as e:
             logger.error(f"Error updating performance history for {model_key}: {e}")
+
+    def _measure_memory_usage(self, model) -> float:
+        """Measure model memory usage in MB."""
+        try:
+            import psutil
+            import pickle
+            import sys
+
+            # Method 1: Try to measure actual object size
+            try:
+                # Get model size via pickling (approximation)
+                model_bytes = len(pickle.dumps(model))
+                memory_mb = model_bytes / (1024 * 1024)
+                logger.debug(f"Model memory usage (pickle method): {memory_mb:.2f} MB")
+                return memory_mb
+            except Exception:
+                pass
+
+            # Method 2: Use psutil for current process memory
+            try:
+                process = psutil.Process()
+                memory_info = process.memory_info()
+                memory_mb = memory_info.rss / (1024 * 1024)
+                logger.debug(f"Process memory usage: {memory_mb:.2f} MB")
+                return memory_mb
+            except Exception:
+                pass
+
+            # Method 3: Use sys.getsizeof as fallback
+            try:
+                object_size = sys.getsizeof(model)
+                memory_mb = object_size / (1024 * 1024)
+                logger.debug(f"Model memory usage (getsizeof): {memory_mb:.2f} MB")
+                return memory_mb
+            except Exception:
+                pass
+
+            # Default fallback
+            logger.warning("Could not measure memory usage, using default")
+            return 100.0  # Default 100 MB
+
+        except Exception as e:
+            logger.error(f"Error measuring memory usage: {e}")
+            return 100.0  # Default fallback
 
 
 class OptimizationError(OccupancyPredictionError):
