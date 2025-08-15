@@ -141,11 +141,26 @@ class DriftMetrics:
             self.temporal_pattern_drift * 0.5 + self.frequency_pattern_drift * 0.5
         )
 
-        self.overall_drift_score = (
+        # Calculate weighted overall score
+        calculated_score = (
             stat_score * stat_weight
             + perf_score * perf_weight
             + pattern_score * pattern_weight
         )
+
+        # Ensure minimum score if any significant indicators are present
+        if (
+            self.ph_drift_detected
+            or self.accuracy_degradation > 10.0
+            or self.ks_p_value < 0.05
+            or self.mw_p_value < 0.05
+            or self.psi_score > 0.1
+            or self.temporal_pattern_drift > 0.2
+            or self.frequency_pattern_drift > 0.2
+        ):
+            calculated_score = max(calculated_score, 0.1)  # Minimum detectable drift
+
+        self.overall_drift_score = calculated_score
 
     def _determine_drift_severity(self) -> None:
         """Determine drift severity based on overall score and specific indicators."""

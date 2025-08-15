@@ -5,7 +5,7 @@ This module provides FastAPI endpoints for user authentication, token management
 and user account operations.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 import logging
 from typing import Dict, List, Optional
@@ -52,7 +52,7 @@ USER_STORE = {
         "roles": ["admin"],
         "is_admin": True,
         "is_active": True,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
     },
     "operator": {
         "user_id": "operator",
@@ -63,7 +63,7 @@ USER_STORE = {
         "roles": ["operator"],
         "is_admin": False,
         "is_active": True,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
     },
     "viewer": {
         "user_id": "viewer",
@@ -74,7 +74,7 @@ USER_STORE = {
         "roles": ["viewer"],
         "is_admin": False,
         "is_active": True,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
     },
 }
 
@@ -142,8 +142,8 @@ async def login(
             roles=user_data.get("roles", []),
             is_admin=user_data.get("is_admin", False),
             is_active=user_data.get("is_active", True),
-            last_login=datetime.utcnow(),
-            created_at=user_data.get("created_at", datetime.utcnow()),
+            last_login=datetime.now(timezone.utc),
+            created_at=user_data.get("created_at", datetime.now(timezone.utc)),
         )
 
         # Generate tokens
@@ -163,7 +163,7 @@ async def login(
         jwt_manager.config.refresh_token_expire_days = original_refresh_days
 
         # Update last login time in user store
-        USER_STORE[user.username]["last_login"] = datetime.utcnow()
+        USER_STORE[user.username]["last_login"] = datetime.now(timezone.utc)
 
         # Log successful login
         client_ip = request.client.host if request.client else "unknown"
@@ -255,7 +255,7 @@ async def logout(
         return {
             "message": "Logout successful",
             "revoked_tokens": revoked_tokens,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     except Exception as e:
@@ -311,7 +311,7 @@ async def change_password(
 
         return {
             "message": "Password changed successfully",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     except HTTPException:
@@ -390,7 +390,7 @@ async def list_users(admin: AuthUser = Depends(require_admin())):
                 roles=user_data.get("roles", []),
                 is_admin=user_data.get("is_admin", False),
                 is_active=user_data.get("is_active", True),
-                created_at=user_data.get("created_at", datetime.utcnow()),
+                created_at=user_data.get("created_at", datetime.now(timezone.utc)),
             )
         )
 
@@ -427,7 +427,7 @@ async def create_user(
             "roles": user_request.roles,
             "is_admin": user_request.is_admin,
             "is_active": True,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
         }
 
         USER_STORE[user_request.username] = user_data
@@ -486,7 +486,7 @@ async def delete_user(username: str, admin: AuthUser = Depends(require_admin()))
 
         return {
             "message": f"User '{username}' deleted successfully",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     except HTTPException:

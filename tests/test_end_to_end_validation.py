@@ -20,7 +20,7 @@ Test Coverage:
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import time
 from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
@@ -184,7 +184,7 @@ class MockExternalServices:
             {
                 "topic": topic,
                 "payload": payload,
-                "timestamp": datetime.utcnow(),
+                "timestamp": datetime.now(timezone.utc),
                 "kwargs": kwargs,
             }
         )
@@ -197,7 +197,7 @@ class MockExternalServices:
                 self.websocket_messages.append(
                     {
                         "message": message,
-                        "timestamp": datetime.utcnow(),
+                        "timestamp": datetime.now(timezone.utc),
                         "path": path,
                     }
                 )
@@ -210,7 +210,7 @@ class MockExternalServices:
     def add_ha_event(self, entity_id: str, state: str, timestamp: datetime = None):
         """Add a Home Assistant event for testing."""
         if timestamp is None:
-            timestamp = datetime.utcnow()
+            timestamp = datetime.now(timezone.utc)
 
         event = HAEvent(
             entity_id=entity_id,
@@ -371,24 +371,30 @@ async def complete_system(e2e_system_config, e2e_room_configs, mock_external_ser
                                 )
                             )
 
-                            # Create API server
+                            # Create API server with tracking manager patch
                             set_tracking_manager(tracking_manager)
-                            app = create_app()
 
-                            yield {
-                                "tracking_manager": tracking_manager,
-                                "integration_manager": integration_manager,
-                                "api_app": app,
-                                "mock_tracking": mock_tracking,
-                                "mock_ha_client": ha_client,
-                                "mock_mqtt_client": mqtt_client,
-                                "mock_realtime": mock_realtime,
-                                "mock_enhanced_mqtt": mock_enhanced_mqtt,
-                                "external_services": mock_external_services,
-                            }
+                            # Patch get_tracking_manager to return our mock
+                            with patch(
+                                "src.integration.api_server.get_tracking_manager"
+                            ) as mock_get_tracking:
+                                mock_get_tracking.return_value = mock_tracking
+                                app = create_app()
 
-                            # Cleanup
-                            await integration_manager.shutdown()
+                                yield {
+                                    "tracking_manager": tracking_manager,
+                                    "integration_manager": integration_manager,
+                                    "api_app": app,
+                                    "mock_tracking": mock_tracking,
+                                    "mock_ha_client": ha_client,
+                                    "mock_mqtt_client": mqtt_client,
+                                    "mock_realtime": mock_realtime,
+                                    "mock_enhanced_mqtt": mock_enhanced_mqtt,
+                                    "external_services": mock_external_services,
+                                }
+
+                                # Cleanup
+                                await integration_manager.shutdown()
 
 
 class TestCompleteSystemWorkflow:
@@ -407,10 +413,10 @@ class TestCompleteSystemWorkflow:
 
         # Configure tracking manager to return prediction
         prediction_data = {
-            "room_id": "living_room",
-            "prediction_time": datetime.utcnow().isoformat(),
+            "room_id": "living_kitchen",
+            "prediction_time": datetime.now(timezone.utc).isoformat(),
             "next_transition_time": (
-                datetime.utcnow() + timedelta(minutes=30)
+                datetime.now(timezone.utc) + timedelta(minutes=30)
             ).isoformat(),
             "transition_type": "vacant_to_occupied",
             "confidence": 0.85,
@@ -425,7 +431,7 @@ class TestCompleteSystemWorkflow:
             headers = {
                 "Authorization": "Bearer test_api_key_for_security_validation_testing"
             }
-            response = client.get("/predictions/living_room", headers=headers)
+            response = client.get("/predictions/living_kitchen", headers=headers)
 
             if response.status_code != 200:
                 print(f"Response status: {response.status_code}")
@@ -434,7 +440,7 @@ class TestCompleteSystemWorkflow:
             assert response.status_code == 200
 
             data = response.json()
-            assert data["room_id"] == "living_room"
+            assert data["room_id"] == "living_kitchen"
             assert data["confidence"] == 0.85
             assert data["transition_type"] == "vacant_to_occupied"
 
@@ -449,7 +455,7 @@ class TestCompleteSystemWorkflow:
 
         prediction_data = {
             "room_id": "bedroom",
-            "prediction_time": datetime.utcnow().isoformat(),
+            "prediction_time": datetime.now(timezone.utc).isoformat(),
             "confidence": 0.78,
         }
 
@@ -530,9 +536,9 @@ class TestCompleteSystemWorkflow:
             prediction = room_predictions.get(room_id, {})
             prediction.update(
                 {
-                    "prediction_time": datetime.utcnow().isoformat(),
+                    "prediction_time": datetime.now(timezone.utc).isoformat(),
                     "next_transition_time": (
-                        datetime.utcnow() + timedelta(minutes=20)
+                        datetime.now(timezone.utc) + timedelta(minutes=20)
                     ).isoformat(),
                     "time_until_transition": "20 minutes",
                     "alternatives": [],
@@ -600,7 +606,7 @@ class TestRealTimeIntegration:
         status_data = {
             "system_health": "healthy",
             "active_predictions": 5,
-            "last_update": datetime.utcnow().isoformat(),
+            "last_update": datetime.now(timezone.utc).isoformat(),
         }
 
         await mock_enhanced_mqtt.publish_system_status(**status_data)
@@ -621,7 +627,7 @@ class TestSystemPerformanceAndScaling:
         # Configure prediction response
         prediction_data = {
             "room_id": "test_room",
-            "prediction_time": datetime.utcnow().isoformat(),
+            "prediction_time": datetime.now(timezone.utc).isoformat(),
             "confidence": 0.85,
             "transition_type": "occupied_to_vacant",
         }
@@ -730,7 +736,7 @@ class TestErrorPropagationAndRecovery:
                 raise Exception("Temporary tracking failure")
             return {
                 "room_id": room_id,
-                "prediction_time": datetime.utcnow().isoformat(),
+                "prediction_time": datetime.now(timezone.utc).isoformat(),
                 "confidence": 0.85,
             }
 
@@ -898,7 +904,7 @@ class TestMetricsAndMonitoring:
             },
             "retraining_stats": {
                 "completed_retraining_jobs": 5,
-                "last_retrain_time": datetime.utcnow().isoformat(),
+                "last_retrain_time": datetime.now(timezone.utc).isoformat(),
                 "average_retrain_duration_minutes": 15,
             },
         }
@@ -981,7 +987,7 @@ class TestPerformanceBenchmarks:
         mock_tracking.get_room_prediction.return_value = {
             "room_id": "living_room",
             "confidence": 0.85,
-            "prediction_time": datetime.utcnow().isoformat(),
+            "prediction_time": datetime.now(timezone.utc).isoformat(),
         }
 
         with TestClient(system["api_app"]) as client:
@@ -1006,7 +1012,7 @@ class TestPerformanceBenchmarks:
         mock_tracking.get_room_prediction.return_value = {
             "room_id": "test_room",
             "confidence": 0.85,
-            "prediction_time": datetime.utcnow().isoformat(),
+            "prediction_time": datetime.now(timezone.utc).isoformat(),
         }
 
         # Test throughput with multiple concurrent requests

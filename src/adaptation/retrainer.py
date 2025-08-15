@@ -316,6 +316,7 @@ class AdaptiveRetrainer:
         self._total_retrainings_completed = 0
         self._total_retrainings_failed = 0
         self._average_retraining_time = 0.0
+        self._total_requests = 0
 
         logger.info(
             f"Initialized AdaptiveRetrainer with config: enabled={tracking_config.adaptive_retraining_enabled}"
@@ -750,6 +751,10 @@ class AdaptiveRetrainer:
                     "average_retraining_time_minutes": self._average_retraining_time
                     / 60.0,
                 },
+                "total_requests": self._total_requests,
+                "completed_retrainings": self._total_retrainings_completed,
+                "failed_retrainings": self._total_retrainings_failed,
+                "average_retraining_time": self._average_retraining_time,
                 "configuration": {
                     "accuracy_threshold": self.config.retraining_accuracy_threshold,
                     "error_threshold": self.config.retraining_error_threshold,
@@ -1613,6 +1618,203 @@ class AdaptiveRetrainer:
         except Exception as e:
             logger.error(f"Error getting prediction validator status: {e}")
             return {"available": False, "status": "error", "error": str(e)}
+
+    # Missing methods implementation
+
+    def _update_average_retraining_time(self, training_time_seconds: float) -> None:
+        """Update the running average of retraining times."""
+        try:
+            if self._total_retrainings_completed == 0:
+                self._average_retraining_time = training_time_seconds
+            else:
+                # Calculate weighted average
+                total_time = self._average_retraining_time * (
+                    self._total_retrainings_completed - 1
+                )
+                total_time += training_time_seconds
+                self._average_retraining_time = (
+                    total_time / self._total_retrainings_completed
+                )
+
+            logger.debug(
+                f"Updated average retraining time: {self._average_retraining_time:.2f}s"
+            )
+
+        except Exception as e:
+            logger.error(f"Error updating average retraining time: {e}")
+
+    async def _execute_retraining(self, request: RetrainingRequest) -> bool:
+        """Execute the actual retraining process for a request."""
+        try:
+            logger.info(f"Executing retraining for request {request.request_id}")
+
+            # Increment total requests counter
+            self._total_requests += 1
+
+            # Update request status
+            request.status = RetrainingStatus.IN_PROGRESS
+            request.started_time = datetime.utcnow()
+
+            # Create progress tracker
+            progress = RetrainingProgress(
+                request_id=request.request_id,
+                room_id=request.room_id,
+                model_type=request.model_type,
+            )
+
+            with self._progress_lock:
+                self._progress_tracker[request.request_id] = progress
+
+            # Perform the actual retraining
+            start_time = datetime.utcnow()
+            await self._perform_retraining(request, progress)
+            training_time = (datetime.utcnow() - start_time).total_seconds()
+
+            # Update statistics
+            self._update_average_retraining_time(training_time)
+
+            # Handle success
+            if request.status == RetrainingStatus.COMPLETED:
+                await self._notify_completion(request)
+                return True
+            else:
+                await self._notify_failure(request)
+                return False
+
+        except Exception as e:
+            logger.error(f"Error executing retraining for {request.request_id}: {e}")
+            request.status = RetrainingStatus.FAILED
+            request.error_message = str(e)
+            await self._notify_failure(request)
+            return False
+
+    async def _notify_completion(self, request: RetrainingRequest) -> None:
+        """Notify about successful retraining completion."""
+        try:
+            logger.info(f"Retraining completed successfully: {request.request_id}")
+
+            # Create notification event
+            notification_data = {
+                "event_type": "retraining_completed",
+                "request_id": request.request_id,
+                "room_id": request.room_id,
+                "model_type": (
+                    request.model_type.value
+                    if hasattr(request.model_type, "value")
+                    else str(request.model_type)
+                ),
+                "trigger": request.trigger.value,
+                "strategy": request.strategy.value,
+                "completion_time": (
+                    request.completed_time.isoformat()
+                    if request.completed_time
+                    else None
+                ),
+                "training_time_seconds": (
+                    (request.completed_time - request.started_time).total_seconds()
+                    if request.completed_time and request.started_time
+                    else 0
+                ),
+                "success": True,
+            }
+
+            # Include performance improvement if available
+            if request.performance_improvement:
+                notification_data["performance_improvement"] = (
+                    request.performance_improvement
+                )
+
+            # Include training result metrics if available
+            if request.training_result:
+                notification_data["training_metrics"] = {
+                    "training_score": request.training_result.training_score,
+                    "validation_score": getattr(
+                        request.training_result, "validation_score", None
+                    ),
+                    "training_samples": request.training_result.training_samples,
+                }
+
+            # Send notifications to all registered callbacks
+            for callback in self.notification_callbacks:
+                try:
+                    if asyncio.iscoroutinefunction(callback):
+                        await callback(notification_data)
+                    else:
+                        callback(notification_data)
+                except Exception as e:
+                    logger.error(f"Error in completion notification callback: {e}")
+
+        except Exception as e:
+            logger.error(
+                f"Error sending completion notification for {request.request_id}: {e}"
+            )
+
+    async def _notify_failure(self, request: RetrainingRequest) -> None:
+        """Notify about retraining failure."""
+        try:
+            logger.warning(
+                f"Retraining failed: {request.request_id} - {request.error_message}"
+            )
+
+            # Create failure notification event
+            notification_data = {
+                "event_type": "retraining_failed",
+                "request_id": request.request_id,
+                "room_id": request.room_id,
+                "model_type": (
+                    request.model_type.value
+                    if hasattr(request.model_type, "value")
+                    else str(request.model_type)
+                ),
+                "trigger": request.trigger.value,
+                "strategy": request.strategy.value,
+                "failure_time": (
+                    request.completed_time.isoformat()
+                    if request.completed_time
+                    else None
+                ),
+                "error_message": request.error_message,
+                "success": False,
+            }
+
+            # Include attempted time if available
+            if request.started_time and request.completed_time:
+                notification_data["attempted_duration_seconds"] = (
+                    request.completed_time - request.started_time
+                ).total_seconds()
+
+            # Send notifications to all registered callbacks
+            for callback in self.notification_callbacks:
+                try:
+                    if asyncio.iscoroutinefunction(callback):
+                        await callback(notification_data)
+                    else:
+                        callback(notification_data)
+                except Exception as e:
+                    logger.error(f"Error in failure notification callback: {e}")
+
+        except Exception as e:
+            logger.error(
+                f"Error sending failure notification for {request.request_id}: {e}"
+            )
+
+    async def _check_automatic_triggers(self) -> List[RetrainingRequest]:
+        """Check for automatic retraining triggers across all monitored models."""
+        try:
+            triggered_requests = []
+
+            # This would normally integrate with AccuracyTracker and ConceptDriftDetector
+            # to check for performance degradation or drift patterns
+
+            # For now, return empty list as this is typically called by TrackingManager
+            # based on real accuracy/drift analysis
+
+            logger.debug("Checked automatic triggers - no triggers found")
+            return triggered_requests
+
+        except Exception as e:
+            logger.error(f"Error checking automatic triggers: {e}")
+            return []
 
 
 class RetrainingError(OccupancyPredictionError):

@@ -1191,6 +1191,7 @@ async def stop_incident_response():
 @app.get("/predictions/{room_id}", response_model=PredictionResponse)
 async def get_room_prediction(
     room_id: str,
+    _: bool = Depends(verify_api_key),
     __: bool = Depends(check_rate_limit),
 ):
     """Get current prediction for a specific room."""
