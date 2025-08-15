@@ -485,6 +485,9 @@ class ModelOptimizer:
                 # Train model (for testing, we'll use mock results)
                 if hasattr(model_copy, "train"):
                     training_result = model_copy.train(X_train, y_train, X_val, y_val)
+                    # Check if result is a coroutine and await it
+                    if hasattr(training_result, "__await__"):
+                        training_result = await training_result
                 else:
                     # Mock training result for testing
                     from ..models.base.predictor import TrainingResult

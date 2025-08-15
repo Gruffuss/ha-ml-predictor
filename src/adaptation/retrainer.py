@@ -1816,22 +1816,41 @@ class AdaptiveRetrainer:
             logger.error(f"Error checking automatic triggers: {e}")
             return []
 
-    async def _prepare_training_data(self, room_id: str, model_type: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    async def _prepare_training_data(
+        self, 
+        room_id: str, 
+        lookback_days: int = 14, 
+        validation_split: float = 0.2,
+        feature_refresh: bool = True
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Prepare training data for model retraining."""
         try:
-            logger.info(f"Preparing training data for {model_type} model in room {room_id}")
+            logger.info(f"Preparing training data for room {room_id} with {lookback_days} days lookback")
             
             # This would normally fetch recent data from FeatureStore
             # For now, return empty DataFrames with proper structure
-            X_train = pd.DataFrame()
-            y_train = pd.DataFrame()
             
-            logger.debug(f"Prepared training data: {len(X_train)} samples")
-            return X_train, y_train
+            if feature_refresh:
+                await self._refresh_features(room_id)
+            
+            # Create mock training data with proper split
+            total_samples = 100
+            X_data = pd.DataFrame(np.random.randn(total_samples, 10))
+            y_data = pd.DataFrame(np.random.randint(0, 2, (total_samples, 1)))
+            
+            # Split into train/validation
+            from sklearn.model_selection import train_test_split
+            X_train, X_val, y_train, y_val = train_test_split(
+                X_data, y_data, test_size=validation_split, random_state=42
+            )
+            
+            logger.debug(f"Prepared training data: {len(X_train)} train, {len(X_val)} validation samples")
+            return X_train, X_val, y_train, y_val
             
         except Exception as e:
             logger.error(f"Error preparing training data for {room_id}: {e}")
-            return pd.DataFrame(), pd.DataFrame()
+            empty_df = pd.DataFrame()
+            return empty_df, empty_df, empty_df, empty_df
 
     async def _refresh_features(self, room_id: str) -> bool:
         """Refresh feature calculations for a specific room."""
