@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import pytest_asyncio
 import websockets
 
 from src.adaptation.drift_detector import (
@@ -71,7 +72,7 @@ from src.models.base.predictor import PredictionResult
 logger = logging.getLogger(__name__)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def mock_database_manager():
     """Mock database manager for testing."""
     mock_db = AsyncMock()
@@ -81,7 +82,7 @@ async def mock_database_manager():
     return mock_db
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def mock_model_registry():
     """Mock model registry with test models."""
     return {
@@ -91,7 +92,7 @@ async def mock_model_registry():
     }
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def mock_feature_engine():
     """Mock feature engineering engine."""
     mock_engine = AsyncMock()
@@ -103,7 +104,7 @@ async def mock_feature_engine():
     return mock_engine
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def tracking_config():
     """Standard tracking configuration for tests."""
     return TrackingConfig(
@@ -120,7 +121,7 @@ async def tracking_config():
     )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def dashboard_config():
     """Dashboard configuration for tests."""
     return DashboardConfig(
@@ -134,13 +135,13 @@ async def dashboard_config():
     )
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def prediction_validator():
     """Initialized prediction validator."""
     return PredictionValidator(accuracy_threshold_minutes=15)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def integrated_tracking_system(
     tracking_config,
     mock_database_manager,
@@ -174,7 +175,7 @@ async def integrated_tracking_system(
     await tracking_manager.stop_tracking()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def performance_dashboard(dashboard_config, integrated_tracking_system):
     """Performance dashboard integrated with tracking system."""
     dashboard = PerformanceDashboard(

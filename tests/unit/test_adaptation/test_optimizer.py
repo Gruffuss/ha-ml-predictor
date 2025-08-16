@@ -283,7 +283,7 @@ class TestOptimizationStrategies:
             # Verify optimization completed
             assert isinstance(result, OptimizationResult)
             assert result.success or result.error_message is not None
-            
+
             # If Bayesian optimization fails due to missing scikit-optimize, that's acceptable
             if result.error_message and "scikit-optimize" in result.error_message:
                 assert result.total_evaluations == 0  # Expected for missing dependency

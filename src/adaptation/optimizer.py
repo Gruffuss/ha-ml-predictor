@@ -1096,9 +1096,10 @@ class ModelOptimizer:
     def _measure_memory_usage(self, model) -> float:
         """Measure model memory usage in MB."""
         try:
-            import psutil
             import pickle
             import sys
+
+            import psutil
 
             # Method 1: Try to measure actual object size
             try:

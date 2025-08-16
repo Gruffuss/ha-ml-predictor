@@ -526,7 +526,11 @@ class AdaptiveRetrainer:
             Request ID for tracking
         """
         try:
-            model_key = f"{room_id}_{model_type.value}"
+            # Handle both enum and string model types
+            model_type_str = (
+                model_type.value if hasattr(model_type, "value") else str(model_type)
+            )
+            model_key = f"{room_id}_{model_type_str}"
             request_id = f"{model_key}_manual_{int(datetime.utcnow().timestamp())}"
 
             # Auto-select strategy if not provided
@@ -566,8 +570,12 @@ class AdaptiveRetrainer:
             return request_id
 
         except Exception as e:
+            # Handle both enum and string model types
+            model_type_str = (
+                model_type.value if hasattr(model_type, "value") else str(model_type)
+            )
             logger.error(
-                f"Failed to request retraining for {room_id}_{model_type.value}: {e}"
+                f"Failed to request retraining for {room_id}_{model_type_str}: {e}"
             )
             raise RetrainingError("Failed to request retraining", cause=e)
 
@@ -649,6 +657,12 @@ class AdaptiveRetrainer:
         except Exception as e:
             logger.error(f"Failed to get retraining status: {e}")
             return {"error": str(e)}
+
+    async def get_retraining_progress(
+        self, request_id: Optional[str] = None
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        """Alias for get_retraining_status for backward compatibility."""
+        return await self.get_retraining_status(request_id)
 
     async def cancel_retraining(self, request_id: str) -> bool:
         """
@@ -1643,7 +1657,13 @@ class AdaptiveRetrainer:
         except Exception as e:
             logger.error(f"Error updating average retraining time: {e}")
 
-    async def _execute_retraining(self, request: RetrainingRequest) -> bool:
+    def _can_start_retraining(self) -> bool:
+        """Check if a new retraining can be started based on concurrent limits."""
+        return self._active_retraining_count < self.config.max_concurrent_retrains
+
+    async def _execute_retraining(
+        self, request: RetrainingRequest
+    ) -> RetrainingRequest:
         """Execute the actual retraining process for a request."""
         try:
             logger.info(f"Executing retraining for request {request.request_id}")
@@ -1676,17 +1696,17 @@ class AdaptiveRetrainer:
             # Handle success
             if request.status == RetrainingStatus.COMPLETED:
                 await self._notify_completion(request)
-                return True
+                return request
             else:
                 await self._notify_failure(request)
-                return False
+                return request
 
         except Exception as e:
             logger.error(f"Error executing retraining for {request.request_id}: {e}")
             request.status = RetrainingStatus.FAILED
             request.error_message = str(e)
             await self._notify_failure(request)
-            return False
+            return request
 
     async def _notify_completion(self, request: RetrainingRequest) -> None:
         """Notify about successful retraining completion."""
@@ -1817,36 +1837,41 @@ class AdaptiveRetrainer:
             return []
 
     async def _prepare_training_data(
-        self, 
-        room_id: str, 
-        lookback_days: int = 14, 
+        self,
+        room_id: str,
+        lookback_days: int = 14,
         validation_split: float = 0.2,
-        feature_refresh: bool = True
+        feature_refresh: bool = True,
     ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         """Prepare training data for model retraining."""
         try:
-            logger.info(f"Preparing training data for room {room_id} with {lookback_days} days lookback")
-            
+            logger.info(
+                f"Preparing training data for room {room_id} with {lookback_days} days lookback"
+            )
+
             # This would normally fetch recent data from FeatureStore
             # For now, return empty DataFrames with proper structure
-            
+
             if feature_refresh:
                 await self._refresh_features(room_id)
-            
+
             # Create mock training data with proper split
             total_samples = 100
             X_data = pd.DataFrame(np.random.randn(total_samples, 10))
             y_data = pd.DataFrame(np.random.randint(0, 2, (total_samples, 1)))
-            
+
             # Split into train/validation
             from sklearn.model_selection import train_test_split
+
             X_train, X_val, y_train, y_val = train_test_split(
                 X_data, y_data, test_size=validation_split, random_state=42
             )
-            
-            logger.debug(f"Prepared training data: {len(X_train)} train, {len(X_val)} validation samples")
+
+            logger.debug(
+                f"Prepared training data: {len(X_train)} train, {len(X_val)} validation samples"
+            )
             return X_train, X_val, y_train, y_val
-            
+
         except Exception as e:
             logger.error(f"Error preparing training data for {room_id}: {e}")
             empty_df = pd.DataFrame()
@@ -1856,53 +1881,61 @@ class AdaptiveRetrainer:
         """Refresh feature calculations for a specific room."""
         try:
             logger.info(f"Refreshing features for room {room_id}")
-            
+
             # Call the feature engineering engine if available
-            if self.feature_engineering_engine and hasattr(self.feature_engineering_engine, 'refresh_features'):
-                if hasattr(self.feature_engineering_engine.refresh_features, '__call__'):
+            if self.feature_engineering_engine and hasattr(
+                self.feature_engineering_engine, "refresh_features"
+            ):
+                if hasattr(
+                    self.feature_engineering_engine.refresh_features, "__call__"
+                ):
                     result = self.feature_engineering_engine.refresh_features(room_id)
                     # Check if result is awaitable
-                    if hasattr(result, '__await__'):
+                    if hasattr(result, "__await__"):
                         await result
             else:
                 # Simulate successful refresh when no engine available
                 await asyncio.sleep(0.1)  # Simulate processing time
-            
+
             logger.debug(f"Features refreshed for room {room_id}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Error refreshing features for {room_id}: {e}")
             return False
 
-    async def _validate_training_data(self, X_train: pd.DataFrame, y_train: pd.DataFrame) -> bool:
+    async def _validate_training_data(
+        self, X_train: pd.DataFrame, y_train: pd.DataFrame
+    ) -> bool:
         """Validate training data quality before retraining."""
         try:
             logger.debug(f"Validating training data: {len(X_train)} samples")
-            
+
             # Basic validation checks
             if X_train.empty or y_train.empty:
                 logger.warning("Training data is empty")
                 return False
-                
+
             if len(X_train) != len(y_train):
                 logger.warning("Feature and target data length mismatch")
                 return False
-                
+
             # Check for minimum sample size
             min_samples = 100
             if len(X_train) < min_samples:
-                logger.warning(f"Insufficient training data: {len(X_train)} < {min_samples}")
+                logger.warning(
+                    f"Insufficient training data: {len(X_train)} < {min_samples}"
+                )
                 return False
-                
+
             # Check for missing values
             if X_train.isnull().any().any():
                 logger.warning("Training features contain missing values")
                 return False
-                
+
             logger.debug("Training data validation passed")
             return True
-            
+
         except Exception as e:
             logger.error(f"Error validating training data: {e}")
             return False

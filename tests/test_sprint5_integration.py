@@ -527,6 +527,9 @@ class TestAPIServerIntegration:
             app = create_app()
 
             with TestClient(app) as client:
+                headers = {
+                    "Authorization": "Bearer test_api_key_for_security_validation_testing"
+                }
                 response = client.post(
                     "/model/retrain",
                     json={
@@ -535,6 +538,7 @@ class TestAPIServerIntegration:
                         "strategy": "full",
                         "reason": "test_request",
                     },
+                    headers=headers,
                 )
                 assert response.status_code == 200
 

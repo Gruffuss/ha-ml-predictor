@@ -496,8 +496,14 @@ class TestRetrainingExecution:
             strategy=RetrainingStrategy.FULL_RETRAIN,
             priority=7.0,
             created_time=datetime.now(),
-            lookback_days=14,
-            validation_split=0.2,
+            retraining_parameters={
+                "lookback_days": 14,
+                "validation_split": 0.2,
+                "feature_refresh": True,
+                "max_training_time_minutes": 60,
+                "early_stopping_patience": 10,
+                "min_improvement_threshold": 0.01,
+            },
         )
 
         # Execute retraining
@@ -1064,7 +1070,9 @@ class TestDataManagement:
         # Mismatched sizes
         mismatched_y = pd.DataFrame({"target": [0, 1]})  # Different size
 
-        is_valid = await adaptive_retrainer._validate_training_data(valid_X, mismatched_y)
+        is_valid = await adaptive_retrainer._validate_training_data(
+            valid_X, mismatched_y
+        )
         assert not is_valid
 
 

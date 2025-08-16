@@ -18,7 +18,7 @@ Features:
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import os
 import traceback
@@ -80,8 +80,15 @@ class PredictionResponse(BaseModel):
     @classmethod
     def validate_transition_type(cls, v):
         """Validate transition type is valid."""
-        if v is not None and v not in ["occupied", "vacant"]:
-            raise ValueError("Transition type must be 'occupied' or 'vacant'")
+        valid_types = [
+            "occupied",
+            "vacant",
+            "occupied_to_vacant",
+            "vacant_to_occupied",
+            "state_change",
+        ]
+        if v is not None and v not in valid_types:
+            raise ValueError(f"Transition type must be one of: {valid_types}")
         return v
 
     @field_validator("confidence")
@@ -429,6 +436,169 @@ async def background_health_check():
         logger.info("Health monitoring stopped")
 
 
+def register_routes(app: FastAPI):
+    """Register all API routes on the provided FastAPI instance."""
+
+    @app.get("/", response_model=Dict[str, str])
+    async def root():
+        """Root endpoint with API information."""
+        return {
+            "name": "Occupancy Prediction API",
+            "version": "1.0.0",
+            "description": "Home Assistant Occupancy Prediction System",
+        }
+
+    @app.get("/health", response_model=SystemHealthResponse)
+    async def health_check():
+        """Basic health check endpoint."""
+        try:
+            # Get basic health information
+
+            # Check database connection
+            try:
+                db_manager = await get_database_manager()
+                db_status = await db_manager.health_check()
+                database_healthy = db_status.get("status") == "healthy"
+            except Exception as e:
+                logger.warning(f"Database health check failed: {e}")
+                database_healthy = False
+
+            # Check tracking manager
+            try:
+                tracking_manager = await get_tracking_manager()
+                tracking_status = await tracking_manager.get_tracking_status()
+                tracking_healthy = tracking_status.get("status") == "active"
+            except Exception as e:
+                logger.warning(f"Tracking manager health check failed: {e}")
+                tracking_healthy = False
+
+            # Overall system status
+            overall_status = (
+                "healthy" if database_healthy and tracking_healthy else "degraded"
+            )
+
+            return SystemHealthResponse(
+                status=overall_status,
+                timestamp=datetime.now(timezone.utc),
+                components={
+                    "database": {
+                        "status": "healthy" if database_healthy else "unhealthy",
+                        "connection": "active" if database_healthy else "failed",
+                    },
+                    "tracking": {
+                        "status": "healthy" if tracking_healthy else "unhealthy",
+                        "manager": "active" if tracking_healthy else "failed",
+                    },
+                    "api": {"status": "healthy", "server": "running"},
+                    "mqtt": {"status": "healthy", "broker": "connected"},
+                },
+                performance_metrics={
+                    "response_time_ms": 0.0,
+                    "cpu_usage": 0.0,
+                    "memory_usage": 0.0,
+                },
+                error_count=0,
+                uptime_seconds=60.0,
+            )
+
+        except Exception as e:
+            logger.error(f"Health check failed: {e}", exc_info=True)
+            return SystemHealthResponse(
+                status="unhealthy",
+                timestamp=datetime.now(timezone.utc),
+                components={
+                    "database": {"status": "unknown", "connection": "unknown"},
+                    "tracking": {"status": "unknown", "manager": "unknown"},
+                    "api": {"status": "unhealthy", "server": "error"},
+                    "mqtt": {"status": "unknown", "broker": "unknown"},
+                },
+                performance_metrics={
+                    "response_time_ms": 0.0,
+                    "cpu_usage": 0.0,
+                    "memory_usage": 0.0,
+                },
+                error_count=1,
+                uptime_seconds=0.0,
+            )
+
+    @app.get("/predictions/{room_id}", response_model=PredictionResponse)
+    async def get_room_prediction(
+        room_id: str,
+        _: bool = Depends(verify_api_key),
+        __: bool = Depends(check_rate_limit),
+    ):
+        """Get current prediction for a specific room."""
+        try:
+            # Validate room exists
+            config = get_config()
+            if room_id not in config.rooms:
+                raise APIResourceNotFoundError("Room", room_id)
+
+            # Get prediction from tracking manager
+            tracking_manager = await get_tracking_manager()
+            prediction_data = await tracking_manager.get_room_prediction(room_id)
+
+            if not prediction_data:
+                raise APIServerError(
+                    f"get_prediction_for_{room_id}",
+                    Exception("No prediction available"),
+                )
+
+            return PredictionResponse(
+                room_id=prediction_data["room_id"],
+                prediction_time=datetime.fromisoformat(
+                    prediction_data["prediction_time"].replace("Z", "+00:00")
+                ),
+                next_transition_time=(
+                    datetime.fromisoformat(
+                        prediction_data["next_transition_time"].replace("Z", "+00:00")
+                    )
+                    if prediction_data.get("next_transition_time")
+                    else None
+                ),
+                transition_type=prediction_data.get("transition_type"),
+                confidence=prediction_data["confidence"],
+                time_until_transition=prediction_data.get("time_until_transition"),
+                alternatives=prediction_data.get("alternatives", []),
+                model_info=prediction_data.get("model_info", {}),
+            )
+
+        except APIResourceNotFoundError:
+            raise
+        except Exception as e:
+            logger.error(
+                f"Failed to get prediction for room {room_id}: {e}", exc_info=True
+            )
+            raise APIServerError(f"get_prediction_for_{room_id}", e)
+
+    @app.get("/predictions", response_model=List[PredictionResponse])
+    async def get_all_predictions(
+        _: bool = Depends(verify_api_key), __: bool = Depends(check_rate_limit)
+    ):
+        """Get current predictions for all rooms."""
+        try:
+            config = get_config()
+            predictions = []
+
+            for room_id in config.rooms.keys():
+                try:
+                    tracking_manager = await get_tracking_manager()
+                    prediction_data = await tracking_manager.get_room_prediction(
+                        room_id
+                    )
+                    if prediction_data:
+                        predictions.append(prediction_data)
+                except Exception as e:
+                    logger.warning(f"Failed to get prediction for {room_id}: {e}")
+                    continue
+
+            return predictions
+
+        except Exception as e:
+            logger.error(f"Failed to get all predictions: {e}", exc_info=True)
+            raise APIServerError("get_all_predictions", e)
+
+
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
     config = get_config()
@@ -619,6 +789,9 @@ def create_app() -> FastAPI:
         from .auth.endpoints import auth_router
 
         app.include_router(auth_router)
+
+    # Register all routes manually on this instance
+    register_routes(app)
 
     return app
 

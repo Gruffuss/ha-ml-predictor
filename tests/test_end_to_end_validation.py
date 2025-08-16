@@ -115,6 +115,27 @@ def e2e_room_configs():
                 },
             },
         },
+        "living_kitchen": {
+            "name": "Living Room & Kitchen",
+            "sensors": {
+                "presence": {
+                    "livingroom_full": "binary_sensor.presence_livingroom_full",
+                    "livingroom_couch": "binary_sensor.presence_livingroom_couch",
+                    "kitchen_full": "binary_sensor.kitchen_pressence_full_kitchen",
+                    "kitchen_stove": "binary_sensor.kitchen_pressence_stove",
+                    "kitchen_sink": "binary_sensor.kitchen_pressence_sink",
+                    "kitchen_dining": "binary_sensor.kitchen_pressence_dining_table",
+                },
+                "climate": {
+                    "temperature": "sensor.livingroom_env_sensor_temperature",
+                    "humidity": "sensor.livingroom_env_sensor_humidity",
+                },
+                "light": {
+                    "livingroom": "sensor.livingroom_pressence_light_level",
+                    "kitchen": "sensor.kitchen_pressence_light_level",
+                },
+            },
+        },
         "bedroom": {
             "name": "Bedroom",
             "sensors": {
@@ -431,12 +452,8 @@ class TestCompleteSystemWorkflow:
             headers = {
                 "Authorization": "Bearer test_api_key_for_security_validation_testing"
             }
+
             response = client.get("/predictions/living_kitchen", headers=headers)
-
-            if response.status_code != 200:
-                print(f"Response status: {response.status_code}")
-                print(f"Response body: {response.text}")
-
             assert response.status_code == 200
 
             data = response.json()
@@ -445,7 +462,7 @@ class TestCompleteSystemWorkflow:
             assert data["transition_type"] == "vacant_to_occupied"
 
         # Verify tracking manager was called
-        mock_tracking.get_room_prediction.assert_called_with("living_room")
+        mock_tracking.get_room_prediction.assert_called_with("living_kitchen")
 
     @pytest.mark.asyncio
     async def test_prediction_publishing_workflow(self, complete_system):
