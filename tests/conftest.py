@@ -35,6 +35,10 @@ def _setup_jwt_test_env():
         os.environ["API_KEY"] = "test_api_key_for_security_validation_testing"
         os.environ["ENVIRONMENT"] = "test"
         os.environ["DEBUG"] = "true"
+        
+        # Disable background tasks in test environment
+        os.environ["DISABLE_BACKGROUND_TASKS"] = "true"
+        os.environ["TESTING"] = "true"
 
 
 # Set up environment variables immediately when conftest is imported
@@ -89,13 +93,30 @@ TEST_DB_URL = os.getenv("TEST_DB_URL", "sqlite+aiosqlite:///:memory:")
 USE_MOCK_DB = True
 
 
-# Remove custom event_loop fixture - use pytest-asyncio default
-# @pytest.fixture(scope="session")
-# def event_loop():
-#     """Create an instance of the default event loop for the test session."""
-#     loop = asyncio.get_event_loop_policy().new_event_loop()
-#     yield loop
-#     loop.close()
+# Use pytest-asyncio event loop with proper cleanup via autouse fixture
+# The cleanup_background_tasks fixture handles task cleanup automatically
+
+
+@pytest.fixture(autouse=True)
+async def cleanup_background_tasks():
+    """Automatically clean up background tasks after each test."""
+    # Store initial tasks
+    initial_tasks = set(asyncio.all_tasks())
+    
+    yield
+    
+    # Find and cancel any new tasks created during the test
+    current_tasks = set(asyncio.all_tasks())
+    new_tasks = current_tasks - initial_tasks
+    
+    if new_tasks:
+        for task in new_tasks:
+            if not task.done():
+                task.cancel()
+        
+        # Wait for cancellation to complete
+        if new_tasks:
+            await asyncio.gather(*new_tasks, return_exceptions=True)
 
 
 @pytest.fixture

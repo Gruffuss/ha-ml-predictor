@@ -630,16 +630,19 @@ class WebSocketAPIServer:
                 logger.info("WebSocket API server disabled in configuration")
                 return
 
-            # Start background tasks
-            heartbeat_task = asyncio.create_task(self._heartbeat_loop())
-            cleanup_task = asyncio.create_task(self._cleanup_loop())
-            acknowledgment_task = asyncio.create_task(
-                self._acknowledgment_timeout_loop()
-            )
+            # Skip background tasks in test environment
+            import os
+            if not os.getenv("DISABLE_BACKGROUND_TASKS"):
+                # Start background tasks
+                heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+                cleanup_task = asyncio.create_task(self._cleanup_loop())
+                acknowledgment_task = asyncio.create_task(
+                    self._acknowledgment_timeout_loop()
+                )
 
-            self._background_tasks.extend(
-                [heartbeat_task, cleanup_task, acknowledgment_task]
-            )
+                self._background_tasks.extend(
+                    [heartbeat_task, cleanup_task, acknowledgment_task]
+                )
 
             logger.info("WebSocket API server initialized successfully")
 

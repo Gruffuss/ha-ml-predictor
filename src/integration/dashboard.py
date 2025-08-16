@@ -625,21 +625,24 @@ class PerformanceDashboard:
         try:
             self._running = True
 
-            # Start background update task
-            if self.config.websocket_enabled:
-                self._update_task = asyncio.create_task(self._update_loop())
+            # Skip background tasks in test environment
+            import os
+            if not os.getenv("DISABLE_BACKGROUND_TASKS"):
+                # Start background update task
+                if self.config.websocket_enabled:
+                    self._update_task = asyncio.create_task(self._update_loop())
 
-            # Start FastAPI server
-            config = uvicorn.Config(
-                app=self.app,
-                host=self.config.host,
-                port=self.config.port,
-                log_level="info" if self.config.debug else "warning",
-                access_log=self.config.debug,
-            )
+                # Start FastAPI server
+                config = uvicorn.Config(
+                    app=self.app,
+                    host=self.config.host,
+                    port=self.config.port,
+                    log_level="info" if self.config.debug else "warning",
+                    access_log=self.config.debug,
+                )
 
-            server = uvicorn.Server(config)
-            self._server_task = asyncio.create_task(server.serve())
+                server = uvicorn.Server(config)
+                self._server_task = asyncio.create_task(server.serve())
 
             logger.info(
                 f"Performance dashboard started on http://{self.config.host}:{self.config.port}"

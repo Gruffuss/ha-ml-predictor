@@ -443,12 +443,15 @@ class RealtimePublishingSystem:
     async def initialize(self) -> None:
         """Initialize the real-time publishing system."""
         try:
-            # Start background tasks
-            cleanup_task = asyncio.create_task(self._cleanup_stale_connections())
-            self._background_tasks.append(cleanup_task)
+            # Skip background tasks in test environment
+            import os
+            if not os.getenv("DISABLE_BACKGROUND_TASKS"):
+                # Start background tasks
+                cleanup_task = asyncio.create_task(self._cleanup_stale_connections())
+                self._background_tasks.append(cleanup_task)
 
-            metrics_task = asyncio.create_task(self._update_metrics_loop())
-            self._background_tasks.append(metrics_task)
+                metrics_task = asyncio.create_task(self._update_metrics_loop())
+                self._background_tasks.append(metrics_task)
 
             self._publishing_active = True
             logger.info("Real-time publishing system initialized")

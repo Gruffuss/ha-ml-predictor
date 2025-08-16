@@ -372,18 +372,21 @@ class TrackingManager:
             if self.accuracy_tracker:
                 await self.accuracy_tracker.start_monitoring()
 
-            # Start validation monitoring task
-            validation_task = asyncio.create_task(self._validation_monitoring_loop())
-            self._background_tasks.append(validation_task)
+            # Skip background tasks in test environment
+            import os
+            if not os.getenv("DISABLE_BACKGROUND_TASKS"):
+                # Start validation monitoring task
+                validation_task = asyncio.create_task(self._validation_monitoring_loop())
+                self._background_tasks.append(validation_task)
 
-            # Start cleanup task
-            cleanup_task = asyncio.create_task(self._cleanup_loop())
-            self._background_tasks.append(cleanup_task)
+                # Start cleanup task
+                cleanup_task = asyncio.create_task(self._cleanup_loop())
+                self._background_tasks.append(cleanup_task)
 
-            # Start drift detection task if enabled
-            if self.config.drift_detection_enabled and self.drift_detector:
-                drift_task = asyncio.create_task(self._drift_detection_loop())
-                self._background_tasks.append(drift_task)
+                # Start drift detection task if enabled
+                if self.config.drift_detection_enabled and self.drift_detector:
+                    drift_task = asyncio.create_task(self._drift_detection_loop())
+                    self._background_tasks.append(drift_task)
 
             self._tracking_active = True
             logger.info("Started TrackingManager monitoring tasks")
