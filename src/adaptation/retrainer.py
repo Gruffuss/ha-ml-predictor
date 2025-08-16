@@ -23,7 +23,13 @@ from ..core.constants import ModelType
 from ..core.exceptions import ErrorSeverity, OccupancyPredictionError
 from ..models.base.predictor import PredictionResult, TrainingResult
 from .drift_detector import ConceptDriftDetector, DriftMetrics, DriftSeverity
-from .optimizer import ModelOptimizer, OptimizationConfig, OptimizationResult
+from .optimizer import (
+    ModelOptimizer,
+    OptimizationConfig,
+    OptimizationObjective,
+    OptimizationResult,
+    OptimizationStrategy,
+)
 from .validator import AccuracyMetrics, PredictionValidator
 
 logger = logging.getLogger(__name__)
@@ -1152,16 +1158,19 @@ class AdaptiveRetrainer:
 
             # Create optimization configuration based on request context
             optimization_config = OptimizationConfig(
-                max_trials=getattr(self.config, "optimization_max_trials", 50),
-                timeout_seconds=getattr(self.config, "optimization_timeout", 300),
-                optimization_metric=(
-                    "accuracy"
+                enabled=True,
+                strategy=OptimizationStrategy.BAYESIAN,
+                objective=(
+                    OptimizationObjective.ACCURACY
                     if request.trigger == RetrainingTrigger.ACCURACY_DEGRADATION
-                    else "error"
+                    else OptimizationObjective.ACCURACY
                 ),
-                cross_validation_folds=3,
-                search_algorithm="tpe",  # Tree-structured Parzen Estimator
-                early_stopping_patience=10,
+                n_calls=getattr(self.config, "optimization_max_trials", 50),
+                max_optimization_time_minutes=getattr(
+                    self.config, "optimization_timeout", 300
+                )
+                // 60,
+                cv_folds=3,
             )
 
             # Prepare performance context for optimization

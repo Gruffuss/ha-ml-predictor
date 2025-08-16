@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
+import pytest_asyncio
 
 from src.adaptation.drift_detector import (
     ConceptDriftDetector,
@@ -116,7 +117,7 @@ def mock_notification_callbacks():
     return [callback]
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def tracking_manager(
     tracking_config,
     mock_database_manager,
@@ -133,20 +134,41 @@ async def tracking_manager(
         notification_callbacks=mock_notification_callbacks,
     )
 
-    # Initialize with mocked components
+    # Initialize with mocked components - keep patches active throughout fixture lifecycle
     with (
-        patch("src.adaptation.tracking_manager.PredictionValidator"),
-        patch("src.adaptation.tracking_manager.AccuracyTracker"),
+        patch(
+            "src.adaptation.tracking_manager.PredictionValidator"
+        ) as mock_validator_class,
+        patch("src.adaptation.tracking_manager.AccuracyTracker") as mock_tracker_class,
         patch("src.adaptation.tracking_manager.ConceptDriftDetector"),
-        patch("src.adaptation.tracking_manager.AdaptiveRetrainer"),
+        patch(
+            "src.adaptation.tracking_manager.AdaptiveRetrainer"
+        ) as mock_retrainer_class,
         patch("src.adaptation.tracking_manager.ModelOptimizer"),
     ):
+        # Mock validator instance
+        mock_validator_instance = Mock()
+        mock_validator_class.return_value = mock_validator_instance
+
+        # Mock accuracy tracker instance with async methods
+        mock_tracker_instance = Mock()
+        mock_tracker_instance.start_monitoring = AsyncMock()
+        mock_tracker_instance.stop_monitoring = AsyncMock()
+        mock_tracker_instance.add_notification_callback = Mock()
+        mock_tracker_class.return_value = mock_tracker_instance
+
+        # Mock the AdaptiveRetrainer instance and its async methods
+        mock_retrainer_instance = Mock()
+        mock_retrainer_instance.initialize = AsyncMock()
+        mock_retrainer_class.return_value = mock_retrainer_instance
+
         await manager.initialize()
 
-    yield manager
-
-    # Cleanup
-    await manager.stop_tracking()
+        try:
+            yield manager
+        finally:
+            # Cleanup
+            await manager.stop_tracking()
 
 
 @pytest.fixture
