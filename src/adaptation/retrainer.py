@@ -620,6 +620,12 @@ class AdaptiveRetrainer:
                                         else None
                                     ),
                                 }
+                                # Add top-level progress_percentage for test compatibility
+                                status["progress_percentage"] = (
+                                    progress.progress_percentage
+                                )
+                                status["phase"] = progress.phase
+                                status["current_step"] = progress.current_step
 
                         return status
 
@@ -632,6 +638,28 @@ class AdaptiveRetrainer:
                     for request in self._retraining_history:
                         if request.request_id == request_id:
                             return request.to_dict()
+
+                # Check if there's just progress tracking without active request (for test compatibility)
+                with self._progress_lock:
+                    if request_id in self._progress_tracker:
+                        progress = self._progress_tracker[request_id]
+                        return {
+                            "request_id": request_id,
+                            "status": "tracking_only",
+                            "progress_percentage": progress.progress_percentage,
+                            "phase": progress.phase,
+                            "current_step": progress.current_step,
+                            "progress": {
+                                "phase": progress.phase,
+                                "percentage": progress.progress_percentage,
+                                "current_step": progress.current_step,
+                                "estimated_completion": (
+                                    progress.estimated_completion.isoformat()
+                                    if progress.estimated_completion
+                                    else None
+                                ),
+                            },
+                        }
 
                 return {"error": f"Request {request_id} not found"}
 

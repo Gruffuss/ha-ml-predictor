@@ -101,7 +101,11 @@ class TemporalFeatureExtractor:
 
         except Exception as e:
             logger.error(f"Failed to extract temporal features: {e}")
-            raise FeatureExtractionError(f"Temporal feature extraction failed: {e}")
+            # Extract room_id from events if available
+            room_id = events[0].room_id if events else "unknown"
+            raise FeatureExtractionError(
+                feature_type="temporal", room_id=room_id, cause=e
+            )
 
     def _extract_time_since_features(
         self, events: List[SensorEvent], target_time: datetime

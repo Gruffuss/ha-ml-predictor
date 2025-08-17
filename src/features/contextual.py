@@ -135,7 +135,11 @@ class ContextualFeatureExtractor:
 
         except Exception as e:
             logger.error(f"Failed to extract contextual features: {e}")
-            raise FeatureExtractionError(f"Contextual feature extraction failed: {e}")
+            # Extract room_id from events if available
+            room_id = events[0].room_id if events else "unknown"
+            raise FeatureExtractionError(
+                feature_type="contextual", room_id=room_id, cause=e
+            )
 
     def _extract_environmental_features(
         self, events: List[SensorEvent], target_time: datetime

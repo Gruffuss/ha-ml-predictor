@@ -109,7 +109,9 @@ class FeatureEngineeringEngine:
         try:
             # Validate inputs
             if not room_id:
-                raise FeatureExtractionError("Room ID is required")
+                raise FeatureExtractionError(
+                    feature_type="validation", room_id="unknown", cause=None
+                )
 
             # Get room configuration
             room_config = self.config.rooms.get(room_id)

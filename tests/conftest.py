@@ -92,8 +92,13 @@ def _patch_models_for_sqlite():
                 timestamp_col = col
                 break
 
-        if timestamp_col and timestamp_col.primary_key:
-            timestamp_col.primary_key = False
+        if timestamp_col is not None and hasattr(timestamp_col, "primary_key"):
+            try:
+                if timestamp_col.primary_key:
+                    timestamp_col.primary_key = False
+            except (TypeError, AttributeError):
+                # Skip if primary_key property evaluation fails
+                pass
 
         # Ensure id column is the only primary key with autoincrement
         id_col = None
@@ -102,7 +107,7 @@ def _patch_models_for_sqlite():
                 id_col = col
                 break
 
-        if id_col:
+        if id_col is not None:
             id_col.primary_key = True
             id_col.autoincrement = True
 
@@ -395,6 +400,8 @@ def sample_sensor_events():
     events = []
     for i in range(10):
         event = SensorEvent(
+            # Explicitly set id=None to allow autoincrement
+            id=None,
             room_id="test_room",
             sensor_id=f"binary_sensor.test_sensor_{i % 3}",
             sensor_type=SensorType.PRESENCE.value,
@@ -406,7 +413,8 @@ def sample_sensor_events():
             attributes={"test": True, "sequence": i},
             is_human_triggered=True,
             confidence_score=0.8 + (i * 0.02),
-            created_at=datetime.utcnow(),
+            # Let created_at use its default=func.now() instead of explicitly setting it
+            # created_at=datetime.utcnow(),
         )
         events.append(event)
 
@@ -482,6 +490,8 @@ async def populated_test_db(test_db_session, sample_sensor_events):
     # Add sample room states
     for i in range(3):
         room_state = RoomState(
+            # Explicitly set id=None to allow autoincrement
+            id=None,
             room_id="test_room",
             timestamp=datetime.utcnow() - timedelta(hours=i),
             is_occupied=i % 2 == 0,
@@ -489,13 +499,16 @@ async def populated_test_db(test_db_session, sample_sensor_events):
             occupant_type="human",
             state_duration=300 + i * 60,
             transition_trigger=f"binary_sensor.test_sensor_{i}",
-            created_at=datetime.utcnow(),
+            # Let created_at use its default instead of explicitly setting it
+            # created_at=datetime.utcnow(),
         )
         session.add(room_state)
 
     # Add sample predictions
     for i in range(3):
         prediction = Prediction(
+            # Explicitly set id=None to allow autoincrement
+            id=None,
             room_id="test_room",
             prediction_time=datetime.utcnow() - timedelta(hours=i),
             predicted_transition_time=datetime.utcnow() + timedelta(minutes=15 + i * 5),
@@ -503,7 +516,8 @@ async def populated_test_db(test_db_session, sample_sensor_events):
             confidence_score=0.75 + i * 0.05,
             model_type="lstm",
             model_version="v1.0",
-            created_at=datetime.utcnow(),
+            # Let created_at use its default instead of explicitly setting it
+            # created_at=datetime.utcnow(),
         )
         session.add(prediction)
 

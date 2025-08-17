@@ -61,11 +61,13 @@ def _get_json_column_type():
     """Get appropriate JSON column type based on environment."""
     import os
 
-    # Check if we're in a SQLite environment (test environment)
+    # Check multiple environment indicators for SQLite
     is_sqlite = (
         os.getenv("TEST_DB_URL", "").startswith("sqlite")
         or os.getenv("TESTING") == "true"
         or os.getenv("DATABASE_URL", "").startswith("sqlite")
+        or "pytest" in os.getenv("_", "")  # Check if running under pytest
+        or "pytest" in " ".join(os.sys.argv)  # Check command line for pytest
     )
 
     if is_sqlite:
@@ -109,7 +111,8 @@ class SensorEvent(Base):
 
     # Primary key configuration - Using single primary key for cross-database compatibility
     # TimescaleDB partitioning will be handled through hypertable configuration, not composite PK
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    # For SQLite, use Integer instead of BigInteger for proper autoincrement
+    id = Column(Integer, primary_key=True, autoincrement="auto", nullable=False)
     timestamp = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -126,9 +129,11 @@ class SensorEvent(Base):
 
     # Metadata and context
     attributes = Column(
-        _get_json_column_type(), default=dict
+        JSON, default=dict  # Force JSON for cross-database compatibility
     )  # Additional sensor attributes
-    is_human_triggered = Column(Boolean, default=True, nullable=False)
+    is_human_triggered = Column(
+        Boolean, default=True, server_default=text("1"), nullable=False
+    )
     confidence_score = Column(
         Numeric(precision=5, scale=4)
     )  # Decimal precision for confidence scores
@@ -139,6 +144,17 @@ class SensorEvent(Base):
 
     # Note: No foreign key relationships to maintain TimescaleDB performance
     # Application-level referential integrity is used instead
+
+    def __init__(self, **kwargs):
+        """Initialize SensorEvent with proper defaults."""
+        # Apply Python-level defaults for columns that need them
+        if "is_human_triggered" not in kwargs:
+            kwargs["is_human_triggered"] = True
+        if "attributes" not in kwargs:
+            kwargs["attributes"] = {}
+
+        # Call parent constructor
+        super().__init__(**kwargs)
 
     __table_args__ = (
         # Indexes for efficient time-series queries
@@ -532,7 +548,7 @@ class RoomState(Base):
 
     __tablename__ = "room_states"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement="auto", nullable=False)
     room_id = Column(String(50), nullable=False, index=True)
     timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
 
@@ -551,7 +567,7 @@ class RoomState(Base):
     state_duration = Column(Integer)  # Duration in current state (seconds)
     transition_trigger = Column(String(100))  # Sensor that triggered transition
     certainty_factors = Column(
-        _get_json_column_type(), default=dict
+        JSON, default=dict  # Force JSON for cross-database compatibility
     )  # Contributing factors
     detailed_analysis = Column(Text)  # Large text field for detailed state analysis
 
@@ -796,7 +812,7 @@ class Prediction(Base):
 
     __tablename__ = "predictions"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement="auto", nullable=False)
     room_id = Column(String(50), nullable=False, index=True)
     prediction_time = Column(DateTime(timezone=True), nullable=False, index=True)
 
@@ -812,10 +828,14 @@ class Prediction(Base):
     # Model information
     model_type = Column(ENUM(*MODEL_TYPES, name="model_type_enum"), nullable=False)
     model_version = Column(String(50), nullable=False)
-    feature_importance = Column(_get_json_column_type(), default=dict)
+    feature_importance = Column(
+        JSON, default=dict
+    )  # Force JSON for cross-database compatibility
 
     # Alternative predictions (top-k)
-    alternatives = Column(_get_json_column_type(), default=list)
+    alternatives = Column(
+        JSON, default=list
+    )  # Force JSON for cross-database compatibility
 
     # Validation results
     actual_transition_time = Column(DateTime(timezone=True))
@@ -1171,7 +1191,7 @@ class ModelAccuracy(Base):
 
     __tablename__ = "model_accuracy"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement="auto", nullable=False)
     room_id = Column(String(50), nullable=False, index=True)
     model_type = Column(ENUM(*MODEL_TYPES, name="model_type_enum"), nullable=False)
     model_version = Column(String(50), nullable=False)
@@ -1201,7 +1221,9 @@ class ModelAccuracy(Base):
 
     # Metadata
     created_at = Column(DateTime(timezone=True), default=func.now())
-    baseline_comparison = Column(_get_json_column_type(), default=dict)
+    baseline_comparison = Column(
+        JSON, default=dict
+    )  # Force JSON for cross-database compatibility
 
     __table_args__ = (
         Index("idx_room_model_time", "room_id", "model_type", "measurement_end"),
@@ -1234,16 +1256,24 @@ class FeatureStore(Base):
 
     __tablename__ = "feature_store"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement="auto", nullable=False)
     room_id = Column(String(50), nullable=False, index=True)
     feature_timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
 
     # Feature categories
-    temporal_features = Column(_get_json_column_type(), nullable=False, default=dict)
-    sequential_features = Column(_get_json_column_type(), nullable=False, default=dict)
-    contextual_features = Column(_get_json_column_type(), nullable=False, default=dict)
+    temporal_features = Column(
+        JSON, nullable=False, default=dict
+    )  # Force JSON for cross-database compatibility
+    sequential_features = Column(
+        JSON, nullable=False, default=dict
+    )  # Force JSON for cross-database compatibility
+    contextual_features = Column(
+        JSON, nullable=False, default=dict
+    )  # Force JSON for cross-database compatibility
     environmental_features = Column(
-        _get_json_column_type(), nullable=False, default=dict
+        JSON,
+        nullable=False,
+        default=dict,  # Force JSON for cross-database compatibility
     )
 
     # Feature metadata
@@ -1322,7 +1352,7 @@ class PredictionAudit(Base):
 
     __tablename__ = "prediction_audits"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement="auto", nullable=False)
 
     # Foreign key relationships
     prediction_id = Column(

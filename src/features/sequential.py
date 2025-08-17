@@ -120,7 +120,11 @@ class SequentialFeatureExtractor:
 
         except Exception as e:
             logger.error(f"Failed to extract sequential features: {e}")
-            raise FeatureExtractionError(f"Sequential feature extraction failed: {e}")
+            # Extract room_id from events if available
+            room_id = events[0].room_id if events else "unknown"
+            raise FeatureExtractionError(
+                feature_type="sequential", room_id=room_id, cause=e
+            )
 
     def _extract_room_transition_features(
         self, events: List[SensorEvent]

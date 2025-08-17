@@ -88,10 +88,10 @@ class RateLimiter:
                     )
                     # Raise specific rate limit exception for proper error handling
                     raise RateLimitExceededError(
-                        resource="home_assistant_api",
-                        wait_time=wait_time_seconds,
-                        requests_per_window=self.max_requests,
-                        window_seconds=self.window.total_seconds(),
+                        service="home_assistant_api",
+                        limit=self.max_requests,
+                        window_seconds=int(self.window.total_seconds()),
+                        reset_time=int(wait_time_seconds),
                     )
 
             self.requests.append(now)
@@ -517,10 +517,10 @@ class HomeAssistantClient:
                     # Handle rate limiting from HA server
                     retry_after = int(response.headers.get("Retry-After", 60))
                     raise RateLimitExceededError(
-                        resource="home_assistant_api",
-                        wait_time=retry_after,
-                        requests_per_window=self.rate_limiter.max_requests,
-                        window_seconds=self.rate_limiter.window.total_seconds(),
+                        service="home_assistant_api",
+                        limit=self.rate_limiter.max_requests,
+                        window_seconds=int(self.rate_limiter.window.total_seconds()),
+                        reset_time=retry_after,
                     )
                 elif response.status != 200:
                     raise HomeAssistantAPIError(
@@ -581,10 +581,10 @@ class HomeAssistantClient:
                     # Handle rate limiting from HA server
                     retry_after = int(response.headers.get("Retry-After", 60))
                     raise RateLimitExceededError(
-                        resource="home_assistant_history_api",
-                        wait_time=retry_after,
-                        requests_per_window=self.rate_limiter.max_requests,
-                        window_seconds=self.rate_limiter.window.total_seconds(),
+                        service="home_assistant_history_api",
+                        limit=self.rate_limiter.max_requests,
+                        window_seconds=int(self.rate_limiter.window.total_seconds()),
+                        reset_time=retry_after,
                     )
                 elif response.status != 200:
                     raise HomeAssistantAPIError(
@@ -653,9 +653,9 @@ class HomeAssistantClient:
                 except RateLimitExceededError as e:
                     # Handle rate limiting gracefully in bulk operations
                     logger.warning(
-                        f"Rate limited during bulk history fetch, waiting {e.wait_time}s"
+                        f"Rate limited during bulk history fetch, waiting {e.reset_time}s"
                     )
-                    await asyncio.sleep(e.wait_time)
+                    await asyncio.sleep(e.reset_time or 60)
                     # Retry the request once
                     try:
                         history = await self.get_entity_history(

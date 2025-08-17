@@ -243,7 +243,9 @@ class XGBoostPredictor(BasePredictor):
             )
 
             self.training_history.append(result)
-            raise ModelTrainingError(error_msg)
+            raise ModelTrainingError(
+                model_type="xgboost", room_id=self.room_id or "unknown", cause=e
+            )
 
     async def predict(
         self,
@@ -263,10 +265,14 @@ class XGBoostPredictor(BasePredictor):
             List of prediction results
         """
         if not self.is_trained or self.model is None:
-            raise ModelPredictionError("Model is not trained")
+            raise ModelPredictionError(
+                model_type="xgboost", room_id=self.room_id or "unknown"
+            )
 
         if not self.validate_features(features):
-            raise ModelPredictionError("Feature validation failed")
+            raise ModelPredictionError(
+                model_type="xgboost", room_id=self.room_id or "unknown"
+            )
 
         try:
             # Scale features
@@ -330,7 +336,9 @@ class XGBoostPredictor(BasePredictor):
         except Exception as e:
             error_msg = f"XGBoost prediction failed: {str(e)}"
             logger.error(error_msg)
-            raise ModelPredictionError(error_msg)
+            raise ModelPredictionError(
+                model_type="xgboost", room_id=self.room_id or "unknown", cause=e
+            )
 
     def get_feature_importance(self) -> Dict[str, float]:
         """

@@ -843,7 +843,9 @@ class TestFeatureStore:
         target_time = datetime(2024, 1, 15, 15, 0, 0)
 
         with patch.object(store, "_compute_features") as mock_compute:
-            mock_compute.side_effect = FeatureExtractionError("Computation failed")
+            mock_compute.side_effect = FeatureExtractionError(
+                feature_type="computation", room_id="living_room"
+            )
 
             with pytest.raises(FeatureExtractionError):
                 await store.get_features("living_room", target_time)

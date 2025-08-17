@@ -227,7 +227,9 @@ class OccupancyEnsemble(BasePredictor):
             )
 
             self.training_history.append(result)
-            raise ModelTrainingError(error_msg)
+            raise ModelTrainingError(
+                model_type="ensemble", room_id=self.room_id or "unknown", cause=e
+            )
 
     async def predict(
         self,
@@ -247,10 +249,14 @@ class OccupancyEnsemble(BasePredictor):
             List of ensemble prediction results
         """
         if not self.is_trained or not self.meta_learner_trained:
-            raise ModelPredictionError("Ensemble is not fully trained")
+            raise ModelPredictionError(
+                model_type="ensemble", room_id=self.room_id or "unknown"
+            )
 
         if not self.validate_features(features):
-            raise ModelPredictionError("Feature validation failed")
+            raise ModelPredictionError(
+                model_type="ensemble", room_id=self.room_id or "unknown"
+            )
 
         try:
             # Get predictions from all base models
@@ -271,7 +277,9 @@ class OccupancyEnsemble(BasePredictor):
                     ]
 
             if not base_predictions:
-                raise ModelPredictionError("No base models available for prediction")
+                raise ModelPredictionError(
+                    model_type="ensemble", room_id=self.room_id or "unknown"
+                )
 
             # Create meta-features
             meta_features_df = self._create_meta_features(base_predictions, features)
@@ -292,7 +300,9 @@ class OccupancyEnsemble(BasePredictor):
         except Exception as e:
             error_msg = f"Ensemble prediction failed: {str(e)}"
             logger.error(error_msg)
-            raise ModelPredictionError(error_msg)
+            raise ModelPredictionError(
+                model_type="ensemble", room_id=self.room_id or "unknown", cause=e
+            )
 
     def get_feature_importance(self) -> Dict[str, float]:
         """
@@ -467,7 +477,9 @@ class OccupancyEnsemble(BasePredictor):
             )
 
             self.training_history.append(result)
-            raise ModelTrainingError(error_msg)
+            raise ModelTrainingError(
+                model_type="ensemble", room_id=self.room_id or "unknown", cause=e
+            )
 
     async def _train_base_models_cv(
         self, features: pd.DataFrame, targets: pd.DataFrame

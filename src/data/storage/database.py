@@ -289,9 +289,7 @@ class DatabaseManager:
                     await session.rollback()
                     await session.close()
 
-                raise DatabaseQueryError(
-                    query="session_management", cause=e, severity=ErrorSeverity.HIGH
-                )
+                raise DatabaseQueryError(query="session_management", cause=e)
 
             finally:
                 if session:
@@ -348,8 +346,6 @@ class DatabaseManager:
                 query=query,
                 parameters=parameters,
                 cause=e,
-                error_type=error_type,
-                severity=ErrorSeverity.MEDIUM,
             )
         except asyncio.TimeoutError as e:
             logger.error(
@@ -368,7 +364,6 @@ class DatabaseManager:
                 query=query,
                 parameters=parameters,
                 cause=e,
-                severity=ErrorSeverity.MEDIUM,
             )
 
     async def execute_optimized_query(
@@ -436,7 +431,6 @@ class DatabaseManager:
                 query=query,
                 parameters=parameters,
                 cause=e,
-                severity=ErrorSeverity.MEDIUM,
             )
 
     async def analyze_query_performance(

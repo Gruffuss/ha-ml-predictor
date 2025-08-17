@@ -734,8 +734,9 @@ class TestModelApplicationLevelRelationships:
         await test_db_session.refresh(prediction)
 
         # Query the related event manually (application-level join)
+        # Use only id since we changed from composite primary key to single id
         triggering_event = await test_db_session.get(
-            SensorEvent, (prediction.triggering_event_id, event.timestamp)
+            SensorEvent, prediction.triggering_event_id
         )
 
         assert triggering_event is not None
@@ -985,9 +986,10 @@ class TestModelIntegration:
         await test_db_session.refresh(prediction)
 
         # Check application-level relationships work by querying related records
+        # Use only id since we changed from composite primary key to single id
         triggering_event = await test_db_session.get(
             SensorEvent,
-            (prediction.triggering_event_id, trigger_event.timestamp),
+            prediction.triggering_event_id,
         )
         related_room_state = await test_db_session.get(
             RoomState, prediction.room_state_id
