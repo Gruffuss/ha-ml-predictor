@@ -121,6 +121,14 @@ class DriftMetrics:
         self._determine_drift_severity()
         self._generate_recommendations()
 
+        # Debug logging for test troubleshooting
+        if hasattr(self, "psi_score") and self.psi_score > 1.0:
+            logger.debug(
+                f"DriftMetrics __post_init__: PSI={self.psi_score}, "
+                f"drifting_features={len(self.drifting_features)}, "
+                f"overall_score={self.overall_drift_score}"
+            )
+
     def _calculate_overall_drift_score(self) -> None:
         """Calculate weighted overall drift score from all components."""
         # Statistical significance weight
@@ -157,8 +165,17 @@ class DriftMetrics:
             or self.psi_score > 0.1
             or self.temporal_pattern_drift > 0.2
             or self.frequency_pattern_drift > 0.2
+            or len(self.drifting_features) > 0  # If we have drifting features
         ):
             calculated_score = max(calculated_score, 0.1)  # Minimum detectable drift
+
+        # Special handling for high PSI scores which indicate significant drift
+        if self.psi_score > 1.0:
+            # Very high PSI indicates major drift
+            psi_component = min(
+                self.psi_score / 10.0, 1.0
+            )  # Scale down but ensure significance
+            calculated_score = max(calculated_score, psi_component)
 
         self.overall_drift_score = calculated_score
 
@@ -196,6 +213,10 @@ class DriftMetrics:
 
     def update_recommendations(self):
         """Update retraining recommendations based on current metrics."""
+        # Recalculate drift score in case PSI or other metrics were updated
+        self._calculate_overall_drift_score()
+        self._determine_drift_severity()
+
         # Retraining recommended for moderate+ drift or significant degradation
         self.retraining_recommended = (
             self.drift_severity
@@ -767,19 +788,34 @@ class ConceptDriftDetector:
                 .sort_index()
             )
 
-            # Align distributions
+            # Align distributions with minimum threshold to avoid div by zero
+            min_prob = 0.001
             baseline_aligned = baseline_dist.reindex(
-                baseline_dist.index, fill_value=0.001
+                baseline_dist.index, fill_value=min_prob
             )
             current_aligned = current_dist.reindex(
-                baseline_dist.index, fill_value=0.001
+                baseline_dist.index, fill_value=min_prob
             )
 
-            # Calculate PSI
-            psi = np.sum(
-                (current_aligned - baseline_aligned)
-                * np.log(current_aligned / baseline_aligned)
-            )
+            # Ensure no zero probabilities that would cause inf
+            baseline_aligned = np.maximum(baseline_aligned, min_prob)
+            current_aligned = np.maximum(current_aligned, min_prob)
+
+            # Calculate PSI with safety checks
+            ratio = current_aligned / baseline_aligned
+            log_ratio = np.log(ratio)
+
+            # Check for inf or nan values
+            if np.any(np.isinf(log_ratio)) or np.any(np.isnan(log_ratio)):
+                logger.warning("Invalid values in PSI calculation, returning 0.0")
+                return 0.0
+
+            psi = np.sum((current_aligned - baseline_aligned) * log_ratio)
+
+            # Ensure finite result
+            if np.isinf(psi) or np.isnan(psi):
+                logger.warning("PSI calculation resulted in inf/nan, returning 0.0")
+                return 0.0
 
             return float(psi)
 
@@ -796,22 +832,43 @@ class ConceptDriftDetector:
             baseline_dist = baseline.value_counts(normalize=True)
             current_dist = current.value_counts(normalize=True)
 
-            # Align categories
+            # Align categories with minimum threshold
+            min_prob = 0.001
             all_categories = set(baseline_dist.index) | set(current_dist.index)
             baseline_aligned = pd.Series(
-                [baseline_dist.get(cat, 0.001) for cat in all_categories],
+                [
+                    max(baseline_dist.get(cat, min_prob), min_prob)
+                    for cat in all_categories
+                ],
                 index=all_categories,
             )
             current_aligned = pd.Series(
-                [current_dist.get(cat, 0.001) for cat in all_categories],
+                [
+                    max(current_dist.get(cat, min_prob), min_prob)
+                    for cat in all_categories
+                ],
                 index=all_categories,
             )
 
-            # Calculate PSI
-            psi = np.sum(
-                (current_aligned - baseline_aligned)
-                * np.log(current_aligned / baseline_aligned)
-            )
+            # Calculate PSI with safety checks
+            ratio = current_aligned / baseline_aligned
+            log_ratio = np.log(ratio)
+
+            # Check for inf or nan values
+            if np.any(np.isinf(log_ratio)) or np.any(np.isnan(log_ratio)):
+                logger.warning(
+                    "Invalid values in categorical PSI calculation, returning 0.0"
+                )
+                return 0.0
+
+            psi = np.sum((current_aligned - baseline_aligned) * log_ratio)
+
+            # Ensure finite result
+            if np.isinf(psi) or np.isnan(psi):
+                logger.warning(
+                    "Categorical PSI calculation resulted in inf/nan, returning 0.0"
+                )
+                return 0.0
 
             return float(psi)
 
@@ -975,7 +1032,7 @@ class ConceptDriftDetector:
     ) -> Optional[Dict[str, Any]]:
         """Get occupancy patterns for pattern drift analysis."""
         try:
-            async with get_db_session() as session:
+            async for session in get_db_session():
                 # Query occupancy events
                 query = (
                     select(SensorEvent)
@@ -1079,7 +1136,7 @@ class ConceptDriftDetector:
     ) -> List[float]:
         """Get recent prediction errors for Page-Hinkley test."""
         try:
-            async with get_db_session() as session:
+            async for session in get_db_session():
                 # Query recent predictions with validation
                 query = (
                     select(Prediction)

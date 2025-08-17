@@ -632,6 +632,7 @@ class WebSocketAPIServer:
 
             # Skip background tasks in test environment
             import os
+
             if not os.getenv("DISABLE_BACKGROUND_TASKS"):
                 # Start background tasks
                 heartbeat_task = asyncio.create_task(self._heartbeat_loop())

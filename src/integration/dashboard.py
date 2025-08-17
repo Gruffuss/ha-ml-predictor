@@ -627,6 +627,7 @@ class PerformanceDashboard:
 
             # Skip background tasks in test environment
             import os
+
             if not os.getenv("DISABLE_BACKGROUND_TASKS"):
                 # Start background update task
                 if self.config.websocket_enabled:

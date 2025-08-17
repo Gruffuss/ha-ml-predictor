@@ -445,6 +445,7 @@ class RealtimePublishingSystem:
         try:
             # Skip background tasks in test environment
             import os
+
             if not os.getenv("DISABLE_BACKGROUND_TASKS"):
                 # Start background tasks
                 cleanup_task = asyncio.create_task(self._cleanup_stale_connections())

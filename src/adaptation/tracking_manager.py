@@ -374,9 +374,12 @@ class TrackingManager:
 
             # Skip background tasks in test environment
             import os
+
             if not os.getenv("DISABLE_BACKGROUND_TASKS"):
                 # Start validation monitoring task
-                validation_task = asyncio.create_task(self._validation_monitoring_loop())
+                validation_task = asyncio.create_task(
+                    self._validation_monitoring_loop()
+                )
                 self._background_tasks.append(validation_task)
 
                 # Start cleanup task

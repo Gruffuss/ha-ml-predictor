@@ -35,7 +35,7 @@ def _setup_jwt_test_env():
         os.environ["API_KEY"] = "test_api_key_for_security_validation_testing"
         os.environ["ENVIRONMENT"] = "test"
         os.environ["DEBUG"] = "true"
-        
+
         # Disable background tasks in test environment
         os.environ["DISABLE_BACKGROUND_TASKS"] = "true"
         os.environ["TESTING"] = "true"
@@ -102,18 +102,18 @@ async def cleanup_background_tasks():
     """Automatically clean up background tasks after each test."""
     # Store initial tasks
     initial_tasks = set(asyncio.all_tasks())
-    
+
     yield
-    
+
     # Find and cancel any new tasks created during the test
     current_tasks = set(asyncio.all_tasks())
     new_tasks = current_tasks - initial_tasks
-    
+
     if new_tasks:
         for task in new_tasks:
             if not task.done():
                 task.cancel()
-        
+
         # Wait for cancellation to complete
         if new_tasks:
             await asyncio.gather(*new_tasks, return_exceptions=True)
