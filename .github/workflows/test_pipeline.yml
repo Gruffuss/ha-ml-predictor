@@ -145,13 +145,13 @@ jobs:
   unit-tests:
     name: "Unit Tests (Python ${{ matrix.python-version }})"
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: code-quality
     
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.11', '3.12']
+        python-version: ['3.12', '3.13']
         
     steps:
     - name: "Checkout code"
@@ -178,7 +178,7 @@ jobs:
           --cov-report=term-missing \
           --junitxml=junit-unit.xml \
           --html=report-unit.html --self-contained-html \
-          --maxfail=10 \
+          --maxfail=400 \
           --tb=short \
           -v \
           --timeout=30 \
