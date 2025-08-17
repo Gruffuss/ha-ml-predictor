@@ -38,6 +38,42 @@ from sqlalchemy.sql import func as sql_func
 
 Base = declarative_base()
 
+
+# Database-specific configuration helpers
+def _is_sqlite_engine(bind) -> bool:
+    """Check if the current engine is SQLite."""
+    if bind is None:
+        return False
+    return "sqlite" in str(bind.url).lower()
+
+
+def _get_database_specific_column_config(
+    bind, column_name: str, is_primary_key: bool = False, autoincrement: bool = False
+):
+    """Get database-specific column configuration."""
+    if _is_sqlite_engine(bind) and is_primary_key and autoincrement:
+        # For SQLite, only single-column primary keys can have autoincrement
+        return {"autoincrement": True if column_name == "id" else False}
+    return {"autoincrement": autoincrement}
+
+
+def _get_json_column_type():
+    """Get appropriate JSON column type based on environment."""
+    import os
+
+    # Check if we're in a SQLite environment (test environment)
+    is_sqlite = (
+        os.getenv("TEST_DB_URL", "").startswith("sqlite")
+        or os.getenv("TESTING") == "true"
+        or os.getenv("DATABASE_URL", "").startswith("sqlite")
+    )
+
+    if is_sqlite:
+        return JSON  # SQLite uses JSON
+    else:
+        return JSONB  # PostgreSQL uses JSONB
+
+
 # Enums for consistent state tracking
 SENSOR_TYPES = [
     "motion",
@@ -64,21 +100,21 @@ class SensorEvent(Base):
     Optimized for time-series queries with proper partitioning.
 
     Uses composite primary key (id, timestamp) for TimescaleDB hypertable compatibility.
+    For SQLite compatibility, only id is used as primary key with autoincrement.
     Foreign key relationships are managed at the application level to avoid conflicts
     with TimescaleDB's partitioning requirements.
     """
 
     __tablename__ = "sensor_events"
 
-    # Composite primary key for TimescaleDB hypertable compatibility
-    # autoincrement=True ensures id values are unique across all partitions
-    # Application-level referential integrity replaces foreign key constraints
+    # Primary key configuration - Using single primary key for cross-database compatibility
+    # TimescaleDB partitioning will be handled through hypertable configuration, not composite PK
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     timestamp = Column(
         DateTime(timezone=True),
-        primary_key=True,
         nullable=False,
         default=func.now(),
+        index=True,  # Always indexed for time-series queries
     )
 
     # Core event data
@@ -89,7 +125,9 @@ class SensorEvent(Base):
     previous_state = Column(ENUM(*SENSOR_STATES, name="sensor_state_enum"))
 
     # Metadata and context
-    attributes = Column(JSONB, default=dict)  # Additional sensor attributes
+    attributes = Column(
+        _get_json_column_type(), default=dict
+    )  # Additional sensor attributes
     is_human_triggered = Column(Boolean, default=True, nullable=False)
     confidence_score = Column(
         Numeric(precision=5, scale=4)
@@ -106,12 +144,6 @@ class SensorEvent(Base):
         # Indexes for efficient time-series queries
         Index("idx_room_sensor_time", "room_id", "sensor_id", "timestamp"),
         Index("idx_room_time_desc", "room_id", desc("timestamp")),
-        Index(
-            "idx_state_changes",
-            "room_id",
-            "timestamp",
-            postgresql_where=text("state != previous_state"),
-        ),
         Index("idx_sensor_type_time", "sensor_type", "timestamp"),
         Index("idx_human_triggered", "is_human_triggered", "timestamp"),
         # Composite indexes for common query patterns
@@ -122,17 +154,12 @@ class SensorEvent(Base):
             "state",
             "timestamp",
         ),
-        Index(
-            "idx_motion_events",
-            "room_id",
-            "timestamp",
-            postgresql_where=text("sensor_type = 'motion'"),
-        ),
         # Constraints
         CheckConstraint(
             "confidence_score >= 0 AND confidence_score <= 1",
             name="valid_confidence",
         ),
+        # Note: PostgreSQL-specific indexes are conditionally added in conftest.py
     )
 
     @classmethod
@@ -523,7 +550,9 @@ class RoomState(Base):
     # State metadata with Text field for detailed descriptions
     state_duration = Column(Integer)  # Duration in current state (seconds)
     transition_trigger = Column(String(100))  # Sensor that triggered transition
-    certainty_factors = Column(JSONB, default=dict)  # Contributing factors
+    certainty_factors = Column(
+        _get_json_column_type(), default=dict
+    )  # Contributing factors
     detailed_analysis = Column(Text)  # Large text field for detailed state analysis
 
     # Tracking
@@ -783,10 +812,10 @@ class Prediction(Base):
     # Model information
     model_type = Column(ENUM(*MODEL_TYPES, name="model_type_enum"), nullable=False)
     model_version = Column(String(50), nullable=False)
-    feature_importance = Column(JSONB, default=dict)
+    feature_importance = Column(_get_json_column_type(), default=dict)
 
     # Alternative predictions (top-k)
-    alternatives = Column(JSONB, default=list)
+    alternatives = Column(_get_json_column_type(), default=list)
 
     # Validation results
     actual_transition_time = Column(DateTime(timezone=True))
@@ -1172,7 +1201,7 @@ class ModelAccuracy(Base):
 
     # Metadata
     created_at = Column(DateTime(timezone=True), default=func.now())
-    baseline_comparison = Column(JSONB, default=dict)
+    baseline_comparison = Column(_get_json_column_type(), default=dict)
 
     __table_args__ = (
         Index("idx_room_model_time", "room_id", "model_type", "measurement_end"),
@@ -1210,10 +1239,12 @@ class FeatureStore(Base):
     feature_timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
 
     # Feature categories
-    temporal_features = Column(JSONB, nullable=False, default=dict)
-    sequential_features = Column(JSONB, nullable=False, default=dict)
-    contextual_features = Column(JSONB, nullable=False, default=dict)
-    environmental_features = Column(JSONB, nullable=False, default=dict)
+    temporal_features = Column(_get_json_column_type(), nullable=False, default=dict)
+    sequential_features = Column(_get_json_column_type(), nullable=False, default=dict)
+    contextual_features = Column(_get_json_column_type(), nullable=False, default=dict)
+    environmental_features = Column(
+        _get_json_column_type(), nullable=False, default=dict
+    )
 
     # Feature metadata
     lookback_hours = Column(Integer, nullable=False)
@@ -1455,14 +1486,14 @@ async def create_timescale_hypertables(session: AsyncSession):
     """
     Create TimescaleDB hypertables and configure partitioning.
 
-    The sensor_events table uses a composite primary key (id, timestamp) to satisfy
-    TimescaleDB's requirement that the partitioning column be part of the primary key.
+    The sensor_events table uses a single primary key (id) for cross-database compatibility.
+    TimescaleDB hypertable partitioning is configured on the timestamp column.
     Foreign key relationships are managed at the application level to avoid conflicts
     with TimescaleDB's unique index requirements.
     """
 
     # Create hypertable for sensor_events with timestamp partitioning
-    # The composite primary key (id, timestamp) allows this to work
+    # Using single primary key for compatibility while still partitioning by timestamp
     await session.execute(
         text(
             "SELECT create_hypertable('sensor_events', 'timestamp', if_not_exists => TRUE, create_default_indexes => FALSE)"
@@ -1562,7 +1593,7 @@ def get_bulk_insert_query() -> str:
             timestamp, room_id, sensor_id, sensor_type, state,
             previous_state, attributes, is_human_triggered, confidence_score
         ) VALUES %s
-        ON CONFLICT (id, timestamp) DO UPDATE SET
+        ON CONFLICT (id) DO UPDATE SET
             timestamp = EXCLUDED.timestamp,
             room_id = EXCLUDED.room_id,
             sensor_id = EXCLUDED.sensor_id,

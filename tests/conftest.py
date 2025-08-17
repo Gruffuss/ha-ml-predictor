@@ -63,25 +63,48 @@ from src.data.storage.database import DatabaseManager
 from src.data.storage.models import Base, Prediction, RoomState, SensorEvent
 
 
-def _patch_models_for_sqlite(engine):
-    """Patch models to be SQLite-compatible by removing composite primary keys."""
-    from sqlalchemy import BigInteger, Column, DateTime
-    from sqlalchemy.sql import func
+def _patch_models_for_sqlite():
+    """
+    Patch models to be SQLite-compatible by removing composite primary keys.
 
-    from src.data.storage.models import Prediction, RoomState, SensorEvent
+    This function modifies the SensorEvent model to use a single primary key (id)
+    instead of the composite primary key (id, timestamp) that SQLite doesn't support
+    with autoincrement.
+    """
+    from src.data.storage.models import SensorEvent
 
-    # Remove timestamp from primary key for SensorEvent
-    # This allows SQLite to work with autoincrement on id only
+    # Check if the model has already been patched
+    if hasattr(SensorEvent, "_sqlite_patched"):
+        return
+
+    # Mark as patched to avoid double-patching
+    SensorEvent._sqlite_patched = True
+
+    # For SQLite, we need to ensure only 'id' is the primary key
+    # The timestamp column should remain indexed but not part of primary key
     if hasattr(SensorEvent, "__table__"):
-        # Remove the composite primary key constraint
         table = SensorEvent.__table__
-        # Find the timestamp column and remove it from primary key
-        for col in table.columns:
-            if col.name == "timestamp" and col.primary_key:
-                col.primary_key = False
 
-    # Similar patching for other models if needed
-    # RoomState and Prediction should be fine as they use simple primary keys
+        # Remove timestamp from primary key if it exists
+        timestamp_col = None
+        for col in table.columns:
+            if col.name == "timestamp":
+                timestamp_col = col
+                break
+
+        if timestamp_col and timestamp_col.primary_key:
+            timestamp_col.primary_key = False
+
+        # Ensure id column is the only primary key with autoincrement
+        id_col = None
+        for col in table.columns:
+            if col.name == "id":
+                id_col = col
+                break
+
+        if id_col:
+            id_col.primary_key = True
+            id_col.autoincrement = True
 
 
 # Test database configuration
@@ -251,10 +274,10 @@ async def test_db_engine():
             # Drop and recreate all tables for clean test state
             await conn.run_sync(Base.metadata.drop_all)
 
-            # For SQLite, temporarily patch models to avoid composite PK issues
+            # For SQLite, patch models to avoid composite PK issues
             if "sqlite" in TEST_DB_URL:
-                # Temporarily patch the models for SQLite compatibility
-                await conn.run_sync(_patch_models_for_sqlite)
+                # Patch the models for SQLite compatibility before creating tables
+                _patch_models_for_sqlite()
                 await conn.run_sync(Base.metadata.create_all)
             else:
                 await conn.run_sync(Base.metadata.create_all)
