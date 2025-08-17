@@ -151,7 +151,7 @@ class TestConfigurationErrors:
         assert isinstance(error, ConfigurationError)
         assert "config.yaml" in error.message
         assert "/path/to/config" in error.message
-        assert error.error_code == "CONFIG_FILE_NOT_FOUND"
+        assert error.error_code == "CONFIG_FILE_NOT_FOUND_ERROR"
         assert error.severity == ErrorSeverity.CRITICAL
         assert error.context["config_file"] == "config.yaml"
         assert error.context["config_dir"] == "/path/to/config"
@@ -240,7 +240,7 @@ class TestHomeAssistantErrors:
         assert isinstance(error, HomeAssistantError)
         assert "binary_sensor.test" in error.message
         assert "living_room" in error.message
-        assert error.error_code == "ENTITY_NOT_FOUND"
+        assert error.error_code == "ENTITY_NOT_FOUND_ERROR"
         assert error.context["entity_id"] == "binary_sensor.test"
         assert error.context["room_id"] == "living_room"
 
@@ -395,7 +395,7 @@ class TestModelErrors:
         assert "kitchen" in error.message
         assert "50" in error.message
         assert "100" in error.message
-        assert error.error_code == "INSUFFICIENT_TRAINING_DATA"
+        assert error.error_code == "INSUFFICIENT_TRAINING_DATA_ERROR"
         assert error.context["room_id"] == "kitchen"
         assert error.context["data_points"] == 50
         assert error.context["minimum_required"] == 100
@@ -410,7 +410,7 @@ class TestModelErrors:
         assert "bathroom" in error.message
         assert "1.0" in error.message
         assert "2.0" in error.message
-        assert error.error_code == "MODEL_VERSION_MISMATCH"
+        assert error.error_code == "MODEL_VERSION_MISMATCH_ERROR"
         assert error.severity == ErrorSeverity.HIGH
 
 
@@ -569,7 +569,7 @@ class TestMQTTAndIntegrationErrors:
         assert isinstance(error, IntegrationError)
         assert "Home Assistant API" in error.message
         assert "300 requests per 3600s" in error.message
-        assert error.error_code == "RATE_LIMIT_EXCEEDED"
+        assert error.error_code == "RATE_LIMIT_EXCEEDED_ERROR"
         assert error.context["service"] == "Home Assistant API"
         assert error.context["limit"] == 300
         assert error.context["window_seconds"] == 3600
@@ -595,7 +595,7 @@ class TestSystemErrors:
         assert "memory" in error.message
         assert "1024.5MB" in error.message
         assert "1000.0MB" in error.message
-        assert error.error_code == "RESOURCE_EXHAUSTION"
+        assert error.error_code == "RESOURCE_EXHAUSTION_ERROR"
         assert error.severity == ErrorSeverity.HIGH
         assert error.context["resource_type"] == "memory"
         assert error.context["current_usage"] == 1024.5
@@ -612,7 +612,7 @@ class TestSystemErrors:
 
         assert isinstance(error, SystemError)
         assert "Database" in error.message
-        assert error.error_code == "SERVICE_UNAVAILABLE"
+        assert error.error_code == "SERVICE_UNAVAILABLE_ERROR"
         assert error.severity == ErrorSeverity.HIGH
         assert error.context["service_name"] == "Database"
         assert error.context["endpoint"] == "postgresql://localhost:5432/db"
@@ -626,7 +626,7 @@ class TestSystemErrors:
         assert isinstance(error, SystemError)
         assert "maintenance mode" in error.message
         assert end_time in error.message
-        assert error.error_code == "MAINTENANCE_MODE"
+        assert error.error_code == "MAINTENANCE_MODE_ERROR"
         assert error.context["estimated_end_time"] == end_time
 
     def test_maintenance_mode_error_no_end_time(self):

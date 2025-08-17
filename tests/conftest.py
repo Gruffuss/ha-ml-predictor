@@ -181,6 +181,23 @@ def test_config_dir():
                 "contextual_features": True,
             },
             "logging": {"level": "DEBUG", "format": "structured"},
+            "tracking": {
+                "enabled": True,
+                "monitoring_interval_seconds": 60,
+                "auto_validation_enabled": True,
+                "validation_window_minutes": 30,
+                "drift_detection_enabled": True,
+                "drift_threshold": 0.1,
+                "auto_retraining_enabled": True,
+                "adaptive_retraining_enabled": True,
+            },
+            "api": {
+                "enabled": False,  # Disable API for tests to avoid port conflicts
+                "host": "127.0.0.1",
+                "port": 8000,
+                "debug": True,
+                "background_tasks_enabled": False,  # Disable background tasks in tests
+            },
         }
 
         # Create rooms config file

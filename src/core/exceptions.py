@@ -87,7 +87,7 @@ class ConfigFileNotFoundError(ConfigurationError):
         )
         super().__init__(
             message=message,
-            error_code="CONFIG_FILE_NOT_FOUND",
+            error_code="CONFIG_FILE_NOT_FOUND_ERROR",
             config_file=config_file,
             context={"config_dir": config_dir},
             severity=ErrorSeverity.CRITICAL,

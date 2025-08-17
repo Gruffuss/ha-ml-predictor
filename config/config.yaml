@@ -32,3 +32,78 @@ features:
   temporal_features: true
   sequential_features: true
   contextual_features: true
+
+tracking:
+  enabled: true
+  monitoring_interval_seconds: 60
+  auto_validation_enabled: true
+  validation_window_minutes: 30
+  max_stored_alerts: 1000
+  trend_analysis_points: 10
+  cleanup_interval_hours: 24
+  
+  # Drift detection configuration
+  drift_detection_enabled: true
+  drift_check_interval_seconds: 300
+  drift_threshold: 0.1
+  drift_baseline_days: 7
+  drift_current_days: 3
+  drift_min_samples: 100
+  
+  # API and UI configuration
+  websocket_api_enabled: false
+  websocket_api_host: "0.0.0.0"
+  websocket_api_port: 8003
+  dashboard_enabled: false
+  dashboard_host: "0.0.0.0"
+  dashboard_port: 8004
+  
+  # Retraining configuration
+  auto_retraining_enabled: true
+  adaptive_retraining_enabled: true
+  retraining_trigger_threshold: 0.8
+  min_retraining_interval_hours: 24
+
+api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+  
+  # Security configuration
+  enable_cors: true
+  cors_origins: ["*"]
+  api_key_enabled: false
+  
+  # JWT authentication
+  jwt:
+    enabled: true
+    algorithm: "HS256"
+    access_token_expire_minutes: 60
+    refresh_token_expire_days: 30
+    issuer: "ha-ml-predictor"
+    audience: "ha-ml-predictor-api"
+    require_https: false
+    secure_cookies: false
+    blacklist_enabled: true
+  
+  # Rate limiting
+  rate_limit_enabled: true
+  requests_per_minute: 60
+  burst_limit: 100
+  
+  # Request/response configuration
+  request_timeout_seconds: 30
+  max_request_size_mb: 10
+  include_docs: true
+  docs_url: "/docs"
+  redoc_url: "/redoc"
+  
+  # Background task configuration
+  background_tasks_enabled: true
+  health_check_interval_seconds: 60
+  
+  # Logging configuration
+  access_log: true
+  log_requests: true
+  log_responses: false
