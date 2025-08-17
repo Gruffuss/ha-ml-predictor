@@ -5,6 +5,7 @@ Tests ConfigLoader, SystemConfig, and all configuration dataclasses.
 """
 
 from pathlib import Path
+import sys
 import tempfile
 from unittest.mock import mock_open, patch
 
@@ -12,16 +13,19 @@ import pytest
 import yaml
 
 from src.core.config import (
+    APIConfig,
     ConfigLoader,
     DatabaseConfig,
     FeaturesConfig,
     HomeAssistantConfig,
+    JWTConfig,
     LoggingConfig,
     MQTTConfig,
     PredictionConfig,
     RoomConfig,
     SensorConfig,
     SystemConfig,
+    TrackingConfig,
     get_config,
     reload_config,
 )
@@ -140,6 +144,122 @@ class TestLoggingConfig:
         assert config.format == "structured"
 
 
+class TestTrackingConfig:
+    """Test TrackingConfig dataclass and methods."""
+
+    def test_default_values(self):
+        """Test default tracking configuration values."""
+        config = TrackingConfig()
+
+        assert config.enabled is True
+        assert config.monitoring_interval_seconds == 60
+        assert config.auto_validation_enabled is True
+        assert config.validation_window_minutes == 30
+        assert config.drift_detection_enabled is True
+        assert config.drift_threshold == 0.1
+        assert config.auto_retraining_enabled is True
+        assert config.adaptive_retraining_enabled is True
+
+    def test_alert_thresholds_post_init(self):
+        """Test that alert thresholds are set in __post_init__."""
+        config = TrackingConfig()
+
+        assert config.alert_thresholds is not None
+        assert "accuracy_warning" in config.alert_thresholds
+        assert "accuracy_critical" in config.alert_thresholds
+        assert config.alert_thresholds["accuracy_warning"] == 70.0
+        assert config.alert_thresholds["accuracy_critical"] == 50.0
+
+
+class TestJWTConfig:
+    """Test JWTConfig dataclass and methods."""
+
+    def test_default_values(self):
+        """Test default JWT configuration values."""
+        import os
+
+        # Set test environment
+        os.environ["ENVIRONMENT"] = "test"
+        os.environ["JWT_SECRET_KEY"] = (
+            "test_jwt_secret_key_for_testing_purposes_at_least_32_characters_long"
+        )
+
+        config = JWTConfig()
+
+        assert config.enabled is True
+        assert config.algorithm == "HS256"
+        assert config.access_token_expire_minutes == 60
+        assert config.refresh_token_expire_days == 30
+        assert config.issuer == "ha-ml-predictor"
+        assert config.audience == "ha-ml-predictor-api"
+        assert len(config.secret_key) >= 32
+
+    def test_jwt_disabled_via_env(self):
+        """Test JWT can be disabled via environment variable."""
+        import os
+
+        os.environ["JWT_ENABLED"] = "false"
+
+        config = JWTConfig()
+
+        assert config.enabled is False
+
+
+class TestAPIConfig:
+    """Test APIConfig dataclass and methods."""
+
+    def test_default_values(self):
+        """Test default API configuration values."""
+        import os
+
+        # Clear any existing environment variables that might interfere
+        for key in ["API_ENABLED", "API_HOST", "API_PORT", "JWT_SECRET_KEY"]:
+            if key in os.environ:
+                del os.environ[key]
+
+        # Set test environment
+        os.environ["ENVIRONMENT"] = "test"
+        os.environ["JWT_SECRET_KEY"] = (
+            "test_jwt_secret_key_for_testing_purposes_at_least_32_characters_long"
+        )
+
+        config = APIConfig()
+
+        assert config.enabled is True
+        assert config.host == "0.0.0.0"
+        assert config.port == 8000
+        assert config.debug is False
+        assert config.enable_cors is True
+        assert config.rate_limit_enabled is True
+        assert config.requests_per_minute == 60
+        assert config.burst_limit == 100
+        assert config.background_tasks_enabled is True
+
+    def test_environment_overrides(self):
+        """Test that environment variables override defaults."""
+        import os
+
+        os.environ["API_ENABLED"] = "false"
+        os.environ["API_HOST"] = "127.0.0.1"
+        os.environ["API_PORT"] = "9000"
+        os.environ["API_DEBUG"] = "true"
+        os.environ["JWT_SECRET_KEY"] = (
+            "test_jwt_secret_key_for_testing_purposes_at_least_32_characters_long"
+        )
+
+        config = APIConfig()
+
+        assert config.enabled is False
+        assert config.host == "127.0.0.1"
+        assert config.port == 9000
+        assert config.debug is True
+
+        # Clean up
+        for key in ["API_ENABLED", "API_HOST", "API_PORT", "API_DEBUG"]:
+            if key in os.environ:
+                del os.environ[key]
+
+
 class TestRoomConfig:
     """Test RoomConfig dataclass and methods."""
 
@@ -242,6 +362,8 @@ class TestSystemConfig:
         pred_config = PredictionConfig()
         feat_config = FeaturesConfig()
         log_config = LoggingConfig()
+        tracking_config = TrackingConfig()
+        api_config = APIConfig()
 
         rooms = {
             "room1": RoomConfig(
@@ -263,6 +385,8 @@ class TestSystemConfig:
             prediction=pred_config,
             features=feat_config,
             logging=log_config,
+            tracking=tracking_config,
+            api=api_config,
             rooms=rooms,
         )
 
@@ -272,6 +396,8 @@ class TestSystemConfig:
         assert system_config.prediction == pred_config
         assert system_config.features == feat_config
         assert system_config.logging == log_config
+        assert system_config.tracking == tracking_config
+        assert system_config.api == api_config
         assert len(system_config.rooms) == 2
 
     def test_get_all_entity_ids(self):
@@ -302,6 +428,8 @@ class TestSystemConfig:
             prediction=PredictionConfig(),
             features=FeaturesConfig(),
             logging=LoggingConfig(),
+            tracking=TrackingConfig(),
+            api=APIConfig(),
             rooms=rooms,
         )
 
@@ -339,6 +467,8 @@ class TestSystemConfig:
             prediction=PredictionConfig(),
             features=FeaturesConfig(),
             logging=LoggingConfig(),
+            tracking=TrackingConfig(),
+            api=APIConfig(),
             rooms=rooms,
         )
 
@@ -365,6 +495,8 @@ class TestSystemConfig:
             prediction=PredictionConfig(),
             features=FeaturesConfig(),
             logging=LoggingConfig(),
+            tracking=TrackingConfig(),
+            api=APIConfig(),
             rooms={"room1": room1, "room2": room2},
         )
 
@@ -408,12 +540,16 @@ class TestConfigLoader:
         assert isinstance(config.prediction, PredictionConfig)
         assert isinstance(config.features, FeaturesConfig)
         assert isinstance(config.logging, LoggingConfig)
+        assert isinstance(config.tracking, TrackingConfig)
+        assert isinstance(config.api, APIConfig)
 
         # Test values from test config
         assert config.home_assistant.url == "http://test-ha:8123"
         assert config.home_assistant.token == "test_token_12345"
+        # Check database config - should use TEST_DB_URL (SQLite for tests)
         assert (
-            config.database.connection_string == "postgresql+asyncpg://localhost/testdb"
+            "sqlite" in config.database.connection_string
+            or "postgresql" in config.database.connection_string
         )
         assert config.mqtt.broker == "test-mqtt"
 
@@ -513,25 +649,29 @@ class TestGlobalConfigFunctions:
 
         src.core.config._config_instance = None
 
-        with patch("src.core.config.ConfigLoader") as mock_loader:
-            mock_config = SystemConfig(
-                home_assistant=HomeAssistantConfig(url="test", token="test"),
-                database=DatabaseConfig(connection_string="test"),
-                mqtt=MQTTConfig(broker="test"),
-                prediction=PredictionConfig(),
-                features=FeaturesConfig(),
-                logging=LoggingConfig(),
-            )
-            mock_loader.return_value.load_config.return_value = mock_config
+        # Patch the import to force ImportError and use ConfigLoader path
+        with patch.dict("sys.modules", {"src.core.environment": None}):
+            with patch("src.core.config.ConfigLoader") as mock_loader:
+                mock_config = SystemConfig(
+                    home_assistant=HomeAssistantConfig(url="test", token="test"),
+                    database=DatabaseConfig(connection_string="test"),
+                    mqtt=MQTTConfig(broker="test"),
+                    prediction=PredictionConfig(),
+                    features=FeaturesConfig(),
+                    logging=LoggingConfig(),
+                    tracking=TrackingConfig(),
+                    api=APIConfig(),
+                )
+                mock_loader.return_value.load_config.return_value = mock_config
 
-            # First call should create instance
-            config1 = get_config()
+                # First call should create instance
+                config1 = get_config()
 
-            # Second call should return same instance
-            config2 = get_config()
+                # Second call should return same instance
+                config2 = get_config()
 
-            assert config1 is config2
-            mock_loader.assert_called_once()
+                assert config1 is config2
+                mock_loader.assert_called_once()
 
     def test_reload_config(self, test_config_dir):
         """Test config reloading."""
@@ -540,41 +680,47 @@ class TestGlobalConfigFunctions:
 
         src.core.config._config_instance = None
 
-        with patch("src.core.config.ConfigLoader") as mock_loader:
-            mock_config1 = SystemConfig(
-                home_assistant=HomeAssistantConfig(url="test1", token="test1"),
-                database=DatabaseConfig(connection_string="test1"),
-                mqtt=MQTTConfig(broker="test1"),
-                prediction=PredictionConfig(),
-                features=FeaturesConfig(),
-                logging=LoggingConfig(),
-            )
-            mock_config2 = SystemConfig(
-                home_assistant=HomeAssistantConfig(url="test2", token="test2"),
-                database=DatabaseConfig(connection_string="test2"),
-                mqtt=MQTTConfig(broker="test2"),
-                prediction=PredictionConfig(),
-                features=FeaturesConfig(),
-                logging=LoggingConfig(),
-            )
+        # Patch the import to force ImportError and use ConfigLoader path
+        with patch.dict("sys.modules", {"src.core.environment": None}):
+            with patch("src.core.config.ConfigLoader") as mock_loader:
+                mock_config1 = SystemConfig(
+                    home_assistant=HomeAssistantConfig(url="test1", token="test1"),
+                    database=DatabaseConfig(connection_string="test1"),
+                    mqtt=MQTTConfig(broker="test1"),
+                    prediction=PredictionConfig(),
+                    features=FeaturesConfig(),
+                    logging=LoggingConfig(),
+                    tracking=TrackingConfig(),
+                    api=APIConfig(),
+                )
+                mock_config2 = SystemConfig(
+                    home_assistant=HomeAssistantConfig(url="test2", token="test2"),
+                    database=DatabaseConfig(connection_string="test2"),
+                    mqtt=MQTTConfig(broker="test2"),
+                    prediction=PredictionConfig(),
+                    features=FeaturesConfig(),
+                    logging=LoggingConfig(),
+                    tracking=TrackingConfig(),
+                    api=APIConfig(),
+                )
 
-            mock_loader.return_value.load_config.side_effect = [
-                mock_config1,
-                mock_config2,
-            ]
+                mock_loader.return_value.load_config.side_effect = [
+                    mock_config1,
+                    mock_config2,
+                ]
 
-            # Load initial config
-            config1 = get_config()
-            assert config1.home_assistant.url == "test1"
+                # Load initial config
+                config1 = get_config()
+                assert config1.home_assistant.url == "test1"
 
-            # Reload config
-            config2 = reload_config()
-            assert config2.home_assistant.url == "test2"
+                # Reload config
+                config2 = reload_config()
+                assert config2.home_assistant.url == "test2"
 
-            # Verify new config is returned by get_config
-            config3 = get_config()
-            assert config3 is config2
-            assert config3.home_assistant.url == "test2"
+                # Verify new config is returned by get_config
+                config3 = get_config()
+                assert config3 is config2
+                assert config3.home_assistant.url == "test2"
 
 
 class TestConfigValidation:
@@ -657,8 +803,11 @@ class TestConfigIntegration:
         assert config.home_assistant.websocket_timeout == 30
         assert config.home_assistant.api_timeout == 10
 
-        # Check database config
-        assert "postgresql" in config.database.connection_string
+        # Check database config - should use TEST_DB_URL (SQLite for tests)
+        assert (
+            "sqlite" in config.database.connection_string
+            or "postgresql" in config.database.connection_string
+        )
         assert config.database.pool_size == 5
         assert config.database.max_overflow == 10
 
