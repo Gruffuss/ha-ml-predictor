@@ -9,7 +9,7 @@ and self-adaptation components.
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 import logging
 from pathlib import Path
@@ -25,6 +25,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from ..core.constants import ModelType
 from ..core.exceptions import (
     ErrorSeverity,
+    InsufficientTrainingDataError,
     ModelTrainingError,
     OccupancyPredictionError,
 )
@@ -135,7 +136,7 @@ class TrainingProgress:
     stage: TrainingStage = TrainingStage.INITIALIZATION
     progress_percent: float = 0.0
 
-    start_time: datetime = field(default_factory=datetime.utcnow)
+    start_time: datetime = field(default_factory=lambda: datetime.now(UTC))
     current_stage_start: datetime = field(default_factory=datetime.utcnow)
     estimated_completion: Optional[datetime] = None
 
@@ -168,7 +169,7 @@ class TrainingProgress:
     ):
         """Update current stage and progress."""
         self.stage = new_stage
-        self.current_stage_start = datetime.utcnow()
+        self.current_stage_start = datetime.now(UTC)
         self.stage_details = details or {}
 
         # Update progress percentage based on stage
@@ -498,12 +499,18 @@ class ModelTrainingPipeline:
             raw_data = await self._prepare_training_data(room_id, lookback_days)
             progress.total_samples = len(raw_data) if raw_data is not None else 0
 
-            if raw_data is None or len(raw_data) < self.config.min_samples_per_room:
-                raise ModelTrainingError(
-                    "ensemble",
-                    room_id,
-                    cause=None,
-                    training_data_size=len(raw_data) if raw_data else 0,
+            if (
+                raw_data is None
+                or raw_data.empty
+                or len(raw_data) < self.config.min_samples_per_room
+            ):
+                data_points = (
+                    len(raw_data) if raw_data is not None and not raw_data.empty else 0
+                )
+                raise InsufficientTrainingDataError(
+                    room_id=room_id,
+                    data_points=data_points,
+                    minimum_required=self.config.min_samples_per_room,
                 )
 
             # Stage 3: Data quality validation
@@ -613,7 +620,7 @@ class ModelTrainingPipeline:
                 await self._notify_tracking_manager_of_completion(progress)
 
             training_duration = (
-                datetime.utcnow() - progress.start_time
+                datetime.now(UTC) - progress.start_time
             ).total_seconds() / 60
             logger.info(
                 f"Training pipeline {pipeline_id} completed successfully in {training_duration:.1f} minutes. "
@@ -644,7 +651,7 @@ class ModelTrainingPipeline:
             )
 
             # Calculate date range
-            end_date = datetime.utcnow()
+            end_date = datetime.now(UTC)
             start_date = end_date - timedelta(days=lookback_days)
 
             # Get room events from database
@@ -693,7 +700,7 @@ class ModelTrainingPipeline:
                     "room_id": room_id,
                     "sensor_type": "motion",
                     "state": np.random.choice(
-                        ["on", "of"],
+                        ["on", "off"],
                         size=len(pd.date_range(start_date, end_date, freq="5min")),
                     ),
                     "occupancy_state": np.random.choice(
@@ -724,7 +731,7 @@ class ModelTrainingPipeline:
             # Check data freshness (most recent data should be within last 24 hours)
             if "timestamp" in raw_data.columns:
                 latest_timestamp = pd.to_datetime(raw_data["timestamp"].max())
-                data_freshness_ok = (datetime.utcnow() - latest_timestamp) <= timedelta(
+                data_freshness_ok = (datetime.now(UTC) - latest_timestamp) <= timedelta(
                     hours=24
                 )
             else:
@@ -1267,7 +1274,7 @@ class ModelTrainingPipeline:
                     # Generate predictions on validation data
                     predictions = await model.predict(
                         features=val_features,
-                        prediction_time=datetime.utcnow(),
+                        prediction_time=datetime.now(UTC),
                         current_state="unknown",
                     )
 
@@ -1275,7 +1282,7 @@ class ModelTrainingPipeline:
                     pred_values = []
                     for pred in predictions:
                         time_until = (
-                            pred.predicted_time - datetime.utcnow()
+                            pred.predicted_time - datetime.now(UTC)
                         ).total_seconds()
                         pred_values.append(time_until)
 
@@ -1391,7 +1398,7 @@ class ModelTrainingPipeline:
     def _meets_quality_thresholds(self, evaluation_metrics: Dict[str, float]) -> bool:
         """Check if model meets minimum quality thresholds."""
         r2_score = evaluation_metrics.get("r2", 0.0)
-        mae_score = evaluation_metrics.get("mae", float("in"))
+        mae_score = evaluation_metrics.get("mae", float("inf"))
 
         meets_accuracy = r2_score >= self.config.min_accuracy_threshold
         meets_error = mae_score <= (
@@ -1414,7 +1421,7 @@ class ModelTrainingPipeline:
             deployment_info = {
                 "deployed_models": [],
                 "best_model": best_model_key,
-                "deployment_time": datetime.utcnow().isoformat(),
+                "deployment_time": datetime.now(UTC).isoformat(),
                 "model_versions": {},
             }
 
@@ -1470,7 +1477,7 @@ class ModelTrainingPipeline:
 
     def _generate_model_version(self, room_id: str, model_name: str) -> str:
         """Generate unique model version identifier."""
-        timestamp = datetime.utcnow().strftime("%Y % m%d_ % H%M % S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         return f"v{timestamp}_{room_id}_{model_name}"
 
     async def _save_model_artifacts(
@@ -1496,7 +1503,7 @@ class ModelTrainingPipeline:
                 "room_id": room_id,
                 "model_name": model_name,
                 "model_version": model_version,
-                "training_date": datetime.utcnow().isoformat(),
+                "training_date": datetime.now(UTC).isoformat(),
                 "model_type": (
                     model.model_type.value
                     if hasattr(model, "model_type")

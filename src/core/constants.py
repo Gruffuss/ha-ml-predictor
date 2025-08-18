@@ -19,7 +19,7 @@ class SensorState(Enum):
     """Possible sensor states."""
 
     ON = "on"
-    OFF = "of"
+    OFF = "off"
     OPEN = "open"
     CLOSED = "closed"
     UNKNOWN = "unknown"
@@ -42,6 +42,7 @@ class ModelType(Enum):
     XGBOOST = "xgboost"
     HMM = "hmm"
     GAUSSIAN_PROCESS = "gp"
+    GP = "gp"  # Alias for GAUSSIAN_PROCESS for backward compatibility
     ENSEMBLE = "ensemble"
 
 
@@ -139,7 +140,9 @@ DEFAULT_MODEL_PARAMS = {
     ModelType.LSTM: {
         "sequence_length": 50,
         "hidden_units": 64,
+        "lstm_units": 64,  # Alias for hidden_units for compatibility
         "dropout": 0.2,
+        "dropout_rate": 0.2,  # Alias for dropout
         "learning_rate": 0.001,
     },
     ModelType.XGBOOST: {
@@ -147,15 +150,24 @@ DEFAULT_MODEL_PARAMS = {
         "max_depth": 6,
         "learning_rate": 0.1,
         "subsample": 0.8,
+        "objective": "reg:squarederror",  # Required parameter for XGBoost
     },
     ModelType.HMM: {
         "n_components": 4,
         "covariance_type": "full",
         "n_iter": 100,
+        "max_iter": 100,  # Alias for n_iter
     },
     ModelType.GAUSSIAN_PROCESS: {
         "kernel": "rb",
         "alpha": 1e-6,
+        "normalize_y": True,
+        "n_restarts_optimizer": 0,
+    },
+    ModelType.GP: {  # Alias mapping to GAUSSIAN_PROCESS
+        "kernel": "rb",
+        "alpha": 1e-6,
+        "normalize_y": True,
         "n_restarts_optimizer": 0,
     },
     ModelType.ENSEMBLE: {

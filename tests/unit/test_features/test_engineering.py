@@ -27,11 +27,59 @@ class TestFeatureEngineeringEngine:
 
     @pytest.fixture
     def mock_config(self):
-        """Create mock system configuration."""
+        """Create mock system configuration with properly configured RoomConfig objects."""
         config = Mock(spec=SystemConfig)
+
+        # Create properly structured room configs with all required attributes
+        living_room_config = Mock(spec=RoomConfig)
+        living_room_config.room_id = "living_room"
+        living_room_config.name = "Living Room"
+        living_room_config.sensors = {
+            "motion": "sensor.living_room_motion",
+            "temperature": "sensor.living_room_temperature",
+            "humidity": "sensor.living_room_humidity",
+            "door": "sensor.living_room_door",
+        }
+        living_room_config.get_sensors_by_type = Mock(
+            return_value={
+                "temperature": "sensor.living_room_temperature",
+                "door": "sensor.living_room_door",
+            }
+        )
+        living_room_config.get_all_entity_ids = Mock(
+            return_value=[
+                "sensor.living_room_motion",
+                "sensor.living_room_temperature",
+                "sensor.living_room_humidity",
+                "sensor.living_room_door",
+            ]
+        )
+
+        kitchen_config = Mock(spec=RoomConfig)
+        kitchen_config.room_id = "kitchen"
+        kitchen_config.name = "Kitchen"
+        kitchen_config.sensors = {
+            "motion": "sensor.kitchen_motion",
+            "temperature": "sensor.kitchen_temperature",
+            "door": "sensor.kitchen_door",
+        }
+        kitchen_config.get_sensors_by_type = Mock(
+            return_value={
+                "temperature": "sensor.kitchen_temperature",
+                "door": "sensor.kitchen_door",
+            }
+        )
+        kitchen_config.get_all_entity_ids = Mock(
+            return_value=[
+                "sensor.kitchen_motion",
+                "sensor.kitchen_temperature",
+                "sensor.kitchen_door",
+            ]
+        )
+
         config.rooms = {
-            "living_room": Mock(spec=RoomConfig),
-            "kitchen": Mock(spec=RoomConfig),
+            "living_room": living_room_config,
+            "kitchen": kitchen_config,
         }
         return config
 
@@ -49,7 +97,7 @@ class TestFeatureEngineeringEngine:
 
     @pytest.fixture
     def sample_events(self) -> List[SensorEvent]:
-        """Create sample sensor events."""
+        """Create sample sensor events with proper state values."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
         events = []
 
@@ -57,7 +105,7 @@ class TestFeatureEngineeringEngine:
             event = Mock(spec=SensorEvent)
             event.timestamp = base_time + timedelta(minutes=i * 5)
             event.room_id = "living_room"
-            event.state = "on" if i % 2 == 0 else "of"
+            event.state = "on" if i % 2 == 0 else "off"  # Fixed: was "of"
             event.sensor_type = "motion"
             event.sensor_id = f"sensor.motion_{i}"
             events.append(event)

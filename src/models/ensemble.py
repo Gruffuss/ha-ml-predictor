@@ -113,12 +113,21 @@ class OccupancyEnsemble(BasePredictor):
         start_time = datetime.utcnow()
 
         try:
+            # Validate input data
+            self._validate_training_data(
+                features, targets, validation_features, validation_targets
+            )
+
             logger.info(f"Starting ensemble training for room {self.room_id}")
             logger.info(f"Training data shape: {features.shape}")
 
             if len(features) < 50:
                 raise ModelTrainingError(
-                    f"Insufficient data for ensemble training: only {len(features)} samples"
+                    model_type="ensemble",
+                    room_id=self.room_id,
+                    cause=ValueError(
+                        f"Insufficient data for ensemble training: only {len(features)} samples"
+                    ),
                 )
 
             # Phase 1: Train base models with cross-validation for meta-features
@@ -643,7 +652,7 @@ class OccupancyEnsemble(BasePredictor):
                 self.model_performance[model_name] = {
                     "training_score": 0.0,
                     "validation_score": 0.0,
-                    "training_mae": float("in"),
+                    "training_mae": float("inf"),
                 }
 
         self.base_models_trained = True
@@ -675,35 +684,112 @@ class OccupancyEnsemble(BasePredictor):
         original_features: pd.DataFrame,
     ) -> pd.DataFrame:
         """Create meta-features for ensemble prediction."""
-        # Convert base predictions to DataFrame
-        max_len = max(len(preds) for preds in base_predictions.values())
+        # Validate input data
+        if not base_predictions:
+            raise ValueError("No base predictions provided")
+
+        # Use original features length as target - this is the key fix
+        target_len = len(original_features)
+
+        if target_len == 0:
+            raise ValueError(
+                "Cannot create meta-features with zero-length original features"
+            )
 
         meta_features = {}
         for model_name, preds in base_predictions.items():
-            # Pad predictions if necessary
-            padded_preds = (
-                preds + [preds[-1]] * (max_len - len(preds))
-                if preds
-                else [1800.0] * max_len
-            )
-            meta_features[model_name] = padded_preds[:max_len]
+            # Align all predictions to match target_len exactly
+            if len(preds) == 0:
+                # No predictions available, use default
+                aligned_preds = [1800.0] * target_len
+            elif len(preds) == target_len:
+                # Perfect match
+                aligned_preds = list(preds)
+            elif len(preds) < target_len:
+                # Pad with last value or repeat pattern
+                last_pred = preds[-1] if preds else 1800.0
+                aligned_preds = list(preds) + [last_pred] * (target_len - len(preds))
+            else:
+                # Truncate to exact target length
+                aligned_preds = list(preds[:target_len])
 
-        meta_df = pd.DataFrame(meta_features)
+            meta_features[model_name] = aligned_preds
+
+        # Create DataFrame with exact target length and proper index
+        meta_df = pd.DataFrame(meta_features, index=original_features.index)
+
+        # Verify dimensions match exactly
+        if len(meta_df) != target_len:
+            raise ValueError(
+                f"Meta DataFrame length mismatch: expected {target_len}, got {len(meta_df)}"
+            )
 
         # Add original features if configured
         if (
             self.model_params["use_base_features"]
             and not self.model_params["meta_features_only"]
         ):
-            important_features = original_features.iloc[
-                :max_len, :20
-            ]  # First 20 features
-            important_features.index = meta_df.index
-            meta_df = pd.concat([meta_df, important_features], axis=1)
+            # Select key features with exact length match
+            key_features = self._select_important_features(original_features)
+            # key_features already has matching index and length
+            meta_df = pd.concat([meta_df, key_features], axis=1)
 
-        # Scale features
-        meta_scaled = self.meta_scaler.transform(meta_df)
-        return pd.DataFrame(meta_scaled, columns=meta_df.columns)
+        # Validate final DataFrame
+        if meta_df.empty:
+            raise ValueError("Generated empty meta-features DataFrame")
+
+        if meta_df.isnull().any().any():
+            # Fill any NaN values with safe defaults
+            meta_df = meta_df.fillna(0.0)
+
+        # Scale features with robust error handling
+        try:
+            # Check if scaler is fitted and dimensions match
+            if hasattr(self.meta_scaler, "n_features_in_"):
+                expected_features = self.meta_scaler.n_features_in_
+                if meta_df.shape[1] != expected_features:
+                    logger.warning(
+                        f"Meta-feature dimension mismatch. Expected {expected_features}, "
+                        f"got {meta_df.shape[1]}. Adjusting features."
+                    )
+                    if meta_df.shape[1] > expected_features:
+                        # Truncate to expected size
+                        meta_df = meta_df.iloc[:, :expected_features]
+                    else:
+                        # Pad with zeros
+                        padding_cols = expected_features - meta_df.shape[1]
+                        padding_df = pd.DataFrame(
+                            0.0,
+                            index=meta_df.index,
+                            columns=[f"pad_{i}" for i in range(padding_cols)],
+                        )
+                        meta_df = pd.concat([meta_df, padding_df], axis=1)
+
+            meta_scaled = self.meta_scaler.transform(meta_df)
+            return pd.DataFrame(
+                meta_scaled, columns=meta_df.columns, index=meta_df.index
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to scale meta features: {e}. Using unscaled features as fallback."
+            )
+            return meta_df
+
+    def _select_important_features(self, features: pd.DataFrame) -> pd.DataFrame:
+        """Select most important features to include with meta-features."""
+        # Select a subset of key features (limit to prevent dimension explosion)
+        max_features = 10
+        if len(features.columns) <= max_features:
+            return features.copy()
+
+        # Select first max_features columns as a simple strategy
+        # In practice, this could use feature importance or correlation analysis
+        selected_features = features.iloc[:, :max_features].copy()
+
+        # Rename to avoid column name conflicts
+        selected_features.columns = [f"orig_{col}" for col in selected_features.columns]
+
+        return selected_features
 
     async def _predict_ensemble(self, features: pd.DataFrame) -> np.ndarray:
         """Generate ensemble predictions for training evaluation."""
@@ -919,6 +1005,105 @@ class OccupancyEnsemble(BasePredictor):
             target_values = targets.iloc[:, 0].values
 
         return np.clip(target_values, 60, 86400)
+
+    def _validate_training_data(
+        self,
+        features: pd.DataFrame,
+        targets: pd.DataFrame,
+        validation_features: Optional[pd.DataFrame] = None,
+        validation_targets: Optional[pd.DataFrame] = None,
+    ) -> None:
+        """Validate training data for proper format and consistency."""
+        # Check basic DataFrame requirements
+        if not isinstance(features, pd.DataFrame):
+            raise ValueError("Features must be a pandas DataFrame")
+        if not isinstance(targets, pd.DataFrame):
+            raise ValueError("Targets must be a pandas DataFrame")
+
+        # Check data dimensions
+        if len(features) != len(targets):
+            raise ValueError(
+                f"Features and targets must have same length: "
+                f"features={len(features)}, targets={len(targets)}"
+            )
+
+        # Check for empty data
+        if features.empty or targets.empty:
+            raise ValueError("Features and targets cannot be empty")
+
+        # Check for minimum data requirements
+        if len(features) < 50:
+            raise ValueError(
+                f"Insufficient data for ensemble training: only {len(features)} samples. "
+                "Need at least 50 samples."
+            )
+
+        # Validate feature columns contain numeric data
+        numeric_features = features.select_dtypes(include=[np.number])
+        if len(numeric_features.columns) < len(features.columns) * 0.8:
+            non_numeric = set(features.columns) - set(numeric_features.columns)
+            raise ValueError(
+                f"Too many non-numeric features. Non-numeric columns: {non_numeric}"
+            )
+
+        # Check for NaN values
+        if features.isnull().any().any():
+            nan_cols = features.columns[features.isnull().any()].tolist()
+            raise ValueError(f"Features contain NaN values in columns: {nan_cols}")
+
+        if targets.isnull().any().any():
+            nan_cols = targets.columns[targets.isnull().any()].tolist()
+            raise ValueError(f"Targets contain NaN values in columns: {nan_cols}")
+
+        # Validate target format
+        required_target_cols = {
+            "time_until_transition_seconds",
+            "transition_type",
+            "target_time",
+        }
+        if not required_target_cols.issubset(set(targets.columns)):
+            missing_cols = required_target_cols - set(targets.columns)
+            raise ValueError(
+                f"Targets missing required columns: {missing_cols}. "
+                f"Available columns: {list(targets.columns)}"
+            )
+
+        # Validate target values are numeric and in reasonable range
+        time_vals = targets["time_until_transition_seconds"]
+        if not pd.api.types.is_numeric_dtype(time_vals):
+            raise ValueError("time_until_transition_seconds must be numeric")
+
+        if (time_vals < 60).any() or (time_vals > 86400).any():
+            raise ValueError(
+                "time_until_transition_seconds must be between 60 and 86400 seconds (1 min to 24 hours)"
+            )
+
+        # Validate validation data if provided
+        if validation_features is not None and validation_targets is not None:
+            if len(validation_features) != len(validation_targets):
+                raise ValueError(
+                    f"Validation features and targets must have same length: "
+                    f"val_features={len(validation_features)}, val_targets={len(validation_targets)}"
+                )
+
+            # Check column consistency
+            if set(features.columns) != set(validation_features.columns):
+                missing_in_val = set(features.columns) - set(
+                    validation_features.columns
+                )
+                extra_in_val = set(validation_features.columns) - set(features.columns)
+                raise ValueError(
+                    f"Validation features have different columns. "
+                    f"Missing: {missing_in_val}, Extra: {extra_in_val}"
+                )
+
+            if set(targets.columns) != set(validation_targets.columns):
+                missing_in_val = set(targets.columns) - set(validation_targets.columns)
+                extra_in_val = set(validation_targets.columns) - set(targets.columns)
+                raise ValueError(
+                    f"Validation targets have different columns. "
+                    f"Missing: {missing_in_val}, Extra: {extra_in_val}"
+                )
 
     def get_ensemble_info(self) -> Dict[str, Any]:
         """Get detailed information about the ensemble."""

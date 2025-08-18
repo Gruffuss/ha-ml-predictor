@@ -7,7 +7,7 @@ from sensor data, coordinating temporal, sequential, and contextual extractors.
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import logging
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -103,14 +103,16 @@ class FeatureEngineeringEngine:
         Raises:
             FeatureExtractionError: If feature extraction fails
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
         self.stats["total_extractions"] += 1
 
         try:
             # Validate inputs
             if not room_id:
                 raise FeatureExtractionError(
-                    feature_type="validation", room_id="unknown", cause=None
+                    feature_type="validation",
+                    room_id="unknown",
+                    cause=ValueError("Room ID is required"),
                 )
 
             # Get room configuration
@@ -172,7 +174,7 @@ class FeatureEngineeringEngine:
             )
 
             # Update statistics
-            extraction_time = (datetime.utcnow() - start_time).total_seconds()
+            extraction_time = (datetime.now(UTC) - start_time).total_seconds()
             self.stats["successful_extractions"] += 1
             self.stats["avg_extraction_time"] = (
                 self.stats["avg_extraction_time"]
@@ -189,7 +191,7 @@ class FeatureEngineeringEngine:
             self.stats["failed_extractions"] += 1
             logger.error(f"Feature extraction failed for room {room_id}: {e}")
             raise FeatureExtractionError(
-                f"Failed to extract features for room {room_id}: {e}"
+                feature_type="general", room_id=room_id or "unknown", cause=e
             )
 
     async def extract_batch_features(
@@ -511,7 +513,7 @@ class FeatureEngineeringEngine:
         defaults.update({f"contextual_{k}": v for k, v in contextual_defaults.items()})
 
         # Add metadata defaults
-        defaults.update(self._add_metadata_features("unknown", datetime.utcnow(), 0, 0))
+        defaults.update(self._add_metadata_features("unknown", datetime.now(UTC), 0, 0))
 
         return defaults
 

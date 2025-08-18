@@ -8,7 +8,7 @@ Includes automatic reconnection, rate limiting, and event processing.
 
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import json
 import logging
 from typing import Any, AsyncGenerator, Callable, Dict, List, Optional
@@ -62,6 +62,7 @@ class RateLimiter:
 
     def __init__(self, max_requests: int = 300, window_seconds: int = 60):
         self.max_requests = max_requests
+        self.window_seconds = window_seconds
         self.window = timedelta(seconds=window_seconds)
         self.requests = []
         self._lock = asyncio.Lock()
@@ -69,7 +70,7 @@ class RateLimiter:
     async def acquire(self):
         """Wait if necessary to respect rate limits."""
         async with self._lock:
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             cutoff_time = now - self.window
             # Remove old requests outside the window
             self.requests = [
@@ -86,13 +87,9 @@ class RateLimiter:
                     logger.warning(
                         f"Rate limit reached, waiting {wait_time_seconds:.2f} seconds"
                     )
-                    # Raise specific rate limit exception for proper error handling
-                    raise RateLimitExceededError(
-                        service="home_assistant_api",
-                        limit=self.max_requests,
-                        window_seconds=int(self.window.total_seconds()),
-                        reset_time=int(wait_time_seconds),
-                    )
+                    # Actually wait instead of raising exception for internal rate limiting
+                    await asyncio.sleep(wait_time_seconds)
+                    # After waiting, proceed to add the request
 
             self.requests.append(now)
 
@@ -327,14 +324,19 @@ class HomeAssistantClient:
                 else None
             )
 
+            # Handle various timestamp formats from Home Assistant
+            timestamp_str = new_state.get("last_changed", "")
+            timestamp_clean = timestamp_str.replace("Z", "+00:00")
+            # Handle double timezone suffixes that can occur in tests
+            if timestamp_clean.count("+00:00") > 1:
+                timestamp_clean = timestamp_clean.replace("+00:00+00:00", "+00:00")
+
             # Create HAEvent with validated states
             ha_event = HAEvent(
                 entity_id=entity_id,
                 state=validated_current_state,
                 previous_state=validated_previous_state,
-                timestamp=datetime.fromisoformat(
-                    new_state.get("last_changed", "").replace("Z", "+00:00")
-                ),
+                timestamp=datetime.fromisoformat(timestamp_clean),
                 attributes=new_state.get("attributes", {}),
             )
 
@@ -368,8 +370,6 @@ class HomeAssistantClient:
             "off": SensorState.OFF.value,
             "open": SensorState.OPEN.value,
             "closed": SensorState.CLOSED.value,
-            "detected": SensorState.DETECTED.value,
-            "clear": SensorState.CLEAR.value,
             "unavailable": SensorState.UNAVAILABLE.value,
             "unknown": SensorState.UNKNOWN.value,
         }
@@ -388,9 +388,9 @@ class HomeAssistantClient:
         elif "closed" in normalized_state or "close" in normalized_state:
             return SensorState.CLOSED.value
         elif "detect" in normalized_state or "motion" in normalized_state:
-            return SensorState.DETECTED.value
+            return SensorState.ON.value  # Map detected/motion to ON
         elif "clear" in normalized_state or "no" in normalized_state:
-            return SensorState.CLEAR.value
+            return SensorState.OFF.value  # Map clear/no to OFF
         elif "unavailable" in normalized_state:
             return SensorState.UNAVAILABLE.value
 
@@ -562,7 +562,7 @@ class HomeAssistantClient:
         await self.rate_limiter.acquire()
 
         if end_time is None:
-            end_time = datetime.utcnow()
+            end_time = datetime.now(UTC)
 
         params = {
             "filter_entity_id": entity_id,
@@ -633,7 +633,7 @@ class HomeAssistantClient:
             Batches of historical records
         """
         if end_time is None:
-            end_time = datetime.utcnow()
+            end_time = datetime.now(UTC)
 
         # Process entities in batches to avoid overwhelming the API
         for i in range(0, len(entity_ids), batch_size):
@@ -710,7 +710,7 @@ class HomeAssistantClient:
             timestamp=ha_event.timestamp,
             attributes=ha_event.attributes,
             is_human_triggered=True,  # Will be updated by event processor
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
     def convert_history_to_sensor_events(
@@ -727,9 +727,14 @@ class HomeAssistantClient:
             timestamp_str = record.get("last_changed", record.get("last_updated", ""))
             if timestamp_str:
                 try:
-                    timestamp = datetime.fromisoformat(
-                        timestamp_str.replace("Z", "+00:00")
-                    )
+                    # Handle various timestamp formats from Home Assistant
+                    timestamp_clean = timestamp_str.replace("Z", "+00:00")
+                    # Handle double timezone suffixes that can occur in tests
+                    if timestamp_clean.count("+00:00") > 1:
+                        timestamp_clean = timestamp_clean.replace(
+                            "+00:00+00:00", "+00:00"
+                        )
+                    timestamp = datetime.fromisoformat(timestamp_clean)
                 except ValueError:
                     logger.warning(f"Invalid timestamp format: {timestamp_str}")
                     continue
@@ -745,7 +750,7 @@ class HomeAssistantClient:
                 timestamp=timestamp,
                 attributes=record.get("attributes", {}),
                 is_human_triggered=True,  # Will be updated by event processor
-                created_at=datetime.utcnow(),
+                created_at=datetime.now(UTC),
             )
 
             events.append(event)

@@ -25,12 +25,82 @@ class TestContextualFeatureExtractor:
 
     @pytest.fixture
     def mock_config(self):
-        """Create mock system configuration."""
+        """Create mock system configuration with properly configured RoomConfig objects."""
         config = Mock(spec=SystemConfig)
+
+        # Create properly structured room configs with all required attributes
+        living_room_config = Mock(spec=RoomConfig)
+        living_room_config.room_id = "living_room"
+        living_room_config.name = "Living Room"
+        living_room_config.sensors = {
+            "motion": "sensor.living_room_motion",
+            "temperature": "sensor.living_room_temperature",
+            "humidity": "sensor.living_room_humidity",
+            "door": "sensor.living_room_door",
+        }
+        living_room_config.get_sensors_by_type = Mock(
+            return_value={
+                "temperature": "sensor.living_room_temperature",
+                "door": "sensor.living_room_door",
+            }
+        )
+        living_room_config.get_all_entity_ids = Mock(
+            return_value=[
+                "sensor.living_room_motion",
+                "sensor.living_room_temperature",
+                "sensor.living_room_humidity",
+                "sensor.living_room_door",
+            ]
+        )
+
+        kitchen_config = Mock(spec=RoomConfig)
+        kitchen_config.room_id = "kitchen"
+        kitchen_config.name = "Kitchen"
+        kitchen_config.sensors = {
+            "motion": "sensor.kitchen_motion",
+            "temperature": "sensor.kitchen_temperature",
+            "door": "sensor.kitchen_door",
+        }
+        kitchen_config.get_sensors_by_type = Mock(
+            return_value={
+                "temperature": "sensor.kitchen_temperature",
+                "door": "sensor.kitchen_door",
+            }
+        )
+        kitchen_config.get_all_entity_ids = Mock(
+            return_value=[
+                "sensor.kitchen_motion",
+                "sensor.kitchen_temperature",
+                "sensor.kitchen_door",
+            ]
+        )
+
+        bedroom_config = Mock(spec=RoomConfig)
+        bedroom_config.room_id = "bedroom"
+        bedroom_config.name = "Bedroom"
+        bedroom_config.sensors = {
+            "motion": "sensor.bedroom_motion",
+            "temperature": "sensor.bedroom_temperature",
+            "door": "sensor.bedroom_door",
+        }
+        bedroom_config.get_sensors_by_type = Mock(
+            return_value={
+                "temperature": "sensor.bedroom_temperature",
+                "door": "sensor.bedroom_door",
+            }
+        )
+        bedroom_config.get_all_entity_ids = Mock(
+            return_value=[
+                "sensor.bedroom_motion",
+                "sensor.bedroom_temperature",
+                "sensor.bedroom_door",
+            ]
+        )
+
         config.rooms = {
-            "living_room": Mock(spec=RoomConfig),
-            "kitchen": Mock(spec=RoomConfig),
-            "bedroom": Mock(spec=RoomConfig),
+            "living_room": living_room_config,
+            "kitchen": kitchen_config,
+            "bedroom": bedroom_config,
         }
         return config
 
@@ -46,16 +116,31 @@ class TestContextualFeatureExtractor:
 
     @pytest.fixture
     def room_configs(self):
-        """Create room configuration dictionary."""
+        """Create room configuration dictionary with proper structure."""
         configs = {}
         for room_id in ["living_room", "kitchen", "bedroom"]:
             config = Mock(spec=RoomConfig)
             config.room_id = room_id
+            config.name = room_id.replace("_", " ").title()
+            config.sensors = {
+                "motion": f"sensor.{room_id}_motion",
+                "temperature": f"sensor.{room_id}_temperature",
+                "humidity": f"sensor.{room_id}_humidity",
+                "door": f"sensor.{room_id}_door",
+            }
             config.get_sensors_by_type = Mock(
                 return_value={
                     "temperature": f"sensor.{room_id}_temperature",
                     "door": f"sensor.{room_id}_door",
                 }
+            )
+            config.get_all_entity_ids = Mock(
+                return_value=[
+                    f"sensor.{room_id}_motion",
+                    f"sensor.{room_id}_temperature",
+                    f"sensor.{room_id}_humidity",
+                    f"sensor.{room_id}_door",
+                ]
             )
             configs[room_id] = config
         return configs
@@ -146,7 +231,7 @@ class TestContextualFeatureExtractor:
                 event = Mock(spec=SensorEvent)
                 event.timestamp = base_time + timedelta(minutes=room_idx * 10 + i * 2)
                 event.room_id = room_id
-                event.state = "on" if i % 2 == 0 else "of"
+                event.state = "on" if i % 2 == 0 else "off"
                 event.sensor_type = "motion"
                 event.sensor_id = f"sensor.{room_id}_motion"
                 event.attributes = {}

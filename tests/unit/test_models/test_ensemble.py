@@ -623,7 +623,7 @@ class TestEnsemblePrediction:
 
     async def _setup_trained_ensemble(self, ensemble, train_features, train_targets):
         """Helper to setup a trained ensemble for testing."""
-        # Mock all base models as trained
+        # Mock all base models as trained with dynamic responses
         for model_name, model in ensemble.base_models.items():
             model.is_trained = True
             model.train = AsyncMock(
@@ -635,22 +635,28 @@ class TestEnsemblePrediction:
                 )
             )
 
-            # Mock predictions with some variation
-            base_predictions = []
-            for i in range(len(train_features)):
-                pred_time = datetime.utcnow() + timedelta(seconds=1800 + i * 10)
-                base_predictions.append(
-                    PredictionResult(
-                        predicted_time=pred_time,
-                        transition_type=(
-                            "vacant_to_occupied" if i % 2 == 0 else "occupied_to_vacant"
-                        ),
-                        confidence_score=0.7 + (i % 3) * 0.1,
-                        model_type=model_name,
+            # Mock predictions with dynamic response to input size
+            async def mock_predict(features_input, prediction_time, current_state):
+                """Mock prediction that returns results matching input size."""
+                input_len = len(features_input)
+                base_predictions = []
+                for i in range(input_len):
+                    pred_time = prediction_time + timedelta(seconds=1800 + i * 10)
+                    base_predictions.append(
+                        PredictionResult(
+                            predicted_time=pred_time,
+                            transition_type=(
+                                "vacant_to_occupied"
+                                if i % 2 == 0
+                                else "occupied_to_vacant"
+                            ),
+                            confidence_score=0.7 + (i % 3) * 0.1,
+                            model_type=model_name,
+                        )
                     )
-                )
+                return base_predictions
 
-            model.predict = AsyncMock(return_value=base_predictions)
+            model.predict = AsyncMock(side_effect=mock_predict)
 
         # Setup ensemble state
         ensemble.is_trained = True
@@ -658,17 +664,27 @@ class TestEnsemblePrediction:
         ensemble.meta_learner_trained = True
         ensemble.feature_names = list(train_features.columns)
 
-        # Mock meta-learner
+        # Mock meta-learner with dynamic response
         ensemble.meta_learner = MagicMock()
-        ensemble.meta_learner.predict = MagicMock(
-            return_value=np.array([1800.0] * len(train_features))
-        )
 
-        # Mock scaler
+        def mock_meta_predict(X):
+            """Mock meta-learner that returns predictions matching input size."""
+            input_len = len(X) if hasattr(X, "__len__") else 1
+            return np.array([1800.0] * input_len)
+
+        ensemble.meta_learner.predict = MagicMock(side_effect=mock_meta_predict)
+
+        # Mock scaler with dynamic response
         ensemble.meta_scaler = MagicMock()
-        ensemble.meta_scaler.transform = MagicMock(
-            return_value=np.zeros((len(train_features), 4))
-        )
+
+        def mock_scaler_transform(X):
+            """Mock scaler that returns scaled data matching input size."""
+            input_len = len(X) if hasattr(X, "__len__") else 1
+            input_cols = X.shape[1] if hasattr(X, "shape") and len(X.shape) > 1 else 4
+            return np.zeros((input_len, input_cols))
+
+        ensemble.meta_scaler.transform = MagicMock(side_effect=mock_scaler_transform)
+        ensemble.meta_scaler.n_features_in_ = 4  # Set expected features count
 
         # Setup model weights
         ensemble.model_weights = {

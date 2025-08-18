@@ -8,7 +8,7 @@ validation, and real-time monitoring without manual intervention.
 
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import logging
 import threading
 from typing import Any, Callable, Dict, List, Optional, Union
@@ -264,7 +264,7 @@ class TrackingManager:
         self._total_validations_performed = 0
         self._total_drift_checks_performed = 0
         self._last_drift_check_time: Optional[datetime] = None
-        self._system_start_time = datetime.utcnow()
+        self._system_start_time = datetime.now(UTC)
 
         logger.info(f"Initialized TrackingManager with config: {config}")
 
@@ -478,7 +478,7 @@ class TrackingManager:
                 self._pending_predictions[room_id].append(prediction_result)
 
                 # Clean old predictions from cache
-                cutoff_time = datetime.utcnow() - timedelta(hours=2)
+                cutoff_time = datetime.now(UTC) - timedelta(hours=2)
                 self._pending_predictions[room_id] = [
                     p
                     for p in self._pending_predictions[room_id]
@@ -647,9 +647,7 @@ class TrackingManager:
                         if self._last_drift_check_time
                         else None
                     ),
-                    "system_uptime_seconds": (
-                        datetime.utcnow() - self._system_start_time
-                    ).total_seconds(),
+                    "system_uptime_seconds": self._calculate_uptime_seconds(),
                     "background_tasks": len(self._background_tasks),
                 },
             }
@@ -708,6 +706,21 @@ class TrackingManager:
         except Exception as e:
             logger.error(f"Failed to get tracking status: {e}")
             return {"error": str(e)}
+
+    def _calculate_uptime_seconds(self) -> float:
+        """Calculate system uptime, handling timezone issues gracefully."""
+        try:
+            current_time = datetime.now(UTC)
+
+            # If start time is timezone-naive, make it UTC
+            start_time = self._system_start_time
+            if start_time.tzinfo is None:
+                start_time = start_time.replace(tzinfo=UTC)
+
+            return (current_time - start_time).total_seconds()
+        except Exception as e:
+            logger.warning(f"Failed to calculate uptime: {e}")
+            return 0.0
 
     async def get_real_time_metrics(
         self,
@@ -919,7 +932,7 @@ class TrackingManager:
                 return
 
             # Get recent room state changes
-            cutoff_time = datetime.utcnow() - timedelta(
+            cutoff_time = datetime.now() - timedelta(
                 minutes=self.config.validation_window_minutes
             )
 
@@ -1011,7 +1024,7 @@ class TrackingManager:
         """Perform periodic cleanup of tracking data."""
         try:
             # Clean prediction cache
-            cutoff_time = datetime.utcnow() - timedelta(hours=2)
+            cutoff_time = datetime.now() - timedelta(hours=2)
 
             with self._prediction_cache_lock:
                 for room_id in list(self._pending_predictions.keys()):
@@ -1103,7 +1116,7 @@ class TrackingManager:
                     logger.error(f"Error checking drift for room {room_id}: {e}")
                     continue
 
-            self._last_drift_check_time = datetime.utcnow()
+            self._last_drift_check_time = datetime.now()
 
             # Log summary of drift detection
             significant_drifts = [
@@ -1176,7 +1189,7 @@ class TrackingManager:
 
                     # Create drift alert using the determined alert_severity
                     drift_alert = AccuracyAlert(
-                        alert_id=f"drift_{room_id}_{int(datetime.utcnow().timestamp())}",
+                        alert_id=f"drift_{room_id}_{int(datetime.now().timestamp())}",
                         room_id=room_id,
                         model_type="drift_detector",
                         severity=severity_mapping.get(
@@ -2250,7 +2263,7 @@ class TrackingManager:
                     ),
                     "uptime_hours": (
                         (
-                            datetime.utcnow() - self.dashboard._dashboard_start_time
+                            datetime.now(UTC) - self.dashboard._dashboard_start_time
                         ).total_seconds()
                         / 3600
                         if hasattr(self.dashboard, "_dashboard_start_time")

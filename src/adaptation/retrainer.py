@@ -8,7 +8,7 @@ degradation, concept drift detection, and predictive performance monitoring.
 import asyncio
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 import logging
 import threading
@@ -242,10 +242,10 @@ class RetrainingProgress:
         # Estimate completion time based on progress
         if percentage > 0:
             elapsed = (
-                datetime.utcnow() - datetime.utcnow()
+                datetime.now(UTC) - datetime.now(UTC)
             ).total_seconds()  # Would track actual start time
             estimated_total = elapsed / (percentage / 100.0)
-            self.estimated_completion = datetime.utcnow() + timedelta(
+            self.estimated_completion = datetime.now(UTC) + timedelta(
                 seconds=estimated_total - elapsed
             )
 
@@ -480,13 +480,13 @@ class AdaptiveRetrainer:
 
             # Create retraining request
             request = RetrainingRequest(
-                request_id=f"{model_key}_{int(datetime.utcnow().timestamp())}",
+                request_id=f"{model_key}_{int(datetime.now(UTC).timestamp())}",
                 room_id=room_id,
                 model_type=model_type,
                 trigger=triggers[0],  # Primary trigger
                 strategy=strategy,
                 priority=min(priority, 10.0),  # Cap priority at 10
-                created_time=datetime.utcnow(),
+                created_time=datetime.now(UTC),
                 accuracy_metrics=accuracy_metrics,
                 drift_metrics=drift_metrics,
                 lookback_days=self.config.retraining_lookback_days,
@@ -537,7 +537,7 @@ class AdaptiveRetrainer:
                 model_type.value if hasattr(model_type, "value") else str(model_type)
             )
             model_key = f"{room_id}_{model_type_str}"
-            request_id = f"{model_key}_manual_{int(datetime.utcnow().timestamp())}"
+            request_id = f"{model_key}_manual_{int(datetime.now(UTC).timestamp())}"
 
             # Auto-select strategy if not provided
             if strategy is None:
@@ -565,7 +565,7 @@ class AdaptiveRetrainer:
                 trigger=trigger,
                 strategy=strategy,
                 priority=priority,
-                created_time=datetime.utcnow(),
+                created_time=datetime.now(UTC),
                 retraining_parameters=retraining_params,
             )
 
@@ -717,7 +717,7 @@ class AdaptiveRetrainer:
                 for i, request in enumerate(self._retraining_queue):
                     if request.request_id == request_id:
                         request.status = RetrainingStatus.CANCELLED
-                        request.completed_time = datetime.utcnow()
+                        request.completed_time = datetime.now(UTC)
                         self._retraining_queue.pop(i)
                         self._retraining_history.append(request)
                         logger.info(
@@ -729,7 +729,7 @@ class AdaptiveRetrainer:
                 if request_id in self._active_retrainings:
                     request = self._active_retrainings[request_id]
                     request.status = RetrainingStatus.CANCELLED
-                    request.completed_time = datetime.utcnow()
+                    request.completed_time = datetime.now(UTC)
 
                     # Move to history
                     del self._active_retrainings[request_id]
@@ -911,7 +911,7 @@ class AdaptiveRetrainer:
 
                 last_retrain = self._last_retrain_times[model_key]
                 cooldown_period = timedelta(hours=self.config.retraining_cooldown_hours)
-                return datetime.utcnow() < (last_retrain + cooldown_period)
+                return datetime.now(UTC) < (last_retrain + cooldown_period)
 
         except Exception as e:
             logger.error(f"Error checking cooldown for {model_key}: {e}")
@@ -1001,7 +1001,7 @@ class AdaptiveRetrainer:
 
             # Update request status
             request.status = RetrainingStatus.IN_PROGRESS
-            request.started_time = datetime.utcnow()
+            request.started_time = datetime.now(UTC)
 
             # Initialize progress tracking
             progress = RetrainingProgress(
@@ -1056,7 +1056,7 @@ class AdaptiveRetrainer:
         self, request: RetrainingRequest, progress: RetrainingProgress
     ) -> None:
         """Perform the actual retraining process."""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         try:
             # Phase 1: Data preparation
@@ -1100,6 +1100,10 @@ class AdaptiveRetrainer:
 
         except Exception as e:
             logger.error(f"Retraining failed for {request.request_id}: {e}")
+            # Ensure status is properly set to FAILED
+            request.status = RetrainingStatus.FAILED
+            request.error_message = str(e)
+            request.completed_time = datetime.now(UTC)
             await self._handle_retraining_failure(request, str(e))
 
     async def _prepare_retraining_data(
@@ -1112,7 +1116,7 @@ class AdaptiveRetrainer:
 
         try:
             # Get recent data from database (placeholder - would query actual data)
-            # TODO: Use end_date = datetime.utcnow() and start_date = end_date - timedelta(days=request.lookback_days) for actual DB query
+            # TODO: Use end_date = datetime.now(UTC) and start_date = end_date - timedelta(days=request.lookback_days) for actual DB query
 
             # In actual implementation, this would query the database for historical data
             # For now, create placeholder data structure
@@ -1184,9 +1188,17 @@ class AdaptiveRetrainer:
         # Get model from registry
         model_key = f"{request.room_id}_{request.model_type.value}"
         if model_key not in self.model_registry:
-            raise RetrainingError(f"Model {model_key} not found in registry")
+            error_msg = f"Model {model_key} not found in registry"
+            logger.error(error_msg)
+            raise RetrainingError(error_msg)
 
         model = self.model_registry[model_key]
+
+        # Validate training data
+        if features.empty or targets.empty:
+            error_msg = f"Insufficient training data for {model_key}"
+            logger.error(error_msg)
+            raise RetrainingError(error_msg)
 
         # Optimize model parameters if optimizer is available and strategy is FULL_RETRAIN
         if (
@@ -1309,7 +1321,19 @@ class AdaptiveRetrainer:
     ) -> TrainingResult:
         """Perform full retraining (potentially with pre-optimized parameters)."""
         logger.info("Performing full retraining with optimized parameters")
-        return await model.train(features, targets, val_features, val_targets)
+        try:
+            training_result = await model.train(
+                features, targets, val_features, val_targets
+            )
+            if not training_result.success:
+                error_msg = f"Model training failed: {getattr(training_result, 'error_message', 'Unknown error')}"
+                logger.error(error_msg)
+                raise RetrainingError(error_msg)
+            return training_result
+        except Exception as e:
+            error_msg = f"Error during full retraining: {e}"
+            logger.error(error_msg)
+            raise RetrainingError(error_msg)
 
     async def _incremental_retrain(
         self, model, features: pd.DataFrame, targets: pd.DataFrame
@@ -1317,15 +1341,28 @@ class AdaptiveRetrainer:
         """Perform incremental retraining (online learning)."""
         logger.info("Performing incremental retraining")
 
-        # Check if model supports incremental updates
-        if hasattr(model, "incremental_update"):
-            return await model.incremental_update(features, targets)
-        else:
-            # Fall back to full retrain if incremental not supported
-            logger.warning(
-                "Model doesn't support incremental updates, performing full retrain"
-            )
-            return await model.train(features, targets)
+        try:
+            # Check if model supports incremental updates
+            if hasattr(model, "incremental_update"):
+                training_result = await model.incremental_update(features, targets)
+            else:
+                # Fall back to full retrain if incremental not supported
+                logger.warning(
+                    "Model doesn't support incremental updates, performing full retrain"
+                )
+                training_result = await model.train(features, targets)
+
+            # Validate training success
+            if not training_result.success:
+                error_msg = f"Incremental training failed: {getattr(training_result, 'error_message', 'Unknown error')}"
+                logger.error(error_msg)
+                raise RetrainingError(error_msg)
+
+            return training_result
+        except Exception as e:
+            error_msg = f"Error during incremental retraining: {e}"
+            logger.error(error_msg)
+            raise RetrainingError(error_msg)
 
     async def _feature_refresh_retrain(
         self,
@@ -1337,30 +1374,55 @@ class AdaptiveRetrainer:
     ) -> TrainingResult:
         """Retrain with refreshed features only."""
         logger.info("Performing feature refresh retraining")
-        return await model.train(features, targets, val_features, val_targets)
+        try:
+            training_result = await model.train(
+                features, targets, val_features, val_targets
+            )
+            if not training_result.success:
+                error_msg = f"Feature refresh training failed: {getattr(training_result, 'error_message', 'Unknown error')}"
+                logger.error(error_msg)
+                raise RetrainingError(error_msg)
+            return training_result
+        except Exception as e:
+            error_msg = f"Error during feature refresh retraining: {e}"
+            logger.error(error_msg)
+            raise RetrainingError(error_msg)
 
     async def _ensemble_rebalance(
         self, model, features: pd.DataFrame, targets: pd.DataFrame
     ) -> TrainingResult:
         """Rebalance ensemble weights without full retraining."""
-        if hasattr(model, "_calculate_model_weights"):
-            logger.info("Rebalancing ensemble weights")
-            # Recalculate model weights based on recent performance
-            y_true = model._prepare_targets(targets)
-            model._calculate_model_weights(features, y_true)
+        try:
+            if hasattr(model, "_calculate_model_weights"):
+                logger.info("Rebalancing ensemble weights")
+                # Recalculate model weights based on recent performance
+                y_true = model._prepare_targets(targets)
+                model._calculate_model_weights(features, y_true)
 
-            # Create mock training result
-            return TrainingResult(
-                success=True,
-                training_time_seconds=1.0,
-                model_version=model.model_version,
-                training_samples=len(features),
-                training_score=0.8,  # Would calculate actual score
-                training_metrics={"rebalance_method": "ensemble_weights"},
-            )
-        else:
-            # Fall back to full retrain if model doesn't support rebalancing
-            return await model.train(features, targets)
+                # Create training result
+                return TrainingResult(
+                    success=True,
+                    training_time_seconds=1.0,
+                    model_version=model.model_version,
+                    training_samples=len(features),
+                    training_score=0.8,  # Would calculate actual score
+                    training_metrics={"rebalance_method": "ensemble_weights"},
+                )
+            else:
+                # Fall back to full retrain if model doesn't support rebalancing
+                logger.warning(
+                    "Model doesn't support ensemble rebalancing, performing full retrain"
+                )
+                training_result = await model.train(features, targets)
+                if not training_result.success:
+                    error_msg = f"Ensemble rebalance fallback training failed: {getattr(training_result, 'error_message', 'Unknown error')}"
+                    logger.error(error_msg)
+                    raise RetrainingError(error_msg)
+                return training_result
+        except Exception as e:
+            error_msg = f"Error during ensemble rebalancing: {e}"
+            logger.error(error_msg)
+            raise RetrainingError(error_msg)
 
     async def _validate_and_deploy_retrained_model(
         self,
@@ -1369,59 +1431,51 @@ class AdaptiveRetrainer:
         validation_results: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Validate retrained model and deploy if successful."""
-        if training_result.success:
-            validation_passed = True
-            validation_summary = {"training_success": True}
+        # Check if training was successful
+        if not training_result.success:
+            error_msg = f"Model training failed: {getattr(training_result, 'error_message', 'Training was not successful')}"
+            logger.error(error_msg)
+            raise RetrainingError(error_msg)
 
-            # Include PredictionValidator results if available
-            if validation_results:
-                validation_summary.update(validation_results)
+        # Training was successful, now validate the results
+        validation_passed = True
+        validation_summary = {"training_success": True}
 
-                # Check if validation meets minimum requirements
-                accuracy_threshold = getattr(
-                    self.config, "min_retrained_accuracy", 70.0
+        # Include PredictionValidator results if available
+        if validation_results:
+            validation_summary.update(validation_results)
+
+            # Check if validation meets minimum requirements
+            accuracy_threshold = getattr(self.config, "min_retrained_accuracy", 70.0)
+            error_threshold = getattr(self.config, "max_retrained_error_minutes", 20.0)
+
+            actual_accuracy = validation_results.get("accuracy_rate", 0)
+            actual_error = validation_results.get("mean_error_minutes", float("inf"))
+
+            if actual_accuracy < accuracy_threshold:
+                validation_passed = False
+                logger.warning(
+                    f"Retrained model accuracy {actual_accuracy:.1f}% below threshold {accuracy_threshold}%"
                 )
-                error_threshold = getattr(
-                    self.config, "max_retrained_error_minutes", 20.0
+
+            if actual_error > error_threshold:
+                validation_passed = False
+                logger.warning(
+                    f"Retrained model error {actual_error:.1f}min above threshold {error_threshold}min"
                 )
 
-                actual_accuracy = validation_results.get("accuracy_rate", 0)
-                actual_error = validation_results.get(
-                    "mean_error_minutes", float("inf")
-                )
-
-                if actual_accuracy < accuracy_threshold:
-                    validation_passed = False
-                    logger.warning(
-                        f"Retrained model accuracy {actual_accuracy:.1f}% below threshold {accuracy_threshold}%"
-                    )
-
-                if actual_error > error_threshold:
-                    validation_passed = False
-                    logger.warning(
-                        f"Retrained model error {actual_error:.1f}min above threshold {error_threshold}min"
-                    )
-
-            if validation_passed:
-                logger.info(
-                    f"Retrained model validation successful for {request.request_id}"
-                )
-                # In actual implementation, this would:
-                # 1. Run validation tests on retrained model
-                # 2. Compare performance with previous model
-                # 3. Deploy if improvement is significant
-                # 4. Update model registry
-
-                # Store validation summary in request for reporting
-                request.performance_improvement = validation_summary
-            else:
-                raise RetrainingError(
-                    f"Retrained model failed validation checks: {validation_summary}"
-                )
-        else:
-            raise RetrainingError(
-                f"Model training failed: {training_result.error_message}"
+        if validation_passed:
+            logger.info(
+                f"Retrained model validation successful for {request.request_id}"
             )
+            # Store validation summary in request for reporting
+            request.performance_improvement = validation_summary
+        else:
+            error_msg = (
+                f"Retrained model failed validation checks: {validation_summary}"
+            )
+            logger.error(error_msg)
+            raise RetrainingError(error_msg)
 
     async def _handle_retraining_success(
         self,
@@ -1433,7 +1487,7 @@ class AdaptiveRetrainer:
         try:
             # Update request
             request.status = RetrainingStatus.COMPLETED
-            request.completed_time = datetime.utcnow()
+            request.completed_time = datetime.now(UTC)
             request.training_result = training_result
 
             # Calculate performance improvement (would compare with previous model)
@@ -1445,10 +1499,10 @@ class AdaptiveRetrainer:
             # Update cooldown tracking
             model_key = f"{request.room_id}_{request.model_type.value}"
             with self._cooldown_lock:
-                self._last_retrain_times[model_key] = datetime.utcnow()
+                self._last_retrain_times[model_key] = datetime.now(UTC)
 
             # Update statistics
-            training_time = (datetime.utcnow() - start_time).total_seconds()
+            training_time = (datetime.now(UTC) - start_time).total_seconds()
             self._total_retrainings_completed += 1
             if self._total_retrainings_completed > 0:
                 self._average_retraining_time = (
@@ -1494,7 +1548,7 @@ class AdaptiveRetrainer:
         try:
             # Update request
             request.status = RetrainingStatus.FAILED
-            request.completed_time = datetime.utcnow()
+            request.completed_time = datetime.now(UTC)
             request.error_message = error_message
 
             # Update statistics
@@ -1539,7 +1593,7 @@ class AdaptiveRetrainer:
                 "model_type": request.model_type,
                 "trigger": request.trigger.value,
                 "strategy": request.strategy.value,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
             for callback in self.notification_callbacks:
@@ -1725,7 +1779,7 @@ class AdaptiveRetrainer:
 
             # Update request status
             request.status = RetrainingStatus.IN_PROGRESS
-            request.started_time = datetime.utcnow()
+            request.started_time = datetime.now(UTC)
 
             # Create progress tracker
             progress = RetrainingProgress(
@@ -1738,40 +1792,57 @@ class AdaptiveRetrainer:
                 self._progress_tracker[request.request_id] = progress
 
             # Perform the actual retraining
-            start_time = datetime.utcnow()
+            start_time = datetime.now(UTC)
 
             # Execute retraining and handle success/failure
             try:
                 await self._perform_retraining(request, progress)
-                training_time = (datetime.utcnow() - start_time).total_seconds()
+                training_time = (datetime.now(UTC) - start_time).total_seconds()
 
                 # Update statistics
                 self._update_average_retraining_time(training_time)
 
-                # Handle successful completion
-                if request.status == RetrainingStatus.COMPLETED:
+                # Handle successful completion - only mark as completed if training was actually successful
+                if request.training_result and request.training_result.success:
+                    request.status = RetrainingStatus.COMPLETED
+                    request.completed_time = datetime.now(UTC)
                     await self._notify_completion(request)
                 else:
-                    # If not explicitly completed, mark as completed for testing
-                    request.status = RetrainingStatus.COMPLETED
-                    request.completed_time = datetime.utcnow()
-                    await self._notify_completion(request)
+                    # Training didn't succeed - mark as failed
+                    request.status = RetrainingStatus.FAILED
+                    request.error_message = (
+                        request.error_message
+                        or "Training completed but was not successful"
+                    )
+                    request.completed_time = datetime.now(UTC)
+                    await self._notify_failure(request)
 
                 return request
 
             except Exception as e:
-                # Handle failure during retraining
-                training_time = (datetime.utcnow() - start_time).total_seconds()
+                # Handle failure during retraining - ensure proper failure status
+                logger.error(f"Retraining failed for {request.request_id}: {e}")
+                training_time = (datetime.now(UTC) - start_time).total_seconds()
                 request.status = RetrainingStatus.FAILED
                 request.error_message = str(e)
-                request.completed_time = datetime.utcnow()
+                request.completed_time = datetime.now(UTC)
+
+                # Update failure statistics
+                self._total_retrainings_failed += 1
+
                 await self._notify_failure(request)
                 return request
 
         except Exception as e:
+            # Top-level error handling - ensure failure status is properly set
             logger.error(f"Error executing retraining for {request.request_id}: {e}")
             request.status = RetrainingStatus.FAILED
             request.error_message = str(e)
+            request.completed_time = datetime.now(UTC)
+
+            # Update failure statistics
+            self._total_retrainings_failed += 1
+
             await self._notify_failure(request)
             return request
 

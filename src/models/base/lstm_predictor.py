@@ -62,8 +62,8 @@ class LSTMPredictor(BasePredictor):
             ),  # Alias for compatibility
             "learning_rate": default_params.get("learning_rate", 0.001),
             "max_iter": default_params.get("max_iter", 1000),
-            "early_stopping": default_params.get("early_stopping", True),
-            "validation_fraction": default_params.get("validation_fraction", 0.2),
+            "early_stopping": default_params.get("early_stopping", False),
+            "validation_fraction": default_params.get("validation_fraction", 0.1),
             "alpha": default_params.get("alpha", 0.0001),  # L2 regularization
             "dropout": default_params.get("dropout", 0.2),
             "dropout_rate": default_params.get(
@@ -438,6 +438,19 @@ class LSTMPredictor(BasePredictor):
         Returns:
             Tuple of (X_sequences, y_sequences)
         """
+        # Validate input data
+        if len(features) != len(targets):
+            raise ValueError(
+                f"Feature and target DataFrames must have same length: "
+                f"features={len(features)}, targets={len(targets)}"
+            )
+
+        if len(features) < self.sequence_length:
+            raise ValueError(
+                f"Need at least {self.sequence_length} samples for sequence generation, "
+                f"got {len(features)}"
+            )
+
         X_sequences = []
         y_sequences = []
 
@@ -456,23 +469,60 @@ class LSTMPredictor(BasePredictor):
             # Default: assume targets are already time differences
             target_values = targets.iloc[:, 0].values
 
-        # Generate sequences
-        for i in range(self.sequence_length, len(features), self.sequence_step):
-            # Input sequence: last sequence_length time steps
-            X_seq = features.iloc[i - self.sequence_length : i].values
+        # Validate target values are numeric
+        target_values = pd.to_numeric(target_values, errors="coerce")
+        if np.any(np.isnan(target_values)):
+            raise ValueError("Target values contain non-numeric data")
+
+        # Generate sequences with corrected bounds checking
+        # The maximum valid end index is len(features), so start from sequence_length to len(features)
+        for end_idx in range(
+            self.sequence_length, len(features) + 1, self.sequence_step
+        ):
+            # Calculate start index
+            start_idx = end_idx - self.sequence_length
+
+            # Double-check bounds (should not be needed with corrected range)
+            if start_idx < 0 or end_idx > len(features):
+                continue
+
+            # Extract sequence
+            X_seq = features.iloc[start_idx:end_idx].values
+
+            # Validate sequence shape
+            if X_seq.shape[0] != self.sequence_length:
+                continue
 
             # Flatten the sequence for MLPRegressor (which expects 1D input per sample)
             X_seq_flat = X_seq.flatten()
 
-            # Target: time until next transition at time step i
-            y_seq = target_values[i]
+            # Target: time until next transition at the end of the sequence
+            # Use end_idx - 1 to get the target for the last timestep in the sequence
+            target_idx = end_idx - 1
+            if target_idx >= len(target_values):
+                continue
+
+            y_seq = target_values[target_idx]
 
             # Only include sequences with reasonable target values
             if 60 <= y_seq <= 86400:  # Between 1 minute and 24 hours
                 X_sequences.append(X_seq_flat)
                 y_sequences.append(y_seq)
 
-        return np.array(X_sequences), np.array(y_sequences)
+        if len(X_sequences) == 0:
+            raise ValueError("No valid sequences could be generated from the data")
+
+        X_array = np.array(X_sequences)
+        y_array = np.array(y_sequences)
+
+        # Final validation
+        if X_array.shape[0] != y_array.shape[0]:
+            raise ValueError(
+                f"Sequence arrays have mismatched lengths: X={X_array.shape[0]}, y={y_array.shape[0]}"
+            )
+
+        logger.info(f"Generated {len(X_sequences)} valid sequences")
+        return X_array, y_array
 
     def _calculate_confidence(
         self, X_scaled: np.ndarray, y_pred_scaled: np.ndarray

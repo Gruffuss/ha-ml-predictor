@@ -6,7 +6,7 @@ rate limiting, and error handling for the HomeAssistantClient class.
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import json
 from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
 
@@ -36,13 +36,13 @@ class TestHAEvent:
 
     def test_ha_event_creation(self):
         """Test creating HAEvent with all fields."""
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(UTC)
         attributes = {"device_class": "motion", "friendly_name": "Test Sensor"}
 
         event = HAEvent(
             entity_id="binary_sensor.test_motion",
             state="on",
-            previous_state="of",
+            previous_state="off",
             timestamp=timestamp,
             attributes=attributes,
             event_type="state_changed",
@@ -50,7 +50,7 @@ class TestHAEvent:
 
         assert event.entity_id == "binary_sensor.test_motion"
         assert event.state == "on"
-        assert event.previous_state == "of"
+        assert event.previous_state == "off"
         assert event.timestamp == timestamp
         assert event.attributes == attributes
         assert event.event_type == "state_changed"
@@ -61,7 +61,7 @@ class TestHAEvent:
             entity_id="sensor.temperature",
             state="22.5",
             previous_state=None,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             attributes={},
         )
 
@@ -76,7 +76,7 @@ class TestHAEvent:
             entity_id="binary_sensor.valid",
             state="on",
             previous_state="off",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             attributes={},
         )
 
@@ -88,7 +88,7 @@ class TestHAEvent:
             entity_id="binary_sensor.test",
             state="unavailable",  # Invalid state
             previous_state="on",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             attributes={},
         )
 
@@ -100,7 +100,7 @@ class TestHAEvent:
             entity_id="",  # Empty entity ID
             state="on",
             previous_state="off",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             attributes={},
         )
 
@@ -136,9 +136,9 @@ class TestRateLimiter:
         limiter = RateLimiter(max_requests=5, window_seconds=60)
 
         # Should not block when under limit
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
         await limiter.acquire()
-        end_time = datetime.utcnow()
+        end_time = datetime.now(UTC)
 
         # Should be very fast (no waiting)
         assert (end_time - start_time).total_seconds() < 0.1
@@ -166,7 +166,7 @@ class TestRateLimiter:
         limiter = RateLimiter(max_requests=3, window_seconds=1)
 
         # Add old request manually
-        old_time = datetime.utcnow() - timedelta(seconds=2)
+        old_time = datetime.now(UTC) - timedelta(seconds=2)
         limiter.requests.append(old_time)
 
         # Add new request
@@ -316,7 +316,15 @@ class TestHomeAssistantClient:
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_session = AsyncMock()
-        mock_session.get.return_value.__aenter__.return_value = mock_response
+
+        # Create a proper async context manager mock
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        # Make get() a synchronous method that returns the context manager
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+
         client.session = mock_session
 
         # Should not raise exception
@@ -334,7 +342,15 @@ class TestHomeAssistantClient:
         mock_response = AsyncMock()
         mock_response.status = 401
         mock_session = AsyncMock()
-        mock_session.get.return_value.__aenter__.return_value = mock_response
+
+        # Create a proper async context manager mock
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        # Make get() a synchronous method that returns the context manager
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+
         client.session = mock_session
 
         with pytest.raises(HomeAssistantAuthenticationError):
@@ -349,7 +365,15 @@ class TestHomeAssistantClient:
         mock_response.status = 500
         mock_response.text.return_value = "Internal Server Error"
         mock_session = AsyncMock()
-        mock_session.get.return_value.__aenter__.return_value = mock_response
+
+        # Create a proper async context manager mock
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        # Make get() a synchronous method that returns the context manager
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+
         client.session = mock_session
 
         with pytest.raises(HomeAssistantAPIError) as exc_info:
@@ -375,12 +399,13 @@ class TestHomeAssistantClient:
         client = HomeAssistantClient(test_system_config)
 
         with (
-            patch("websockets.connect") as mock_connect,
+            patch("websockets.connect", new=AsyncMock()) as mock_connect,
             patch.object(client, "_authenticate_websocket") as mock_auth,
             patch("asyncio.create_task") as mock_create_task,
         ):
 
             mock_websocket = AsyncMock()
+            # websockets.connect is async and should return the websocket
             mock_connect.return_value = mock_websocket
 
             await client._connect_websocket()
@@ -479,7 +504,15 @@ class TestHomeAssistantClient:
         mock_response.status = 200
         mock_response.json.return_value = expected_state
         mock_session = AsyncMock()
-        mock_session.get.return_value.__aenter__.return_value = mock_response
+
+        # Create a proper async context manager mock
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        # Make get() a synchronous method that returns the context manager
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+
         client.session = mock_session
 
         result = await client.get_entity_state("binary_sensor.test")
@@ -500,7 +533,15 @@ class TestHomeAssistantClient:
         mock_response = AsyncMock()
         mock_response.status = 404
         mock_session = AsyncMock()
-        mock_session.get.return_value.__aenter__.return_value = mock_response
+
+        # Create a proper async context manager mock
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        # Make get() a synchronous method that returns the context manager
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+
         client.session = mock_session
 
         result = await client.get_entity_state("binary_sensor.nonexistent")
@@ -517,7 +558,15 @@ class TestHomeAssistantClient:
         mock_response.status = 500
         mock_response.text.return_value = "Internal Server Error"
         mock_session = AsyncMock()
-        mock_session.get.return_value.__aenter__.return_value = mock_response
+
+        # Create a proper async context manager mock
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        # Make get() a synchronous method that returns the context manager
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+
         client.session = mock_session
 
         with pytest.raises(HomeAssistantAPIError):
@@ -529,8 +578,8 @@ class TestHomeAssistantClient:
         client = HomeAssistantClient(test_system_config)
         client.rate_limiter = AsyncMock()
 
-        start_time = datetime.utcnow() - timedelta(hours=1)
-        end_time = datetime.utcnow()
+        start_time = datetime.now(UTC) - timedelta(hours=1)
+        end_time = datetime.now(UTC)
 
         expected_history = [
             {
@@ -545,7 +594,15 @@ class TestHomeAssistantClient:
         mock_response.status = 200
         mock_response.json.return_value = [expected_history]  # HA returns list of lists
         mock_session = AsyncMock()
-        mock_session.get.return_value.__aenter__.return_value = mock_response
+
+        # Create a proper async context manager mock
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        # Make get() a synchronous method that returns the context manager
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+
         client.session = mock_session
 
         result = await client.get_entity_history(
@@ -569,13 +626,21 @@ class TestHomeAssistantClient:
         client = HomeAssistantClient(test_system_config)
         client.rate_limiter = AsyncMock()
 
-        start_time = datetime.utcnow() - timedelta(hours=1)
+        start_time = datetime.now(UTC) - timedelta(hours=1)
 
         mock_response = AsyncMock()
         mock_response.status = 200
         mock_response.json.return_value = [[]]
         mock_session = AsyncMock()
-        mock_session.get.return_value.__aenter__.return_value = mock_response
+
+        # Create a proper async context manager mock
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        # Make get() a synchronous method that returns the context manager
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+
         client.session = mock_session
 
         await client.get_entity_history("binary_sensor.test", start_time)
@@ -590,12 +655,20 @@ class TestHomeAssistantClient:
         client = HomeAssistantClient(test_system_config)
         client.rate_limiter = AsyncMock()
 
-        start_time = datetime.utcnow() - timedelta(hours=1)
+        start_time = datetime.now(UTC) - timedelta(hours=1)
 
         mock_response = AsyncMock()
         mock_response.status = 404
         mock_session = AsyncMock()
-        mock_session.get.return_value.__aenter__.return_value = mock_response
+
+        # Create a proper async context manager mock
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        # Make get() a synchronous method that returns the context manager
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+
         client.session = mock_session
 
         with pytest.raises(EntityNotFoundError):
@@ -654,7 +727,7 @@ class TestHomeAssistantClient:
         """Test converting HAEvent to SensorEvent."""
         client = HomeAssistantClient(test_system_config)
 
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(UTC)
         ha_event = HAEvent(
             entity_id="binary_sensor.test_motion",
             state="on",
@@ -675,7 +748,7 @@ class TestHomeAssistantClient:
         assert sensor_event.sensor_id == "binary_sensor.test_motion"
         assert sensor_event.sensor_type == "presence"
         assert sensor_event.state == "on"
-        assert sensor_event.previous_state == "of"
+        assert sensor_event.previous_state == "off"
         assert sensor_event.timestamp == timestamp
         assert sensor_event.attributes == ha_event.attributes
         assert sensor_event.is_human_triggered is True  # Default
@@ -684,11 +757,11 @@ class TestHomeAssistantClient:
         """Test converting history data to SensorEvent list."""
         client = HomeAssistantClient(test_system_config)
 
-        base_time = datetime.utcnow()
+        base_time = datetime.now(UTC)
         history_data = [
             {
                 "entity_id": "binary_sensor.test",
-                "state": "of",
+                "state": "off",
                 "last_changed": base_time.isoformat() + "Z",
                 "attributes": {"device_class": "motion"},
             },
@@ -700,7 +773,7 @@ class TestHomeAssistantClient:
             },
             {
                 "entity_id": "binary_sensor.test",
-                "state": "of",
+                "state": "off",
                 "last_changed": (base_time + timedelta(minutes=10)).isoformat() + "Z",
                 "attributes": {"device_class": "motion"},
             },
@@ -716,15 +789,15 @@ class TestHomeAssistantClient:
         assert events[0].room_id == "bedroom"
         assert events[0].sensor_id == "binary_sensor.test"
         assert events[0].sensor_type == "motion"
-        assert events[0].state == "of"
+        assert events[0].state == "off"
         assert events[0].previous_state is None  # First event has no previous
 
         # Check second event
         assert events[1].state == "on"
-        assert events[1].previous_state == "of"  # Previous state from last event
+        assert events[1].previous_state == "off"  # Previous state from last event
 
         # Check third event
-        assert events[2].state == "of"
+        assert events[2].state == "off"
         assert events[2].previous_state == "on"
 
     def test_convert_history_invalid_timestamps(self, test_system_config):
@@ -740,7 +813,7 @@ class TestHomeAssistantClient:
             },
             {
                 "entity_id": "binary_sensor.test",
-                "state": "of",
+                "state": "off",
                 # Missing timestamp
                 "attributes": {},
             },
@@ -882,10 +955,10 @@ class TestHomeAssistantClientWebSocketHandling:
                     "entity_id": "binary_sensor.test",
                     "new_state": {
                         "state": "on",
-                        "last_changed": datetime.utcnow().isoformat() + "Z",
+                        "last_changed": datetime.now(UTC).isoformat() + "Z",
                         "attributes": {"device_class": "motion"},
                     },
-                    "old_state": {"state": "of"},
+                    "old_state": {"state": "off"},
                 },
             },
         }
@@ -898,7 +971,7 @@ class TestHomeAssistantClientWebSocketHandling:
         assert isinstance(ha_event, HAEvent)
         assert ha_event.entity_id == "binary_sensor.test"
         assert ha_event.state == "on"
-        assert ha_event.previous_state == "of"
+        assert ha_event.previous_state == "off"
 
     @pytest.mark.asyncio
     async def test_handle_event_not_subscribed(self, test_system_config):
@@ -920,7 +993,7 @@ class TestHomeAssistantClientWebSocketHandling:
                 "data": {
                     "entity_id": "binary_sensor.test",  # Not subscribed
                     "new_state": {"state": "on"},
-                    "old_state": {"state": "of"},
+                    "old_state": {"state": "off"},
                 },
             },
         }
@@ -935,7 +1008,7 @@ class TestHomeAssistantClientWebSocketHandling:
         """Test event deduplication logic."""
         client = HomeAssistantClient(test_system_config)
 
-        base_time = datetime.utcnow()
+        base_time = datetime.now(UTC)
 
         # First event should be processed
         event1 = HAEvent(
@@ -954,7 +1027,7 @@ class TestHomeAssistantClientWebSocketHandling:
         # Second event too soon should be filtered
         event2 = HAEvent(
             entity_id="binary_sensor.test",
-            state="of",
+            state="off",
             previous_state="on",
             timestamp=base_time
             + timedelta(seconds=2),  # Less than MIN_EVENT_SEPARATION
@@ -985,7 +1058,7 @@ class TestHomeAssistantClientWebSocketHandling:
             entity_id="binary_sensor.test",
             state="unavailable",  # Invalid state
             previous_state="on",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             attributes={},
         )
 
@@ -996,7 +1069,7 @@ class TestHomeAssistantClientWebSocketHandling:
             entity_id="binary_sensor.test",
             state="on",
             previous_state="off",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             attributes={},
         )
 
@@ -1054,8 +1127,8 @@ class TestHomeAssistantClientIntegration:
         client = HomeAssistantClient(test_system_config)
 
         entity_ids = [f"binary_sensor.test_{i}" for i in range(5)]
-        start_time = datetime.utcnow() - timedelta(hours=1)
-        end_time = datetime.utcnow()
+        start_time = datetime.now(UTC) - timedelta(hours=1)
+        end_time = datetime.now(UTC)
 
         # Mock get_entity_history to return different data for each entity
         async def mock_get_history(entity_id, start, end):

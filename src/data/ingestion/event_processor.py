@@ -1225,9 +1225,7 @@ class EventProcessor:
             # Handle unexpected errors with proper exception handling
             logger.error(f"Unexpected error during sequence validation: {e}")
             raise FeatureExtractionError(
-                f"Event sequence validation failed: {str(e)}",
-                feature_type="sequence_validation",
-                context={"event_count": len(events)},
+                feature_type="sequence_validation", room_id="unknown", cause=e
             )
 
     async def validate_room_configuration(self, room_id: str) -> Dict[str, Any]:

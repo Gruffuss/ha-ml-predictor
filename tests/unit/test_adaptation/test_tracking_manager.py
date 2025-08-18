@@ -6,7 +6,7 @@ all adaptation components, integration workflows, and real-time monitoring.
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -146,8 +146,23 @@ async def tracking_manager(
         ) as mock_retrainer_class,
         patch("src.adaptation.tracking_manager.ModelOptimizer"),
     ):
-        # Mock validator instance
+        # Mock validator instance with proper async methods
         mock_validator_instance = Mock()
+        mock_validator_instance.record_prediction = AsyncMock()
+        mock_validator_instance.validate_prediction = AsyncMock(return_value=[])
+        mock_validator_instance.get_total_predictions = AsyncMock(return_value=0)
+        mock_validator_instance.get_validation_rate = AsyncMock(return_value=0.0)
+        mock_validator_instance.get_room_accuracy = AsyncMock(
+            return_value=Mock(
+                total_predictions=10,
+                validated_predictions=8,
+                accurate_predictions=6,
+                accuracy_rate=75.0,
+                mean_error_minutes=12.5,
+            )
+        )
+        mock_validator_instance.cleanup_old_predictions = AsyncMock()
+        mock_validator_instance._pending_predictions = {}
         mock_validator_class.return_value = mock_validator_instance
 
         # Mock accuracy tracker instance with async methods
@@ -160,6 +175,14 @@ async def tracking_manager(
         # Mock the AdaptiveRetrainer instance and its async methods
         mock_retrainer_instance = Mock()
         mock_retrainer_instance.initialize = AsyncMock()
+        mock_retrainer_instance.shutdown = AsyncMock()
+        mock_retrainer_instance.evaluate_retraining_need = AsyncMock(return_value=None)
+        mock_retrainer_instance.request_retraining = AsyncMock(
+            return_value="test_request_id"
+        )
+        mock_retrainer_instance.get_retraining_status = AsyncMock(return_value={})
+        mock_retrainer_instance.cancel_retraining = AsyncMock(return_value=True)
+        mock_retrainer_instance.get_retrainer_stats = AsyncMock(return_value={})
         mock_retrainer_class.return_value = mock_retrainer_instance
 
         await manager.initialize()
@@ -175,7 +198,7 @@ async def tracking_manager(
 def sample_prediction_result():
     """Create sample prediction result for testing."""
     return PredictionResult(
-        predicted_time=datetime.now() + timedelta(minutes=30),
+        predicted_time=datetime.now(UTC) + timedelta(minutes=30),
         transition_type="occupied",
         confidence_score=0.85,
         prediction_metadata={
@@ -305,7 +328,7 @@ class TestPredictionRecording:
         """Test automatic cleanup of old predictions in cache."""
         # Create old prediction
         old_prediction = PredictionResult(
-            predicted_time=datetime.now() - timedelta(hours=3),
+            predicted_time=datetime.now(UTC) - timedelta(hours=3),
             transition_type="vacant",
             confidence_score=0.75,
             prediction_metadata={"room_id": "living_room"},
@@ -325,7 +348,7 @@ class TestPredictionRecording:
         old_predictions = [
             p
             for p in room_predictions
-            if p.predicted_time < datetime.now() - timedelta(hours=2)
+            if p.predicted_time < datetime.now(UTC) - timedelta(hours=2)
         ]
         assert len(old_predictions) == 0
 
@@ -338,7 +361,7 @@ class TestRoomStateChangeHandling:
         """Test handling of room state changes."""
         room_id = "living_room"
         new_state = "occupied"
-        change_time = datetime.now()
+        change_time = datetime.now(UTC)
         previous_state = "vacant"
 
         # Handle state change
@@ -375,7 +398,7 @@ class TestRoomStateChangeHandling:
             await tracking_manager.handle_room_state_change(
                 room_id=room_id,
                 new_state="vacant",
-                change_time=datetime.now(),
+                change_time=datetime.now(UTC),
                 previous_state="occupied",
             )
 
@@ -394,7 +417,7 @@ class TestRoomStateChangeHandling:
         await tracking_manager.handle_room_state_change(
             room_id="test_room",
             new_state="occupied",
-            change_time=datetime.now(),
+            change_time=datetime.now(UTC),
         )
 
         # Should not perform validation
@@ -412,14 +435,14 @@ class TestDriftDetectionIntegration:
         # Mock drift detection results
         mock_drift_metrics = DriftMetrics(
             room_id=room_id,
-            detection_time=datetime.now(),
+            detection_time=datetime.now(UTC),
             baseline_period=(
-                datetime.now() - timedelta(days=14),
-                datetime.now() - timedelta(days=3),
+                datetime.now(UTC) - timedelta(days=14),
+                datetime.now(UTC) - timedelta(days=3),
             ),
             current_period=(
-                datetime.now() - timedelta(days=3),
-                datetime.now(),
+                datetime.now(UTC) - timedelta(days=3),
+                datetime.now(UTC),
             ),
             accuracy_degradation=22.5,
             overall_drift_score=0.65,
@@ -449,14 +472,14 @@ class TestDriftDetectionIntegration:
         # Mock critical drift
         critical_drift = DriftMetrics(
             room_id=room_id,
-            detection_time=datetime.now(),
+            detection_time=datetime.now(UTC),
             baseline_period=(
-                datetime.now() - timedelta(days=14),
-                datetime.now() - timedelta(days=3),
+                datetime.now(UTC) - timedelta(days=14),
+                datetime.now(UTC) - timedelta(days=3),
             ),
             current_period=(
-                datetime.now() - timedelta(days=3),
-                datetime.now(),
+                datetime.now(UTC) - timedelta(days=3),
+                datetime.now(UTC),
             ),
             accuracy_degradation=35.0,
             overall_drift_score=0.9,
@@ -820,7 +843,7 @@ class TestPerformanceAndConcurrency:
         predictions = []
         for i in range(10):
             pred = PredictionResult(
-                predicted_time=datetime.now() + timedelta(minutes=30 + i),
+                predicted_time=datetime.now(UTC) + timedelta(minutes=30 + i),
                 transition_type="occupied",
                 confidence_score=0.8 + i * 0.01,
                 prediction_metadata={
@@ -857,7 +880,7 @@ class TestPerformanceAndConcurrency:
         # Record many predictions
         for i in range(100):
             pred = PredictionResult(
-                predicted_time=datetime.now() + timedelta(minutes=i),
+                predicted_time=datetime.now(UTC) + timedelta(minutes=i),
                 transition_type="occupied",
                 confidence_score=0.8,
                 prediction_metadata={"room_id": "test_room"},

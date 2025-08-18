@@ -519,18 +519,18 @@ class PerformanceBenchmarkRunner:
         """Validate prediction latency requirements."""
         req = self.performance_requirements["prediction_latency"]
         return (
-            metrics.get("mean_latency_ms", float("in")) < req["mean_ms"]
-            and metrics.get("p95_latency_ms", float("in")) < req["p95_ms"]
-            and metrics.get("p99_latency_ms", float("in")) < req["p99_ms"]
+            metrics.get("mean_latency_ms", float("inf")) < req["mean_ms"]
+            and metrics.get("p95_latency_ms", float("inf")) < req["p95_ms"]
+            and metrics.get("p99_latency_ms", float("inf")) < req["p99_ms"]
         )
 
     def _validate_feature_requirements(self, metrics: Dict[str, Any]) -> bool:
         """Validate feature computation requirements."""
         req = self.performance_requirements["feature_computation"]
         return (
-            metrics.get("mean_computation_ms", float("in")) < req["mean_ms"]
-            and metrics.get("p95_computation_ms", float("in")) < req["p95_ms"]
-            and metrics.get("p99_computation_ms", float("in")) < req["p99_ms"]
+            metrics.get("mean_computation_ms", float("inf")) < req["mean_ms"]
+            and metrics.get("p95_computation_ms", float("inf")) < req["p95_ms"]
+            and metrics.get("p99_computation_ms", float("inf")) < req["p99_ms"]
         )
 
     def _validate_throughput_requirements(self, metrics: Dict[str, Any]) -> bool:
@@ -542,9 +542,9 @@ class PerformanceBenchmarkRunner:
         """Validate memory usage requirements."""
         req = self.performance_requirements["memory_usage"]
         return (
-            metrics.get("memory_leak_mb_per_hour", float("in"))
+            metrics.get("memory_leak_mb_per_hour", float("inf"))
             < req["max_leak_mb_per_hour"]
-            and metrics.get("peak_memory_increase_mb", float("in"))
+            and metrics.get("peak_memory_increase_mb", float("inf"))
             < req["max_peak_increase_mb"]
         )
 
