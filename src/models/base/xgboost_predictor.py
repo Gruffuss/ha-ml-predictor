@@ -55,6 +55,9 @@ class XGBoostPredictor(BasePredictor):
             "random_state": default_params.get("random_state", 42),
             "early_stopping_rounds": default_params.get("early_stopping_rounds", 20),
             "eval_metric": default_params.get("eval_metric", "rmse"),
+            "objective": default_params.get(
+                "objective", "reg:squarederror"
+            ),  # Required XGBoost parameter
         }
 
         # Model components
@@ -131,6 +134,7 @@ class XGBoostPredictor(BasePredictor):
                 random_state=self.model_params["random_state"],
                 early_stopping_rounds=self.model_params["early_stopping_rounds"],
                 eval_metric=self.model_params["eval_metric"],
+                objective=self.model_params["objective"],  # Include objective parameter
                 verbosity=0,  # Reduce XGBoost output
             )
 

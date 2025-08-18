@@ -56,14 +56,19 @@ class LSTMPredictor(BasePredictor):
         self.model_params = {
             "sequence_length": default_params.get("sequence_length", 50),
             "hidden_layers": hidden_layers,
+            "hidden_units": default_params.get("hidden_units", 64),
+            "lstm_units": default_params.get(
+                "lstm_units", default_params.get("hidden_units", 64)
+            ),  # Alias for compatibility
             "learning_rate": default_params.get("learning_rate", 0.001),
             "max_iter": default_params.get("max_iter", 1000),
             "early_stopping": default_params.get("early_stopping", True),
             "validation_fraction": default_params.get("validation_fraction", 0.2),
             "alpha": default_params.get("alpha", 0.0001),  # L2 regularization
-            "dropout": default_params.get(
-                "dropout", 0.2
-            ),  # Not directly supported, approximated with alpha
+            "dropout": default_params.get("dropout", 0.2),
+            "dropout_rate": default_params.get(
+                "dropout_rate", default_params.get("dropout", 0.2)
+            ),  # Alias for compatibility
         }
 
         # Model components

@@ -70,14 +70,17 @@ class GaussianProcessPredictor(BasePredictor):
             room_id: Specific room this model is for
             **kwargs: Additional parameters for GP configuration
         """
-        super().__init__(ModelType.GAUSSIAN_PROCESS, room_id)
+        super().__init__(ModelType.GP, room_id)
 
         # Default GP parameters
         default_params = DEFAULT_MODEL_PARAMS[ModelType.GAUSSIAN_PROCESS].copy()
         default_params.update(kwargs)
 
         self.model_params = {
-            "kernel_type": default_params.get("kernel", "composite"),
+            "kernel": default_params.get(
+                "kernel", "composite"
+            ),  # Primary parameter name
+            "kernel_type": default_params.get("kernel", "composite"),  # Internal alias
             "alpha": default_params.get("alpha", 1e-6),
             "n_restarts_optimizer": default_params.get("n_restarts_optimizer", 3),
             "normalize_y": default_params.get("normalize_y", True),

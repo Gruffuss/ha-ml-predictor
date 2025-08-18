@@ -48,7 +48,10 @@ class HMMPredictor(BasePredictor):
         self.model_params = {
             "n_components": default_params.get("n_components", 4),
             "covariance_type": default_params.get("covariance_type", "full"),
-            "max_iter": default_params.get("n_iter", 100),
+            "n_iter": default_params.get("n_iter", 100),  # Primary parameter name
+            "max_iter": default_params.get(
+                "max_iter", default_params.get("n_iter", 100)
+            ),  # Alias for scikit-learn compatibility
             "random_state": default_params.get("random_state", 42),
             "init_params": default_params.get("init_params", "kmeans"),
             "tol": default_params.get("tol", 1e-3),
@@ -126,7 +129,9 @@ class HMMPredictor(BasePredictor):
             self.state_model = GaussianMixture(
                 n_components=self.model_params["n_components"],
                 covariance_type=self.model_params["covariance_type"],
-                max_iter=self.model_params["max_iter"],
+                max_iter=self.model_params[
+                    "max_iter"
+                ],  # Use max_iter for scikit-learn API
                 random_state=self.model_params["random_state"],
                 init_params=self.model_params["init_params"],
                 tol=self.model_params["tol"],
