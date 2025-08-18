@@ -818,6 +818,9 @@ class Prediction(Base):
 
     # Prediction details
     predicted_transition_time = Column(DateTime(timezone=True), nullable=False)
+    predicted_time = Column(
+        DateTime(timezone=True), nullable=True
+    )  # Alias for predicted_transition_time for compatibility
     transition_type = Column(
         ENUM(*TRANSITION_TYPES, name="transition_type_enum"), nullable=False
     )
@@ -855,6 +858,21 @@ class Prediction(Base):
     # Metadata
     created_at = Column(DateTime(timezone=True), default=func.now())
     processing_time_ms = Column(Float)  # Time to generate prediction
+
+    def __init__(self, **kwargs):
+        """Initialize Prediction with proper defaults and compatibility handling."""
+        # Handle predicted_time compatibility - if only predicted_time is provided,
+        # use it for predicted_transition_time as well
+        if "predicted_time" in kwargs and "predicted_transition_time" not in kwargs:
+            kwargs["predicted_transition_time"] = kwargs["predicted_time"]
+        # If both are provided, ensure they're the same for consistency
+        elif "predicted_time" in kwargs and "predicted_transition_time" in kwargs:
+            if kwargs["predicted_time"] != kwargs["predicted_transition_time"]:
+                # Use predicted_transition_time as the authoritative value
+                kwargs["predicted_time"] = kwargs["predicted_transition_time"]
+
+        # Call parent constructor
+        super().__init__(**kwargs)
 
     # Note: Relationships managed at application level
     # Use get_triggering_event() and get_room_state() methods for data access
