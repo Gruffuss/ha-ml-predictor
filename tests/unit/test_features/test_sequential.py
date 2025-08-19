@@ -35,6 +35,27 @@ class TestSequentialFeatureExtractor:
             "kitchen": Mock(spec=RoomConfig),
             "bedroom": Mock(spec=RoomConfig),
         }
+
+        # Configure room mocks with proper sensors attribute
+        for room_name, room_mock in config.rooms.items():
+            room_mock.room_id = room_name
+            room_mock.name = room_name.replace("_", " ").title()
+            room_mock.sensors = {
+                "motion": f"sensor.{room_name}_motion",
+                "door": f"sensor.{room_name}_door",
+                "presence": f"sensor.{room_name}_presence",
+            }
+            room_mock.get_sensors_by_type = Mock(
+                return_value={"door": f"sensor.{room_name}_door"}
+            )
+            room_mock.get_all_entity_ids = Mock(
+                return_value=[
+                    f"sensor.{room_name}_motion",
+                    f"sensor.{room_name}_door",
+                    f"sensor.{room_name}_presence",
+                ]
+            )
+
         return config
 
     @pytest.fixture
@@ -54,8 +75,21 @@ class TestSequentialFeatureExtractor:
         for room_id in ["living_room", "kitchen", "bedroom"]:
             config = Mock(spec=RoomConfig)
             config.room_id = room_id
+            config.name = room_id.replace("_", " ").title()
+            config.sensors = {
+                "motion": f"sensor.{room_id}_motion",
+                "door": f"sensor.{room_id}_door",
+                "presence": f"sensor.{room_id}_presence",
+            }
             config.get_sensors_by_type = Mock(
                 return_value={"door": f"sensor.{room_id}_door"}
+            )
+            config.get_all_entity_ids = Mock(
+                return_value=[
+                    f"sensor.{room_id}_motion",
+                    f"sensor.{room_id}_door",
+                    f"sensor.{room_id}_presence",
+                ]
             )
             configs[room_id] = config
         return configs
@@ -71,7 +105,7 @@ class TestSequentialFeatureExtractor:
             event = Mock(spec=SensorEvent)
             event.timestamp = base_time + timedelta(minutes=i * 2)
             event.room_id = "living_room"
-            event.state = "on" if i % 2 == 0 else "of"
+            event.state = "on" if i % 2 == 0 else "off"
             event.sensor_type = "motion"
             event.sensor_id = f"sensor.living_room_motion_{i}"
             events.append(event)
@@ -136,7 +170,7 @@ class TestSequentialFeatureExtractor:
         event = Mock(spec=SensorEvent)
         event.timestamp = base_time + timedelta(minutes=15)
         event.room_id = "living_room"
-        event.state = "of"
+        event.state = "off"
         event.sensor_type = "motion"
         event.sensor_id = "sensor.motion_pause"
         events.append(event)
@@ -402,7 +436,7 @@ class TestSequentialFeatureExtractor:
             event = Mock(spec=SensorEvent)
             event.timestamp = base_time + timedelta(minutes=i)
             event.room_id = "living_room"
-            event.state = "on" if i % 2 == 0 else "of"
+            event.state = "on" if i % 2 == 0 else "off"
             event.sensor_type = "motion"
             event.sensor_id = "sensor.same_motion"  # Same sensor ID
             events.append(event)
@@ -509,7 +543,7 @@ class TestSequentialFeatureExtractor:
                 minutes=i * 0.3
             )  # ~18 second intervals
             event.room_id = rooms[i % 3]
-            event.state = "on" if i % 2 == 0 else "of"
+            event.state = "on" if i % 2 == 0 else "off"
             event.sensor_type = "motion"
             event.sensor_id = f"sensor.motion_{i % 10}"
             large_events.append(event)

@@ -387,7 +387,12 @@ class TestHomeAssistantClient:
         client = HomeAssistantClient(test_system_config)
 
         mock_session = AsyncMock()
-        mock_session.get.side_effect = ClientError("Connection failed")
+        # Make get() return an async context manager that raises the exception
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.side_effect = ClientError("Connection failed")
+        mock_context_manager.__aexit__.return_value = None
+        # Use a regular Mock for get() method so it doesn't return a coroutine
+        mock_session.get = Mock(return_value=mock_context_manager)
         client.session = mock_session
 
         with pytest.raises(HomeAssistantConnectionError):

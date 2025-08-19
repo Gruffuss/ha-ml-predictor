@@ -450,10 +450,11 @@ class TestDriftDetectionIntegration:
             retraining_recommended=True,
         )
 
+        # Use AsyncMock for async method
         with patch.object(
             tracking_manager.drift_detector,
             "detect_drift",
-            return_value=mock_drift_metrics,
+            new=AsyncMock(return_value=mock_drift_metrics),
         ):
             # Run drift detection
             result = await tracking_manager.check_drift(room_id)
@@ -609,11 +610,13 @@ class TestSystemStatusAndMetrics:
         """Test real-time metrics retrieval."""
         room_id = "living_room"
 
-        # Mock real-time metrics
+        # Mock real-time metrics with AsyncMock for async method
         with patch.object(
             tracking_manager.accuracy_tracker,
             "get_real_time_metrics",
-            return_value=Mock(accuracy_rate=85.0, average_error_minutes=12.5),
+            new=AsyncMock(
+                return_value=Mock(accuracy_rate=85.0, average_error_minutes=12.5)
+            ),
         ):
             metrics = await tracking_manager.get_real_time_metrics(room_id=room_id)
 
@@ -630,10 +633,11 @@ class TestSystemStatusAndMetrics:
             Mock(alert_id="alert_2", room_id="bedroom", severity="critical"),
         ]
 
+        # Use AsyncMock for async method
         with patch.object(
             tracking_manager.accuracy_tracker,
             "get_active_alerts",
-            return_value=mock_alerts,
+            new=AsyncMock(return_value=mock_alerts),
         ):
             alerts = await tracking_manager.get_active_alerts()
 
@@ -647,10 +651,11 @@ class TestSystemStatusAndMetrics:
         alert_id = "alert_123"
         acknowledged_by = "user_admin"
 
+        # Use AsyncMock for async method
         with patch.object(
             tracking_manager.accuracy_tracker,
             "acknowledge_alert",
-            return_value=True,
+            new=AsyncMock(return_value=True),
         ):
             success = await tracking_manager.acknowledge_alert(
                 alert_id, acknowledged_by

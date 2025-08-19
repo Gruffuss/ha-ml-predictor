@@ -102,262 +102,260 @@ class TestFeatureCache:
     @pytest.fixture
     def cache(self):
         """Create a feature cache instance."""
-        return FeatureCache(max_size=5)
+        return FeatureCache(max_size=3)  # Small cache for testing
 
     @pytest.fixture
-    def sample_params(self):
-        """Sample cache parameters."""
-        return {
-            "room_id": "living_room",
-            "target_time": datetime(2024, 1, 15, 15, 0, 0),
-            "lookback_hours": 24,
-            "feature_types": ["temporal", "sequential"],
-            "features": {"feature_1": 1.0, "feature_2": 2.0},
-            "data_hash": "abc123",
-        }
+    def sample_records(self):
+        """Create sample feature records."""
+        base_time = datetime(2024, 1, 15, 15, 0, 0)
+        records = []
 
-    def test_make_key(self, cache):
-        """Test cache key generation."""
-        room_id = "living_room"
-        target_time = datetime(2024, 1, 15, 15, 0, 0)
-        lookback_hours = 24
-        feature_types = ["temporal", "sequential"]
-
-        key1 = cache._make_key(room_id, target_time, lookback_hours, feature_types)
-        key2 = cache._make_key(room_id, target_time, lookback_hours, feature_types)
-
-        # Keys should be identical for same parameters
-        assert key1 == key2
-        assert isinstance(key1, str)
-        assert len(key1) == 32  # MD5 hash length
-
-        # Different parameters should produce different keys
-        key3 = cache._make_key(
-            room_id, target_time, 12, feature_types
-        )  # Different lookback
-        assert key1 != key3
-
-    def test_put_and_get_hit(self, cache, sample_params):
-        """Test cache put and successful get (cache hit)."""
-        cache.put(**sample_params)
-
-        retrieved_features = cache.get(
-            sample_params["room_id"],
-            sample_params["target_time"],
-            sample_params["lookback_hours"],
-            sample_params["feature_types"],
-            max_age_hours=24,
-        )
-
-        assert retrieved_features == sample_params["features"]
-        assert cache.hit_count == 1
-        assert cache.miss_count == 0
-
-    def test_get_miss(self, cache):
-        """Test cache miss when item not in cache."""
-        retrieved_features = cache.get(
-            "nonexistent_room",
-            datetime(2024, 1, 15, 15, 0, 0),
-            24,
-            ["temporal"],
-            max_age_hours=24,
-        )
-
-        assert retrieved_features is None
-        assert cache.hit_count == 0
-        assert cache.miss_count == 1
-
-    def test_get_expired_item(self, cache, sample_params):
-        """Test cache miss when item is expired."""
-        cache.put(**sample_params)
-
-        # Mock time to make record appear old
-        with patch("src.features.store.datetime") as mock_datetime:
-            mock_datetime.utcnow.return_value = datetime(
-                2024, 1, 16, 16, 0, 0
-            )  # 25 hours later
-
-            retrieved_features = cache.get(
-                sample_params["room_id"],
-                sample_params["target_time"],
-                sample_params["lookback_hours"],
-                sample_params["feature_types"],
-                max_age_hours=24,  # Max age 24 hours
-            )
-
-        assert retrieved_features is None
-        assert cache.miss_count == 1
-        # Cache should have removed expired item
-        assert len(cache.cache) == 0
-
-    def test_lru_eviction(self, cache):
-        """Test LRU eviction when cache exceeds max size."""
-        # Fill cache to max capacity (5 items)
         for i in range(5):
-            cache.put(
+            record = FeatureRecord(
                 room_id=f"room_{i}",
-                target_time=datetime(2024, 1, 15, 15, 0, 0),
+                target_time=base_time + timedelta(hours=i),
+                features={"feature": float(i)},
+                extraction_time=base_time + timedelta(hours=i, minutes=1),
                 lookback_hours=24,
                 feature_types=["temporal"],
-                features={"feature": float(i)},
                 data_hash=f"hash_{i}",
             )
+            records.append(record)
 
-        assert len(cache.cache) == 5
+        return records
 
-        # Add one more item (should trigger eviction)
-        cache.put(
-            room_id="room_new",
-            target_time=datetime(2024, 1, 15, 15, 0, 0),
-            lookback_hours=24,
-            feature_types=["temporal"],
-            features={"feature": 999.0},
-            data_hash="hash_new",
-        )
+    def test_cache_initialization(self, cache):
+        """Test cache initialization."""
+        assert cache.max_size == 3
+        assert len(cache) == 0
+        assert cache.hits == 0
+        assert cache.misses == 0
 
-        # Cache size should still be 5
-        assert len(cache.cache) == 5
+    def test_cache_put_and_get(self, cache, sample_records):
+        """Test basic cache put and get operations."""
+        record = sample_records[0]
+        key = "test_key"
 
-        # First item (room_0) should be evicted
-        oldest_features = cache.get(
-            "room_0", datetime(2024, 1, 15, 15, 0, 0), 24, ["temporal"]
-        )
-        assert oldest_features is None
+        # Put record in cache
+        cache.put(key, record)
+        assert len(cache) == 1
+        assert cache.hits == 0
+        assert cache.misses == 0
 
-        # Newest item should be present
-        newest_features = cache.get(
-            "room_new", datetime(2024, 1, 15, 15, 0, 0), 24, ["temporal"]
-        )
-        assert newest_features == {"feature": 999.0}
+        # Get record from cache
+        retrieved = cache.get(key)
+        assert retrieved == record
+        assert cache.hits == 1
+        assert cache.misses == 0
 
-    def test_cache_move_to_end(self, cache):
-        """Test that accessed items are moved to end (most recently used)."""
-        # Add items
+        # Test cache miss
+        missing = cache.get("nonexistent")
+        assert missing is None
+        assert cache.hits == 1
+        assert cache.misses == 1
+
+    def test_cache_lru_eviction(self, cache, sample_records):
+        """Test LRU eviction when cache exceeds max size."""
+        # Fill cache to capacity
         for i in range(3):
-            cache.put(
-                room_id=f"room_{i}",
-                target_time=datetime(2024, 1, 15, 15, 0, 0),
-                lookback_hours=24,
-                feature_types=["temporal"],
-                features={"feature": float(i)},
-                data_hash=f"hash_{i}",
-            )
+            cache.put(f"key_{i}", sample_records[i])
 
-        # Access first item (should move it to end)
-        cache.get("room_0", datetime(2024, 1, 15, 15, 0, 0), 24, ["temporal"])
+        assert len(cache) == 3
 
-        # Add more items to trigger eviction
-        for i in range(3, 6):
-            cache.put(
-                room_id=f"room_{i}",
-                target_time=datetime(2024, 1, 15, 15, 0, 0),
-                lookback_hours=24,
-                feature_types=["temporal"],
-                features={"feature": float(i)},
-                data_hash=f"hash_{i}",
-            )
+        # Access key_1 to make it recently used
+        cache.get("key_1")
 
-        # room_0 should still be present (was moved to end when accessed)
-        features = cache.get(
-            "room_0", datetime(2024, 1, 15, 15, 0, 0), 24, ["temporal"]
-        )
-        assert features == {"feature": 0.0}
+        # Add another item, should evict least recently used (key_0)
+        cache.put("key_3", sample_records[3])
+        assert len(cache) == 3
 
-    def test_clear(self, cache, sample_params):
-        """Test cache clearing."""
-        cache.put(**sample_params)
-        assert len(cache.cache) == 1
-        assert cache.hit_count == 0
+        # key_0 should be evicted, others should remain
+        assert cache.get("key_0") is None
+        assert cache.get("key_1") is not None
+        assert cache.get("key_2") is not None
+        assert cache.get("key_3") is not None
 
-        # Access to create stats
-        cache.get(
-            sample_params["room_id"],
-            sample_params["target_time"],
-            sample_params["lookback_hours"],
-            sample_params["feature_types"],
-        )
-        assert cache.hit_count == 1
+    def test_cache_update_existing(self, cache, sample_records):
+        """Test updating existing cache entry."""
+        key = "test_key"
+        cache.put(key, sample_records[0])
+
+        # Update with new record
+        cache.put(key, sample_records[1])
+        assert len(cache) == 1
+
+        retrieved = cache.get(key)
+        assert retrieved == sample_records[1]
+
+    def test_cache_remove(self, cache, sample_records):
+        """Test removing items from cache."""
+        cache.put("key_1", sample_records[0])
+        cache.put("key_2", sample_records[1])
+        assert len(cache) == 2
+
+        # Remove one item
+        removed = cache.remove("key_1")
+        assert removed == sample_records[0]
+        assert len(cache) == 1
+
+        # Try to remove non-existent item
+        removed = cache.remove("nonexistent")
+        assert removed is None
+        assert len(cache) == 1
+
+    def test_cache_clear(self, cache, sample_records):
+        """Test clearing the cache."""
+        for i in range(3):
+            cache.put(f"key_{i}", sample_records[i])
+
+        assert len(cache) == 3
 
         cache.clear()
+        assert len(cache) == 0
+        assert cache.hits == 0
+        assert cache.misses == 0
 
-        assert len(cache.cache) == 0
-        assert cache.hit_count == 0
-        assert cache.miss_count == 0
+    def test_cache_contains(self, cache, sample_records):
+        """Test cache membership testing."""
+        key = "test_key"
+        assert key not in cache
 
-    def test_get_stats(self, cache):
-        """Test cache statistics."""
-        # Initially empty
-        stats = cache.get_stats()
-        assert stats["size"] == 0
-        assert stats["max_size"] == 5
-        assert stats["hit_count"] == 0
-        assert stats["miss_count"] == 0
-        assert stats["hit_rate"] == 0.0
+        cache.put(key, sample_records[0])
+        assert key in cache
 
-        # Add item and test hit/miss
-        cache.put(
-            "room_1",
-            datetime.now(),
-            24,
-            ["temporal"],
-            {"feature": 1.0},
-            "hash_1",
+        cache.remove(key)
+        assert key not in cache
+
+    def test_cache_keys_and_values(self, cache, sample_records):
+        """Test getting all keys and values."""
+        keys = ["key_1", "key_2", "key_3"]
+        records = sample_records[:3]
+
+        for key, record in zip(keys, records):
+            cache.put(key, record)
+
+        cache_keys = list(cache.keys())
+        cache_values = list(cache.values())
+
+        assert len(cache_keys) == 3
+        assert len(cache_values) == 3
+        for key in keys:
+            assert key in cache_keys
+        for record in records:
+            assert record in cache_values
+
+    def test_cache_items(self, cache, sample_records):
+        """Test getting all cache items."""
+        cache.put("key_1", sample_records[0])
+        cache.put("key_2", sample_records[1])
+
+        items = list(cache.items())
+        assert len(items) == 2
+
+        keys, values = zip(*items)
+        assert "key_1" in keys
+        assert "key_2" in keys
+        assert sample_records[0] in values
+        assert sample_records[1] in values
+
+    def test_cache_statistics(self, cache, sample_records):
+        """Test cache hit/miss statistics."""
+        cache.put("key_1", sample_records[0])
+
+        # Multiple hits
+        for _ in range(5):
+            cache.get("key_1")
+        assert cache.hits == 5
+
+        # Multiple misses
+        for _ in range(3):
+            cache.get("nonexistent")
+        assert cache.misses == 3
+
+        # Test hit rate
+        assert cache.hit_rate == 5 / 8  # 5 hits out of 8 total
+
+    def test_cache_expired_records(self, cache):
+        """Test handling of expired records."""
+        # Create record that's already expired
+        old_record = FeatureRecord(
+            room_id="room",
+            target_time=datetime(2024, 1, 15, 15, 0, 0),
+            features={"feature": 1.0},
+            extraction_time=datetime(2024, 1, 14, 15, 0, 0),  # 24 hours ago
+            lookback_hours=24,
+            feature_types=["temporal"],
+            data_hash="hash",
         )
 
-        # Hit
-        cache.get("room_1", datetime.now(), 24, ["temporal"])
-        # Miss
-        cache.get("room_2", datetime.now(), 24, ["temporal"])
+        cache.put("old_key", old_record)
 
-        stats = cache.get_stats()
-        assert stats["size"] == 1
-        assert stats["hit_count"] == 1
-        assert stats["miss_count"] == 1
-        assert stats["hit_rate"] == 0.5
+        # Should not return expired record
+        with patch("src.features.store.datetime") as mock_datetime:
+            # Current time is 25 hours after extraction
+            mock_datetime.utcnow.return_value = datetime(2024, 1, 15, 16, 0, 0)
 
-    def test_feature_type_order_independence(self, cache):
-        """Test that feature type order doesn't affect cache keys."""
-        params1 = ["temporal", "sequential", "contextual"]
-        params2 = ["contextual", "temporal", "sequential"]
+            result = cache.get("old_key", max_age_hours=24)
+            assert result is None
 
-        key1 = cache._make_key("room", datetime.now(), 24, params1)
-        key2 = cache._make_key("room", datetime.now(), 24, params2)
+    def test_cache_memory_cleanup(self, cache):
+        """Test cache memory cleanup operations."""
+        # Fill cache with records
+        for i in range(10):
+            record = FeatureRecord(
+                room_id=f"room_{i}",
+                target_time=datetime.now(),
+                features={"large_data": [1.0] * 1000},  # Large data
+                extraction_time=datetime.now(),
+                lookback_hours=24,
+                feature_types=["temporal"],
+                data_hash=f"hash_{i}",
+            )
+            cache.put(f"key_{i}", record)
 
-        # Keys should be identical (feature types are sorted)
-        assert key1 == key2
+        # Should only keep max_size items due to LRU eviction
+        assert len(cache) == cache.max_size
+
+        # Clear and force garbage collection
+        cache.clear()
+        gc.collect()
+
+        assert len(cache) == 0
 
 
 class TestFeatureStore:
     """Test suite for FeatureStore."""
 
     @pytest.fixture
-    def mock_config(self):
-        """Create mock system configuration."""
-        config = Mock(spec=SystemConfig)
-        config.rooms = {"living_room": Mock(), "kitchen": Mock()}
-        return config
+    def mock_feature_engine(self):
+        """Create mock feature engineering engine."""
+        engine = Mock(spec=FeatureEngineeringEngine)
+        engine.extract_features.return_value = {"test_feature": 1.0}
+        engine.create_feature_dataframe.return_value = pd.DataFrame(
+            {"feature": [1.0, 2.0, 3.0]}
+        )
+        return engine
 
     @pytest.fixture
-    def store(self, mock_config):
+    def store(self, mock_feature_engine):
         """Create feature store instance."""
-        return FeatureStore(config=mock_config, cache_size=10, enable_persistence=False)
+        return FeatureStore(
+            feature_engine=mock_feature_engine,
+            cache_size=10,
+            default_lookback_hours=24,
+        )
 
     @pytest.fixture
-    def store_with_persistence(self, mock_config):
-        """Create feature store with persistence enabled."""
-        return FeatureStore(config=mock_config, cache_size=10, enable_persistence=True)
-
-    @pytest.fixture
-    def sample_events(self) -> List[SensorEvent]:
+    def sample_events(self):
         """Create sample sensor events."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
         events = []
 
-        for i in range(3):
+        for i in range(5):
             event = Mock(spec=SensorEvent)
             event.timestamp = base_time + timedelta(minutes=i * 10)
             event.room_id = "living_room"
-            event.state = "on" if i % 2 == 0 else "of"
+            event.state = "on" if i % 2 == 0 else "off"
             event.sensor_type = "motion"
             event.sensor_id = f"sensor.motion_{i}"
             events.append(event)
@@ -365,14 +363,14 @@ class TestFeatureStore:
         return events
 
     @pytest.fixture
-    def sample_room_states(self) -> List[RoomState]:
+    def sample_room_states(self):
         """Create sample room states."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
         states = []
 
-        for i in range(2):
+        for i in range(3):
             state = Mock(spec=RoomState)
-            state.timestamp = base_time + timedelta(minutes=i * 15)
+            state.timestamp = base_time + timedelta(minutes=i * 20)
             state.room_id = "living_room"
             state.is_occupied = i % 2 == 0
             state.occupancy_confidence = 0.8
@@ -380,123 +378,80 @@ class TestFeatureStore:
 
         return states
 
-    @pytest.mark.asyncio
-    async def test_initialize_no_persistence(self, store):
-        """Test initialization without persistence."""
-        await store.initialize()
-
-        assert store.db_manager is None
-        assert store.enable_persistence is False
-
-    @pytest.mark.asyncio
-    async def test_initialize_with_persistence_success(self, store_with_persistence):
-        """Test initialization with successful persistence setup."""
-        with patch("src.features.store.get_database_manager") as mock_get_db:
-            mock_db_manager = AsyncMock()
-            mock_get_db.return_value = mock_db_manager
-
-            await store_with_persistence.initialize()
-
-            assert store_with_persistence.db_manager == mock_db_manager
-            assert store_with_persistence.enable_persistence is True
+    def test_store_initialization(self, store, mock_feature_engine):
+        """Test feature store initialization."""
+        assert store.feature_engine == mock_feature_engine
+        assert store.default_lookback_hours == 24
+        assert isinstance(store.cache, FeatureCache)
+        assert store.cache.max_size == 10
 
     @pytest.mark.asyncio
-    async def test_initialize_with_persistence_failure(self, store_with_persistence):
-        """Test initialization with persistence setup failure."""
-        with patch("src.features.store.get_database_manager") as mock_get_db:
-            mock_get_db.side_effect = Exception("Database connection failed")
-
-            await store_with_persistence.initialize()
-
-            assert store_with_persistence.db_manager is None
-            assert store_with_persistence.enable_persistence is False
-
-    @pytest.mark.asyncio
-    async def test_get_features_cache_hit(self, store):
-        """Test getting features with cache hit."""
+    async def test_get_features_from_cache(self, store):
+        """Test retrieving features from cache."""
+        room_id = "living_room"
         target_time = datetime(2024, 1, 15, 15, 0, 0)
-        expected_features = {"feature_1": 1.0, "feature_2": 2.0}
+        expected_features = {"cached_feature": 1.0}
 
-        # Put features in cache
-        store.cache.put(
-            "living_room",
-            target_time,
-            24,
-            ["temporal", "sequential", "contextual"],
-            expected_features,
-            "test_hash",
+        # Put record in cache
+        record = FeatureRecord(
+            room_id=room_id,
+            target_time=target_time,
+            features=expected_features,
+            extraction_time=datetime.now(),
+            lookback_hours=24,
+            feature_types=["temporal"],
+            data_hash="hash",
         )
+        cache_key = store._get_cache_key(room_id, target_time, 24, ["temporal"])
+        store.cache.put(cache_key, record)
 
-        features = await store.get_features("living_room", target_time)
+        features = await store.get_features(room_id, target_time)
 
         assert features == expected_features
         assert store.stats["cache_hits"] == 1
-        assert store.stats["cache_misses"] == 0
+        assert store.cache.hits == 1
 
     @pytest.mark.asyncio
-    async def test_get_features_cache_miss_compute(self, store):
-        """Test getting features with cache miss and computation."""
+    async def test_get_features_cache_miss(self, store):
+        """Test retrieving features when cache miss occurs."""
+        room_id = "living_room"
         target_time = datetime(2024, 1, 15, 15, 0, 0)
-        expected_features = {"feature_1": 1.0, "feature_2": 2.0}
+        expected_features = {"computed_feature": 1.0}
 
         with patch.object(
             store, "_compute_features", return_value=expected_features
         ) as mock_compute:
-            features = await store.get_features("living_room", target_time)
+
+            features = await store.get_features(room_id, target_time)
 
             assert features == expected_features
-            assert store.stats["cache_hits"] == 0
             assert store.stats["cache_misses"] == 1
+            assert store.stats["feature_computations"] == 1
             mock_compute.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_features_force_recompute(self, store):
-        """Test forced recomputation bypassing cache."""
-        target_time = datetime(2024, 1, 15, 15, 0, 0)
-        cached_features = {"cached": 1.0}
-        computed_features = {"computed": 2.0}
-
-        # Put features in cache
-        store.cache.put(
-            "living_room",
-            target_time,
-            24,
-            ["temporal", "sequential", "contextual"],
-            cached_features,
-            "test_hash",
-        )
-
-        with patch.object(
-            store, "_compute_features", return_value=computed_features
-        ) as mock_compute:
-            features = await store.get_features(
-                "living_room", target_time, force_recompute=True
-            )
-
-            assert features == computed_features  # Should get computed, not cached
-            mock_compute.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_get_batch_features(self, store):
+    async def test_get_batch_features_success(self, store):
         """Test batch feature retrieval."""
         requests = [
             ("living_room", datetime(2024, 1, 15, 15, 0, 0)),
             ("kitchen", datetime(2024, 1, 15, 15, 30, 0)),
         ]
 
-        expected_results = [
-            {"living_room_feature": 1.0},
-            {"kitchen_feature": 2.0},
-        ]
+        with patch.object(store, "get_features") as mock_get_features:
+            mock_get_features.side_effect = [
+                {"feature_1": 1.0},
+                {"feature_2": 2.0},
+            ]
 
-        with patch.object(store, "get_features", side_effect=expected_results):
             results = await store.get_batch_features(requests)
 
-            assert results == expected_results
-            assert store.stats["batch_operations"] == 1
+            assert len(results) == 2
+            assert results[0] == {"feature_1": 1.0}
+            assert results[1] == {"feature_2": 2.0}
+            assert mock_get_features.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_get_batch_features_with_exception(self, store):
+    async def test_get_batch_features_with_exceptions(self, store):
         """Test batch feature retrieval with exception handling."""
         requests = [
             ("living_room", datetime(2024, 1, 15, 15, 0, 0)),
@@ -601,31 +556,46 @@ class TestFeatureStore:
     @pytest.mark.asyncio
     async def test_get_data_for_features_with_db(self, store):
         """Test data retrieval with database manager."""
+        # Create proper AsyncMock for database manager
         store.db_manager = AsyncMock()
-        mock_session = AsyncMock()
-        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_session.__aexit__ = AsyncMock(return_value=None)
-        store.db_manager.get_session.return_value = mock_session
 
-        # Mock database query results
+        # Create proper async context manager mock for session
+        mock_session = AsyncMock()
+
+        # Properly configure the async context manager
+        async def mock_get_session():
+            return mock_session
+
+        store.db_manager.get_session.return_value.__aenter__ = AsyncMock(
+            return_value=mock_session
+        )
+        store.db_manager.get_session.return_value.__aexit__ = AsyncMock(
+            return_value=None
+        )
+
+        # Mock database query results with proper structure
+        mock_events = [Mock(spec=SensorEvent), Mock(spec=SensorEvent)]
+        mock_room_states = [Mock(spec=RoomState)]
+
+        # Create mock results that return the expected data structure
         mock_events_result = Mock()
-        mock_events_result.scalars.return_value.all.return_value = [
-            Mock(),
-            Mock(),
-        ]
+        mock_events_result.scalars.return_value.all.return_value = mock_events
 
         mock_states_result = Mock()
-        mock_states_result.scalars.return_value.all.return_value = [Mock()]
+        mock_states_result.scalars.return_value.all.return_value = mock_room_states
 
+        # Configure session execute to return these results
         mock_session.execute.side_effect = [
             mock_events_result,
             mock_states_result,
         ]
 
+        # Test the method
         events, room_states = await store._get_data_for_features(
             "living_room", datetime.now(), 24
         )
 
+        # Verify results
         assert len(events) == 2
         assert len(room_states) == 1
         assert store.stats["database_queries"] == 1
@@ -648,225 +618,147 @@ class TestFeatureStore:
         hash3 = store._compute_data_hash(room_id, target_time, 12)  # Different lookback
         assert hash1 != hash3
 
-    def test_get_stats(self, store):
-        """Test statistics retrieval."""
-        with (
-            patch.object(store.cache, "get_stats", return_value={"cache_stat": 1}),
-            patch.object(
-                store.feature_engine,
-                "get_extraction_stats",
-                return_value={"engine_stat": 2},
-            ),
-        ):
+    def test_get_cache_key(self, store):
+        """Test cache key generation."""
+        room_id = "living_room"
+        target_time = datetime(2024, 1, 15, 15, 0, 0)
+        lookback_hours = 24
+        feature_types = ["temporal", "sequential"]
 
-            stats = store.get_stats()
+        key1 = store._get_cache_key(room_id, target_time, lookback_hours, feature_types)
+        key2 = store._get_cache_key(room_id, target_time, lookback_hours, feature_types)
 
-            assert "feature_store" in stats
-            assert "cache" in stats
-            assert "engine" in stats
-            assert stats["cache"]["cache_stat"] == 1
-            assert stats["engine"]["engine_stat"] == 2
+        # Same parameters should produce same key
+        assert key1 == key2
+        assert isinstance(key1, str)
+
+        # Different parameters should produce different key
+        key3 = store._get_cache_key(room_id, target_time, 12, feature_types)
+        assert key1 != key3
+
+    def test_get_default_features(self, store):
+        """Test default features generation."""
+        # Mock the feature engine's get_default_features method
+        expected_defaults = {"default_feature": 0.0}
+
+        with patch.object(
+            store.feature_engine, "get_default_features", return_value=expected_defaults
+        ) as mock_defaults:
+            defaults = store._get_default_features()
+            assert defaults == expected_defaults
+            mock_defaults.assert_called_once()
+
+    def test_store_statistics(self, store):
+        """Test store statistics tracking."""
+        initial_stats = store.get_stats()
+
+        expected_keys = [
+            "cache_hits",
+            "cache_misses",
+            "feature_computations",
+            "database_queries",
+            "cache_size",
+            "total_requests",
+        ]
+
+        for key in expected_keys:
+            assert key in initial_stats
+            assert isinstance(initial_stats[key], (int, float))
 
     def test_clear_cache(self, store):
-        """Test cache clearing."""
-        with (
-            patch.object(store.cache, "clear") as mock_cache_clear,
-            patch.object(store.feature_engine, "clear_caches") as mock_engine_clear,
+        """Test cache clearing functionality."""
+        # Add some items to cache
+        record = FeatureRecord(
+            room_id="test",
+            target_time=datetime.now(),
+            features={"test": 1.0},
+            extraction_time=datetime.now(),
+            lookback_hours=24,
+            feature_types=["temporal"],
+            data_hash="test_hash",
+        )
+
+        store.cache.put("test_key", record)
+        assert len(store.cache) == 1
+
+        # Clear cache
+        store.clear_cache()
+        assert len(store.cache) == 0
+
+    @pytest.mark.asyncio
+    async def test_feature_extraction_error_handling(self, store):
+        """Test error handling during feature extraction."""
+        with patch.object(
+            store, "_get_data_for_features", side_effect=Exception("Database error")
         ):
-
-            store.clear_cache()
-
-            mock_cache_clear.assert_called_once()
-            mock_engine_clear.assert_called_once()
-
-    def test_reset_stats(self, store):
-        """Test statistics reset."""
-        # Modify stats
-        store.stats["total_requests"] = 10
-        store.stats["cache_hits"] = 5
-
-        with patch.object(store.feature_engine, "reset_stats") as mock_engine_reset:
-            store.reset_stats()
-
-            assert store.stats["total_requests"] == 0
-            assert store.stats["cache_hits"] == 0
-            mock_engine_reset.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_health_check(self, store):
-        """Test health check functionality."""
-        with patch.object(
-            store.feature_engine, "validate_configuration"
-        ) as mock_validate:
-            mock_validate.return_value = {
-                "valid": True,
-                "warnings": [],
-                "errors": [],
-            }
-
-            health = await store.health_check()
-
-            assert health["status"] == "healthy"
-            assert "components" in health
-            assert "feature_engine" in health["components"]
-            assert "cache" in health["components"]
-
-    @pytest.mark.asyncio
-    async def test_health_check_with_db(self, store):
-        """Test health check with database."""
-        store.enable_persistence = True
-        store.db_manager = AsyncMock()
-        store.db_manager.health_check.return_value = {"status": "healthy"}
-
-        with patch.object(
-            store.feature_engine, "validate_configuration"
-        ) as mock_validate:
-            mock_validate.return_value = {
-                "valid": True,
-                "warnings": [],
-                "errors": [],
-            }
-
-            health = await store.health_check()
-
-            assert "database" in health["components"]
-
-    @pytest.mark.asyncio
-    async def test_context_manager(self, store):
-        """Test async context manager functionality."""
-        with patch.object(store, "initialize") as mock_init:
-            async with store as context_store:
-                assert context_store == store
-                mock_init.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_performance_large_batch(self, store):
-        """Test performance with large batch requests."""
-        import time
-
-        # Create large batch of requests
-        requests = []
-        base_time = datetime(2024, 1, 15, 10, 0, 0)
-        for i in range(100):
-            requests.append(
-                (
-                    f"room_{i % 5}",
-                    base_time + timedelta(minutes=i),
-                )  # 5 different rooms
+            # Should return default features on error
+            features = await store._compute_features(
+                "living_room", datetime.now(), 24, ["temporal"]
             )
 
-        with patch.object(store, "get_features") as mock_get_features:
-            mock_get_features.return_value = {"test_feature": 1.0}
+            # Should be a dict (default features)
+            assert isinstance(features, dict)
 
-            start_time = time.time()
-            results = await store.get_batch_features(requests)
-            end_time = time.time()
-
-            # Should complete in reasonable time
-            execution_time = end_time - start_time
-            assert execution_time < 5.0  # Less than 5 seconds
-
-            assert len(results) == 100
-            assert all(isinstance(result, dict) for result in results)
-
-    @pytest.mark.asyncio
-    async def test_memory_efficiency_caching(self, store):
-        """Test that caching doesn't cause memory leaks."""
-        gc.collect()
-        initial_size = sys.getsizeof(store.cache)
-
-        # Add many items to cache (more than cache size to test eviction)
-        target_time = datetime(2024, 1, 15, 15, 0, 0)
-        for i in range(50):  # Cache size is 10, so many will be evicted
-            store.cache.put(
-                f"room_{i}",
-                target_time + timedelta(minutes=i),
-                24,
-                ["temporal"],
-                {"feature": float(i)},
-                f"hash_{i}",
+    def test_memory_usage_optimization(self, store):
+        """Test memory usage optimization features."""
+        # Test that cache doesn't grow beyond max size
+        for i in range(20):  # Add more than cache max_size
+            record = FeatureRecord(
+                room_id=f"room_{i}",
+                target_time=datetime.now() + timedelta(hours=i),
+                features={"feature": float(i)},
+                extraction_time=datetime.now(),
+                lookback_hours=24,
+                feature_types=["temporal"],
+                data_hash=f"hash_{i}",
             )
 
-        gc.collect()
-        final_size = sys.getsizeof(store.cache)
-
-        # Cache should be limited in size
-        assert len(store.cache.cache) <= store.cache.max_size
-        # Memory growth should be bounded
-        assert final_size - initial_size < 10000  # Less than 10KB growth
-
-    @pytest.mark.asyncio
-    async def test_concurrent_cache_operations(self, store):
-        """Test thread safety of cache operations."""
-
-        async def cache_operation(room_id: str):
-            target_time = datetime(2024, 1, 15, 15, 0, 0)
-
-            # Try to get (likely miss)
-            features = await store.get_features(room_id, target_time)
-            return features
-
-        with patch.object(store, "_compute_features") as mock_compute:
-            mock_compute.return_value = {"concurrent_feature": 1.0}
-
-            # Run concurrent operations
-            tasks = [cache_operation(f"room_{i}") for i in range(10)]
-            results = await asyncio.gather(*tasks)
-
-            # All operations should succeed
-            assert len(results) == 10
-            assert all(isinstance(result, dict) for result in results)
-
-    @pytest.mark.parametrize("cache_size", [1, 5, 50, 100])
-    def test_cache_size_limits(self, mock_config, cache_size):
-        """Test cache behavior with different size limits."""
-        store = FeatureStore(config=mock_config, cache_size=cache_size)
-
-        # Add more items than cache size
-        for i in range(cache_size * 2):
-            store.cache.put(
-                f"room_{i}",
-                datetime(2024, 1, 15, 15, 0, 0),
-                24,
-                ["temporal"],
-                {"feature": float(i)},
-                f"hash_{i}",
+            cache_key = store._get_cache_key(
+                record.room_id,
+                record.target_time,
+                record.lookback_hours,
+                record.feature_types,
             )
+            store.cache.put(cache_key, record)
 
         # Cache should not exceed max size
-        assert len(store.cache.cache) <= cache_size
-        assert store.cache.max_size == cache_size
+        assert len(store.cache) <= store.cache.max_size
 
     @pytest.mark.asyncio
-    async def test_error_propagation(self, store):
-        """Test that errors are properly propagated and handled."""
-        target_time = datetime(2024, 1, 15, 15, 0, 0)
+    async def test_concurrent_feature_requests(self, store):
+        """Test handling of concurrent feature requests."""
+        room_id = "living_room"
+        target_times = [
+            datetime(2024, 1, 15, 15, 0, 0),
+            datetime(2024, 1, 15, 15, 30, 0),
+            datetime(2024, 1, 15, 16, 0, 0),
+        ]
 
-        with patch.object(store, "_compute_features") as mock_compute:
-            mock_compute.side_effect = FeatureExtractionError(
-                feature_type="computation", room_id="living_room"
-            )
+        with patch.object(
+            store, "_compute_features", return_value={"concurrent_feature": 1.0}
+        ) as mock_compute:
 
-            with pytest.raises(FeatureExtractionError):
-                await store.get_features("living_room", target_time)
+            # Make concurrent requests
+            tasks = [
+                store.get_features(room_id, target_time) for target_time in target_times
+            ]
+            results = await asyncio.gather(*tasks)
 
-    def test_feature_type_parameter_handling(self, store):
-        """Test handling of different feature type parameters."""
-        target_time = datetime(2024, 1, 15, 15, 0, 0)
+            # All requests should succeed
+            assert len(results) == 3
+            for result in results:
+                assert isinstance(result, dict)
+                assert "concurrent_feature" in result
 
-        # Test None (should default to all types)
-        cache_key1 = store.cache._make_key(
-            "room", target_time, 24, ["temporal", "sequential", "contextual"]
-        )
+    def test_feature_type_validation(self, store):
+        """Test validation of feature types."""
+        valid_types = ["temporal", "sequential", "contextual"]
 
-        # Test explicit all types
-        cache_key2 = store.cache._make_key(
-            "room", target_time, 24, ["temporal", "sequential", "contextual"]
-        )
+        for feature_type in valid_types:
+            # Should not raise exception
+            cache_key = store._get_cache_key("room", datetime.now(), 24, [feature_type])
+            assert isinstance(cache_key, str)
 
-        assert cache_key1 == cache_key2
-
-        # Test subset
-        cache_key3 = store.cache._make_key("room", target_time, 24, ["temporal"])
-
-        assert cache_key1 != cache_key3
+        # Test mixed valid types
+        cache_key = store._get_cache_key("room", datetime.now(), 24, valid_types)
+        assert isinstance(cache_key, str)

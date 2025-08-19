@@ -227,9 +227,10 @@ class DatabaseManager:
                 logger.info("TimescaleDB extension verified")
 
     @asynccontextmanager
+    @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """
-        Get database session with automatic cleanup.
+        Get database session with automatic cleanup and retry logic.
 
         Returns:
             AsyncSession: Database session
@@ -240,13 +241,18 @@ class DatabaseManager:
         if self.session_factory is None:
             raise RuntimeError("Database manager not initialized")
 
-        session = None
         retry_count = 0
 
         while retry_count <= self.max_retries:
+            session = None
             try:
+                # Create session
                 session = self.session_factory()
+
+                # Yield session for use
                 yield session
+
+                # Commit transaction on successful completion
                 await session.commit()
                 return
 
@@ -256,8 +262,14 @@ class DatabaseManager:
                 SQLTimeoutError,
             ) as e:
                 if session:
-                    await session.rollback()
-                    await session.close()
+                    try:
+                        await session.rollback()
+                    except Exception:
+                        pass  # Ignore rollback errors during connection issues
+                    try:
+                        await session.close()
+                    except Exception:
+                        pass  # Ignore close errors during connection issues
 
                 retry_count += 1
                 if retry_count > self.max_retries:
@@ -286,14 +298,23 @@ class DatabaseManager:
 
             except Exception as e:
                 if session:
-                    await session.rollback()
-                    await session.close()
+                    try:
+                        await session.rollback()
+                    except Exception:
+                        pass  # Ignore rollback errors
+                    try:
+                        await session.close()
+                    except Exception:
+                        pass  # Ignore close errors
 
                 raise DatabaseQueryError(query="session_management", cause=e)
 
             finally:
                 if session:
-                    await session.close()
+                    try:
+                        await session.close()
+                    except Exception:
+                        pass  # Ignore close errors in finally block
 
     async def execute_query(
         self,
@@ -802,6 +823,7 @@ async def get_database_manager() -> DatabaseManager:
     return _db_manager
 
 
+@asynccontextmanager
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Convenience function to get database session.
