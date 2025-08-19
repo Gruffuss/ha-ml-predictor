@@ -99,38 +99,55 @@ class ConfigValidationError(ConfigurationError):
 
     def __init__(
         self,
-        field: str,
-        value: Any,
-        expected: str,
+        message: str,
+        config_key: Optional[str] = None,
         config_file: Optional[str] = None,
+        valid_values: Optional[List[str]] = None,
     ):
-        message = (
-            f"Invalid configuration for '{field}': got '{value}', expected {expected}"
-        )
+        context = {}
+        if config_key:
+            context["config_key"] = config_key
+        if valid_values:
+            context["valid_values"] = valid_values
+
         super().__init__(
             message=message,
             error_code="CONFIG_VALIDATION_ERROR",
             config_file=config_file,
-            context={"field": field, "value": value, "expected": expected},
+            context=context,
+            severity=ErrorSeverity.HIGH,
+        )
+
+
+class MissingConfigSectionError(ConfigurationError):
+    """Raised when a required configuration section is missing."""
+
+    def __init__(self, section_name: str, config_file: str):
+        message = f"Required configuration section '{section_name}' missing"
+        super().__init__(
+            message=message,
+            error_code="CONFIG_SECTION_MISSING_ERROR",
+            config_file=config_file,
+            context={"section_name": section_name},
             severity=ErrorSeverity.HIGH,
         )
 
 
 class ConfigParsingError(ConfigurationError):
-    """Raised when configuration file cannot be parsed."""
+    """Raised when configuration file parsing fails."""
 
-    def __init__(self, config_file: str, parse_error: str):
-        message = f"Failed to parse configuration file '{config_file}': {parse_error}"
+    def __init__(self, config_file: str, parsing_error: str):
+        message = f"Failed to parse configuration file '{config_file}': {parsing_error}"
         super().__init__(
             message=message,
             error_code="CONFIG_PARSING_ERROR",
             config_file=config_file,
-            context={"parse_error": parse_error},
-            severity=ErrorSeverity.HIGH,
+            context={"parsing_error": parsing_error},
+            severity=ErrorSeverity.CRITICAL,
         )
 
 
-# Home Assistant Connection Errors
+# Home Assistant Integration Errors
 
 
 class HomeAssistantError(OccupancyPredictionError):
@@ -143,30 +160,26 @@ class HomeAssistantConnectionError(HomeAssistantError):
     """Raised when connection to Home Assistant fails."""
 
     def __init__(self, url: str, cause: Optional[Exception] = None):
-        message = f"Failed to connect to Home Assistant at '{url}'"
+        message = f"Failed to connect to Home Assistant at {url}"
         super().__init__(
             message=message,
             error_code="HA_CONNECTION_ERROR",
             context={"url": url},
-            severity=ErrorSeverity.HIGH,
+            severity=ErrorSeverity.CRITICAL,
             cause=cause,
         )
 
 
 class HomeAssistantAuthenticationError(HomeAssistantError):
-    """Raised when Home Assistant authentication fails."""
+    """Raised when authentication with Home Assistant fails."""
 
-    def __init__(self, url: str, token_length: int):
-        message = f"Authentication failed for Home Assistant at '{url}'"
+    def __init__(self, url: str, token_hint: str):
+        message = f"Authentication failed for Home Assistant at {url}"
         super().__init__(
             message=message,
             error_code="HA_AUTH_ERROR",
-            context={
-                "url": url,
-                "token_length": token_length,
-                "hint": "Check if token is valid and has required permissions",
-            },
-            severity=ErrorSeverity.HIGH,
+            context={"url": url, "token_hint": token_hint[:10] + "..."},
+            severity=ErrorSeverity.CRITICAL,
         )
 
 
@@ -265,16 +278,34 @@ class DatabaseQueryError(DatabaseError):
         query: str,
         parameters: Optional[Dict[str, Any]] = None,
         cause: Optional[Exception] = None,
+        error_type: Optional[str] = None,
+        severity: ErrorSeverity = ErrorSeverity.MEDIUM,
     ):
+        """
+        Initialize database query error.
+
+        Args:
+            query: The SQL query that failed
+            parameters: Query parameters that were used
+            cause: The underlying exception that caused the failure
+            error_type: Type of error (e.g., 'TimeoutError')
+            severity: Error severity level
+        """
         message = f"Database query failed: {query[:100]}..."
+
+        context = {
+            "query": query[:200],  # Limit query text
+            "parameters": parameters,
+        }
+
+        if error_type:
+            context["error_type"] = error_type
+
         super().__init__(
             message=message,
             error_code="DB_QUERY_ERROR",
-            context={
-                "query": query[:200],  # Limit query text
-                "parameters": parameters,
-            },
-            severity=ErrorSeverity.MEDIUM,
+            context=context,
+            severity=severity,
             cause=cause,
         )
 
@@ -294,157 +325,18 @@ class DatabaseMigrationError(DatabaseError):
 
 
 class DatabaseIntegrityError(DatabaseError):
-    """Raised when database integrity constraint is violated."""
+    """Raised when database integrity constraints are violated."""
 
     def __init__(
-        self,
-        constraint: str,
-        table: str,
-        values: Optional[Dict[str, Any]] = None,
+        self, table_name: str, constraint: str, cause: Optional[Exception] = None
     ):
-        message = (
-            f"Database integrity constraint violated: {constraint} on table {table}"
-        )
+        message = f"Database integrity error in table '{table_name}': {constraint}"
         super().__init__(
             message=message,
             error_code="DB_INTEGRITY_ERROR",
-            context={
-                "constraint": constraint,
-                "table": table,
-                "values": values,
-            },
-            severity=ErrorSeverity.MEDIUM,
-        )
-
-
-# Model Training and Prediction Errors
-
-
-class ModelError(OccupancyPredictionError):
-    """Base class for ML model-related errors."""
-
-    pass
-
-
-class ModelTrainingError(ModelError):
-    """Raised when model training fails."""
-
-    def __init__(
-        self,
-        model_type: str,
-        room_id: str,
-        cause: Optional[Exception] = None,
-        training_data_size: Optional[int] = None,
-    ):
-        message = f"Model training failed for {model_type} model in room '{room_id}'"
-        context: Dict[str, Any] = {"model_type": model_type, "room_id": room_id}
-        if training_data_size is not None:
-            context["training_data_size"] = training_data_size
-
-        super().__init__(
-            message=message,
-            error_code="MODEL_TRAINING_ERROR",
-            context=context,
+            context={"table_name": table_name, "constraint": constraint},
             severity=ErrorSeverity.HIGH,
             cause=cause,
-        )
-
-
-class ModelPredictionError(ModelError):
-    """Raised when model prediction fails."""
-
-    def __init__(
-        self,
-        model_type: str,
-        room_id: str,
-        feature_shape: Optional[tuple] = None,
-        cause: Optional[Exception] = None,
-    ):
-        message = f"Model prediction failed for {model_type} model in room '{room_id}'"
-        context: Dict[str, Any] = {"model_type": model_type, "room_id": room_id}
-        if feature_shape:
-            context["feature_shape"] = feature_shape
-
-        super().__init__(
-            message=message,
-            error_code="MODEL_PREDICTION_ERROR",
-            context=context,
-            severity=ErrorSeverity.MEDIUM,
-            cause=cause,
-        )
-
-
-class ModelNotFoundError(ModelError):
-    """Raised when a required model is not found."""
-
-    def __init__(self, model_type: str, room_id: str, model_path: Optional[str] = None):
-        message = f"Model not found: {model_type} for room '{room_id}'"
-        context = {"model_type": model_type, "room_id": room_id}
-        if model_path:
-            context["model_path"] = model_path
-
-        super().__init__(
-            message=message,
-            error_code="MODEL_NOT_FOUND",
-            context=context,
-            severity=ErrorSeverity.HIGH,
-        )
-
-
-class InsufficientTrainingDataError(ModelError):
-    """Raised when there's insufficient data for model training."""
-
-    def __init__(
-        self,
-        room_id: str,
-        data_points: int,
-        minimum_required: int,
-        time_span_days: Optional[float] = None,
-    ):
-        message = (
-            f"Insufficient training data for room '{room_id}': "
-            f"got {data_points} data points, need at least {minimum_required}"
-        )
-        context = {
-            "room_id": room_id,
-            "data_points": data_points,
-            "minimum_required": minimum_required,
-        }
-        if time_span_days:
-            context["time_span_days"] = time_span_days
-
-        super().__init__(
-            message=message,
-            error_code="INSUFFICIENT_TRAINING_DATA_ERROR",
-            context=context,
-            severity=ErrorSeverity.MEDIUM,
-        )
-
-
-class ModelVersionMismatchError(ModelError):
-    """Raised when loaded model version doesn't match expected version."""
-
-    def __init__(
-        self,
-        model_type: str,
-        room_id: str,
-        loaded_version: str,
-        expected_version: str,
-    ):
-        message = (
-            f"Model version mismatch for {model_type} in room '{room_id}': "
-            f"loaded v{loaded_version}, expected v{expected_version}"
-        )
-        super().__init__(
-            message=message,
-            error_code="MODEL_VERSION_MISMATCH_ERROR",
-            context={
-                "model_type": model_type,
-                "room_id": room_id,
-                "loaded_version": loaded_version,
-                "expected_version": expected_version,
-            },
-            severity=ErrorSeverity.HIGH,
         )
 
 
@@ -464,22 +356,42 @@ class FeatureExtractionError(FeatureEngineeringError):
         self,
         feature_type: str,
         room_id: str,
-        time_range: Optional[str] = None,
         cause: Optional[Exception] = None,
     ):
-        message = (
-            f"Feature extraction failed for {feature_type} features in room '{room_id}'"
-        )
-        context = {"feature_type": feature_type, "room_id": room_id}
-        if time_range:
-            context["time_range"] = time_range
-
+        message = f"Feature extraction failed: {feature_type} for room {room_id}"
         super().__init__(
             message=message,
             error_code="FEATURE_EXTRACTION_ERROR",
-            context=context,
+            context={"feature_type": feature_type, "room_id": room_id},
             severity=ErrorSeverity.MEDIUM,
             cause=cause,
+        )
+
+
+class InsufficientDataError(FeatureEngineeringError):
+    """Raised when insufficient data is available for feature extraction."""
+
+    def __init__(
+        self,
+        data_type: str,
+        room_id: str,
+        required_samples: int,
+        available_samples: int,
+    ):
+        message = (
+            f"Insufficient {data_type} data for room {room_id}: "
+            f"need {required_samples}, have {available_samples}"
+        )
+        super().__init__(
+            message=message,
+            error_code="INSUFFICIENT_DATA_ERROR",
+            context={
+                "data_type": data_type,
+                "room_id": room_id,
+                "required_samples": required_samples,
+                "available_samples": available_samples,
+            },
+            severity=ErrorSeverity.MEDIUM,
         )
 
 
@@ -489,46 +401,22 @@ class FeatureValidationError(FeatureEngineeringError):
     def __init__(
         self,
         feature_name: str,
-        validation_rule: str,
-        actual_value: Any,
+        validation_error: str,
         room_id: Optional[str] = None,
+        cause: Optional[Exception] = None,
     ):
-        message = f"Feature validation failed for '{feature_name}': {validation_rule}"
-        context = {
-            "feature_name": feature_name,
-            "validation_rule": validation_rule,
-            "actual_value": actual_value,
-        }
+        message = f"Feature validation failed for '{feature_name}': {validation_error}"
+        context = {"feature_name": feature_name, "validation_error": validation_error}
         if room_id:
             context["room_id"] = room_id
+            message += f" (room: {room_id})"
 
         super().__init__(
             message=message,
             error_code="FEATURE_VALIDATION_ERROR",
             context=context,
             severity=ErrorSeverity.MEDIUM,
-        )
-
-
-class MissingFeatureError(FeatureEngineeringError):
-    """Raised when required features are missing."""
-
-    def __init__(
-        self,
-        missing_features: List[str],
-        room_id: str,
-        available_features: Optional[List[str]] = None,
-    ):
-        message = f"Missing required features for room '{room_id}': {', '.join(missing_features)}"
-        context = {"missing_features": missing_features, "room_id": room_id}
-        if available_features:
-            context["available_features"] = available_features
-
-        super().__init__(
-            message=message,
-            error_code="MISSING_FEATURE_ERROR",
-            context=context,
-            severity=ErrorSeverity.HIGH,
+            cause=cause,
         )
 
 
@@ -538,112 +426,117 @@ class FeatureStoreError(FeatureEngineeringError):
     def __init__(
         self,
         operation: str,
-        feature_group: str,
+        feature_type: str,
         cause: Optional[Exception] = None,
     ):
-        message = (
-            f"Feature store operation '{operation}' failed for group '{feature_group}'"
-        )
+        message = f"Feature store operation failed: {operation} for {feature_type}"
         super().__init__(
             message=message,
             error_code="FEATURE_STORE_ERROR",
-            context={"operation": operation, "feature_group": feature_group},
+            context={"operation": operation, "feature_type": feature_type},
             severity=ErrorSeverity.MEDIUM,
             cause=cause,
         )
 
 
-# MQTT and Integration Errors
+# Model Training Errors
 
 
-class MQTTError(OccupancyPredictionError):
-    """Base class for MQTT-related errors."""
+class ModelError(OccupancyPredictionError):
+    """Base class for machine learning model errors."""
 
     pass
 
 
-class MQTTConnectionError(MQTTError):
-    """Raised when MQTT broker connection fails."""
+class ModelTrainingError(ModelError):
+    """Raised when model training fails."""
 
     def __init__(
         self,
-        broker: str,
-        port: int,
-        username: Optional[str] = None,
+        model_type: str,
+        room_id: str,
         cause: Optional[Exception] = None,
     ):
-        message = f"Failed to connect to MQTT broker at {broker}:{port}"
-        context = {"broker": broker, "port": port}
-        if username:
-            context["username"] = username
-
+        message = f"Model training failed: {model_type} for room {room_id}"
         super().__init__(
             message=message,
-            error_code="MQTT_CONNECTION_ERROR",
-            context=context,
+            error_code="MODEL_TRAINING_ERROR",
+            context={"model_type": model_type, "room_id": room_id},
             severity=ErrorSeverity.HIGH,
             cause=cause,
         )
 
 
-class MQTTPublishError(MQTTError):
-    """Raised when MQTT message publishing fails."""
+class ModelPredictionError(ModelError):
+    """Raised when model prediction fails."""
 
     def __init__(
         self,
-        topic: str,
-        payload_size: int,
-        qos: int = 0,
+        model_type: str,
+        room_id: str,
         cause: Optional[Exception] = None,
     ):
-        message = f"Failed to publish MQTT message to topic '{topic}'"
+        message = f"Model prediction failed: {model_type} for room {room_id}"
         super().__init__(
             message=message,
-            error_code="MQTT_PUBLISH_ERROR",
-            context={"topic": topic, "payload_size": payload_size, "qos": qos},
+            error_code="MODEL_PREDICTION_ERROR",
+            context={"model_type": model_type, "room_id": room_id},
             severity=ErrorSeverity.MEDIUM,
             cause=cause,
         )
 
 
-class MQTTSubscriptionError(MQTTError):
-    """Raised when MQTT subscription fails."""
+class ModelValidationError(ModelError):
+    """Raised when model validation fails."""
 
-    def __init__(self, topic_pattern: str, cause: Optional[Exception] = None):
-        message = f"Failed to subscribe to MQTT topic pattern: {topic_pattern}"
+    def __init__(
+        self,
+        model_type: str,
+        room_id: str,
+        validation_error: str,
+        cause: Optional[Exception] = None,
+    ):
+        message = f"Model validation failed: {model_type} for room {room_id} - {validation_error}"
         super().__init__(
             message=message,
-            error_code="MQTT_SUBSCRIPTION_ERROR",
-            context={"topic_pattern": topic_pattern},
-            severity=ErrorSeverity.MEDIUM,
+            error_code="MODEL_VALIDATION_ERROR",
+            context={
+                "model_type": model_type,
+                "room_id": room_id,
+                "validation_error": validation_error,
+            },
+            severity=ErrorSeverity.HIGH,
             cause=cause,
         )
 
 
-class IntegrationError(OccupancyPredictionError):
-    """Base class for external integration errors."""
+# Data Processing Errors
+
+
+class DataProcessingError(OccupancyPredictionError):
+    """Base class for data processing errors."""
 
     pass
 
 
-class DataValidationError(IntegrationError):
-    """Raised when incoming data fails validation."""
+class DataValidationError(DataProcessingError):
+    """Raised when data validation fails."""
 
     def __init__(
         self,
-        data_source: str,
-        validation_errors: List[str],
-        sample_data: Optional[Dict[str, Any]] = None,
+        data_type: str,
+        validation_rule: str,
+        actual_value: Any,
+        expected_value: Any = None,
     ):
-        message = (
-            f"Data validation failed from {data_source}: {'; '.join(validation_errors)}"
-        )
-        context: Dict[str, Any] = {
-            "data_source": data_source,
-            "validation_errors": validation_errors,
+        message = f"Data validation failed: {data_type} - {validation_rule}"
+        context = {
+            "data_type": data_type,
+            "validation_rule": validation_rule,
+            "actual_value": str(actual_value)[:100],  # Limit length
         }
-        if sample_data:
-            context["sample_data"] = sample_data
+        if expected_value is not None:
+            context["expected_value"] = str(expected_value)[:100]
 
         super().__init__(
             message=message,
@@ -653,115 +546,107 @@ class DataValidationError(IntegrationError):
         )
 
 
-class RateLimitExceededError(IntegrationError):
-    """Raised when API rate limits are exceeded."""
+class DataCorruptionError(DataProcessingError):
+    """Raised when data corruption is detected."""
 
-    def __init__(
-        self,
-        service: str,
-        limit: int,
-        window_seconds: int,
-        reset_time: Optional[int] = None,
-    ):
-        message = (
-            f"Rate limit exceeded for {service}: {limit} requests per {window_seconds}s"
-        )
-        context = {
-            "service": service,
-            "limit": limit,
-            "window_seconds": window_seconds,
-        }
-        if reset_time:
-            context["reset_time"] = reset_time
-
+    def __init__(self, data_source: str, corruption_details: str):
+        message = f"Data corruption detected in {data_source}: {corruption_details}"
         super().__init__(
             message=message,
-            error_code="RATE_LIMIT_EXCEEDED_ERROR",
-            context=context,
-            severity=ErrorSeverity.MEDIUM,
-        )
-
-
-# System and Runtime Errors
-
-
-class SystemError(OccupancyPredictionError):
-    """Base class for system-level errors."""
-
-    pass
-
-
-class ResourceExhaustionError(SystemError):
-    """Raised when system resources are exhausted."""
-
-    def __init__(
-        self,
-        resource_type: str,
-        current_usage: float,
-        limit: float,
-        unit: str = "MB",
-    ):
-        message = f"Resource exhaustion: {resource_type} usage {current_usage}{unit} exceeds limit {limit}{unit}"
-        super().__init__(
-            message=message,
-            error_code="RESOURCE_EXHAUSTION_ERROR",
+            error_code="DATA_CORRUPTION_ERROR",
             context={
-                "resource_type": resource_type,
-                "current_usage": current_usage,
-                "limit": limit,
-                "unit": unit,
+                "data_source": data_source,
+                "corruption_details": corruption_details,
             },
             severity=ErrorSeverity.HIGH,
         )
 
 
-class ServiceUnavailableError(SystemError):
-    """Raised when a required service is unavailable."""
+# Integration Errors
+
+
+class IntegrationError(OccupancyPredictionError):
+    """Base class for integration-related errors."""
+
+    pass
+
+
+class MQTTPublishError(IntegrationError):
+    """Raised when MQTT publishing fails."""
 
     def __init__(
         self,
-        service_name: str,
-        endpoint: Optional[str] = None,
-        retry_after: Optional[int] = None,
+        topic: str,
+        broker: str,
+        cause: Optional[Exception] = None,
     ):
-        message = f"Service unavailable: {service_name}"
-        context: Dict[str, Any] = {"service_name": service_name}
-        if endpoint:
-            context["endpoint"] = endpoint
-        if retry_after:
-            context["retry_after"] = retry_after
-
+        message = f"Failed to publish to MQTT topic '{topic}' on broker '{broker}'"
         super().__init__(
             message=message,
-            error_code="SERVICE_UNAVAILABLE_ERROR",
-            context=context,
-            severity=ErrorSeverity.HIGH,
-        )
-
-
-class MaintenanceModeError(SystemError):
-    """Raised when system is in maintenance mode."""
-
-    def __init__(self, end_time: Optional[str] = None):
-        message = "System is currently in maintenance mode"
-        context = {}
-        if end_time:
-            context["estimated_end_time"] = end_time
-            message += f" (estimated end: {end_time})"
-
-        super().__init__(
-            message=message,
-            error_code="MAINTENANCE_MODE_ERROR",
-            context=context,
+            error_code="MQTT_PUBLISH_ERROR",
+            context={"topic": topic, "broker": broker},
             severity=ErrorSeverity.MEDIUM,
+            cause=cause,
         )
 
 
-# API and Integration Errors
+class APIServerError(IntegrationError):
+    """Raised when API server operations fail."""
+
+    def __init__(
+        self,
+        endpoint: str,
+        operation: str,
+        cause: Optional[Exception] = None,
+    ):
+        message = f"API server error: {operation} on {endpoint}"
+        super().__init__(
+            message=message,
+            error_code="API_SERVER_ERROR",
+            context={"endpoint": endpoint, "operation": operation},
+            severity=ErrorSeverity.MEDIUM,
+            cause=cause,
+        )
+
+
+# System-wide Errors
+
+
+class SystemInitializationError(OccupancyPredictionError):
+    """Raised when system initialization fails."""
+
+    def __init__(self, component: str, cause: Optional[Exception] = None):
+        message = f"Failed to initialize system component: {component}"
+        super().__init__(
+            message=message,
+            error_code="SYSTEM_INIT_ERROR",
+            context={"component": component},
+            severity=ErrorSeverity.CRITICAL,
+            cause=cause,
+        )
+
+
+class SystemResourceError(OccupancyPredictionError):
+    """Raised when system resources are exhausted or unavailable."""
+
+    def __init__(
+        self,
+        resource_type: str,
+        resource_name: str,
+        cause: Optional[Exception] = None,
+    ):
+        message = f"System resource unavailable: {resource_type} - {resource_name}"
+        super().__init__(
+            message=message,
+            error_code="SYSTEM_RESOURCE_ERROR",
+            context={"resource_type": resource_type, "resource_name": resource_name},
+            severity=ErrorSeverity.HIGH,
+            cause=cause,
+        )
 
 
 class APIError(OccupancyPredictionError):
-    """Base class for REST API-related errors."""
+    """Base class for API-related errors."""
 
     pass
 
@@ -769,204 +654,100 @@ class APIError(OccupancyPredictionError):
 class APIAuthenticationError(APIError):
     """Raised when API authentication fails."""
 
-    def __init__(self, endpoint: str, reason: str = "Invalid API key"):
-        message = f"Authentication failed for endpoint '{endpoint}': {reason}"
+    def __init__(
+        self,
+        message: str = "Authentication failed",
+        endpoint: Optional[str] = None,
+        auth_method: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ):
+        error_context = context or {}
+        if endpoint:
+            error_context["endpoint"] = endpoint
+        if auth_method:
+            error_context["auth_method"] = auth_method
+
         super().__init__(
             message=message,
-            error_code="API_AUTHENTICATION_ERROR",
-            context={"endpoint": endpoint, "reason": reason},
+            error_code="API_AUTH_ERROR",
+            context=error_context,
             severity=ErrorSeverity.HIGH,
         )
 
 
-class APIAuthorizationError(APIError):
-    """Raised when API access is denied due to insufficient permissions."""
-
-    def __init__(self, required_permission: str, user_id: Optional[str] = None):
-        message = f"Access denied: required permission '{required_permission}'"
-        if user_id:
-            message += f" for user '{user_id}'"
-        super().__init__(
-            message=message,
-            error_code="API_AUTHORIZATION_ERROR",
-            context={
-                "required_permission": required_permission,
-                "user_id": user_id,
-            },
-            severity=ErrorSeverity.MEDIUM,
-        )
-
-
-class APIRateLimitError(APIError):
-    """Raised when API rate limit is exceeded."""
-
-    def __init__(self, client_ip: str, limit: int, window: str):
-        message = (
-            f"Rate limit exceeded for client {client_ip}: {limit} requests per {window}"
-        )
-        super().__init__(
-            message=message,
-            error_code="API_RATE_LIMIT_ERROR",
-            context={"client_ip": client_ip, "limit": limit, "window": window},
-            severity=ErrorSeverity.MEDIUM,
-        )
-
-
-class APISecurityError(APIError):
-    """Raised when a security violation is detected in API usage."""
-
-    def __init__(self, violation_type: str, details: Optional[str] = None):
-        message = f"Security violation detected: {violation_type}"
-        if details:
-            message += f" - {details}"
-        super().__init__(
-            message=message,
-            error_code="API_SECURITY_ERROR",
-            context={"violation_type": violation_type, "details": details},
-            severity=ErrorSeverity.HIGH,
-        )
-
-
-class APIValidationError(APIError):
-    """Raised when API request validation fails."""
-
-    def __init__(self, field: str, value: Any, validation_error: str):
-        message = f"Validation failed for field '{field}': {validation_error}"
-        super().__init__(
-            message=message,
-            error_code="API_VALIDATION_ERROR",
-            context={
-                "field": field,
-                "value": str(value),
-                "validation_error": validation_error,
-            },
-            severity=ErrorSeverity.LOW,
-        )
-
-
-class APIResourceNotFoundError(APIError):
-    """Raised when requested API resource is not found."""
-
-    def __init__(self, resource_type: str, resource_id: str):
-        message = f"{resource_type} with ID '{resource_id}' not found"
-        super().__init__(
-            message=message,
-            error_code="API_RESOURCE_NOT_FOUND",
-            context={
-                "resource_type": resource_type,
-                "resource_id": resource_id,
-            },
-            severity=ErrorSeverity.LOW,
-        )
-
-
-class APIServerError(APIError):
-    """Raised when internal API server error occurs."""
-
-    def __init__(self, operation: str, cause: Optional[Exception] = None):
-        message = f"Internal server error during operation: {operation}"
-        super().__init__(
-            message=message,
-            error_code="API_SERVER_ERROR",
-            context={"operation": operation},
-            severity=ErrorSeverity.HIGH,
-            cause=cause,
-        )
-
-
-# System Resource Errors
-
-
-class SystemResourceError(OccupancyPredictionError):
-    """Raised when system resource limits are exceeded or monitoring fails."""
+class RateLimitExceededError(APIError):
+    """Raised when API rate limits are exceeded."""
 
     def __init__(
         self,
-        resource_type: str,
-        current_usage: Optional[float] = None,
-        limit: Optional[float] = None,
-        cause: Optional[Exception] = None,
+        message: str = "Rate limit exceeded",
+        limit: Optional[int] = None,
+        window_seconds: Optional[int] = None,
+        context: Optional[Dict[str, Any]] = None,
     ):
-        if current_usage is not None and limit is not None:
-            message = f"System resource limit exceeded: {resource_type} usage {current_usage:.2f} exceeds limit {limit:.2f}"
-        else:
-            message = f"System resource error: {resource_type}"
-
-        context = {"resource_type": resource_type}
-        if current_usage is not None:
-            context["current_usage"] = current_usage
-        if limit is not None:
-            context["limit"] = limit
+        error_context = context or {}
+        if limit:
+            error_context["rate_limit"] = limit
+        if window_seconds:
+            error_context["window_seconds"] = window_seconds
 
         super().__init__(
             message=message,
-            error_code="SYSTEM_RESOURCE_ERROR",
-            context=context,
-            severity=ErrorSeverity.HIGH,
-            cause=cause,
-        )
-
-
-# WebSocket API Errors
-
-
-class WebSocketAPIError(OccupancyPredictionError):
-    """Base exception for WebSocket API errors."""
-
-    def __init__(self, message: str, **kwargs):
-        super().__init__(
-            message=message,
-            error_code="WEBSOCKET_API_ERROR",
-            severity=kwargs.get("severity", ErrorSeverity.MEDIUM),
-            **kwargs,
-        )
-
-
-class WebSocketAuthenticationError(WebSocketAPIError):
-    """Raised when WebSocket authentication fails."""
-
-    def __init__(self, message: str, **kwargs):
-        super().__init__(
-            message=message,
-            error_code="WEBSOCKET_AUTH_ERROR",
-            severity=ErrorSeverity.HIGH,
-            **kwargs,
-        )
-
-
-class WebSocketConnectionError(WebSocketAPIError):
-    """Raised when WebSocket connection operations fail."""
-
-    def __init__(self, message: str, **kwargs):
-        super().__init__(
-            message=message,
-            error_code="WEBSOCKET_CONNECTION_ERROR",
+            error_code="RATE_LIMIT_EXCEEDED",
+            context=error_context,
             severity=ErrorSeverity.MEDIUM,
-            **kwargs,
         )
 
 
-class WebSocketRateLimitError(WebSocketAPIError):
-    """Raised when WebSocket rate limits are exceeded."""
+# Validation Helpers
 
-    def __init__(self, client_id: str, limit: int, **kwargs):
-        message = f"Rate limit exceeded for client {client_id}: {limit} messages/minute"
-        super().__init__(
-            message=message,
-            error_code="WEBSOCKET_RATE_LIMIT_ERROR",
-            severity=ErrorSeverity.LOW,
-            context={"client_id": client_id, "limit": limit},
-            **kwargs,
+
+def validate_room_id(room_id: str) -> None:
+    """
+    Validate room ID format.
+
+    Args:
+        room_id: Room identifier to validate
+
+    Raises:
+        DataValidationError: If room ID is invalid
+    """
+    if not room_id or not isinstance(room_id, str):
+        raise DataValidationError(
+            data_type="room_id",
+            validation_rule="must be non-empty string",
+            actual_value=room_id,
+        )
+
+    if not re.match(r"^[a-zA-Z0-9_-]+$", room_id):
+        raise DataValidationError(
+            data_type="room_id",
+            validation_rule="must contain only alphanumeric characters, underscores, and hyphens",
+            actual_value=room_id,
         )
 
 
-class WebSocketValidationError(WebSocketAPIError):
-    """Raised when WebSocket message validation fails."""
+def validate_entity_id(entity_id: str) -> None:
+    """
+    Validate Home Assistant entity ID format.
 
-    def __init__(self, message: str, **kwargs):
-        super().__init__(
-            message=message,
-            error_code="WEBSOCKET_VALIDATION_ERROR",
-            severity=ErrorSeverity.LOW,
-            **kwargs,
+    Args:
+        entity_id: Entity ID to validate
+
+    Raises:
+        DataValidationError: If entity ID is invalid
+    """
+    if not entity_id or not isinstance(entity_id, str):
+        raise DataValidationError(
+            data_type="entity_id",
+            validation_rule="must be non-empty string",
+            actual_value=entity_id,
+        )
+
+    if not re.match(r"^[a-z_]+\.[a-z0-9_]+$", entity_id):
+        raise DataValidationError(
+            data_type="entity_id",
+            validation_rule="must follow Home Assistant format (domain.object_id)",
+            actual_value=entity_id,
+            expected_value="sensor.living_room_motion",
         )
