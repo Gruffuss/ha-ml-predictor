@@ -170,6 +170,8 @@ class ContextualFeatureExtractor:
                 env_events["temperature"].append(event)
             elif event.sensor_type.lower() in ["humidity", "humid"]:
                 env_events["humidity"].append(event)
+            elif event.sensor_type.lower() in ["illuminance", "light", "lux"]:
+                env_events["light"].append(event)
             # Fallback to sensor_id analysis if sensor_type doesn't match
             elif "temperature" in event.sensor_id.lower():
                 env_events["temperature"].append(event)
@@ -261,6 +263,14 @@ class ContextualFeatureExtractor:
             features["is_bright"] = (
                 1.0 if current_light >= self.light_thresholds["bright"] else 0.0
             )
+
+            # Natural light pattern detection
+            features["natural_light_score"] = self._calculate_natural_light_score(
+                light_values, target_time
+            )
+            features["light_change_rate"] = self._calculate_light_change_rate(
+                light_values
+            )
         else:
             features.update(
                 {
@@ -270,6 +280,8 @@ class ContextualFeatureExtractor:
                     "is_dark": 0.0,
                     "is_dim": 1.0,
                     "is_bright": 0.0,
+                    "natural_light_score": 0.0,
+                    "light_change_rate": 0.0,
                 }
             )
 
@@ -691,6 +703,56 @@ class ContextualFeatureExtractor:
 
         return statistics.mean(correlations) if correlations else 0.0
 
+    def _calculate_natural_light_score(
+        self, light_values: List[float], target_time: datetime
+    ) -> float:
+        """Calculate natural light pattern score based on time of day and light levels."""
+        if not light_values or len(light_values) < 2:
+            return 0.0
+
+        # Expected natural light pattern based on time
+        hour = target_time.hour
+
+        # Define expected light levels for natural patterns
+        if 5 <= hour <= 8:  # Dawn
+            expected_range = (50, 300)
+        elif 9 <= hour <= 11:  # Morning
+            expected_range = (200, 500)
+        elif 12 <= hour <= 15:  # Midday
+            expected_range = (400, 800)
+        elif 16 <= hour <= 18:  # Afternoon
+            expected_range = (200, 600)
+        elif 19 <= hour <= 21:  # Evening
+            expected_range = (50, 200)
+        else:  # Night
+            expected_range = (0, 100)
+
+        current_light = light_values[-1]
+
+        # Score based on how well current light matches expected natural pattern
+        if expected_range[0] <= current_light <= expected_range[1]:
+            # Perfect match gets score of 1.0
+            mid_range = (expected_range[0] + expected_range[1]) / 2
+            deviation = abs(current_light - mid_range) / (
+                expected_range[1] - expected_range[0]
+            )
+            return max(0.0, 1.0 - deviation)
+        else:
+            # Outside expected range
+            return 0.0
+
+    def _calculate_light_change_rate(self, light_values: List[float]) -> float:
+        """Calculate rate of light change over time."""
+        if len(light_values) < 2:
+            return 0.0
+
+        # Calculate absolute change rate
+        changes = [
+            abs(light_values[i] - light_values[i - 1])
+            for i in range(1, len(light_values))
+        ]
+        return statistics.mean(changes) if changes else 0.0
+
     def _get_default_features(self) -> Dict[str, float]:
         """Return default feature values when no events are available."""
         return {
@@ -710,6 +772,8 @@ class ContextualFeatureExtractor:
             "is_dark": 0.0,
             "is_dim": 1.0,
             "is_bright": 0.0,
+            "natural_light_score": 0.0,
+            "light_change_rate": 0.0,
             "doors_currently_open": 0.0,
             "door_open_ratio": 0.0,
             "door_transition_count": 0.0,

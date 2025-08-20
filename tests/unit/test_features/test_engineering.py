@@ -756,7 +756,7 @@ class TestFeatureEngineeringEngine:
             assert contextual_count == 75
 
             # Total features should be all extractors + metadata
-            total_expected = 100 + 50 + 75 + 5  # 5 metadata features
+            total_expected = 100 + 50 + 75 + 6  # 6 metadata features
             assert len(features) == total_expected
 
     @pytest.mark.parametrize("enable_parallel", [True, False])

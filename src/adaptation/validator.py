@@ -703,6 +703,10 @@ class PredictionValidator:
             model_type=model_type, hours_back=hours_back
         )
 
+    async def get_overall_accuracy(self, hours_back: int = 24) -> AccuracyMetrics:
+        """Get overall accuracy metrics across all rooms and models."""
+        return await self.get_accuracy_metrics(hours_back=hours_back)
+
     async def get_pending_validations(
         self, room_id: Optional[str] = None, expired_only: bool = False
     ) -> List[ValidationRecord]:
@@ -945,6 +949,112 @@ class PredictionValidator:
             return 0
 
     # Private methods
+
+    async def _get_predictions_from_db(
+        self,
+        room_id: Optional[str] = None,
+        model_type: Optional[Union[ModelType, str]] = None,
+        hours_back: int = 24,
+    ) -> List[ValidationRecord]:
+        """Get predictions from database for validation analysis."""
+        try:
+            cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+
+            async with get_db_session() as session:
+                # Build query with filters
+                query = select(Prediction).where(
+                    Prediction.prediction_time >= cutoff_time
+                )
+
+                if room_id:
+                    query = query.where(Prediction.room_id == room_id)
+
+                if model_type:
+                    model_type_str = (
+                        str(model_type)
+                        if isinstance(model_type, ModelType)
+                        else model_type
+                    )
+                    query = query.where(
+                        or_(
+                            Prediction.model_type == model_type,
+                            Prediction.model_type == model_type_str,
+                        )
+                    )
+
+                result = await session.execute(query)
+                db_predictions = result.scalars().all()
+
+                # Convert to ValidationRecord objects
+                records = []
+                for pred in db_predictions:
+                    # Determine validation status
+                    if pred.actual_transition_time is not None:
+                        status = ValidationStatus.VALIDATED
+                        accuracy_level = self._determine_accuracy_level(
+                            pred.error_minutes
+                        )
+                    else:
+                        # Check if expired
+                        if (
+                            pred.predicted_transition_time
+                            < datetime.utcnow() - self.max_validation_delay
+                        ):
+                            status = ValidationStatus.EXPIRED
+                        else:
+                            status = ValidationStatus.PENDING
+                        accuracy_level = None
+
+                    record = ValidationRecord(
+                        prediction_id=f"db_{pred.id}",
+                        room_id=pred.room_id,
+                        model_type=pred.model_type,
+                        model_version=pred.model_version or "unknown",
+                        predicted_time=pred.predicted_transition_time,
+                        transition_type=pred.transition_type or "unknown",
+                        confidence_score=pred.confidence_score or 0.0,
+                        prediction_interval=(
+                            (
+                                pred.prediction_interval_lower,
+                                pred.prediction_interval_upper,
+                            )
+                            if pred.prediction_interval_lower
+                            and pred.prediction_interval_upper
+                            else None
+                        ),
+                        alternatives=pred.alternatives or [],
+                        actual_time=pred.actual_transition_time,
+                        error_minutes=pred.error_minutes,
+                        accuracy_level=accuracy_level,
+                        status=status,
+                        prediction_time=pred.prediction_time,
+                        validation_time=pred.validation_time,
+                    )
+                    records.append(record)
+
+                return records
+
+        except Exception as e:
+            logger.error(f"Failed to get predictions from database: {e}")
+            return []
+
+    def _determine_accuracy_level(
+        self, error_minutes: Optional[float]
+    ) -> Optional[AccuracyLevel]:
+        """Determine accuracy level based on error minutes."""
+        if error_minutes is None:
+            return None
+
+        if error_minutes < 5:
+            return AccuracyLevel.EXCELLENT
+        elif error_minutes < 10:
+            return AccuracyLevel.GOOD
+        elif error_minutes < 15:
+            return AccuracyLevel.ACCEPTABLE
+        elif error_minutes < 30:
+            return AccuracyLevel.POOR
+        else:
+            return AccuracyLevel.UNACCEPTABLE
 
     async def _store_prediction_in_db(self, record: ValidationRecord) -> None:
         """Store prediction record in database."""

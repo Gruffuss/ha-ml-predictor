@@ -68,7 +68,7 @@ class TestSensorState:
     def test_sensor_state_values(self):
         """Test that all sensor states have correct values."""
         assert SensorState.ON.value == "on"
-        assert SensorState.OFF.value == "of"
+        assert SensorState.OFF.value == "off"
         assert SensorState.OPEN.value == "open"
         assert SensorState.CLOSED.value == "closed"
         assert SensorState.UNKNOWN.value == "unknown"
@@ -82,7 +82,7 @@ class TestSensorState:
         """Test sensor state membership."""
         states = [state.value for state in SensorState]
         assert "on" in states
-        assert "of" in states
+        assert "off" in states
         assert "open" in states
         assert "closed" in states
         assert "unknown" in states
@@ -146,7 +146,7 @@ class TestStateConstants:
 
     def test_absence_states(self):
         """Test absence state constants."""
-        assert ABSENCE_STATES == ["of"]
+        assert ABSENCE_STATES == ["off"]
         assert len(ABSENCE_STATES) == 1
         assert SensorState.OFF.value in ABSENCE_STATES
 

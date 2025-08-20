@@ -112,6 +112,20 @@ class SequentialFeatureExtractor:
                         sorted_events, room_configs
                     )
                 )
+            else:
+                # Provide default classification features when no classifier/config
+                features.update(
+                    {
+                        "human_movement_probability": 0.5,
+                        "cat_movement_probability": 0.5,
+                        "movement_confidence_score": 0.5,
+                        "door_interaction_ratio": 0.0,
+                        "pattern_matches_human": 0.0,
+                        "pattern_matches_cat": 0.0,
+                        "velocity_classification": 0.0,
+                        "sequence_length_score": 0.0,
+                    }
+                )
 
             # N-gram pattern features
             features.update(self._extract_ngram_features(sorted_events))

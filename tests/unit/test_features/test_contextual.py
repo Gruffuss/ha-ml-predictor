@@ -442,7 +442,13 @@ class TestContextualFeatureExtractor:
             events.append(event)
 
         target_time = datetime(2024, 1, 15, 15, 0, 0)  # 3 PM
-        features = extractor._extract_environmental_features(events)
+
+        # Filter events to only include those up to target time (as extract_features would do)
+        filtered_events = [e for e in events if e.timestamp <= target_time]
+
+        features = extractor._extract_environmental_features(
+            filtered_events, target_time
+        )
 
         # Should detect natural light pattern
         assert features["natural_light_score"] > 0.0

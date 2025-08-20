@@ -89,7 +89,7 @@ SENSOR_TYPES = [
     "air_quality",
 ]
 
-SENSOR_STATES = ["on", "of", "open", "closed", "detected", "clear", "unknown"]
+SENSOR_STATES = ["on", "off", "open", "closed", "detected", "clear", "unknown"]
 
 TRANSITION_TYPES = ["occupied_to_vacant", "vacant_to_occupied", "state_change"]
 
