@@ -227,7 +227,6 @@ class DatabaseManager:
                 logger.info("TimescaleDB extension verified")
 
     @asynccontextmanager
-    @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
         """
         Get database session with automatic cleanup and retry logic.
