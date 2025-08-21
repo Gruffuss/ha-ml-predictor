@@ -9,7 +9,7 @@ import asyncio
 from collections import defaultdict, deque
 import csv
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 import json
 import logging
@@ -84,7 +84,7 @@ class ValidationRecord:
     status: ValidationStatus = ValidationStatus.PENDING
 
     # Metadata
-    prediction_time: datetime = field(default_factory=datetime.utcnow)
+    prediction_time: datetime = field(default_factory=lambda: datetime.now(UTC))
     validation_time: Optional[datetime] = None
     expiration_time: Optional[datetime] = None
 
@@ -111,7 +111,7 @@ class ValidationRecord:
             )
 
         self.actual_time = actual_time
-        self.validation_time = datetime.utcnow()
+        self.validation_time = datetime.now(UTC)
 
         # Calculate error in minutes
         time_diff = (actual_time - self.predicted_time).total_seconds() / 60
@@ -151,14 +151,14 @@ class ValidationRecord:
             )
 
         self.status = ValidationStatus.EXPIRED
-        self.expiration_time = expiration_time or datetime.utcnow()
+        self.expiration_time = expiration_time or datetime.now(UTC)
 
         logger.debug(f"Marked prediction {self.prediction_id} as expired")
 
     def mark_failed(self, reason: str) -> None:
         """Mark prediction as failed validation."""
         self.status = ValidationStatus.FAILED
-        self.validation_time = datetime.utcnow()
+        self.validation_time = datetime.now(UTC)
 
         if not self.prediction_metadata:
             self.prediction_metadata = {}
@@ -758,7 +758,7 @@ class PredictionValidator:
         """
         try:
             pending_records = []
-            cutoff_time = datetime.utcnow() - self.max_validation_delay
+            cutoff_time = datetime.now(UTC) - self.max_validation_delay
 
             with self._lock:
                 for record in self._validation_records.values():
@@ -798,9 +798,9 @@ class PredictionValidator:
         """
         try:
             if cutoff_hours is None:
-                cutoff_time = datetime.utcnow() - self.max_validation_delay
+                cutoff_time = datetime.now(UTC) - self.max_validation_delay
             else:
-                cutoff_time = datetime.utcnow() - timedelta(hours=cutoff_hours)
+                cutoff_time = datetime.now(UTC) - timedelta(hours=cutoff_hours)
 
             expired_count = 0
             expired_records = []
@@ -858,7 +858,7 @@ class PredictionValidator:
         """
         try:
             # Get records for export
-            cutoff_time = datetime.utcnow() - timedelta(days=days_back)
+            cutoff_time = datetime.now(UTC) - timedelta(days=days_back)
             export_records = []
 
             with self._lock:
@@ -963,7 +963,7 @@ class PredictionValidator:
             Number of records removed
         """
         try:
-            cutoff_time = datetime.utcnow() - timedelta(days=days_to_keep)
+            cutoff_time = datetime.now(UTC) - timedelta(days=days_to_keep)
             removed_count = 0
 
             with self._lock:
@@ -1198,7 +1198,7 @@ class PredictionValidator:
     ) -> List[ValidationRecord]:
         """Get predictions from database for validation analysis."""
         try:
-            cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+            cutoff_time = datetime.now(UTC) - timedelta(hours=hours_back)
 
             async with get_db_session() as session:
                 # Build query with filters
@@ -1238,7 +1238,7 @@ class PredictionValidator:
                         # Check if expired
                         if (
                             pred.predicted_transition_time
-                            < datetime.utcnow() - self.max_validation_delay
+                            < datetime.now(UTC) - self.max_validation_delay
                         ):
                             status = ValidationStatus.EXPIRED
                         else:
@@ -1457,9 +1457,9 @@ class PredictionValidator:
             time_end = end_time
         else:
             # Use hours_back from current time
-            cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+            cutoff_time = datetime.now(UTC) - timedelta(hours=hours_back)
             time_start = cutoff_time
-            time_end = datetime.utcnow()
+            time_end = datetime.now(UTC)
 
         filtered_records = []
 
@@ -1611,12 +1611,12 @@ class PredictionValidator:
                 return False
 
             _, cache_time = self._metrics_cache[cache_key]
-            return datetime.utcnow() - cache_time < self.metrics_cache_ttl
+            return datetime.now(UTC) - cache_time < self.metrics_cache_ttl
 
     def _cache_metrics(self, cache_key: str, metrics: AccuracyMetrics) -> None:
         """Cache metrics for faster retrieval."""
         with self._cache_lock:
-            self._metrics_cache[cache_key] = (metrics, datetime.utcnow())
+            self._metrics_cache[cache_key] = (metrics, datetime.now(UTC))
 
             # Limit cache size
             if len(self._metrics_cache) > 100:
@@ -1653,6 +1653,12 @@ class PredictionValidator:
                 del self._validation_records[prediction_id]
                 self._records_by_room[record.room_id].remove(prediction_id)
                 self._records_by_model[record.model_type].remove(prediction_id)
+
+                # Also remove from test compatibility attributes
+                for room_records in self._pending_predictions.values():
+                    if record in room_records:
+                        room_records.remove(record)
+                        break
 
     async def _cleanup_loop(self) -> None:
         """Background loop for periodic cleanup."""
@@ -1862,7 +1868,7 @@ class PredictionValidator:
                 # Build base query with filters
                 base_query = select(Prediction).where(
                     Prediction.prediction_time
-                    >= datetime.utcnow() - timedelta(days=days_back)
+                    >= datetime.now(UTC) - timedelta(days=days_back)
                 )
 
                 # Add room filter if specified
@@ -2037,7 +2043,7 @@ class PredictionValidator:
     ) -> None:
         """Export validation records to JSON format."""
         export_data = {
-            "export_time": datetime.utcnow().isoformat(),
+            "export_time": datetime.now(UTC).isoformat(),
             "record_count": len(records),
             "records": [record.to_dict() for record in records],
         }

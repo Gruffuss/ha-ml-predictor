@@ -395,7 +395,7 @@ async def test_db_manager(test_db_engine):
 @pytest.fixture
 def sample_sensor_events():
     """Create sample sensor events for testing."""
-    base_time = datetime.utcnow() - timedelta(hours=1)
+    base_time = datetime.now(datetime.UTC) - timedelta(hours=1)
 
     events = []
     for i in range(10):
@@ -414,7 +414,7 @@ def sample_sensor_events():
             is_human_triggered=True,
             confidence_score=0.8 + (i * 0.02),
             # Let created_at use its default=func.now() instead of explicitly setting it
-            # created_at=datetime.utcnow(),
+            # created_at=datetime.now(datetime.UTC),
         )
         events.append(event)
 
@@ -424,7 +424,7 @@ def sample_sensor_events():
 @pytest.fixture
 def sample_ha_events():
     """Create sample Home Assistant events for testing."""
-    base_time = datetime.utcnow() - timedelta(hours=1)
+    base_time = datetime.now(datetime.UTC) - timedelta(hours=1)
 
     events = []
     for i in range(5):
@@ -493,14 +493,14 @@ async def populated_test_db(test_db_session, sample_sensor_events):
             # Explicitly set id=None to allow autoincrement
             id=None,
             room_id="test_room",
-            timestamp=datetime.utcnow() - timedelta(hours=i),
+            timestamp=datetime.now(datetime.UTC) - timedelta(hours=i),
             is_occupied=i % 2 == 0,
             occupancy_confidence=0.8,
             occupant_type="human",
             state_duration=300 + i * 60,
             transition_trigger=f"binary_sensor.test_sensor_{i}",
             # Let created_at use its default instead of explicitly setting it
-            # created_at=datetime.utcnow(),
+            # created_at=datetime.now(datetime.UTC),
         )
         session.add(room_state)
 
@@ -510,14 +510,15 @@ async def populated_test_db(test_db_session, sample_sensor_events):
             # Explicitly set id=None to allow autoincrement
             id=None,
             room_id="test_room",
-            prediction_time=datetime.utcnow() - timedelta(hours=i),
-            predicted_transition_time=datetime.utcnow() + timedelta(minutes=15 + i * 5),
+            prediction_time=datetime.now(datetime.UTC) - timedelta(hours=i),
+            predicted_transition_time=datetime.now(datetime.UTC)
+            + timedelta(minutes=15 + i * 5),
             transition_type="occupied_to_vacant",
             confidence_score=0.75 + i * 0.05,
             model_type="lstm",
             model_version="v1.0",
             # Let created_at use its default instead of explicitly setting it
-            # created_at=datetime.utcnow(),
+            # created_at=datetime.now(datetime.UTC),
         )
         session.add(prediction)
 
@@ -610,7 +611,7 @@ def create_test_ha_event(
 ) -> HAEvent:
     """Create a test Home Assistant event."""
     if timestamp is None:
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(datetime.UTC)
     if attributes is None:
         attributes = {"device_class": "motion"}
 
@@ -632,7 +633,7 @@ def create_test_sensor_event(
 ) -> SensorEvent:
     """Create a test sensor event."""
     if timestamp is None:
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(datetime.UTC)
 
     return SensorEvent(
         room_id=room_id,
@@ -644,5 +645,5 @@ def create_test_sensor_event(
         attributes={"test": True},
         is_human_triggered=True,
         confidence_score=0.8,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(datetime.UTC),
     )

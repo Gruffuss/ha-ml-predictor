@@ -192,7 +192,8 @@ class SensorEvent(Base):
             .where(
                 and_(
                     cls.room_id == room_id,
-                    cls.timestamp >= datetime.utcnow() - timedelta(hours=hours),
+                    cls.timestamp
+                    >= datetime.now(datetime.UTC) - timedelta(hours=hours),
                 )
             )
             .order_by(desc(cls.timestamp))
@@ -295,7 +296,7 @@ class SensorEvent(Base):
         Returns:
             Dictionary with analytics data
         """
-        start_time = datetime.utcnow() - timedelta(hours=hours)
+        start_time = datetime.now(datetime.UTC) - timedelta(hours=hours)
 
         # Base analytics query using sql_func
         analytics_query = select(
@@ -377,7 +378,7 @@ class SensorEvent(Base):
         Returns:
             List of sensor metrics with efficiency data
         """
-        start_time = datetime.utcnow() - timedelta(days=days)
+        start_time = datetime.now(datetime.UTC) - timedelta(days=days)
 
         # Complex aggregation query with sensor-specific metrics
         efficiency_query = (
@@ -467,7 +468,7 @@ class SensorEvent(Base):
         Returns:
             Dictionary with temporal pattern analysis
         """
-        start_time = datetime.utcnow() - timedelta(days=days)
+        start_time = datetime.now(datetime.UTC) - timedelta(days=days)
 
         # Hourly distribution query
         hourly_query = (
@@ -614,7 +615,8 @@ class RoomState(Base):
             .where(
                 and_(
                     cls.room_id == room_id,
-                    cls.timestamp >= datetime.utcnow() - timedelta(hours=hours),
+                    cls.timestamp
+                    >= datetime.now(datetime.UTC) - timedelta(hours=hours),
                 )
             )
             .order_by(cls.timestamp)
@@ -649,7 +651,7 @@ class RoomState(Base):
         Returns:
             List of occupancy session data
         """
-        start_time = datetime.utcnow() - timedelta(days=days)
+        start_time = datetime.now(datetime.UTC) - timedelta(days=days)
 
         # Query with selectinload optimization for better performance
         base_query = (
@@ -922,11 +924,11 @@ class Prediction(Base):
         cutoff_hours: int = 2,
     ) -> List["Prediction"]:
         """Get predictions that need validation (past their predicted time)."""
-        cutoff_time = datetime.utcnow() - timedelta(hours=cutoff_hours)
+        cutoff_time = datetime.now(datetime.UTC) - timedelta(hours=cutoff_hours)
 
         query = select(cls).where(
             and_(
-                cls.predicted_transition_time <= datetime.utcnow(),
+                cls.predicted_transition_time <= datetime.now(datetime.UTC),
                 cls.predicted_transition_time >= cutoff_time,
                 cls.actual_transition_time.is_(None),
             )
@@ -947,7 +949,7 @@ class Prediction(Base):
         model_type: Optional[str] = None,
     ) -> Dict[str, float]:
         """Calculate accuracy metrics for predictions."""
-        start_time = datetime.utcnow() - timedelta(days=days)
+        start_time = datetime.now(datetime.UTC) - timedelta(days=days)
 
         query = select(cls).where(
             and_(
@@ -1014,7 +1016,7 @@ class Prediction(Base):
     ) -> List[Tuple["Prediction", Optional["SensorEvent"]]]:
         """Get predictions with their triggering events using application-level joins."""
 
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(datetime.UTC) - timedelta(hours=hours)
 
         # Get predictions
         prediction_query = (
@@ -1061,7 +1063,7 @@ class Prediction(Base):
         Returns:
             List of prediction dictionaries with full context
         """
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(datetime.UTC) - timedelta(hours=hours)
 
         # Use selectinload strategy for efficient loading
         query = (
@@ -1206,7 +1208,7 @@ class Prediction(Base):
             **current_features,
             "_metadata": {
                 "extended_info": metadata,
-                "added_at": datetime.utcnow().isoformat(),
+                "added_at": datetime.now(datetime.UTC).isoformat(),
                 "version": "1.0",
             },
         }
@@ -1345,7 +1347,7 @@ class FeatureStore(Base):
         cls, session: AsyncSession, room_id: str, max_age_hours: int = 6
     ) -> Optional["FeatureStore"]:
         """Get the most recent feature set for a room."""
-        cutoff_time = datetime.utcnow() - timedelta(hours=max_age_hours)
+        cutoff_time = datetime.now(datetime.UTC) - timedelta(hours=max_age_hours)
 
         query = (
             select(cls)
@@ -1355,7 +1357,7 @@ class FeatureStore(Base):
                     cls.feature_timestamp >= cutoff_time,
                     or_(
                         cls.expires_at.is_(None),
-                        cls.expires_at > datetime.utcnow(),
+                        cls.expires_at > datetime.now(datetime.UTC),
                     ),
                 )
             )
@@ -1539,7 +1541,7 @@ class PredictionAudit(Base):
         """Update the JSON validation metrics field."""
         current_metrics = self.validation_metrics or {}
         current_metrics.update(metrics)
-        current_metrics["last_updated"] = datetime.utcnow().isoformat()
+        current_metrics["last_updated"] = datetime.now(datetime.UTC).isoformat()
         self.validation_metrics = current_metrics
 
 

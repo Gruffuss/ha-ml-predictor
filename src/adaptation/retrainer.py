@@ -911,7 +911,9 @@ class AdaptiveRetrainer:
 
                 last_retrain = self._last_retrain_times[model_key]
                 cooldown_period = timedelta(hours=self.config.retraining_cooldown_hours)
-                return datetime.now(UTC) < (last_retrain + cooldown_period)
+                return datetime.now(UTC) < (
+                    last_retrain.replace(tzinfo=UTC) + cooldown_period
+                )
 
         except Exception as e:
             logger.error(f"Error checking cooldown for {model_key}: {e}")

@@ -50,7 +50,7 @@ class HAEvent:
 
     def is_valid(self) -> bool:
         """Check if the event contains valid data."""
-        return (
+        return bool(
             self.state not in INVALID_STATES
             and self.entity_id
             and self.timestamp is not None

@@ -308,6 +308,7 @@ class TestFeatureCache:
             feature_types=old_record.feature_types,
             features=old_record.features,
             data_hash=old_record.data_hash,
+            extraction_time=old_record.extraction_time,
         )
 
         # Should not return expired record

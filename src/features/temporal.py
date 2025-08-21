@@ -68,7 +68,7 @@ class TemporalFeatureExtractor:
         """
         try:
             if not events:
-                return self._get_default_features()
+                return self._get_default_features(target_time)
 
             # Sort events by timestamp to ensure chronological order
             sorted_events = sorted(events, key=lambda e: e.timestamp)
@@ -640,9 +640,11 @@ class TemporalFeatureExtractor:
 
         return features
 
-    def _get_default_features(self) -> Dict[str, float]:
+    def _get_default_features(
+        self, target_time: Optional[datetime] = None
+    ) -> Dict[str, float]:
         """Return default feature values when no events are available."""
-        return {
+        defaults = {
             "time_since_last_event": 3600.0,
             "time_since_last_on": 3600.0,
             "time_since_last_off": 3600.0,
@@ -660,41 +662,58 @@ class TemporalFeatureExtractor:
             "median_off_duration": 1800.0,
             "duration_percentile_75": 3600.0,
             "duration_percentile_25": 900.0,
-            # Cyclical features
-            "hour_sin": 0.0,
-            "hour_cos": 1.0,
-            "day_of_week_sin": 0.0,
-            "day_of_week_cos": 1.0,
-            "month_sin": 0.0,
-            "month_cos": 1.0,
-            "day_of_month_sin": 0.0,
-            "day_of_month_cos": 1.0,
-            "is_weekend": 0.0,
-            "is_work_hours": 0.0,
-            "is_sleep_hours": 0.0,
-            # Basic historical patterns
-            "hour_activity_rate": 0.5,
-            "day_activity_rate": 0.5,
-            "overall_activity_rate": 0.5,
-            "similar_time_activity_rate": 0.5,
-            # Added advanced pattern features
-            "pattern_strength": 0.0,
-            "activity_variance": 0.0,
-            "trend_coefficient": 0.0,
-            "seasonality_score": 0.0,
-            # Transition features
-            "avg_transition_interval": 1800.0,
-            "recent_transition_rate": 0.0,
-            "time_variability": 0.0,
-            # Room state features
-            "avg_occupancy_confidence": 0.5,
-            "recent_occupancy_ratio": 0.5,
-            "state_stability": 0.5,
-            # Sensor type ratios
-            "motion_sensor_ratio": 0.0,
-            "door_sensor_ratio": 0.0,
-            "presence_sensor_ratio": 0.0,
         }
+
+        # Add actual cyclical features if target_time provided
+        if target_time:
+            cyclical_features = self._extract_cyclical_features(target_time)
+            defaults.update(cyclical_features)
+        else:
+            # Fallback cyclical features
+            defaults.update(
+                {
+                    "hour_sin": 0.0,
+                    "hour_cos": 1.0,
+                    "day_of_week_sin": 0.0,
+                    "day_of_week_cos": 1.0,
+                    "month_sin": 0.0,
+                    "month_cos": 1.0,
+                    "day_of_month_sin": 0.0,
+                    "day_of_month_cos": 1.0,
+                    "is_weekend": 0.0,
+                    "is_work_hours": 0.0,
+                    "is_sleep_hours": 0.0,
+                }
+            )
+
+        # Add remaining default features
+        defaults.update(
+            {
+                # Basic historical patterns
+                "hour_activity_rate": 0.5,
+                "day_activity_rate": 0.5,
+                "overall_activity_rate": 0.5,
+                "similar_time_activity_rate": 0.5,
+                # Pattern features
+                "activity_variance": 0.0,
+                "trend_coefficient": 0.0,
+                "seasonality_score": 0.0,
+                # Transition features
+                "avg_transition_interval": 1800.0,
+                "recent_transition_rate": 0.0,
+                "time_variability": 0.0,
+                # Room state features
+                "avg_occupancy_confidence": 0.5,
+                "recent_occupancy_ratio": 0.5,
+                "state_stability": 0.5,
+                # Sensor type ratios
+                "motion_sensor_ratio": 0.0,
+                "door_sensor_ratio": 0.0,
+                "presence_sensor_ratio": 0.0,
+            }
+        )
+
+        return defaults
 
     def get_feature_names(self) -> List[str]:
         """Get list of all temporal feature names using standardized names."""

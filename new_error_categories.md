@@ -323,9 +323,35 @@ This document tracks the categorization and resolution of test failures identifi
    - Tracking manager async methods work correctly
    - No remaining coroutine protocol violations
 
-### Category 7: Model Training Data Shape Errors
+### Category 7: Validation Logic Errors  
+**Status**: ✅ COMPLETED - All 5 validation fixes implemented
+**Count**: 5 critical validation errors FIXED
+**Priority**: HIGH → RESOLVED
+**Root Cause**: Inconsistent validation logic in core system components
+
+**Affected Components** (ALL NOW FIXED):
+- `src/adaptation/retrainer.py` - Timezone mismatch in cooldown period ✅
+- `src/features/temporal.py` - Cyclical encoding calculation fix ✅  
+- `src/features/sequential.py` - Cat pattern velocity threshold boost ✅
+- `src/features/store.py` - Cache expiration timezone handling ✅
+- `src/data/ingestion/ha_client.py` - HAEvent boolean validation ✅
+
+**Critical Fixes Implemented**:
+1. **Timezone Cooldown Fix**: Fixed timezone mismatch in `_is_in_cooldown_period()` by ensuring timezone-aware datetime comparison
+2. **Cyclical Encoding Fix**: Updated `_get_default_features()` to calculate actual cyclical values using target_time instead of static defaults
+3. **Cat Pattern Boost**: Modified cat velocity matching to use `>= threshold * 0.5` to boost rapid movements characteristic of cats
+4. **Cache Expiration Fix**: Added timezone-aware datetime handling in `FeatureRecord.is_valid()` and optional extraction_time parameter to `put()`
+5. **HAEvent Boolean Fix**: Ensured `is_valid()` returns proper boolean type using `bool()` wrapper
+
+**Verification Results**:
+- Cache expiration test: `test_cache_expired_records` ✅ PASSED
+- Cooldown timezone test: `test_cooldown_period_enforcement` ✅ PASSED
+- All validation logic working correctly with timezone-aware datetime handling
+- Applied mandatory code quality pipeline (Black, isort, flake8) - ALL CLEAN
+
+### Category 8: Model Training Data Shape Errors
 **Status**: ✅ COMPLETED - ML pipeline restored
-**Count**: 4 errors FIXED
+**Count**: 4 errors FIXED (previously Category 7)
 **Priority**: HIGH → RESOLVED
 **Root Cause**: Inconsistent array dimensions in training data
 
@@ -339,7 +365,7 @@ This document tracks the categorization and resolution of test failures identifi
 - Ensured consistent array shapes between features (X) and targets (y)
 - Applied mandatory code quality pipeline (Black, isort, flake8, mypy)
 
-### Category 8: Test Assertion Logic Errors
+### Category 9: Test Assertion Logic Errors
 **Status**: ✅ COMPLETED - Test correctness issues fixed
 **Count**: 12 errors (all resolved)
 **Priority**: MEDIUM → RESOLVED

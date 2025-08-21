@@ -7,7 +7,7 @@ providing detailed error context and actionable debugging information.
 
 from enum import Enum
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 
 class ErrorSeverity(Enum):
@@ -173,12 +173,32 @@ class HomeAssistantConnectionError(HomeAssistantError):
 class HomeAssistantAuthenticationError(HomeAssistantError):
     """Raised when authentication with Home Assistant fails."""
 
-    def __init__(self, url: str, token_hint: str):
+    def __init__(self, url: str, token_hint: Union[str, int]):
+        """Initialize authentication error.
+
+        Args:
+            url: The Home Assistant URL
+            token_hint: Either a string token to truncate or an integer token length
+        """
         message = f"Authentication failed for Home Assistant at {url}"
+
+        # Handle both string tokens and integer token lengths
+        if isinstance(token_hint, str):
+            # If token_hint is a string, truncate it
+            context_token_hint = (
+                token_hint[:10] + "..." if len(token_hint) > 10 else token_hint
+            )
+        elif isinstance(token_hint, int):
+            # If token_hint is an integer (token length), format it appropriately
+            context_token_hint = f"<token_length_{token_hint}>"
+        else:
+            # Fallback for other types
+            context_token_hint = str(token_hint)
+
         super().__init__(
             message=message,
             error_code="HA_AUTH_ERROR",
-            context={"url": url, "token_hint": token_hint[:10] + "..."},
+            context={"url": url, "token_hint": context_token_hint},
             severity=ErrorSeverity.CRITICAL,
         )
 

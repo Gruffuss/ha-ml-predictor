@@ -21,7 +21,7 @@ Features:
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 import json
 import logging
@@ -185,11 +185,11 @@ class ClientConnection:
     def __post_init__(self):
         """Initialize default values."""
         if self.connected_at is None:
-            self.connected_at = datetime.utcnow()
+            self.connected_at = datetime.now(UTC)
         if self.last_activity is None:
-            self.last_activity = datetime.utcnow()
+            self.last_activity = datetime.now(UTC)
         if self.last_heartbeat is None:
-            self.last_heartbeat = datetime.utcnow()
+            self.last_heartbeat = datetime.now(UTC)
         if self.capabilities is None:
             self.capabilities = set()
         if self.room_filters is None:
@@ -203,23 +203,23 @@ class ClientConnection:
         if self.unacknowledged_messages is None:
             self.unacknowledged_messages = {}
         if self.last_rate_limit_reset is None:
-            self.last_rate_limit_reset = datetime.utcnow()
+            self.last_rate_limit_reset = datetime.now(UTC)
 
     def update_activity(self):
         """Update last activity timestamp."""
-        self.last_activity = datetime.utcnow()
+        self.last_activity = datetime.now(UTC)
 
     def update_heartbeat(self):
         """Update last heartbeat timestamp."""
-        self.last_heartbeat = datetime.utcnow()
+        self.last_heartbeat = datetime.now(UTC)
         self.update_activity()
 
     def is_rate_limited(self, max_messages_per_minute: int = 60) -> bool:
         """Check if client is currently rate limited."""
-        if self.rate_limited_until and datetime.utcnow() < self.rate_limited_until:
+        if self.rate_limited_until and datetime.now(UTC) < self.rate_limited_until:
             return True
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if now - self.last_rate_limit_reset >= timedelta(minutes=1):
             self.message_count = 0
             self.last_rate_limit_reset = now
@@ -233,7 +233,7 @@ class ClientConnection:
 
     def apply_rate_limit(self, duration_seconds: int = 60):
         """Apply rate limiting to client."""
-        self.rate_limited_until = datetime.utcnow() + timedelta(
+        self.rate_limited_until = datetime.now(UTC) + timedelta(
             seconds=duration_seconds
         )
 
@@ -526,12 +526,12 @@ class WebSocketConnectionManager:
         heartbeat_message = WebSocketMessage(
             message_id=str(uuid.uuid4()),
             message_type=MessageType.HEARTBEAT,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             endpoint=connection.endpoint,
             data={
-                "server_time": datetime.utcnow().isoformat(),
+                "server_time": datetime.now(UTC).isoformat(),
                 "connection_uptime": (
-                    datetime.utcnow() - connection.connected_at
+                    datetime.now(UTC) - connection.connected_at
                 ).total_seconds(),
             },
         )
@@ -553,7 +553,7 @@ class WebSocketConnectionManager:
         self.stats.rate_limited_clients = sum(
             1
             for conn in self.connections.values()
-            if conn.rate_limited_until and datetime.utcnow() < conn.rate_limited_until
+            if conn.rate_limited_until and datetime.now(UTC) < conn.rate_limited_until
         )
         self.stats.message_queue_size = sum(
             len(conn.pending_messages) + len(conn.unacknowledged_messages)
@@ -578,7 +578,7 @@ class WebSocketConnectionManager:
         warning_message = WebSocketMessage(
             message_id=str(uuid.uuid4()),
             message_type=MessageType.RATE_LIMIT_WARNING,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             endpoint=connection.endpoint,
             data={
                 "message": "Rate limit exceeded",
@@ -722,7 +722,7 @@ class WebSocketAPIServer:
             message = WebSocketMessage(
                 message_id=str(uuid.uuid4()),
                 message_type=MessageType.PREDICTION_UPDATE,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 endpoint="/ws/predictions",
                 room_id=room_id,
                 data=self._format_prediction_data(
@@ -739,7 +739,7 @@ class WebSocketAPIServer:
             room_message = WebSocketMessage(
                 message_id=str(uuid.uuid4()),
                 message_type=MessageType.PREDICTION_UPDATE,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 endpoint=f"/ws/room/{room_id}",
                 room_id=room_id,
                 data=message.data,
@@ -772,7 +772,7 @@ class WebSocketAPIServer:
             message = WebSocketMessage(
                 message_id=str(uuid.uuid4()),
                 message_type=MessageType.SYSTEM_STATUS_UPDATE,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 endpoint="/ws/system-status",
                 data=status_data,
             )
@@ -797,7 +797,7 @@ class WebSocketAPIServer:
             message = WebSocketMessage(
                 message_id=str(uuid.uuid4()),
                 message_type=MessageType.ALERT_NOTIFICATION,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 endpoint="/ws/alerts",
                 room_id=room_id,
                 data=alert_data,
@@ -848,12 +848,12 @@ class WebSocketAPIServer:
             welcome_message = WebSocketMessage(
                 message_id=str(uuid.uuid4()),
                 message_type=MessageType.CONNECTION,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 endpoint=endpoint,
                 data={
                     "message": f"Connected to {endpoint}",
                     "connection_id": connection_id,
-                    "server_time": datetime.utcnow().isoformat(),
+                    "server_time": datetime.now(UTC).isoformat(),
                     "authentication_required": True,
                     "supported_message_types": [mt.value for mt in MessageType],
                 },
@@ -930,7 +930,7 @@ class WebSocketAPIServer:
             response_message = WebSocketMessage(
                 message_id=str(uuid.uuid4()),
                 message_type=MessageType.AUTHENTICATION,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 endpoint=self.connection_manager.connections[connection_id].endpoint,
                 data={
                     "success": success,
@@ -971,7 +971,7 @@ class WebSocketAPIServer:
             response_message = WebSocketMessage(
                 message_id=str(uuid.uuid4()),
                 message_type=MessageType.SUBSCRIPTION_STATUS,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 endpoint=subscription.endpoint,
                 room_id=subscription.room_id,
                 data={
@@ -1014,7 +1014,7 @@ class WebSocketAPIServer:
             response_message = WebSocketMessage(
                 message_id=str(uuid.uuid4()),
                 message_type=MessageType.SUBSCRIPTION_STATUS,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(UTC),
                 endpoint=endpoint,
                 room_id=room_id,
                 data={
@@ -1064,13 +1064,13 @@ class WebSocketAPIServer:
         error_msg = WebSocketMessage(
             message_id=str(uuid.uuid4()),
             message_type=MessageType.ERROR,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             endpoint=self.connection_manager.connections.get(connection_id, {}).endpoint
             or "unknown",
             data={
                 "error": error_message,
                 "error_code": error_code,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )
 
@@ -1097,7 +1097,7 @@ class WebSocketAPIServer:
             "name", room_id.replace("_", " ").title()
         )
 
-        time_until = prediction_result.predicted_time - datetime.utcnow()
+        time_until = prediction_result.predicted_time - datetime.now(UTC)
         time_until_seconds = max(0, int(time_until.total_seconds()))
 
         return {
@@ -1122,7 +1122,7 @@ class WebSocketAPIServer:
             ],
             "features_used": len(prediction_result.features_used or []),
             "prediction_metadata": prediction_result.prediction_metadata,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     def _format_time_until(self, seconds: int) -> str:
@@ -1178,7 +1178,7 @@ class WebSocketAPIServer:
         """Background task for connection cleanup."""
         while not self._shutdown_event.is_set():
             try:
-                current_time = datetime.utcnow()
+                current_time = datetime.now(UTC)
                 stale_connections = []
 
                 # Find stale connections
@@ -1218,7 +1218,7 @@ class WebSocketAPIServer:
         """Background task for handling message acknowledgment timeouts."""
         while not self._shutdown_event.is_set():
             try:
-                current_time = datetime.utcnow()
+                current_time = datetime.now(UTC)
 
                 for connection in self.connection_manager.connections.values():
                     expired_messages = []
@@ -1344,7 +1344,7 @@ async def websocket_endpoint(websocket):
                 logger.error(f"Error handling WebSocket message: {e}")
                 await websocket.send_text(
                     json.dumps(
-                        {"error": str(e), "timestamp": datetime.utcnow().isoformat()}
+                        {"error": str(e), "timestamp": datetime.now(UTC).isoformat()}
                     )
                 )
                 break
@@ -1364,7 +1364,7 @@ async def health_endpoint(request):
         {
             "status": "healthy",
             "service": "websocket_api",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "connections": "API not initialized",
         }
     )

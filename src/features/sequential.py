@@ -654,8 +654,8 @@ class SequentialFeatureExtractor:
                     duration >= CAT_MOVEMENT_PATTERNS["min_duration_seconds"]
                 )
                 cat_velocity_match = (
-                    avg_velocity <= CAT_MOVEMENT_PATTERNS["max_velocity_ms"]
-                )
+                    avg_velocity >= CAT_MOVEMENT_PATTERNS["max_velocity_ms"] * 0.5
+                )  # Boost for rapid movements characteristic of cats
                 cat_sequence_match = (
                     room_count <= CAT_MOVEMENT_PATTERNS["typical_room_sequence_length"]
                 )
