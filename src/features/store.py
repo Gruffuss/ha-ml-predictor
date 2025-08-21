@@ -55,20 +55,15 @@ class FeatureRecord:
             # Use consistent datetime comparison - both naive or both timezone-aware
             if self.extraction_time.tzinfo:
                 from datetime import timezone
-
                 now = datetime.now(timezone.utc)
             else:
-                # Try datetime.now(UTC) first, fallback to datetime.utcnow() for tests
+                # For test compatibility, try multiple approaches
                 try:
+                    # Try to use the module-level function that can be mocked
                     now = datetime.now(UTC)
-                except Exception:
-                    # Fallback for test environments that mock datetime
-                    import datetime as dt_module
-
-                    if hasattr(dt_module, "utcnow"):
-                        now = dt_module.utcnow()
-                    else:
-                        now = datetime.now(UTC)
+                except AttributeError:
+                    # Fallback to UTC if utcnow is not available
+                    now = datetime.now(UTC)
 
             age = now - self.extraction_time
             # Handle mock objects gracefully
@@ -651,6 +646,16 @@ class FeatureStore:
         health["components"]["cache"] = cache_stats
 
         return health
+
+    def get_statistics(self) -> Dict[str, Any]:
+        """Get feature store statistics."""
+        return {
+            "cache_hits": self.stats["cache_hits"],
+            "cache_misses": self.stats["cache_misses"],
+            "feature_computations": self.stats["feature_computations"],
+            "db_operations": self.stats.get("db_operations", 0),
+            "cache_stats": self.cache.get_stats(),
+        }
 
     async def __aenter__(self):
         """Async context manager entry."""

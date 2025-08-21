@@ -15,7 +15,7 @@ Features:
 
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
@@ -83,7 +83,7 @@ class MQTTIntegrationManager:
 
         # Status tracking
         self.stats = MQTTIntegrationStats()
-        self.system_start_time = datetime.utcnow()
+        self.system_start_time = datetime.now(timezone.utc)
 
         # Background tasks
         self._background_tasks: List[asyncio.Task] = []
@@ -249,7 +249,7 @@ class MQTTIntegrationManager:
 
             if result.success:
                 self.stats.predictions_published += 1
-                self.stats.last_prediction_published = datetime.utcnow()
+                self.stats.last_prediction_published = datetime.now(timezone.utc)
                 logger.debug(f"Published prediction for {room_id} to Home Assistant")
                 return True
             else:
@@ -301,7 +301,7 @@ class MQTTIntegrationManager:
 
             if result.success:
                 self.stats.status_updates_published += 1
-                self.stats.last_status_published = datetime.utcnow()
+                self.stats.last_status_published = datetime.now(timezone.utc)
                 logger.debug("Published system status to Home Assistant")
                 return True
             else:
@@ -374,7 +374,7 @@ class MQTTIntegrationManager:
             "total_errors": self.stats.total_errors,
             "last_error": self.stats.last_error,
             "system_uptime_seconds": (
-                datetime.utcnow() - self.system_start_time
+                datetime.now(timezone.utc) - self.system_start_time
             ).total_seconds(),
             "background_tasks": len(self._background_tasks),
             "rooms_configured": len(self.rooms),

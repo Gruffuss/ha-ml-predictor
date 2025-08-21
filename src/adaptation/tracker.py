@@ -9,7 +9,7 @@ for the occupancy prediction system.
 import asyncio
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import json
 import logging
@@ -261,7 +261,7 @@ class AccuracyAlert:
     @property
     def age_minutes(self) -> float:
         """Calculate alert age in minutes."""
-        return (datetime.utcnow() - self.triggered_time).total_seconds() / 60
+        return (datetime.now(timezone.utc) - self.triggered_time).total_seconds() / 60
 
     @property
     def requires_escalation(self) -> bool:
@@ -286,7 +286,7 @@ class AccuracyAlert:
     def acknowledge(self, acknowledged_by: str) -> None:
         """Acknowledge the alert."""
         self.acknowledged = True
-        self.acknowledged_time = datetime.utcnow()
+        self.acknowledged_time = datetime.now(timezone.utc)
         self.acknowledged_by = acknowledged_by
 
         logger.info(f"Alert {self.alert_id} acknowledged by {acknowledged_by}")
@@ -294,7 +294,7 @@ class AccuracyAlert:
     def resolve(self) -> None:
         """Mark alert as resolved."""
         self.resolved = True
-        self.resolved_time = datetime.utcnow()
+        self.resolved_time = datetime.now(timezone.utc)
 
         logger.info(
             f"Alert {self.alert_id} resolved after {self.age_minutes:.1f} minutes"
@@ -306,7 +306,7 @@ class AccuracyAlert:
             return False
 
         self.escalation_level += 1
-        self.last_escalation = datetime.utcnow()
+        self.last_escalation = datetime.now(timezone.utc)
 
         logger.warning(
             f"Escalating alert {self.alert_id} to level {self.escalation_level} "
@@ -638,7 +638,7 @@ class AccuracyTracker:
                 "trends_by_entity": trends,
                 "global_trend": self._calculate_global_trend(trends),
                 "analysis_period_hours": hours_back,
-                "last_updated": datetime.utcnow().isoformat(),
+                "last_updated": datetime.now(timezone.utc).isoformat(),
             }
 
         except Exception as e:
@@ -667,7 +667,7 @@ class AccuracyTracker:
         try:
             output_path = Path(output_path)
             export_data = {
-                "export_time": datetime.utcnow().isoformat(),
+                "export_time": datetime.now(timezone.utc).isoformat(),
                 "export_period_days": days_back,
                 "metrics": {},
                 "alerts": [],
@@ -681,7 +681,7 @@ class AccuracyTracker:
 
                 # Export alert history if requested
                 if include_alerts:
-                    cutoff_time = datetime.utcnow() - timedelta(days=days_back)
+                    cutoff_time = datetime.now(timezone.utc) - timedelta(days=days_back)
                     for alert in self._alert_history:
                         if alert.triggered_time >= cutoff_time:
                             export_data["alerts"].append(alert.to_dict())
@@ -830,7 +830,7 @@ class AccuracyTracker:
     async def _update_real_time_metrics(self) -> None:
         """Update real-time metrics for all tracked entities."""
         try:
-            current_time = datetime.utcnow()
+            current_time = datetime.now(timezone.utc)
 
             # Get unique room and model combinations from validator
             entities = set()
@@ -1102,7 +1102,7 @@ class AccuracyTracker:
         """Calculate average validation lag for entity."""
         try:
             lags = []
-            cutoff_time = datetime.utcnow() - timedelta(hours=6)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=6)
 
             with self.validator._lock:
                 for record in self.validator._validation_records.values():
@@ -1188,7 +1188,7 @@ class AccuracyTracker:
     ) -> None:
         """Extract recent ValidationRecord objects for enhanced analysis."""
         try:
-            cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours_back)
             recent_records = []
 
             # Get recent validation records from the validator
@@ -1368,7 +1368,7 @@ class AccuracyTracker:
                     ]:
                         # Create new alert
                         alert = AccuracyAlert(
-                            alert_id=f"acc_{self._alert_counter}_{int(datetime.utcnow().timestamp())}",
+                            alert_id=f"acc_{self._alert_counter}_{int(datetime.now(timezone.utc).timestamp())}",
                             room_id=metrics.room_id,
                             model_type=metrics.model_type,
                             severity=alert_spec["severity"],
@@ -1442,7 +1442,7 @@ class AccuracyTracker:
                         )
 
                 # Remove very old resolved alerts from active storage
-                cutoff_time = datetime.utcnow() - timedelta(hours=24)
+                cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
                 alerts_to_remove = [
                     alert_id
                     for alert_id, alert in self._active_alerts.items()

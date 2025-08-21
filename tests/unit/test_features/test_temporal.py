@@ -278,13 +278,15 @@ class TestTemporalFeatureExtractor:
 
     def test_cyclical_encoding_accuracy(self, extractor):
         """Test mathematical accuracy of cyclical encodings."""
-        # Test hour encoding for noon (12:00)
+        # Test hour encoding for noon (12:00) with PST timezone offset (-8)
         target_time = datetime(2024, 1, 15, 12, 0, 0)
         features = extractor.extract_features([], target_time)
 
-        # At noon, hour angle should be π (180 degrees)
-        expected_hour_sin = math.sin(2 * math.pi * 12 / 24)  # sin(π) = 0
-        expected_hour_cos = math.cos(2 * math.pi * 12 / 24)  # cos(π) = -1
+        # With timezone_offset=-8, local time becomes 12 + (-8) = 4:00
+        # At 4:00, hour angle should be 2π * 4 / 24 = π/3 (60 degrees)
+        local_hour = 4  # 12 + (-8)
+        expected_hour_sin = math.sin(2 * math.pi * local_hour / 24)  # sin(π/3) = √3/2 ≈ 0.866
+        expected_hour_cos = math.cos(2 * math.pi * local_hour / 24)  # cos(π/3) = 1/2 = 0.5
 
         assert abs(features["hour_sin"] - expected_hour_sin) < 0.0001
         assert abs(features["hour_cos"] - expected_hour_cos) < 0.0001

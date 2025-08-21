@@ -5,9 +5,10 @@ This module implements an HMM-based predictor using scikit-learn's GaussianMixtu
 for modeling occupancy state transitions and duration predictions.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -47,6 +48,7 @@ class HMMPredictor(BasePredictor):
 
         self.model_params = {
             "n_components": default_params.get("n_components", 4),
+            "n_states": default_params.get("n_components", 4),  # Alias for test compatibility
             "covariance_type": default_params.get("covariance_type", "full"),
             "n_iter": default_params.get("n_iter", 100),  # Primary parameter name
             "max_iter": default_params.get(
@@ -91,7 +93,7 @@ class HMMPredictor(BasePredictor):
         Returns:
             TrainingResult with training statistics
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             logger.info(f"Starting HMM training for room {self.room_id}")
@@ -165,7 +167,7 @@ class HMMPredictor(BasePredictor):
             # Store model information
             self.feature_names = list(features.columns)
             self.is_trained = True
-            self.training_date = datetime.utcnow()
+            self.training_date = datetime.now(timezone.utc)
             self.model_version = self._generate_model_version()
 
             # Calculate training metrics
@@ -189,7 +191,7 @@ class HMMPredictor(BasePredictor):
                 validation_rmse = np.sqrt(mean_squared_error(y_val, y_pred_val))
 
             # Calculate training time
-            training_time = (datetime.utcnow() - start_time).total_seconds()
+            training_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
             # Create training result
             training_metrics = {
@@ -235,7 +237,7 @@ class HMMPredictor(BasePredictor):
             return result
 
         except Exception as e:
-            training_time = (datetime.utcnow() - start_time).total_seconds()
+            training_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             error_msg = f"HMM training failed: {str(e)}"
             logger.error(error_msg)
 
@@ -672,3 +674,94 @@ class HMMPredictor(BasePredictor):
                 else None
             ),
         }
+
+    def save_model(self, file_path: Union[str, Path]) -> bool:
+        """
+        Save the trained HMM model with all components including feature scaler.
+        
+        Args:
+            file_path: Path to save the model
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            import pickle
+            
+            model_data = {
+                "state_model": self.state_model,
+                "transition_models": self.transition_models,
+                "feature_scaler": self.feature_scaler,
+                "model_type": self.model_type.value,
+                "room_id": self.room_id,
+                "model_version": self.model_version,
+                "training_date": self.training_date,
+                "feature_names": self.feature_names,
+                "model_params": self.model_params,
+                "is_trained": self.is_trained,
+                "training_history": [
+                    result.to_dict() for result in self.training_history
+                ],
+                "transition_matrix": self.transition_matrix.tolist() if self.transition_matrix is not None else None,
+                "state_labels": self.state_labels,
+                "state_characteristics": self.state_characteristics,
+                "scaler_fitted": getattr(self, '_scaler_fitted', False),
+            }
+            
+            with open(file_path, "wb") as f:
+                pickle.dump(model_data, f)
+            
+            logger.info(f"HMM model saved to {file_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to save HMM model: {e}")
+            return False
+    
+    def load_model(self, file_path: Union[str, Path]) -> bool:
+        """
+        Load a trained HMM model with all components including feature scaler.
+        
+        Args:
+            file_path: Path to load the model from
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            import pickle
+            
+            with open(file_path, "rb") as f:
+                model_data = pickle.load(f)
+            
+            self.state_model = model_data.get("state_model")
+            self.transition_models = model_data.get("transition_models", {})
+            self.feature_scaler = model_data.get("feature_scaler", StandardScaler())
+            self.model_type = ModelType(model_data["model_type"])
+            self.room_id = model_data.get("room_id")
+            self.model_version = model_data.get("model_version", "v1.0")
+            self.training_date = model_data.get("training_date")
+            self.feature_names = model_data.get("feature_names", [])
+            self.model_params = model_data.get("model_params", {})
+            self.is_trained = model_data.get("is_trained", False)
+            self._scaler_fitted = model_data.get("scaler_fitted", False)
+            
+            # Restore HMM-specific components
+            transition_matrix_data = model_data.get("transition_matrix")
+            self.transition_matrix = np.array(transition_matrix_data) if transition_matrix_data else None
+            self.state_labels = model_data.get("state_labels", {})
+            self.state_characteristics = model_data.get("state_characteristics", {})
+            
+            # Restore training history
+            history_data = model_data.get("training_history", [])
+            self.training_history = []
+            for result_dict in history_data:
+                result = TrainingResult(**result_dict)
+                self.training_history.append(result)
+            
+            logger.info(f"HMM model loaded from {file_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to load HMM model: {e}")
+            return False

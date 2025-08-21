@@ -8,7 +8,7 @@ including detection of human vs cat movement patterns, deduplication, and sequen
 import asyncio
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import math
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -160,7 +160,7 @@ class EventValidator:
 
         # Timestamp validation
         if event.timestamp:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             if event.timestamp > now + timedelta(minutes=5):
                 warnings.append("Event timestamp is in the future")
                 confidence_score *= 0.9
@@ -834,7 +834,7 @@ class EventProcessor:
             previous_state=ha_event.previous_state,
             timestamp=ha_event.timestamp,
             attributes=ha_event.attributes,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
 
         # Validate event

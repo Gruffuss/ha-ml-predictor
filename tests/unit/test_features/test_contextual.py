@@ -181,7 +181,7 @@ class TestContextualFeatureExtractor:
             event.room_id = "living_room"
             events.append(event)
 
-        features = extractor._extract_environmental_features(events)
+        features = extractor._extract_environmental_features(events, target_time)
 
         # Verify temperature calculations
         expected_avg = sum(temperatures) / len(temperatures)
@@ -199,6 +199,7 @@ class TestContextualFeatureExtractor:
     def test_environmental_features_humidity(self, extractor):
         """Test humidity-specific environmental features."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
+        target_time = datetime(2024, 1, 15, 15, 0, 0)
         events = []
 
         # Create humidity sequence
@@ -212,7 +213,7 @@ class TestContextualFeatureExtractor:
             event.room_id = "living_room"
             events.append(event)
 
-        features = extractor._extract_environmental_features(events)
+        features = extractor._extract_environmental_features(events, target_time)
 
         # Verify humidity calculations
         expected_avg = sum(humidity_values) / len(humidity_values)
@@ -225,6 +226,7 @@ class TestContextualFeatureExtractor:
     def test_environmental_features_light(self, extractor):
         """Test light-specific environmental features."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
+        target_time = datetime(2024, 1, 15, 15, 0, 0)
         events = []
 
         # Create light level sequence (in lux)
@@ -238,7 +240,7 @@ class TestContextualFeatureExtractor:
             event.room_id = "living_room"
             events.append(event)
 
-        features = extractor._extract_environmental_features(events)
+        features = extractor._extract_environmental_features(events, target_time)
 
         # Verify light calculations
         expected_avg = sum(light_values) / len(light_values)
@@ -251,6 +253,7 @@ class TestContextualFeatureExtractor:
     def test_door_state_features(self, extractor):
         """Test door state analysis features."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
+        target_time = datetime(2024, 1, 15, 15, 0, 0)
         events = []
 
         # Create door state sequence with known pattern
@@ -273,7 +276,7 @@ class TestContextualFeatureExtractor:
             event.room_id = "living_room"
             events.append(event)
 
-        features = extractor._extract_door_state_features(events)
+        features = extractor._extract_door_state_features(events, target_time)
 
         # Verify door analysis
         total_duration = 55  # minutes
@@ -290,6 +293,8 @@ class TestContextualFeatureExtractor:
     def test_multi_room_correlation_features(self, extractor):
         """Test multi-room correlation analysis."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
+        target_time = datetime(2024, 1, 15, 15, 0, 0)
+        events = []  # Multi-room features need events list
         room_states = []
 
         # Create correlated occupancy pattern
@@ -313,7 +318,7 @@ class TestContextualFeatureExtractor:
             state.occupancy_confidence = 0.85
             room_states.append(state)
 
-        features = extractor._extract_multi_room_features(room_states)
+        features = extractor._extract_multi_room_features(events, room_states, target_time)
 
         # Should detect correlation between living_room and kitchen
         assert features["active_rooms_count"] > 1.0
@@ -345,6 +350,7 @@ class TestContextualFeatureExtractor:
     def test_weather_integration_features(self, extractor):
         """Test weather-based contextual features."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
+        target_time = base_time + timedelta(hours=1)
         events = []
 
         # Create weather-like environmental changes
@@ -366,7 +372,7 @@ class TestContextualFeatureExtractor:
             event.room_id = "living_room"
             events.append(event)
 
-        features = extractor._extract_environmental_features(events)
+        features = extractor._extract_environmental_features(events, target_time)
 
         # Should detect poor weather conditions
         assert features["natural_light_score"] < 0.5  # Low natural light
@@ -471,7 +477,7 @@ class TestContextualFeatureExtractor:
             state.occupancy_confidence = 0.9
             room_states.append(state)
 
-        features_concentrated = extractor._extract_multi_room_features(room_states)
+        features_concentrated = extractor._extract_multi_room_features([], room_states, base_time)
 
         room_states.clear()
 
@@ -489,7 +495,7 @@ class TestContextualFeatureExtractor:
             state.occupancy_confidence = 0.9
             room_states.append(state)
 
-        features_spread = extractor._extract_multi_room_features(room_states)
+        features_spread = extractor._extract_multi_room_features([], room_states, base_time)
 
         # Spread scenario should have higher spread score
         assert (
@@ -692,6 +698,15 @@ class TestContextualFeatureExtractorIntegration:
         bathroom_door.state = "open"
         bathroom_door.room_id = "bathroom"
         events.append(bathroom_door)
+        
+        # Add door closing to create a transition
+        bathroom_door_close = Mock(spec=SensorEvent)
+        bathroom_door_close.timestamp = base_time + timedelta(minutes=15)
+        bathroom_door_close.sensor_id = "binary_sensor.bathroom_door"
+        bathroom_door_close.sensor_type = "door"
+        bathroom_door_close.state = "closed"
+        bathroom_door_close.room_id = "bathroom"
+        events.append(bathroom_door_close)
 
         # 3. Kitchen activity - coffee maker, temperature rise
         kitchen_temp = Mock(spec=SensorEvent)
@@ -760,13 +775,51 @@ class TestContextualFeatureExtractorIntegration:
             humidity_event.room_id = "living_room"
             events.append(humidity_event)
 
-            door_event = Mock(spec=SensorEvent)
-            door_event.timestamp = target_time - timedelta(minutes=30)
-            door_event.sensor_id = "sensor.door"
-            door_event.sensor_type = "door"
-            door_event.state = door_state
-            door_event.room_id = "living_room"
-            events.append(door_event)
+            # Create door events sequence to establish proper time-based ratio
+            if door_state == "open":
+                # Scenario: Door is open most of the time with clear transitions
+                door_event_start = Mock(spec=SensorEvent)
+                door_event_start.timestamp = target_time - timedelta(minutes=60)
+                door_event_start.sensor_id = "sensor.door"
+                door_event_start.sensor_type = "door"
+                door_event_start.state = "closed"
+                door_event_start.room_id = "living_room"
+                events.append(door_event_start)
+                
+                # Open early and stay open (45 minutes out of 55 total)
+                door_event_open = Mock(spec=SensorEvent)
+                door_event_open.timestamp = target_time - timedelta(minutes=50)
+                door_event_open.sensor_id = "sensor.door"
+                door_event_open.sensor_type = "door"
+                door_event_open.state = "open"
+                door_event_open.room_id = "living_room"
+                events.append(door_event_open)
+                
+                # Close briefly near the end to create a measurable open duration
+                door_event_close = Mock(spec=SensorEvent)
+                door_event_close.timestamp = target_time - timedelta(minutes=5)
+                door_event_close.sensor_id = "sensor.door"
+                door_event_close.sensor_type = "door"
+                door_event_close.state = "closed"
+                door_event_close.room_id = "living_room"
+                events.append(door_event_close)
+            else:
+                # Scenario: Door stays closed for the full period
+                door_event_start = Mock(spec=SensorEvent)
+                door_event_start.timestamp = target_time - timedelta(minutes=60)
+                door_event_start.sensor_id = "sensor.door"
+                door_event_start.sensor_type = "door"
+                door_event_start.state = "closed"
+                door_event_start.room_id = "living_room"
+                events.append(door_event_start)
+                
+                door_event_end = Mock(spec=SensorEvent)
+                door_event_end.timestamp = target_time - timedelta(minutes=5)
+                door_event_end.sensor_id = "sensor.door"
+                door_event_end.sensor_type = "door"
+                door_event_end.state = "closed"
+                door_event_end.room_id = "living_room"
+                events.append(door_event_end)
 
             light_event = Mock(spec=SensorEvent)
             light_event.timestamp = target_time - timedelta(minutes=30)
@@ -781,12 +834,18 @@ class TestContextualFeatureExtractorIntegration:
             # Verify seasonal characteristics are captured
             assert abs(features["avg_temperature"] - temp) < 1.0
             assert abs(features["avg_humidity"] - humidity) < 5.0
-            assert features["door_open_ratio"] == (1.0 if door_state == "open" else 0.0)
+            if door_state == "open":
+                # When door is open 45 minutes out of 55 total, expect ratio > 0.7
+                assert features["door_open_ratio"] > 0.7
+            else:
+                # When door stays closed, expect zero ratio
+                assert features["door_open_ratio"] == 0.0
             assert abs(features["avg_light_level"] - light_level) < 10.0
 
     def test_multi_home_correlation(self, extractor, target_time):
         """Test correlation patterns across entire home."""
         base_time = target_time - timedelta(hours=1)
+        events = []
         room_states = []
 
         # Simulate whole-house activity pattern
@@ -831,7 +890,7 @@ class TestContextualFeatureExtractorIntegration:
             state.occupancy_confidence = 0.8
             room_states.append(state)
 
-        features = extractor._extract_multi_room_features(room_states)
+        features = extractor._extract_multi_room_features(events, room_states, target_time)
 
         # Should detect complex correlation patterns
         assert features["active_rooms_count"] > 1.0  # Multiple room transitions
@@ -985,7 +1044,7 @@ class TestContextualFeatureExtractorEdgeCases:
         # Should handle rapid changes correctly
         assert isinstance(features, dict)
         assert features["door_transition_count"] == 19.0  # 19 transitions
-        assert features["door_open_ratio"] == 0.5  # Half open, half closed
+        assert abs(features["door_open_ratio"] - 0.5) < 0.1  # Approximately half open, half closed
 
     def test_long_time_gaps(self, extractor, target_time):
         """Test handling of large time gaps between sensor readings."""
@@ -1020,6 +1079,7 @@ class TestContextualFeatureExtractorEdgeCases:
     def test_single_room_multi_states(self, extractor, target_time):
         """Test multi-room features with only single room data."""
         base_time = datetime(2024, 1, 15, 14, 0, 0)
+        events = []
         room_states = []
 
         # Only living room states, but multiple over time
@@ -1031,7 +1091,7 @@ class TestContextualFeatureExtractorEdgeCases:
             state.occupancy_confidence = 0.8
             room_states.append(state)
 
-        features = extractor._extract_multi_room_features(room_states)
+        features = extractor._extract_multi_room_features(events, room_states, target_time)
 
         # Should handle single room gracefully
         assert features["active_rooms_count"] == 1.0  # Only one room

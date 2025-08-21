@@ -5,9 +5,10 @@ This module implements a meta-learning ensemble that combines multiple base
 predictors (LSTM, XGBoost, HMM) using stacking with a meta-learner.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
+from pathlib import Path
 import warnings
 
 import numpy as np
@@ -110,7 +111,7 @@ class OccupancyEnsemble(BasePredictor):
         Returns:
             TrainingResult with ensemble training statistics
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             # Validate input data
@@ -170,11 +171,11 @@ class OccupancyEnsemble(BasePredictor):
             # Update model state
             self.feature_names = list(features.columns)
             self.is_trained = True
-            self.training_date = datetime.utcnow()
+            self.training_date = datetime.now(timezone.utc)
             self.model_version = self._generate_model_version()
 
             # Calculate training time
-            training_time = (datetime.utcnow() - start_time).total_seconds()
+            training_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
             # Compile training metrics
             training_metrics = {
@@ -223,7 +224,7 @@ class OccupancyEnsemble(BasePredictor):
             return result
 
         except Exception as e:
-            training_time = (datetime.utcnow() - start_time).total_seconds()
+            training_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             error_msg = f"Ensemble training failed: {str(e)}"
             logger.error(error_msg)
 
@@ -377,7 +378,7 @@ class OccupancyEnsemble(BasePredictor):
         Returns:
             TrainingResult with incremental update statistics
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             logger.info(
@@ -422,11 +423,11 @@ class OccupancyEnsemble(BasePredictor):
                     if model.is_trained:
                         try:
                             temp_predictions = await model.predict(
-                                features, datetime.utcnow(), "unknown"
+                                features, datetime.now(timezone.utc), "unknown"
                             )
                             temp_meta_features[model_name] = [
                                 (
-                                    pred.predicted_time - datetime.utcnow()
+                                    pred.predicted_time - datetime.now(timezone.utc)
                                 ).total_seconds()
                                 for pred in temp_predictions
                             ]
@@ -472,7 +473,7 @@ class OccupancyEnsemble(BasePredictor):
 
             self.model_version = f"{self.model_version}_inc_{int(time.time())}"
 
-            training_time = (datetime.utcnow() - start_time).total_seconds()
+            training_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
             result = TrainingResult(
                 success=True,
@@ -501,7 +502,7 @@ class OccupancyEnsemble(BasePredictor):
             return result
 
         except Exception as e:
-            training_time = (datetime.utcnow() - start_time).total_seconds()
+            training_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             error_msg = f"Incremental update failed: {str(e)}"
             logger.error(error_msg)
 
@@ -562,14 +563,14 @@ class OccupancyEnsemble(BasePredictor):
 
                     # Predict on validation set
                     val_predictions = await fold_model.predict(
-                        X_val_fold, datetime.utcnow(), "unknown"
+                        X_val_fold, datetime.now(timezone.utc), "unknown"
                     )
 
                     # Extract time until transition for meta-features
                     for i, pred in enumerate(val_predictions):
                         original_idx = val_idx[i]
                         time_until = (
-                            pred.predicted_time - datetime.utcnow()
+                            pred.predicted_time - datetime.now(timezone.utc)
                         ).total_seconds()
                         meta_features[original_idx, model_idx] = time_until
 
@@ -865,10 +866,10 @@ class OccupancyEnsemble(BasePredictor):
             if model.is_trained:
                 try:
                     results = await model.predict(
-                        features, datetime.utcnow(), "unknown"
+                        features, datetime.now(timezone.utc), "unknown"
                     )
                     base_predictions[model_name] = [
-                        (r.predicted_time - datetime.utcnow()).total_seconds()
+                        (r.predicted_time - datetime.now(timezone.utc)).total_seconds()
                         for r in results
                     ]
                 except Exception as e:
@@ -1038,7 +1039,7 @@ class OccupancyEnsemble(BasePredictor):
             if idx < len(results):
                 confidences.append(results[idx].confidence_score)
                 pred_time = (
-                    results[idx].predicted_time - datetime.utcnow()
+                    results[idx].predicted_time - datetime.now(timezone.utc)
                 ).total_seconds()
                 predictions.append(pred_time)
 
@@ -1219,3 +1220,120 @@ class OccupancyEnsemble(BasePredictor):
             "base_models_trained": self.base_models_trained,
             "meta_learner_trained": self.meta_learner_trained,
         }
+
+    def save_model(self, file_path: Union[str, Path]) -> bool:
+        """
+        Save the ensemble model with all base models and meta-learner.
+        
+        Args:
+            file_path: Path to save the model
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            import pickle
+            from pathlib import Path
+            
+            # Save base models to separate files
+            base_path = Path(file_path)
+            base_models_dir = base_path.parent / f"{base_path.stem}_base_models"
+            base_models_dir.mkdir(exist_ok=True)
+            
+            base_model_paths = {}
+            for name, model in self.base_models.items():
+                model_path = base_models_dir / f"{name}_model.pkl"
+                if model.save_model(str(model_path)):
+                    base_model_paths[name] = str(model_path)
+            
+            # Save ensemble data
+            ensemble_data = {
+                "model_type": self.model_type.value,
+                "room_id": self.room_id,
+                "model_version": self.model_version,
+                "training_date": self.training_date,
+                "feature_names": self.feature_names,
+                "model_params": self.model_params,
+                "is_trained": self.is_trained,
+                "training_history": [
+                    result.to_dict() for result in self.training_history
+                ],
+                "base_models_trained": self.base_models_trained,
+                "meta_learner_trained": self.meta_learner_trained,
+                "model_weights": self.model_weights,
+                "model_performance": self.model_performance,
+                "cross_validation_scores": self.cross_validation_scores,
+                "meta_learner": self.meta_learner,
+                "base_model_paths": base_model_paths,
+            }
+            
+            with open(file_path, "wb") as f:
+                pickle.dump(ensemble_data, f)
+            
+            logger.info(f"Ensemble model saved to {file_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to save ensemble model: {e}")
+            return False
+    
+    def load_model(self, file_path: Union[str, Path]) -> bool:
+        """
+        Load the ensemble model with all base models and meta-learner.
+        
+        Args:
+            file_path: Path to load the model from
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            import pickle
+            from pathlib import Path
+            
+            with open(file_path, "rb") as f:
+                ensemble_data = pickle.load(f)
+            
+            # Restore ensemble attributes
+            self.model_type = ModelType(ensemble_data["model_type"])
+            self.room_id = ensemble_data.get("room_id")
+            self.model_version = ensemble_data.get("model_version", "v1.0")
+            self.training_date = ensemble_data.get("training_date")
+            self.feature_names = ensemble_data.get("feature_names", [])
+            self.model_params = ensemble_data.get("model_params", {})
+            self.is_trained = ensemble_data.get("is_trained", False)
+            self.base_models_trained = ensemble_data.get("base_models_trained", False)
+            self.meta_learner_trained = ensemble_data.get("meta_learner_trained", False)
+            self.model_weights = ensemble_data.get("model_weights", {})
+            self.model_performance = ensemble_data.get("model_performance", {})
+            self.cross_validation_scores = ensemble_data.get("cross_validation_scores", {})
+            self.meta_learner = ensemble_data.get("meta_learner")
+            
+            # Load base models
+            base_model_paths = ensemble_data.get("base_model_paths", {})
+            for name, model_path in base_model_paths.items():
+                if name in self.base_models:
+                    if Path(model_path).exists():
+                        load_success = self.base_models[name].load_model(model_path)
+                        if not load_success:
+                            logger.warning(f"Failed to load base model {name}")
+                    else:
+                        logger.warning(f"Base model file not found: {model_path}")
+            
+            # Update base model room_ids to match ensemble
+            for model in self.base_models.values():
+                model.room_id = self.room_id
+            
+            # Restore training history
+            history_data = ensemble_data.get("training_history", [])
+            self.training_history = []
+            for result_dict in history_data:
+                result = TrainingResult(**result_dict)
+                self.training_history.append(result)
+            
+            logger.info(f"Ensemble model loaded from {file_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to load ensemble model: {e}")
+            return False

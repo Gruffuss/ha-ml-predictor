@@ -5,7 +5,7 @@ This module defines Pydantic models for authentication requests, responses,
 and user representations used throughout the authentication system.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -293,7 +293,7 @@ class APIKey(BaseModel):
         """Check if API key is expired."""
         if not self.expires_at:
             return False
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     def has_permission(self, permission: str) -> bool:
         """Check if API key has a specific permission."""

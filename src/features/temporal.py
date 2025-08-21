@@ -586,6 +586,24 @@ class TemporalFeatureExtractor:
             )
         else:
             features["time_variability"] = 0.0
+            
+        # Transition regularity - inverse of variability (more regular = higher score)
+        features["transition_regularity"] = max(0.0, 1.0 - features["time_variability"])
+        
+        # Recent transition trend - slope of recent intervals
+        if len(intervals) >= 3:
+            # Use last half of intervals to calculate trend
+            recent_intervals = intervals[-len(intervals)//2:]
+            x_values = list(range(len(recent_intervals)))
+            # Simple linear regression slope
+            n = len(recent_intervals)
+            x_mean = sum(x_values) / n
+            y_mean = sum(recent_intervals) / n
+            numerator = sum((x_values[i] - x_mean) * (recent_intervals[i] - y_mean) for i in range(n))
+            denominator = sum((x_values[i] - x_mean) ** 2 for i in range(n))
+            features["recent_transition_trend"] = numerator / denominator if denominator != 0 else 0.0
+        else:
+            features["recent_transition_trend"] = 0.0
 
         return features
 

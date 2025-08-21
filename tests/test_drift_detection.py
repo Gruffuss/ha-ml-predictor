@@ -57,7 +57,7 @@ class TestDriftMetrics:
         # Check that post-init calculations were performed
         assert drift_metrics.overall_drift_score > 0
         assert (
-            drift_metrics.drift_severity != DriftSeverity.MINOR
+            drift_metrics.drift_severity != DriftSeverity.LOW
         )  # Should be higher due to degradation
         assert drift_metrics.retraining_recommended
 
@@ -93,7 +93,7 @@ class TestDriftMetrics:
             ),
             accuracy_degradation=25.0,
         )
-        assert drift_metrics.drift_severity == DriftSeverity.MAJOR
+        assert drift_metrics.drift_severity == DriftSeverity.HIGH
 
     def test_recommendations_generation(self):
         """Test recommendation generation logic."""

@@ -18,7 +18,7 @@ Features:
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import json
 import logging
@@ -62,7 +62,7 @@ class ClientConnection:
 
     def update_activity(self):
         """Update last activity timestamp."""
-        self.last_activity = datetime.utcnow()
+        self.last_activity = datetime.now(timezone.utc)
 
 
 @dataclass
@@ -137,8 +137,8 @@ class WebSocketConnectionManager:
             self.client_metadata[client_id] = ClientConnection(
                 connection_id=client_id,
                 client_type="websocket",
-                connected_at=datetime.utcnow(),
-                last_activity=datetime.utcnow(),
+                connected_at=datetime.now(timezone.utc),
+                last_activity=datetime.now(timezone.utc),
                 room_subscriptions=set(),
                 metadata={},
             )
@@ -271,8 +271,8 @@ class SSEConnectionManager:
             self.client_metadata[client_id] = ClientConnection(
                 connection_id=client_id,
                 client_type="sse",
-                connected_at=datetime.utcnow(),
-                last_activity=datetime.utcnow(),
+                connected_at=datetime.now(timezone.utc),
+                last_activity=datetime.now(timezone.utc),
                 room_subscriptions=set(),
                 metadata={},
             )
@@ -425,7 +425,7 @@ class RealtimePublishingSystem:
 
         # Metrics and state
         self.metrics = PublishingMetrics()
-        self.system_start_time = datetime.utcnow()
+        self.system_start_time = datetime.now(timezone.utc)
 
         # Background tasks
         self._background_tasks: List[asyncio.Task] = []
@@ -507,7 +507,7 @@ class RealtimePublishingSystem:
             event = RealtimePredictionEvent(
                 event_id=str(uuid.uuid4()),
                 event_type="prediction",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 room_id=room_id,
                 data=self._format_prediction_data(
                     prediction_result, room_id, current_state
@@ -625,7 +625,7 @@ class RealtimePublishingSystem:
             event = RealtimePredictionEvent(
                 event_id=str(uuid.uuid4()),
                 event_type="system_status",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 room_id=None,
                 data=status_data,
             )
@@ -675,7 +675,7 @@ class RealtimePublishingSystem:
             welcome_event = RealtimePredictionEvent(
                 event_id=str(uuid.uuid4()),
                 event_type="connection",
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
                 room_id=None,
                 data={
                     "message": "Connected to real-time prediction system",
@@ -735,7 +735,7 @@ class RealtimePublishingSystem:
                         yield message
                     except asyncio.TimeoutError:
                         # Send keepalive
-                        yield f"data: {json.dumps({'type': 'keepalive', 'timestamp': datetime.utcnow().isoformat()})}\n\n"
+                        yield f"data: {json.dumps({'type': 'keepalive', 'timestamp': datetime.now(timezone.utc).isoformat()})}\n\n"
 
             except asyncio.CancelledError:
                 logger.debug(f"SSE stream cancelled for client {client_id}")
@@ -782,7 +782,7 @@ class RealtimePublishingSystem:
             "enabled_channels": [channel.value for channel in self.enabled_channels],
             "metrics": asdict(self.metrics),
             "uptime_seconds": (
-                datetime.utcnow() - self.system_start_time
+                datetime.now(timezone.utc) - self.system_start_time
             ).total_seconds(),
             "websocket_stats": self.websocket_manager.get_connection_stats(),
             "sse_stats": self.sse_manager.get_connection_stats(),
@@ -799,7 +799,7 @@ class RealtimePublishingSystem:
     ) -> Dict[str, Any]:
         """Format prediction result for real-time broadcasting."""
         # Calculate time until transition
-        time_until = prediction_result.predicted_time - datetime.utcnow()
+        time_until = prediction_result.predicted_time - datetime.now(timezone.utc)
         time_until_seconds = max(0, int(time_until.total_seconds()))
 
         # Get room name
@@ -829,7 +829,7 @@ class RealtimePublishingSystem:
             ],
             "features_used": len(prediction_result.features_used or []),
             "prediction_metadata": prediction_result.prediction_metadata,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     async def _handle_websocket_message(
@@ -848,7 +848,7 @@ class RealtimePublishingSystem:
                     response = RealtimePredictionEvent(
                         event_id=str(uuid.uuid4()),
                         event_type="subscription",
-                        timestamp=datetime.utcnow(),
+                        timestamp=datetime.now(timezone.utc),
                         room_id=room_id,
                         data={
                             "message": f"Subscribed to {room_id}",
@@ -871,7 +871,7 @@ class RealtimePublishingSystem:
                     response = RealtimePredictionEvent(
                         event_id=str(uuid.uuid4()),
                         event_type="subscription",
-                        timestamp=datetime.utcnow(),
+                        timestamp=datetime.now(timezone.utc),
                         room_id=room_id,
                         data={
                             "message": f"Unsubscribed from {room_id}",
@@ -888,9 +888,9 @@ class RealtimePublishingSystem:
                 response = RealtimePredictionEvent(
                     event_id=str(uuid.uuid4()),
                     event_type="pong",
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(timezone.utc),
                     room_id=None,
-                    data={"timestamp": datetime.utcnow().isoformat()},
+                    data={"timestamp": datetime.now(timezone.utc).isoformat()},
                 )
 
                 websocket = self.websocket_manager.connections.get(client_id)
@@ -926,7 +926,7 @@ class RealtimePublishingSystem:
         """Background task to clean up stale connections."""
         while not self._shutdown_event.is_set():
             try:
-                cutoff_time = datetime.utcnow() - timedelta(hours=1)
+                cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
 
                 # Clean up stale WebSocket connections
                 stale_ws_connections = [

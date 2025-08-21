@@ -10,7 +10,7 @@ and AdaptiveRetrainer to provide comprehensive system visibility without manual 
 
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 import json
 import logging
@@ -220,7 +220,7 @@ class WebSocketManager:
                 await websocket.accept()
                 self.active_connections.add(websocket)
                 self.connection_metadata[websocket] = {
-                    "connected_at": datetime.utcnow(),
+                    "connected_at": datetime.now(timezone.utc),
                     "client_info": client_info or {},
                     "messages_sent": 0,
                     "last_message_at": None,
@@ -271,7 +271,7 @@ class WebSocketManager:
                     self.connection_metadata[websocket]["messages_sent"] += 1
                     self.connection_metadata[websocket][
                         "last_message_at"
-                    ] = datetime.utcnow()
+                    ] = datetime.now(timezone.utc)
 
                 return True
             return False
@@ -375,7 +375,7 @@ class PerformanceDashboard:
         self.config = config or DashboardConfig()
 
         # Dashboard state
-        self._dashboard_start_time = datetime.utcnow()
+        self._dashboard_start_time = datetime.now(timezone.utc)
         self._update_task: Optional[asyncio.Task] = None
         self._server_task: Optional[asyncio.Task] = None
         self._running = False
@@ -604,7 +604,7 @@ class PerformanceDashboard:
                             await self.websocket_manager.send_personal_message(
                                 {
                                     "type": "ping",
-                                    "timestamp": datetime.utcnow().isoformat(),
+                                    "timestamp": datetime.now(timezone.utc).isoformat(),
                                 },
                                 websocket,
                             )
@@ -709,7 +709,7 @@ class PerformanceDashboard:
                         sent_count = await self.websocket_manager.broadcast(
                             {
                                 "type": "dashboard_update",
-                                "timestamp": datetime.utcnow().isoformat(),
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
                                 "data": update_data,
                             }
                         )
@@ -802,9 +802,9 @@ class PerformanceDashboard:
 
             # Dashboard-specific metrics
             overview.uptime_hours = (
-                datetime.utcnow() - self._dashboard_start_time
+                datetime.now(timezone.utc) - self._dashboard_start_time
             ).total_seconds() / 3600
-            overview.last_updated = datetime.utcnow()
+            overview.last_updated = datetime.now(timezone.utc)
 
             # Cache the result
             self._cache_data(cache_key, overview)
@@ -816,7 +816,7 @@ class PerformanceDashboard:
             # Return empty overview with error status
             overview = SystemOverview()
             overview.system_status = "error"
-            overview.last_updated = datetime.utcnow()
+            overview.last_updated = datetime.now(timezone.utc)
             return overview
 
     async def _get_accuracy_dashboard_data(
@@ -862,9 +862,9 @@ class PerformanceDashboard:
                 "time_period": {
                     "hours_back": hours_back,
                     "start_time": (
-                        datetime.utcnow() - timedelta(hours=hours_back)
+                        datetime.now(timezone.utc) - timedelta(hours=hours_back)
                     ).isoformat(),
-                    "end_time": datetime.utcnow().isoformat(),
+                    "end_time": datetime.now(timezone.utc).isoformat(),
                 },
             }
 
@@ -1094,7 +1094,7 @@ class PerformanceDashboard:
                     "score": 0.0,
                     "status": "unknown",
                     "uptime_hours": (
-                        datetime.utcnow() - self._dashboard_start_time
+                        datetime.now(timezone.utc) - self._dashboard_start_time
                     ).total_seconds()
                     / 3600,
                 },
@@ -1137,10 +1137,10 @@ class PerformanceDashboard:
                     "score": tracking_status.get("overall_health_score", 0.0),
                     "status": tracking_status.get("status", "unknown"),
                     "uptime_hours": (
-                        datetime.utcnow() - self._dashboard_start_time
+                        datetime.now(timezone.utc) - self._dashboard_start_time
                     ).total_seconds()
                     / 3600,
-                    "last_updated": datetime.utcnow().isoformat(),
+                    "last_updated": datetime.now(timezone.utc).isoformat(),
                 }
 
                 # Component health
@@ -1301,9 +1301,9 @@ class PerformanceDashboard:
                 "time_period": {
                     "days_back": days_back,
                     "start_date": (
-                        datetime.utcnow() - timedelta(days=days_back)
+                        datetime.now(timezone.utc) - timedelta(days=days_back)
                     ).isoformat(),
-                    "end_date": datetime.utcnow().isoformat(),
+                    "end_date": datetime.now(timezone.utc).isoformat(),
                 },
                 "accuracy_trends": [],
                 "error_trends": [],
@@ -1332,7 +1332,7 @@ class PerformanceDashboard:
         """Get dashboard system statistics."""
         try:
             uptime_seconds = (
-                datetime.utcnow() - self._dashboard_start_time
+                datetime.now(timezone.utc) - self._dashboard_start_time
             ).total_seconds()
 
             stats = {
@@ -1377,7 +1377,7 @@ class PerformanceDashboard:
             overview = await self._get_system_overview()
             return {
                 "type": "initial_data",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "data": {
                     "system_overview": overview.to_dict(),
                     "dashboard_info": {
@@ -1395,7 +1395,7 @@ class PerformanceDashboard:
             logger.error(f"Error getting WebSocket initial data: {e}")
             return {
                 "type": "error",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "error": str(e),
             }
 
@@ -1413,13 +1413,13 @@ class PerformanceDashboard:
             return {
                 "system_overview": overview.to_dict(),
                 "alert_summary": recent_alerts.get("alert_summary", {}),
-                "last_updated": datetime.utcnow().isoformat(),
+                "last_updated": datetime.now(timezone.utc).isoformat(),
             }
         except Exception as e:
             logger.error(f"Error getting WebSocket update data: {e}")
             return {
                 "error": str(e),
-                "last_updated": datetime.utcnow().isoformat(),
+                "last_updated": datetime.now(timezone.utc).isoformat(),
             }
 
     async def _handle_websocket_message(
@@ -1435,7 +1435,7 @@ class PerformanceDashboard:
                 await self.websocket_manager.send_personal_message(
                     {
                         "type": "pong",
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                     websocket,
                 )
@@ -1451,7 +1451,7 @@ class PerformanceDashboard:
                         "type": "data_response",
                         "data_type": requested_data,
                         "data": response_data,
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                     },
                     websocket,
                 )
@@ -1530,7 +1530,7 @@ class PerformanceDashboard:
                 "message": "Alert acknowledged successfully",
                 "alert_id": alert_id,
                 "acknowledged_by": user_id,
-                "acknowledged_at": datetime.utcnow().isoformat(),
+                "acknowledged_at": datetime.now(timezone.utc).isoformat(),
             }
 
             # Enhance response with detailed information from result
@@ -1560,7 +1560,7 @@ class PerformanceDashboard:
         with self._cache_lock:
             if cache_key in self._cache:
                 data, cached_at = self._cache[cache_key]
-                if datetime.utcnow() - cached_at < timedelta(
+                if datetime.now(timezone.utc) - cached_at < timedelta(
                     seconds=self.config.cache_ttl_seconds
                 ):
                     return data
@@ -1572,7 +1572,7 @@ class PerformanceDashboard:
     def _cache_data(self, cache_key: str, data: Any) -> None:
         """Cache data with timestamp."""
         with self._cache_lock:
-            self._cache[cache_key] = (data, datetime.utcnow())
+            self._cache[cache_key] = (data, datetime.now(timezone.utc))
 
             # Limit cache size
             if len(self._cache) > 100:

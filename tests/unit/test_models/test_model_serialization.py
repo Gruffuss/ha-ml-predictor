@@ -6,7 +6,7 @@ metadata preservation, backwards compatibility, and error handling for
 all model types.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import pickle
 import tempfile
@@ -30,6 +30,42 @@ from src.models.base.predictor import (
 )
 from src.models.base.xgboost_predictor import XGBoostPredictor
 from src.models.ensemble import OccupancyEnsemble
+
+
+# Pickle-able mock classes for testing (must be at module level)
+class PickleableMockXGBModel:
+    """Pickle-able mock XGBoost model for testing."""
+    def __init__(self):
+        self.n_estimators = 100
+        
+    def predict(self, X):
+        return np.random.random(len(X)) * 1000
+
+
+class PickleableOldMockModel:
+    """Pickle-able mock model simulating older version."""
+    def __init__(self):
+        self.n_estimators = 50
+        
+    def predict(self, X):
+        return np.random.random(len(X)) * 800
+
+
+class PickleableMockModel:
+    """Pickle-able mock model for ensemble testing."""
+    def __init__(self, model_type, feature_names, room_id="test_room"):
+        self.is_trained = True
+        self.model_type = model_type
+        self.feature_names = feature_names
+        self.model_version = "v1.0"
+        self.training_history = []
+        self.room_id = room_id
+        
+    def save_model(self, file_path):
+        return True
+        
+    def load_model(self, file_path):
+        return True
 
 
 @pytest.fixture
@@ -154,7 +190,7 @@ class TestBasicModelSerialization:
 
             async def get_predictions():
                 return await original_model.predict(
-                    features.head(5), datetime.utcnow(), "vacant"
+                    features.head(5), datetime.now(timezone.utc), "vacant"
                 )
 
             try:
@@ -187,7 +223,7 @@ class TestBasicModelSerialization:
             # Test that predictions are consistent
             async def get_new_predictions():
                 return await new_model.predict(
-                    features.head(5), datetime.utcnow(), "vacant"
+                    features.head(5), datetime.now(timezone.utc), "vacant"
                 )
 
             new_predictions = loop.run_until_complete(get_new_predictions())
@@ -373,16 +409,12 @@ class TestEnsembleModelSerialization:
         features, targets = sample_training_data
         ensemble = OccupancyEnsemble(room_id="test_room")
 
-        # Mock base models to avoid complex training
+        # Replace base models with pickle-able mock models
         for model_name in ensemble.base_models.keys():
-            mock_model = MagicMock()
-            mock_model.is_trained = True
-            mock_model.model_type = (
-                ModelType.XGBOOST if model_name == "xgboost" else ModelType.LSTM
+            mock_model = PickleableMockModel(
+                ModelType.XGBOOST if model_name == "xgboost" else ModelType.LSTM,
+                list(features.columns)
             )
-            mock_model.feature_names = list(features.columns)
-            mock_model.model_version = "v1.0"
-            mock_model.training_history = []
             ensemble.base_models[model_name] = mock_model
 
         # Set ensemble as trained
@@ -533,8 +565,9 @@ class TestSerializationErrorHandling:
         model = XGBoostPredictor(room_id="test_room")
 
         # Create partial model data (missing some fields)
+        # Use the module-level pickle-able mock instead of MagicMock
         partial_model_data = {
-            "model": MagicMock(),
+            "model": PickleableMockXGBModel(),
             "model_type": ModelType.XGBOOST.value,
             "room_id": "test_room",
             # Missing model_version, training_date, etc.
@@ -710,7 +743,7 @@ class TestMultipleModelSerialization:
         async def train_and_predict():
             training_result = await original_model.train(features, targets)
             original_predictions = await original_model.predict(
-                features.head(3), datetime.utcnow(), "vacant"
+                features.head(3), datetime.now(timezone.utc), "vacant"
             )
             return training_result, original_predictions
 
@@ -738,7 +771,7 @@ class TestMultipleModelSerialization:
             # Get predictions from loaded model
             async def get_loaded_predictions():
                 return await loaded_model.predict(
-                    features.head(3), datetime.utcnow(), "vacant"
+                    features.head(3), datetime.now(timezone.utc), "vacant"
                 )
 
             loaded_predictions = loop.run_until_complete(get_loaded_predictions())
@@ -888,8 +921,9 @@ class TestBackwardsCompatibility:
         model = XGBoostPredictor(room_id="test_room")
 
         # Simulate older version model data
+        # Use the module-level pickle-able mock instead of MagicMock
         old_model_data = {
-            "model": MagicMock(),
+            "model": PickleableOldMockModel(),
             "model_type": ModelType.XGBOOST.value,
             "room_id": "test_room",
             "model_version": "v0.9",  # Older version

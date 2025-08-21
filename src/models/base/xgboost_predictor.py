@@ -5,9 +5,10 @@ This module implements a gradient boosting predictor using XGBoost for
 tabular feature-based occupancy predictions with excellent interpretability.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -90,7 +91,7 @@ class XGBoostPredictor(BasePredictor):
         Returns:
             TrainingResult with training statistics
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         try:
             logger.info(f"Starting XGBoost training for room {self.room_id}")
@@ -179,11 +180,11 @@ class XGBoostPredictor(BasePredictor):
 
             # Update model state
             self.is_trained = True
-            self.training_date = datetime.utcnow()
+            self.training_date = datetime.now(timezone.utc)
             self.model_version = self._generate_model_version()
 
             # Calculate training time
-            training_time = (datetime.utcnow() - start_time).total_seconds()
+            training_time = (datetime.now(timezone.utc) - start_time).total_seconds()
 
             # Create training result
             training_metrics = {
@@ -234,7 +235,7 @@ class XGBoostPredictor(BasePredictor):
             return result
 
         except Exception as e:
-            training_time = (datetime.utcnow() - start_time).total_seconds()
+            training_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             error_msg = f"XGBoost training failed: {str(e)}"
             logger.error(error_msg)
 
@@ -564,3 +565,87 @@ class XGBoostPredictor(BasePredictor):
                 "reg_lambda": self.model_params["reg_lambda"],
             },
         }
+
+    def save_model(self, file_path: Union[str, Path]) -> bool:
+        """
+        Save the trained XGBoost model with all components including feature scaler.
+        
+        Args:
+            file_path: Path to save the model
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            from pathlib import Path
+            import pickle
+            
+            model_data = {
+                "model": self.model,
+                "feature_scaler": self.feature_scaler,
+                "model_type": self.model_type.value,
+                "room_id": self.room_id,
+                "model_version": self.model_version,
+                "training_date": self.training_date,
+                "feature_names": self.feature_names,
+                "model_params": self.model_params,
+                "is_trained": self.is_trained,
+                "training_history": [
+                    result.to_dict() for result in self.training_history
+                ],
+                "feature_importance_": self.feature_importance_,
+                "scaler_fitted": getattr(self, '_scaler_fitted', False),
+            }
+            
+            with open(file_path, "wb") as f:
+                pickle.dump(model_data, f)
+            
+            logger.info(f"XGBoost model saved to {file_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to save XGBoost model: {e}")
+            return False
+    
+    def load_model(self, file_path: Union[str, Path]) -> bool:
+        """
+        Load a trained XGBoost model with all components including feature scaler.
+        
+        Args:
+            file_path: Path to load the model from
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            import pickle
+            from pathlib import Path
+            
+            with open(file_path, "rb") as f:
+                model_data = pickle.load(f)
+            
+            self.model = model_data["model"]
+            self.feature_scaler = model_data.get("feature_scaler", StandardScaler())
+            self.model_type = ModelType(model_data["model_type"])
+            self.room_id = model_data.get("room_id")
+            self.model_version = model_data.get("model_version", "v1.0")
+            self.training_date = model_data.get("training_date")
+            self.feature_names = model_data.get("feature_names", [])
+            self.model_params = model_data.get("model_params", {})
+            self.is_trained = model_data.get("is_trained", False)
+            self.feature_importance_ = model_data.get("feature_importance_", {})
+            self._scaler_fitted = model_data.get("scaler_fitted", False)
+            
+            # Restore training history
+            history_data = model_data.get("training_history", [])
+            self.training_history = []
+            for result_dict in history_data:
+                result = TrainingResult(**result_dict)
+                self.training_history.append(result)
+            
+            logger.info(f"XGBoost model loaded from {file_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to load XGBoost model: {e}")
+            return False

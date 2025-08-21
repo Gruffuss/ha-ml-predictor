@@ -292,11 +292,15 @@ class SequentialFeatureExtractor:
 
             # Interval autocorrelation (pattern regularity)
             if len(intervals) > 3:
-                intervals_norm = (intervals - np.mean(intervals)) / np.std(intervals)
-                autocorr = np.corrcoef(intervals_norm[:-1], intervals_norm[1:])[0, 1]
-                features["interval_autocorr"] = float(
-                    autocorr if not np.isnan(autocorr) else 0.0
-                )
+                std_intervals = np.std(intervals)
+                if std_intervals > 0:
+                    intervals_norm = (intervals - np.mean(intervals)) / std_intervals
+                    autocorr = np.corrcoef(intervals_norm[:-1], intervals_norm[1:])[0, 1]
+                    features["interval_autocorr"] = float(
+                        autocorr if not np.isnan(autocorr) else 0.0
+                    )
+                else:
+                    features["interval_autocorr"] = 1.0  # Perfect regularity (constant intervals)
             else:
                 features["interval_autocorr"] = 0.0
 

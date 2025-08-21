@@ -6,7 +6,7 @@ predictive models in the occupancy prediction system.
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from pathlib import Path
 import pickle
@@ -331,7 +331,7 @@ class BasePredictor(ABC):
         Returns:
             Accuracy score or None if insufficient data
         """
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours_back)
         recent_predictions = [
             (pred_time, result)
             for pred_time, result in self.prediction_history

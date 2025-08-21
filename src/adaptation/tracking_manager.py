@@ -1138,7 +1138,7 @@ class TrackingManager:
                 room_id
                 for room_id, metrics in drift_results.items()
                 if metrics.drift_severity
-                in [DriftSeverity.MAJOR, DriftSeverity.CRITICAL]
+                in [DriftSeverity.HIGH, DriftSeverity.CRITICAL]
             ]
 
             if significant_drifts:
@@ -1180,7 +1180,7 @@ class TrackingManager:
         try:
             # Generate alert for significant drift
             if drift_metrics.drift_severity in [
-                DriftSeverity.MAJOR,
+                DriftSeverity.HIGH,
                 DriftSeverity.CRITICAL,
             ]:
                 alert_severity = (

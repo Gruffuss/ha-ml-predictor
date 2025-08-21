@@ -15,7 +15,7 @@ Features:
 
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 # Defer imports to prevent circular dependency
@@ -362,7 +362,7 @@ class TrackingIntegrationManager:
             alert_data = {
                 "type": "alert",
                 "message": str(alert_message),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "source": "tracking_manager",
             }
 

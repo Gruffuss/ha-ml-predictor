@@ -40,10 +40,15 @@ class DriftType(Enum):
 class DriftSeverity(Enum):
     """Severity levels for detected drift."""
 
-    MINOR = "minor"  # Statistical but possibly noise
-    MODERATE = "moderate"  # Clear drift but manageable
-    MAJOR = "major"  # Significant drift requiring attention
+    LOW = "low"  # Statistical but possibly noise
+    MEDIUM = "medium"  # Clear drift but manageable
+    HIGH = "high"  # Significant drift requiring attention
     CRITICAL = "critical"  # Severe drift requiring immediate action
+    
+    # Legacy aliases for backward compatibility
+    MINOR = "low"  # Maps to LOW
+    MODERATE = "medium"  # Maps to MEDIUM
+    MAJOR = "high"  # Maps to HIGH
 
 
 class StatisticalTest(Enum):
@@ -102,7 +107,7 @@ class DriftMetrics:
 
     # Overall assessment
     overall_drift_score: float = 0.0
-    drift_severity: DriftSeverity = DriftSeverity.MINOR
+    drift_severity: DriftSeverity = DriftSeverity.LOW
     drift_types: List[DriftType] = field(default_factory=list)
 
     # Confidence and reliability
@@ -184,11 +189,11 @@ class DriftMetrics:
         if self.ph_drift_detected or self.overall_drift_score > 0.8:
             self.drift_severity = DriftSeverity.CRITICAL
         elif self.overall_drift_score > 0.6 or self.accuracy_degradation > 20:
-            self.drift_severity = DriftSeverity.MAJOR
+            self.drift_severity = DriftSeverity.HIGH
         elif self.overall_drift_score > 0.4 or self.accuracy_degradation > 10:
-            self.drift_severity = DriftSeverity.MODERATE
+            self.drift_severity = DriftSeverity.MEDIUM
         else:
-            self.drift_severity = DriftSeverity.MINOR
+            self.drift_severity = DriftSeverity.LOW
 
     def _generate_recommendations(self) -> None:
         """Generate recommendations based on drift analysis."""
@@ -203,8 +208,8 @@ class DriftMetrics:
         self.retraining_recommended = (
             self.drift_severity
             in [
-                DriftSeverity.MODERATE,
-                DriftSeverity.MAJOR,
+                DriftSeverity.MEDIUM,
+                DriftSeverity.HIGH,
                 DriftSeverity.CRITICAL,
             ]
             or self.accuracy_degradation >= 15
@@ -221,8 +226,8 @@ class DriftMetrics:
         self.retraining_recommended = (
             self.drift_severity
             in [
-                DriftSeverity.MODERATE,
-                DriftSeverity.MAJOR,
+                DriftSeverity.MEDIUM,
+                DriftSeverity.HIGH,
                 DriftSeverity.CRITICAL,
             ]
             or self.accuracy_degradation >= 15

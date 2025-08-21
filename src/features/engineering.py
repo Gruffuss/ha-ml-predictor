@@ -46,24 +46,26 @@ class FeatureEngineeringEngine:
             enable_parallel: Whether to enable parallel feature extraction
             max_workers: Maximum number of parallel workers
         """
-        # Store the original config parameter to allow None testing
-        self.config = config
-
-        # Use global config as fallback only for actual operation, not validation testing
-        operational_config = config or get_config()
-        self._operational_config = operational_config
+        # Store config - use global config as fallback if None provided
+        self.config = config or get_config()
+        
+        # Track if original config was None for validation testing
+        self._original_config_was_none = config is None
+        
+        # Use the resolved config for operations
+        self._operational_config = self.config
         self.enable_parallel = enable_parallel
         self.max_workers = max_workers
 
-        # Validate configuration only if config is provided
+        # Validate configuration only if config was originally provided
         # Allow None config for testing validation logic
         if config is not None:
             self._validate_configuration()
 
         # Initialize feature extractors with operational config
         self.temporal_extractor = TemporalFeatureExtractor()
-        self.sequential_extractor = SequentialFeatureExtractor(operational_config)
-        self.contextual_extractor = ContextualFeatureExtractor(operational_config)
+        self.sequential_extractor = SequentialFeatureExtractor(self._operational_config)
+        self.contextual_extractor = ContextualFeatureExtractor(self._operational_config)
 
         # Feature extraction statistics
         self.stats = {
@@ -329,26 +331,35 @@ class FeatureEngineeringEngine:
 
         # Combine results
         combined_features = {}
+        failed_extractors = []
+        
         for i, (feature_type, _) in enumerate(tasks):
             result = results[i]
             if isinstance(result, Exception):
                 logger.error(f"Failed to extract {feature_type} features: {result}")
-                # Raise FeatureExtractionError when extractor fails
-                from ..core.exceptions import FeatureExtractionError
-
-                raise FeatureExtractionError(
-                    f"Feature extraction failed for {feature_type}",
-                    details={
-                        "extractor_type": feature_type,
-                        "original_error": str(result),
-                    },
-                )
+                failed_extractors.append((feature_type, result))
+                # Continue with other extractors instead of raising immediately
+                continue
 
             # Add prefix to feature names to avoid conflicts
             prefixed_features = {f"{feature_type}_{k}": v for k, v in result.items()}
             combined_features.update(prefixed_features)
 
             self.stats["feature_counts"][feature_type] += len(result)
+            
+        # If all extractors failed, raise an exception
+        if len(failed_extractors) == len(tasks) and len(combined_features) == 0:
+            from ..core.exceptions import FeatureExtractionError
+            raise FeatureExtractionError(
+                feature_type="all",
+                room_id=room_id,
+                cause=Exception(f"All extractors failed: {failed_extractors}"),
+            )
+            
+        # Add metadata about failed extractors
+        if failed_extractors:
+            combined_features["_failed_extractors"] = len(failed_extractors)
+            combined_features["_successful_extractors"] = len(tasks) - len(failed_extractors)
 
         return combined_features
 
@@ -566,6 +577,12 @@ class FeatureEngineeringEngine:
         """
         validation_results = {"valid": True, "warnings": [], "errors": []}
 
+        # Check if configuration was originally None (for testing)
+        if self._original_config_was_none:
+            validation_results["errors"].append("No system configuration provided")
+            validation_results["valid"] = False
+            return validation_results
+            
         # Check if configuration is available
         if not self.config:
             validation_results["errors"].append("No system configuration available")

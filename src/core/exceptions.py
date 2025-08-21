@@ -99,14 +99,33 @@ class ConfigValidationError(ConfigurationError):
 
     def __init__(
         self,
-        message: str,
+        message: Optional[str] = None,
         config_key: Optional[str] = None,
+        field: Optional[str] = None,
+        value: Any = ...,  # Use ellipsis as sentinel for "not provided"
+        expected: Optional[str] = None,
         config_file: Optional[str] = None,
         valid_values: Optional[List[str]] = None,
     ):
+        # Auto-generate message if not provided but field info is available
+        if message is None:
+            if field and expected:
+                message = f"Invalid configuration field '{field}': got {value}, expected {expected}"
+            elif field:
+                message = f"Invalid configuration field '{field}': {value}"
+            else:
+                message = "Configuration validation failed"
+        
         context = {}
         if config_key:
             context["config_key"] = config_key
+        if field:
+            context["field"] = field
+        # Include value even if None (using ellipsis as sentinel)
+        if value is not ...:
+            context["value"] = value
+        if expected:
+            context["expected"] = expected
         if valid_values:
             context["valid_values"] = valid_values
 
@@ -142,8 +161,8 @@ class ConfigParsingError(ConfigurationError):
             message=message,
             error_code="CONFIG_PARSING_ERROR",
             config_file=config_file,
-            context={"parsing_error": parsing_error},
-            severity=ErrorSeverity.CRITICAL,
+            context={"parse_error": parsing_error},
+            severity=ErrorSeverity.HIGH,
         )
 
 
@@ -165,7 +184,7 @@ class HomeAssistantConnectionError(HomeAssistantError):
             message=message,
             error_code="HA_CONNECTION_ERROR",
             context={"url": url},
-            severity=ErrorSeverity.CRITICAL,
+            severity=ErrorSeverity.HIGH,
             cause=cause,
         )
 
@@ -182,24 +201,29 @@ class HomeAssistantAuthenticationError(HomeAssistantError):
         """
         message = f"Authentication failed for Home Assistant at {url}"
 
+        context = {"url": url}
+        
         # Handle both string tokens and integer token lengths
         if isinstance(token_hint, str):
             # If token_hint is a string, truncate it
-            context_token_hint = (
+            context["token_hint"] = (
                 token_hint[:10] + "..." if len(token_hint) > 10 else token_hint
             )
         elif isinstance(token_hint, int):
-            # If token_hint is an integer (token length), format it appropriately
-            context_token_hint = f"<token_length_{token_hint}>"
+            # If token_hint is an integer (token length), store as token_length
+            context["token_length"] = token_hint
         else:
             # Fallback for other types
-            context_token_hint = str(token_hint)
+            context["token_hint"] = str(token_hint)
+            
+        # Add helpful hint
+        context["hint"] = "Check if token is valid and has required permissions"
 
         super().__init__(
             message=message,
             error_code="HA_AUTH_ERROR",
-            context={"url": url, "token_hint": context_token_hint},
-            severity=ErrorSeverity.CRITICAL,
+            context=context,
+            severity=ErrorSeverity.HIGH,
         )
 
 
@@ -384,13 +408,16 @@ class DatabaseIntegrityError(DatabaseError):
     """Raised when database integrity constraints are violated."""
 
     def __init__(
-        self, table_name: str, constraint: str, cause: Optional[Exception] = None
+        self, constraint: str, table_name: str, values: Optional[Dict[str, Any]] = None, cause: Optional[Exception] = None
     ):
         message = f"Database integrity error in table '{table_name}': {constraint}"
+        context = {"constraint": constraint, "table": table_name}
+        if values:
+            context["values"] = values
         super().__init__(
             message=message,
             error_code="DB_INTEGRITY_ERROR",
-            context={"table_name": table_name, "constraint": constraint},
+            context=context,
             severity=ErrorSeverity.HIGH,
             cause=cause,
         )
@@ -412,6 +439,7 @@ class FeatureExtractionError(FeatureEngineeringError):
         self,
         feature_type: str,
         room_id: Optional[str] = None,
+        time_range: Optional[str] = None,
         cause: Optional[Exception] = None,
     ):
         if room_id:
@@ -420,6 +448,9 @@ class FeatureExtractionError(FeatureEngineeringError):
         else:
             message = f"Feature extraction failed: {feature_type}"
             context = {"feature_type": feature_type}
+        
+        if time_range:
+            context["time_range"] = time_range
 
         super().__init__(
             message=message,
@@ -464,11 +495,17 @@ class FeatureValidationError(FeatureEngineeringError):
         self,
         feature_name: str,
         validation_error: str,
+        actual_value: Any,
         room_id: Optional[str] = None,
         cause: Optional[Exception] = None,
     ):
         message = f"Feature validation failed for '{feature_name}': {validation_error}"
-        context = {"feature_name": feature_name, "validation_error": validation_error}
+        context = {
+            "feature_name": feature_name, 
+            "validation_error": validation_error,
+            "validation_rule": validation_error,  # For backward compatibility
+            "actual_value": actual_value
+        }
         if room_id:
             context["room_id"] = room_id
             message += f" (room: {room_id})"
@@ -495,7 +532,7 @@ class FeatureStoreError(FeatureEngineeringError):
         super().__init__(
             message=message,
             error_code="FEATURE_STORE_ERROR",
-            context={"operation": operation, "feature_type": feature_type},
+            context={"operation": operation, "feature_group": feature_type},
             severity=ErrorSeverity.MEDIUM,
             cause=cause,
         )
@@ -517,13 +554,17 @@ class ModelTrainingError(ModelError):
         self,
         model_type: str,
         room_id: str,
+        training_data_size: Optional[int] = None,
         cause: Optional[Exception] = None,
     ):
         message = f"Model training failed: {model_type} for room {room_id}"
+        context = {"model_type": model_type, "room_id": room_id}
+        if training_data_size is not None:
+            context["training_data_size"] = training_data_size
         super().__init__(
             message=message,
             error_code="MODEL_TRAINING_ERROR",
-            context={"model_type": model_type, "room_id": room_id},
+            context=context,
             severity=ErrorSeverity.HIGH,
             cause=cause,
         )
@@ -536,13 +577,17 @@ class ModelPredictionError(ModelError):
         self,
         model_type: str,
         room_id: str,
+        feature_shape: Optional[tuple] = None,
         cause: Optional[Exception] = None,
     ):
         message = f"Model prediction failed: {model_type} for room {room_id}"
+        context = {"model_type": model_type, "room_id": room_id}
+        if feature_shape:
+            context["feature_shape"] = feature_shape
         super().__init__(
             message=message,
             error_code="MODEL_PREDICTION_ERROR",
-            context={"model_type": model_type, "room_id": room_id},
+            context=context,
             severity=ErrorSeverity.MEDIUM,
             cause=cause,
         )
@@ -557,25 +602,50 @@ class InsufficientTrainingDataError(ModelError):
 
     def __init__(
         self,
-        model_type: str,
         room_id: str,
-        required_samples: int,
-        available_samples: int,
+        data_points: Optional[int] = None,
+        minimum_required: Optional[int] = None,
+        time_span_days: Optional[float] = None,
+        model_type: Optional[str] = None,
+        required_samples: Optional[int] = None,
+        available_samples: Optional[int] = None,
         cause: Optional[Exception] = None,
     ):
-        message = (
-            f"Insufficient training data for {model_type} in room {room_id}: "
-            f"need {required_samples}, have {available_samples}"
-        )
+        # Create message based on available parameters
+        if data_points is not None and minimum_required is not None:
+            message = (
+                f"Insufficient training data for room {room_id}: "
+                f"have {data_points}, need {minimum_required}"
+            )
+        elif required_samples is not None and available_samples is not None:
+            message = (
+                f"Insufficient training data for room {room_id}: "
+                f"need {required_samples}, have {available_samples}"
+            )
+        else:
+            message = f"Insufficient training data for room {room_id}"
+            
+        if model_type:
+            message = f"Insufficient training data for {model_type} in room {room_id}"
+            
+        context = {"room_id": room_id}
+        if model_type is not None:
+            context["model_type"] = model_type
+        if data_points is not None:
+            context["data_points"] = data_points
+        if minimum_required is not None:
+            context["minimum_required"] = minimum_required
+        if time_span_days is not None:
+            context["time_span_days"] = time_span_days
+        if required_samples is not None:
+            context["required_samples"] = required_samples
+        if available_samples is not None:
+            context["available_samples"] = available_samples
+            
         super().__init__(
             message=message,
             error_code="INSUFFICIENT_TRAINING_DATA_ERROR",
-            context={
-                "model_type": model_type,
-                "room_id": room_id,
-                "required_samples": required_samples,
-                "available_samples": available_samples,
-            },
+            context=context,
             severity=ErrorSeverity.MEDIUM,
             cause=cause,
         )
@@ -597,7 +667,7 @@ class ModelNotFoundError(ModelError):
 
         super().__init__(
             message=message,
-            error_code="MODEL_NOT_FOUND_ERROR",
+            error_code="MODEL_NOT_FOUND",
             context=context,
             severity=ErrorSeverity.HIGH,
         )
@@ -612,6 +682,7 @@ class ModelVersionMismatchError(ModelError):
         room_id: str,
         expected_version: str,
         actual_version: str,
+        cause: Optional[Exception] = None,
     ):
         message = (
             f"Model version mismatch for {model_type} in room {room_id}: "
@@ -626,7 +697,8 @@ class ModelVersionMismatchError(ModelError):
                 "expected_version": expected_version,
                 "actual_version": actual_version,
             },
-            severity=ErrorSeverity.MEDIUM,
+            severity=ErrorSeverity.HIGH,
+            cause=cause,
         )
 
 
@@ -637,19 +709,24 @@ class MissingFeatureError(FeatureEngineeringError):
         self,
         feature_names: List[str],
         room_id: str,
+        available_features: Optional[List[str]] = None,
         operation: str = "prediction",
     ):
         features_str = ", ".join(feature_names)
         message = f"Missing required features for {operation} in room {room_id}: {features_str}"
+        context = {
+            "feature_names": feature_names,
+            "missing_features": feature_names,  # For backward compatibility
+            "room_id": room_id,
+            "operation": operation,
+        }
+        if available_features:
+            context["available_features"] = available_features
         super().__init__(
             message=message,
             error_code="MISSING_FEATURE_ERROR",
-            context={
-                "feature_names": feature_names,
-                "room_id": room_id,
-                "operation": operation,
-            },
-            severity=ErrorSeverity.MEDIUM,
+            context=context,
+            severity=ErrorSeverity.HIGH,
         )
 
 
@@ -686,31 +763,7 @@ class DataProcessingError(OccupancyPredictionError):
     pass
 
 
-class DataValidationError(DataProcessingError):
-    """Raised when data validation fails."""
-
-    def __init__(
-        self,
-        data_type: str,
-        validation_rule: str,
-        actual_value: Any,
-        expected_value: Any = None,
-    ):
-        message = f"Data validation failed: {data_type} - {validation_rule}"
-        context = {
-            "data_type": data_type,
-            "validation_rule": validation_rule,
-            "actual_value": str(actual_value)[:100],  # Limit length
-        }
-        if expected_value is not None:
-            context["expected_value"] = str(expected_value)[:100]
-
-        super().__init__(
-            message=message,
-            error_code="DATA_VALIDATION_ERROR",
-            context=context,
-            severity=ErrorSeverity.MEDIUM,
-        )
+# DataValidationError moved to Integration Errors section
 
 
 class DataCorruptionError(DataProcessingError):
@@ -738,6 +791,55 @@ class IntegrationError(OccupancyPredictionError):
     pass
 
 
+class DataValidationError(IntegrationError):
+    """Raised when data validation fails."""
+
+    def __init__(
+        self,
+        data_source: str,
+        validation_errors: List[str],
+        sample_data: Optional[Dict[str, Any]] = None,
+        # Legacy parameters for backward compatibility
+        data_type: Optional[str] = None,
+        validation_rule: Optional[str] = None,
+        actual_value: Any = None,
+        expected_value: Any = None,
+        field_name: Optional[str] = None,
+        severity: ErrorSeverity = ErrorSeverity.MEDIUM,
+    ):
+        # Primary signature: data_source, validation_errors
+        if validation_errors:
+            message = f"Data validation failed for {data_source}: {'; '.join(validation_errors)}"
+            context = {
+                "data_source": data_source,
+                "validation_errors": validation_errors,
+            }
+            if sample_data is not None:
+                context["sample_data"] = sample_data
+        # Legacy signature: data_type, validation_rule, actual_value
+        elif data_type and validation_rule:
+            message = f"Data validation failed: {data_type} - {validation_rule}"
+            context = {
+                "data_type": data_type,
+                "validation_rule": validation_rule,
+                "actual_value": str(actual_value)[:100] if actual_value is not None else None,
+            }
+            if expected_value is not None:
+                context["expected_value"] = str(expected_value)[:100]
+            if field_name:
+                context["field_name"] = field_name
+        else:
+            message = f"Data validation failed for {data_source}"
+            context = {"data_source": data_source}
+
+        super().__init__(
+            message=message,
+            error_code="DATA_VALIDATION_ERROR",
+            context=context,
+            severity=severity,
+        )
+
+
 class MQTTError(IntegrationError):
     """Base class for MQTT-related errors."""
 
@@ -751,13 +853,17 @@ class MQTTConnectionError(MQTTError):
         self,
         broker: str,
         port: int,
+        username: Optional[str] = None,
         cause: Optional[Exception] = None,
     ):
         message = f"Failed to connect to MQTT broker at {broker}:{port}"
+        context = {"broker": broker, "port": port}
+        if username:
+            context["username"] = username
         super().__init__(
             message=message,
             error_code="MQTT_CONNECTION_ERROR",
-            context={"broker": broker, "port": port},
+            context=context,
             severity=ErrorSeverity.HIGH,
             cause=cause,
         )
@@ -769,14 +875,25 @@ class MQTTPublishError(MQTTError):
     def __init__(
         self,
         topic: str,
-        broker: str,
+        payload_size: Optional[int] = None,
+        qos: Optional[int] = None,
+        broker: Optional[str] = None,
         cause: Optional[Exception] = None,
     ):
-        message = f"Failed to publish to MQTT topic '{topic}' on broker '{broker}'"
+        message = f"Failed to publish to MQTT topic '{topic}'"
+        if broker:
+            message += f" on broker '{broker}'"
+        context = {"topic": topic}
+        if broker:
+            context["broker"] = broker
+        if payload_size is not None:
+            context["payload_size"] = payload_size
+        if qos is not None:
+            context["qos"] = qos
         super().__init__(
             message=message,
             error_code="MQTT_PUBLISH_ERROR",
-            context={"topic": topic, "broker": broker},
+            context=context,
             severity=ErrorSeverity.MEDIUM,
             cause=cause,
         )
@@ -788,14 +905,18 @@ class MQTTSubscriptionError(MQTTError):
     def __init__(
         self,
         topic: str,
-        broker: str,
+        broker: Optional[str] = None,
         cause: Optional[Exception] = None,
     ):
-        message = f"Failed to subscribe to MQTT topic '{topic}' on broker '{broker}'"
+        message = f"Failed to subscribe to MQTT topic '{topic}'"
+        context = {"topic_pattern": topic}
+        if broker:
+            message += f" on broker '{broker}'"
+            context["broker"] = broker
         super().__init__(
             message=message,
             error_code="MQTT_SUBSCRIPTION_ERROR",
-            context={"topic": topic, "broker": broker},
+            context=context,
             severity=ErrorSeverity.MEDIUM,
             cause=cause,
         )
@@ -861,21 +982,35 @@ class SystemError(OccupancyPredictionError):
 
     def __init__(
         self,
-        component: str,
-        operation: str,
+        message: str,
+        operation: Optional[str] = None,
+        component: Optional[str] = None,
         cause: Optional[Exception] = None,
     ):
-        message = f"System error in {component} during {operation}"
+        # If operation is provided, incorporate it into the message
+        if operation and component:
+            full_message = f"System error in {component} during {operation}: {message}"
+        elif operation:
+            full_message = f"System error during {operation}: {message}"
+        else:
+            full_message = message
+            
+        context = {}
+        if component:
+            context["component"] = component
+        if operation:
+            context["operation"] = operation
+            
         super().__init__(
-            message=message,
+            message=full_message,
             error_code="SYSTEM_ERROR",
-            context={"component": component, "operation": operation},
+            context=context,
             severity=ErrorSeverity.HIGH,
             cause=cause,
         )
 
 
-class ResourceExhaustionError(SystemResourceError):
+class ResourceExhaustionError(SystemError):
     """Raised when system resources are exhausted."""
 
     def __init__(
@@ -885,17 +1020,19 @@ class ResourceExhaustionError(SystemResourceError):
         limit: float,
         unit: str = "%",
     ):
-        super().__init__(
-            resource_type=resource_type,
-            resource_name=f"{current_usage}{unit}/{limit}{unit}",
-        )
-        self.message = (
+        message = (
             f"Resource exhaustion: {resource_type} at {current_usage}{unit} "
             f"(limit: {limit}{unit})"
+        )
+        super().__init__(
+            message=message,
+            operation="resource_monitoring",
+            component=resource_type,
         )
         self.error_code = "RESOURCE_EXHAUSTION_ERROR"
         self.context.update(
             {
+                "resource_type": resource_type,
                 "current_usage": current_usage,
                 "limit": limit,
                 "unit": unit,
@@ -903,48 +1040,69 @@ class ResourceExhaustionError(SystemResourceError):
         )
 
 
-class ServiceUnavailableError(OccupancyPredictionError):
+class ServiceUnavailableError(SystemError):
     """Raised when a required service is unavailable."""
 
     def __init__(
         self,
         service_name: str,
-        reason: str = "Service unavailable",
+        endpoint: Optional[str] = None,
         retry_after: Optional[int] = None,
+        reason: str = "Service unavailable",
     ):
-        message = f"Service unavailable: {service_name} - {reason}"
-        context = {"service_name": service_name, "reason": reason}
+        message = f"Service unavailable: {service_name}"
+        if reason != "Service unavailable":
+            message += f" - {reason}"
+            
+        context = {"service_name": service_name}
+        if endpoint:
+            context["endpoint"] = endpoint
         if retry_after:
-            context["retry_after_seconds"] = retry_after
+            context["retry_after"] = retry_after
+        if reason != "Service unavailable":
+            context["reason"] = reason
 
         super().__init__(
             message=message,
-            error_code="SERVICE_UNAVAILABLE_ERROR",
-            context=context,
-            severity=ErrorSeverity.HIGH,
+            operation="service_access",
+            component=service_name,
         )
+        self.error_code = "SERVICE_UNAVAILABLE_ERROR"
+        self.context = context
 
 
-class MaintenanceModeError(OccupancyPredictionError):
+class MaintenanceModeError(SystemError):
     """Raised when system is in maintenance mode."""
 
     def __init__(
         self,
-        component: str,
-        maintenance_until: Optional[str] = None,
+        component: Optional[str] = None,
+        end_time: Optional[str] = None,
+        maintenance_until: Optional[str] = None,  # backward compatibility
     ):
-        message = f"System component in maintenance mode: {component}"
-        context = {"component": component}
-        if maintenance_until:
-            context["maintenance_until"] = maintenance_until
-            message += f" (until {maintenance_until})"
+        # Use end_time if provided, otherwise maintenance_until for backward compatibility
+        end_time = end_time or maintenance_until
+        
+        if component:
+            message = f"System component in maintenance mode: {component}"
+        else:
+            message = "System in maintenance mode"
+            
+        context = {}
+        if component:
+            context["component"] = component
+        if end_time:
+            context["estimated_end_time"] = end_time
+            message += f" (until {end_time})"
 
         super().__init__(
             message=message,
-            error_code="MAINTENANCE_MODE_ERROR",
-            context=context,
-            severity=ErrorSeverity.MEDIUM,
+            operation="maintenance",
+            component=component or "system",
         )
+        self.error_code = "MAINTENANCE_MODE_ERROR"
+        self.context = context
+        self.severity = ErrorSeverity.MEDIUM
 
 
 class APIError(OccupancyPredictionError):
@@ -977,25 +1135,33 @@ class APIAuthenticationError(APIError):
         )
 
 
-class RateLimitExceededError(APIError):
+class RateLimitExceededError(IntegrationError):
     """Raised when API rate limits are exceeded."""
 
     def __init__(
         self,
-        message: str = "Rate limit exceeded",
-        limit: Optional[int] = None,
-        window_seconds: Optional[int] = None,
+        service: str,
+        limit: int,
+        window_seconds: int,
+        reset_time: Optional[Union[str, int]] = None,
+        message: Optional[str] = None,
         context: Optional[Dict[str, Any]] = None,
     ):
+        if message is None:
+            message = f"Rate limit exceeded for {service}: {limit} requests per {window_seconds}s"
+            
         error_context = context or {}
-        if limit:
-            error_context["rate_limit"] = limit
-        if window_seconds:
-            error_context["window_seconds"] = window_seconds
+        error_context.update({
+            "service": service,
+            "limit": limit,
+            "window_seconds": window_seconds,
+        })
+        if reset_time is not None:
+            error_context["reset_time"] = reset_time
 
         super().__init__(
             message=message,
-            error_code="RATE_LIMIT_EXCEEDED",
+            error_code="RATE_LIMIT_EXCEEDED_ERROR",
             context=error_context,
             severity=ErrorSeverity.MEDIUM,
         )

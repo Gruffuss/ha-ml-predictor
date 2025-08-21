@@ -454,9 +454,9 @@ class AdaptiveRetrainer:
                         # Adjust priority based on drift severity
                         if drift_severity == DriftSeverity.CRITICAL:
                             priority += 5.0  # Highest priority
-                        elif drift_severity == DriftSeverity.MAJOR:
+                        elif drift_severity == DriftSeverity.HIGH:
                             priority += 3.0
-                        elif drift_severity == DriftSeverity.MODERATE:
+                        elif drift_severity == DriftSeverity.MEDIUM:
                             priority += 1.0
 
                     except Exception as e:
@@ -839,7 +839,9 @@ class AdaptiveRetrainer:
                     # Update existing request if new one has higher priority
                     if request.priority > existing_request.priority:
                         self._retraining_queue.remove(existing_request)
-                        heapq.heappush(self._retraining_queue, request)
+                        self._retraining_queue.append(request)
+                        # Sort by priority (highest first) to maintain correct order
+                        self._retraining_queue.sort(key=lambda x: x.priority, reverse=True)
                         logger.info(
                             f"Updated existing retraining request with higher priority: {request.request_id}"
                         )
@@ -1620,11 +1622,11 @@ class AdaptiveRetrainer:
                 if drift_metrics.overall_drift_score > 0.8:
                     return DriftSeverity.CRITICAL
                 elif drift_metrics.overall_drift_score > 0.6:
-                    return DriftSeverity.MAJOR
+                    return DriftSeverity.HIGH
                 elif drift_metrics.overall_drift_score > 0.4:
-                    return DriftSeverity.MODERATE
+                    return DriftSeverity.MEDIUM
                 else:
-                    return DriftSeverity.MINOR
+                    return DriftSeverity.LOW
 
             # Use drift detector for enhanced analysis
             # This would integrate with the actual ConceptDriftDetector methods
@@ -1633,7 +1635,7 @@ class AdaptiveRetrainer:
 
         except Exception as e:
             logger.error(f"Error classifying drift severity: {e}")
-            return DriftSeverity.MODERATE
+            return DriftSeverity.MEDIUM
 
     async def _validate_retraining_predictions(
         self, request: RetrainingRequest, training_result: TrainingResult

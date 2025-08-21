@@ -66,12 +66,16 @@ def mock_accuracy_tracker():
 def mock_drift_detector():
     """Create mock drift detector."""
     detector = Mock()
+    current_time = datetime.now()
     detector.get_drift_metrics = Mock(
         return_value=DriftMetrics(
+            room_id="test_room",
+            detection_time=current_time,
+            baseline_period=(current_time - timedelta(days=7), current_time - timedelta(days=1)),
+            current_period=(current_time - timedelta(days=1), current_time),
             overall_drift_score=0.15,
             drift_severity=DriftSeverity.LOW,
-            affected_features=["temperature", "humidity"],
-            drift_detection_time=datetime.utcnow(),
+            drifting_features=["temperature", "humidity"],
         )
     )
     return detector
@@ -91,11 +95,11 @@ def optimizer(optimization_config, mock_accuracy_tracker, mock_drift_detector):
 def mock_base_predictor():
     """Create mock base predictor for optimization testing."""
     predictor = Mock(spec=BasePredictor)
-    predictor.model_type = "test_model"
+    predictor.model_type = "xgboost"
     predictor.room_id = "test_room"
 
     # Mock training method with realistic scoring
-    def mock_train(X, y, **kwargs):
+    def mock_train(X_train, y_train, X_val=None, y_val=None, **kwargs):
         """Mock training that returns variable scores based on parameters."""
         # Get parameters if provided
         params = kwargs.get("params", {})
@@ -269,7 +273,7 @@ class TestOptimizationStrategies:
             # Run optimization
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
-                model_type="test_model",
+                model_type="xgboost",
                 room_id="test_room",
                 X_train=X_train,
                 y_train=y_train,
@@ -319,7 +323,7 @@ class TestOptimizationStrategies:
         with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
-                model_type="test_model",
+                model_type="xgboost",
                 room_id="test_room",
                 X_train=X_train,
                 y_train=y_train,
@@ -353,7 +357,7 @@ class TestOptimizationStrategies:
         with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
-                model_type="test_model",
+                model_type="xgboost",
                 room_id="test_room",
                 X_train=X_train,
                 y_train=y_train,
@@ -479,7 +483,7 @@ class TestOptimizationConstraints:
         with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
-                model_type="test_model",
+                model_type="xgboost",
                 room_id="test_room",
                 X_train=X_train,
                 y_train=y_train,
@@ -509,7 +513,7 @@ class TestOptimizationConstraints:
         with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
-                model_type="test_model",
+                model_type="xgboost",
                 room_id="test_room",
                 X_train=X_train,
                 y_train=y_train,
@@ -524,7 +528,7 @@ class TestOptimizationHistory:
 
     def test_optimization_history_tracking(self, optimizer):
         """Test that optimization history is properly tracked."""
-        model_key = "test_model_test_room"
+        model_key = "xgboost_test_room"
 
         # Initially empty
         assert len(optimizer._optimization_history) == 0
@@ -551,7 +555,7 @@ class TestOptimizationHistory:
 
     def test_parameter_caching(self, optimizer):
         """Test parameter caching functionality."""
-        model_key = "test_model_test_room"
+        model_key = "xgboost_test_room"
         params = {"learning_rate": 0.05, "n_estimators": 100}
 
         # Cache parameters
@@ -565,7 +569,7 @@ class TestOptimizationHistory:
 
     def test_performance_history_tracking(self, optimizer):
         """Test performance history window management."""
-        model_key = "test_model"
+        model_key = "xgboost"
 
         # Add performance values up to window limit
         for i in range(15):  # More than the typical window of 10
@@ -598,8 +602,9 @@ class TestOptimizationStatistics:
     def test_average_improvement_tracking(self, optimizer):
         """Test average improvement calculation."""
         # Test improvement tracking
+        optimizer._successful_optimizations = 1
         optimizer._update_improvement_average(0.05)
-        assert optimizer._average_improvement == 0.05
+        assert abs(optimizer._average_improvement - 0.05) < 0.001
 
         optimizer._successful_optimizations = 2
         optimizer._update_improvement_average(0.03)
@@ -768,7 +773,7 @@ class TestPerformanceOptimization:
         with patch.object(optimizer, "_get_parameter_space", return_value=param_space):
             result = await optimizer.optimize_model_parameters(
                 model=mock_base_predictor,
-                model_type="test_model",
+                model_type="xgboost",
                 room_id="test_room",
                 X_train=X_train,
                 y_train=y_train,
@@ -817,7 +822,7 @@ class TestPerformanceOptimization:
     def test_memory_usage_tracking(self, optimizer):
         """Test memory usage tracking in optimization."""
         # Test performance history cleanup
-        model_key = "test_model"
+        model_key = "xgboost"
 
         # Add many performance values
         for i in range(100):

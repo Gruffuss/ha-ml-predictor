@@ -544,7 +544,7 @@ class ModelOptimizer:
 
             except Exception as e:
                 logger.error(f"Error in objective function: {e}")
-                return 1.0  # High penalty for errors
+                return float('inf')  # Infinite penalty for errors
 
         return objective
 
@@ -815,6 +815,19 @@ class ModelOptimizer:
                 if score > best_score:
                     best_score = score
                     best_params = params.copy()
+
+            # Check if any evaluations succeeded
+            if best_score == float("-inf"):
+                return OptimizationResult(
+                    success=False,
+                    optimization_time_seconds=0.0,
+                    best_parameters={},
+                    best_score=0.0,
+                    improvement_over_default=0.0,
+                    total_evaluations=evaluations,
+                    convergence_achieved=False,
+                    error_message="All optimization attempts failed",
+                )
 
             # Calculate improvement
             default_score = 0.7  # Assume default model achieves 70% accuracy

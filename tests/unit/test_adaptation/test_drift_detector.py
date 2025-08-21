@@ -198,8 +198,8 @@ class TestConceptDriftDetector:
         # Verify no significant drift detected
         assert drift_metrics is not None
         assert drift_metrics.drift_severity in [
-            DriftSeverity.MINOR,
-            DriftSeverity.MODERATE,
+            DriftSeverity.LOW,
+            DriftSeverity.MEDIUM,
         ]
         assert drift_metrics.accuracy_degradation < 5.0
         assert not drift_metrics.immediate_attention_required
@@ -244,9 +244,9 @@ class TestConceptDriftDetector:
         assert drift_metrics.accuracy_degradation > 20
         # Severity depends on overall scoring algorithm
         assert drift_metrics.drift_severity in [
-            DriftSeverity.MINOR,
-            DriftSeverity.MODERATE,
-            DriftSeverity.MAJOR,
+            DriftSeverity.LOW,
+            DriftSeverity.MEDIUM,
+            DriftSeverity.HIGH,
             DriftSeverity.CRITICAL,
         ]
         # Validate that key drift indicators are properly set
@@ -587,7 +587,7 @@ class TestDriftDetectionIntegration:
             accuracy_degradation=5.0,
             overall_drift_score=0.2,
         )
-        assert minor_metrics.drift_severity == DriftSeverity.MINOR
+        assert minor_metrics.drift_severity == DriftSeverity.LOW
 
         # Test major drift
         major_metrics = DriftMetrics(
@@ -604,7 +604,7 @@ class TestDriftDetectionIntegration:
             accuracy_degradation=25.0,
             overall_drift_score=0.7,
         )
-        assert major_metrics.drift_severity == DriftSeverity.MAJOR
+        assert major_metrics.drift_severity == DriftSeverity.HIGH
 
         # Test critical drift
         critical_metrics = DriftMetrics(

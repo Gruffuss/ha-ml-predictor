@@ -5,7 +5,7 @@ This module provides shared fixtures and configuration for all tests.
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
 import tempfile
@@ -395,7 +395,7 @@ async def test_db_manager(test_db_engine):
 @pytest.fixture
 def sample_sensor_events():
     """Create sample sensor events for testing."""
-    base_time = datetime.now(datetime.UTC) - timedelta(hours=1)
+    base_time = datetime.now(timezone.utc) - timedelta(hours=1)
 
     events = []
     for i in range(10):
@@ -424,7 +424,7 @@ def sample_sensor_events():
 @pytest.fixture
 def sample_ha_events():
     """Create sample Home Assistant events for testing."""
-    base_time = datetime.now(datetime.UTC) - timedelta(hours=1)
+    base_time = datetime.now(timezone.utc) - timedelta(hours=1)
 
     events = []
     for i in range(5):
@@ -493,7 +493,7 @@ async def populated_test_db(test_db_session, sample_sensor_events):
             # Explicitly set id=None to allow autoincrement
             id=None,
             room_id="test_room",
-            timestamp=datetime.now(datetime.UTC) - timedelta(hours=i),
+            timestamp=datetime.now(timezone.utc) - timedelta(hours=i),
             is_occupied=i % 2 == 0,
             occupancy_confidence=0.8,
             occupant_type="human",
@@ -510,8 +510,8 @@ async def populated_test_db(test_db_session, sample_sensor_events):
             # Explicitly set id=None to allow autoincrement
             id=None,
             room_id="test_room",
-            prediction_time=datetime.now(datetime.UTC) - timedelta(hours=i),
-            predicted_transition_time=datetime.now(datetime.UTC)
+            prediction_time=datetime.now(timezone.utc) - timedelta(hours=i),
+            predicted_transition_time=datetime.now(timezone.utc)
             + timedelta(minutes=15 + i * 5),
             transition_type="occupied_to_vacant",
             confidence_score=0.75 + i * 0.05,
@@ -611,7 +611,7 @@ def create_test_ha_event(
 ) -> HAEvent:
     """Create a test Home Assistant event."""
     if timestamp is None:
-        timestamp = datetime.now(datetime.UTC)
+        timestamp = datetime.now(timezone.utc)
     if attributes is None:
         attributes = {"device_class": "motion"}
 
@@ -633,7 +633,7 @@ def create_test_sensor_event(
 ) -> SensorEvent:
     """Create a test sensor event."""
     if timestamp is None:
-        timestamp = datetime.now(datetime.UTC)
+        timestamp = datetime.now(timezone.utc)
 
     return SensorEvent(
         room_id=room_id,
@@ -645,5 +645,5 @@ def create_test_sensor_event(
         attributes={"test": True},
         is_human_triggered=True,
         confidence_score=0.8,
-        created_at=datetime.now(datetime.UTC),
+        created_at=datetime.now(timezone.utc),
     )

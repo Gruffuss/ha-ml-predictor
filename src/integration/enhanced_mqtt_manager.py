@@ -15,7 +15,7 @@ Features:
 
 import asyncio
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
@@ -119,7 +119,7 @@ class EnhancedMQTTIntegrationManager:
         # Performance tracking
         self._publish_times: List[datetime] = []
         self._publish_latencies: List[float] = []
-        self._last_stats_update = datetime.utcnow()
+        self._last_stats_update = datetime.now(timezone.utc)
 
         # Integration state
         self._integration_initialized = False
@@ -200,7 +200,7 @@ class EnhancedMQTTIntegrationManager:
         Returns:
             Dictionary with publish results for all channels
         """
-        publish_start_time = datetime.utcnow()
+        publish_start_time = datetime.now(timezone.utc)
 
         try:
             # Use real-time publisher for comprehensive broadcasting
@@ -212,7 +212,7 @@ class EnhancedMQTTIntegrationManager:
 
             # Track performance metrics
             publish_latency = (
-                datetime.utcnow() - publish_start_time
+                datetime.now(timezone.utc) - publish_start_time
             ).total_seconds() * 1000
             self._record_publish_performance(publish_latency, results)
 
@@ -220,7 +220,7 @@ class EnhancedMQTTIntegrationManager:
             if hasattr(self.base_mqtt_manager, "stats"):
                 self.base_mqtt_manager.stats.predictions_published += 1
                 self.base_mqtt_manager.stats.last_prediction_published = (
-                    datetime.utcnow()
+                    datetime.now(timezone.utc)
                 )
 
             logger.debug(
@@ -261,7 +261,7 @@ class EnhancedMQTTIntegrationManager:
                 "system_status": self._determine_system_status(
                     database_connected, active_alerts
                 ),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "tracking_stats": tracking_stats,
                 "model_stats": model_stats,
                 "integration_stats": self.get_integration_stats(),
@@ -443,7 +443,7 @@ class EnhancedMQTTIntegrationManager:
     ) -> None:
         """Record publishing performance metrics."""
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             # Track publish times and latencies
             self._publish_times.append(now)
@@ -484,7 +484,7 @@ class EnhancedMQTTIntegrationManager:
     def _update_enhanced_stats(self) -> None:
         """Update enhanced statistics."""
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             # Update predictions per minute
             recent_publishes = [
@@ -581,7 +581,7 @@ class EnhancedMQTTIntegrationManager:
             while not self._shutdown_event.is_set():
                 try:
                     # Clean old performance data
-                    cutoff_time = datetime.utcnow() - timedelta(hours=1)
+                    cutoff_time = datetime.now(timezone.utc) - timedelta(hours=1)
 
                     self._publish_times = [
                         t for t in self._publish_times if t > cutoff_time

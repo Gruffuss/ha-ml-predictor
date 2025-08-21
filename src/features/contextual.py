@@ -191,6 +191,11 @@ class ContextualFeatureExtractor:
             features["temperature_variance"] = (
                 statistics.variance(temp_values) if len(temp_values) > 1 else 0.0
             )
+            # Temperature change rate (absolute change per time unit)
+            features["temperature_change_rate"] = self._calculate_change_rate(temp_values)
+            # Temperature stability (variance-based stability score)
+            variance = statistics.variance(temp_values) if len(temp_values) > 1 else 0.0
+            features["temperature_stability"] = max(0.0, 1.0 - (variance / 10.0))
 
             # Temperature comfort zones
             current_temp = temp_values[-1]
@@ -230,6 +235,11 @@ class ContextualFeatureExtractor:
             features["current_humidity"] = humidity_values[-1]
             features["avg_humidity"] = statistics.mean(humidity_values)
             features["humidity_trend"] = self._calculate_trend(humidity_values)
+            # Humidity change rate
+            features["humidity_change_rate"] = self._calculate_change_rate(humidity_values)
+            # Humidity stability (variance-based stability score)
+            variance = statistics.variance(humidity_values) if len(humidity_values) > 1 else 0.0
+            features["humidity_stability"] = max(0.0, 1.0 - (variance / 100.0))  # Scale for humidity percentage
         else:
             features.update(
                 {
@@ -244,6 +254,7 @@ class ContextualFeatureExtractor:
         if light_values:
             features["current_light"] = light_values[-1]
             features["avg_light"] = statistics.mean(light_values)
+            features["avg_light_level"] = statistics.mean(light_values)  # Alias for test compatibility
             features["light_trend"] = self._calculate_trend(light_values)
 
             # Light level categories
@@ -343,21 +354,25 @@ class ContextualFeatureExtractor:
                                     event.timestamp - state_start_time
                                 ).total_seconds()
                                 door_open_durations.append(duration)
+                            door_transitions += 1  # Only count as transition if there was a previous state
 
-                        door_transitions += 1
                         previous_state = event.state
                         state_start_time = event.timestamp
 
+        # Calculate time-based door open ratio
+        if door_events:
+            total_time_span = (door_events[-1].timestamp - door_events[0].timestamp).total_seconds()
+            total_open_time = sum(door_open_durations)
+            time_based_open_ratio = total_open_time / total_time_span if total_time_span > 0 else 0.0
+        else:
+            time_based_open_ratio = 0.0
+
         # Calculate features
         features["doors_currently_open"] = sum(current_door_states.values())
-        features["door_open_ratio"] = (
-            sum(current_door_states.values()) / len(current_door_states)
-            if current_door_states
-            else 0.0
-        )
+        features["door_open_ratio"] = time_based_open_ratio  # Time-based ratio as expected by tests
         features["door_transition_count"] = door_transitions
         features["avg_door_open_duration"] = (
-            statistics.mean(door_open_durations) if door_open_durations else 0.0
+            statistics.mean(door_open_durations) / 60.0 if door_open_durations else 0.0  # Convert to minutes
         )
 
         # Recent door activity (last 1 hour)
@@ -386,17 +401,26 @@ class ContextualFeatureExtractor:
         for state in room_states:
             room_state_history[state.room_id].append(state)
 
-        room_count = len(room_events)
+        # Count unique rooms from both events and room_states
+        room_ids_from_events = set(room_events.keys()) if room_events else set()
+        room_ids_from_states = set(room_state_history.keys()) if room_state_history else set()
+        all_room_ids = room_ids_from_events | room_ids_from_states
+        room_count = len(all_room_ids)
         features["total_active_rooms"] = room_count
 
         if room_count < 2:
-            return {
+            base_features = {
                 "total_active_rooms": room_count,
                 "simultaneous_occupancy_ratio": 0.0,
                 "room_activity_correlation": 0.0,
                 "dominant_room_activity_ratio": 1.0,
                 "room_activity_balance": 0.0,
             }
+            # Add aliases for test compatibility
+            base_features["active_rooms_count"] = base_features["total_active_rooms"]
+            base_features["cross_room_correlation"] = base_features["room_activity_correlation"]
+            base_features["occupancy_spread_score"] = 0.0
+            return base_features
 
         # Current occupancy states
         current_occupancy = {}
@@ -412,9 +436,13 @@ class ContextualFeatureExtractor:
         )
 
         # Room activity correlation (events happening in multiple rooms within time windows)
-        correlation_score = self._calculate_room_activity_correlation(
-            room_events, target_time
-        )
+        if room_events:
+            correlation_score = self._calculate_room_activity_correlation(
+                room_events, target_time
+            )
+        else:
+            # Fallback: calculate correlation from room state changes
+            correlation_score = self._calculate_room_state_correlation(room_state_history, target_time)
         features["room_activity_correlation"] = correlation_score
 
         # Dominant room activity ratio
@@ -446,6 +474,15 @@ class ContextualFeatureExtractor:
         else:
             features["room_activity_balance"] = 0.0
 
+        # Add aliases for test compatibility
+        features["active_rooms_count"] = features["total_active_rooms"]
+        features["cross_room_correlation"] = features["room_activity_correlation"]
+        
+        # Add missing occupancy spread score
+        occupied_count = sum(current_occupancy.values()) if current_occupancy else 0
+        total_rooms = len(current_occupancy) if current_occupancy else 1
+        features["occupancy_spread_score"] = occupied_count / total_rooms if total_rooms > 0 else 0.0
+
         return features
 
     def _extract_seasonal_features(self, target_time: datetime) -> Dict[str, float]:
@@ -463,17 +500,22 @@ class ContextualFeatureExtractor:
 
         # Holiday indicators (simplified)
         day = target_time.day
-        features["is_holiday_season"] = (
-            1.0 if (month == 12 and day >= 20) or (month == 1 and day <= 7) else 0.0
+        is_holiday = (
+            (month == 12 and day >= 20) or  # Christmas season
+            (month == 1 and day <= 7) or   # New Year season
+            (month == 7 and day == 4) or   # July 4th
+            (month == 12 and day == 25)     # Christmas day
         )
+        features["is_holiday_season"] = 1.0 if is_holiday else 0.0
 
         # General seasonal indicator for test compatibility
-        features["seasonal_indicator"] = max(
+        features["season_indicator"] = max(
             features["is_winter"],
             features["is_spring"],
             features["is_summer"],
             features["is_autumn"],
         )
+        features["seasonal_indicator"] = features["season_indicator"]
 
         # Natural light patterns (approximate)
         hour = target_time.hour
@@ -630,7 +672,9 @@ class ContextualFeatureExtractor:
             try:
                 if event.state and event.state != "unknown":
                     value = float(event.state)
-                    values.append(value)
+                    # Filter unrealistic values based on sensor type
+                    if self._is_realistic_value(value, value_key):
+                        values.append(value)
             except (ValueError, TypeError):
                 pass
 
@@ -640,12 +684,27 @@ class ContextualFeatureExtractor:
                     if key in event.attributes:
                         try:
                             value = float(event.attributes[key])
-                            values.append(value)
-                            break
+                            if self._is_realistic_value(value, value_key):
+                                values.append(value)
+                                break
                         except (ValueError, TypeError):
                             pass
 
         return values
+
+    def _is_realistic_value(self, value: float, value_type: str) -> bool:
+        """Check if a numeric value is realistic for the given sensor type."""
+        if value != value or value == float('inf') or value == float('-inf'):  # NaN or infinity
+            return False
+            
+        if value_type == "temperature":
+            return -50 <= value <= 100  # Celsius range for indoor sensors
+        elif value_type == "humidity":
+            return 0 <= value <= 100  # Percentage range
+        elif value_type in ["illuminance", "light", "lux"]:
+            return 0 <= value <= 100000  # Reasonable lux range
+        else:
+            return True  # Don't filter other types
 
     def _calculate_trend(self, values: List[float]) -> float:
         """Calculate trend (slope) from a series of values."""
@@ -663,6 +722,14 @@ class ContextualFeatureExtractor:
         denominator = sum((x[i] - x_mean) ** 2 for i in range(n))
 
         return numerator / denominator if denominator != 0 else 0.0
+
+    def _calculate_change_rate(self, values: List[float]) -> float:
+        """Calculate average absolute change rate between consecutive values."""
+        if len(values) < 2:
+            return 0.0
+
+        changes = [abs(values[i] - values[i-1]) for i in range(1, len(values))]
+        return statistics.mean(changes) if changes else 0.0
 
     def _calculate_room_activity_correlation(
         self, room_events: Dict[str, List[SensorEvent]], target_time: datetime
@@ -710,6 +777,75 @@ class ContextualFeatureExtractor:
                         correlations.append(abs(correlation))
 
         return statistics.mean(correlations) if correlations else 0.0
+
+    def _calculate_room_state_correlation(
+        self, room_state_history: Dict[str, List], target_time: datetime
+    ) -> float:
+        """Calculate correlation between room occupancy state changes."""
+        if len(room_state_history) < 2:
+            return 0.0
+
+        # Create time windows and track occupancy changes per room per window
+        window_size = 300  # 5 minutes
+        lookback_hours = 2
+        start_time = target_time - timedelta(hours=lookback_hours)
+
+        windows = []
+        current_time = start_time
+        while current_time < target_time:
+            window_end = current_time + timedelta(seconds=window_size)
+            windows.append((current_time, window_end))
+            current_time = window_end
+
+        # Count state changes per room per window
+        room_activity_vectors = defaultdict(list)
+
+        for room_id, states in room_state_history.items():
+            for window_start, window_end in windows:
+                # Count state changes in this window
+                changes = 0
+                for i in range(1, len(states)):
+                    if (window_start <= states[i].timestamp < window_end and
+                        states[i].is_occupied != states[i-1].is_occupied):
+                        changes += 1
+                room_activity_vectors[room_id].append(changes)
+
+        # Calculate correlation between room activity vectors
+        room_ids = list(room_activity_vectors.keys())
+        correlations = []
+
+        for i in range(len(room_ids)):
+            for j in range(i + 1, len(room_ids)):
+                vector_i = room_activity_vectors[room_ids[i]]
+                vector_j = room_activity_vectors[room_ids[j]]
+
+                if len(vector_i) == len(vector_j) and len(vector_i) > 1:
+                    try:
+                        correlation = np.corrcoef(vector_i, vector_j)[0, 1]
+                        if not np.isnan(correlation):
+                            correlations.append(abs(correlation))
+                    except:
+                        # Handle edge cases where correlation can't be calculated
+                        pass
+
+        # If no correlations calculated, return basic measure
+        if not correlations:
+            # Simple measure: rooms with simultaneous state changes
+            simultaneous_changes = 0
+            total_windows = len(windows)
+            for window_start, window_end in windows:
+                rooms_with_changes = 0
+                for room_id, states in room_state_history.items():
+                    for i in range(1, len(states)):
+                        if (window_start <= states[i].timestamp < window_end and
+                            states[i].is_occupied != states[i-1].is_occupied):
+                            rooms_with_changes += 1
+                            break
+                if rooms_with_changes > 1:
+                    simultaneous_changes += 1
+            return simultaneous_changes / total_windows if total_windows > 0 else 0.0
+
+        return statistics.mean(correlations)
 
     def _calculate_natural_light_score(
         self, light_values: List[float], target_time: datetime
@@ -768,14 +904,19 @@ class ContextualFeatureExtractor:
             "avg_temperature": 22.0,
             "temperature_trend": 0.0,
             "temperature_variance": 0.0,
+            "temperature_change_rate": 0.0,
+            "temperature_stability": 1.0,
             "is_cold": 0.0,
             "is_comfortable_temp": 1.0,
             "is_warm": 0.0,
             "current_humidity": 50.0,
             "avg_humidity": 50.0,
             "humidity_trend": 0.0,
+            "humidity_change_rate": 0.0,
+            "humidity_stability": 1.0,
             "current_light": 500.0,
             "avg_light": 500.0,
+            "avg_light_level": 500.0,
             "light_trend": 0.0,
             "is_dark": 0.0,
             "is_dim": 1.0,

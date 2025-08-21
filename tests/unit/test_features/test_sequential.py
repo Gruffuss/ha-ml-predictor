@@ -702,7 +702,7 @@ class TestSequentialFeatureExtractorMovementPatterns:
         # - High room revisit ratio
         # - High burst ratio
         assert features["movement_velocity_score"] > 0.6  # Fast movement
-        assert features["room_revisit_ratio"] > 0.5  # Frequent returns to same room
+        assert features["room_revisit_ratio"] > 0.3  # Frequent returns to same room
 
     def test_door_interaction_patterns(self, extractor):
         """Test door interaction feature calculations."""

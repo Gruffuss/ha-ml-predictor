@@ -71,7 +71,9 @@ class TestFeatureRecord:
         """Test validity check for fresh record."""
         # Record extracted 1 minute ago
         with patch("src.features.store.datetime") as mock_datetime:
-            mock_datetime.utcnow.return_value = datetime(2024, 1, 15, 15, 2, 0)
+            mock_now = datetime(2024, 1, 15, 15, 2, 0)
+            mock_datetime.now.return_value = mock_now
+            mock_datetime.utcnow.return_value = mock_now
 
             # Should be valid (2 minutes old, max age 24 hours)
             assert sample_record.is_valid(max_age_hours=24) is True
@@ -80,7 +82,9 @@ class TestFeatureRecord:
         """Test validity check for old record."""
         with patch("src.features.store.datetime") as mock_datetime:
             # Record is now 25 hours old
-            mock_datetime.utcnow.return_value = datetime(2024, 1, 16, 16, 1, 0)
+            mock_now = datetime(2024, 1, 16, 16, 1, 0)
+            mock_datetime.now.return_value = mock_now
+            mock_datetime.utcnow.return_value = mock_now
 
             # Should be invalid (25 hours old, max age 24 hours)
             assert sample_record.is_valid(max_age_hours=24) is False
@@ -89,7 +93,9 @@ class TestFeatureRecord:
         """Test validity check with custom max age."""
         with patch("src.features.store.datetime") as mock_datetime:
             # Record is 2 hours old
-            mock_datetime.utcnow.return_value = datetime(2024, 1, 15, 17, 1, 0)
+            mock_now = datetime(2024, 1, 15, 17, 1, 0)
+            mock_datetime.now.return_value = mock_now
+            mock_datetime.utcnow.return_value = mock_now
 
             # Should be invalid with 1-hour max age
             assert sample_record.is_valid(max_age_hours=1) is False
@@ -368,6 +374,8 @@ class TestFeatureStore:
         engine.create_feature_dataframe.return_value = pd.DataFrame(
             {"feature": [1.0, 2.0, 3.0]}
         )
+        # Add default features method to return a dict instead of Mock
+        engine._get_default_features.return_value = {"default_feature": 0.0}
         return engine
 
     @pytest.fixture
@@ -426,17 +434,20 @@ class TestFeatureStore:
         target_time = datetime(2024, 1, 15, 15, 0, 0)
         expected_features = {"cached_feature": 1.0}
 
-        # Put record in cache
+        # Put record in cache with same parameters as get_features will use
+        feature_types = ["temporal", "sequential", "contextual"]
         store.cache.put(
             room_id=room_id,
             target_time=target_time,
             lookback_hours=24,
-            feature_types=["temporal"],
+            feature_types=feature_types,
             features=expected_features,
             data_hash="hash",
         )
 
-        features = await store.get_features(room_id, target_time)
+        features = await store.get_features(
+            room_id, target_time, lookback_hours=24, feature_types=feature_types
+        )
 
         assert features == expected_features
         # Check that it was a cache hit, not a miss
@@ -502,6 +513,7 @@ class TestFeatureStore:
             assert len(results) == 2
             assert results[0] == {"success": 1.0}
             assert isinstance(results[1], dict)  # Should be default features
+            assert results[1] == {"default_feature": 0.0}  # Should be default features dict
 
     @pytest.mark.asyncio
     async def test_compute_training_data(self, store):

@@ -13,7 +13,7 @@ Features:
 """
 
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from typing import Any, Dict, List, Optional
 
@@ -121,7 +121,7 @@ class PredictionPublisher:
         self.predictions_published = 0
         self.status_updates_published = 0
         self.last_prediction_time: Optional[datetime] = None
-        self.system_start_time = datetime.utcnow()
+        self.system_start_time = datetime.now(timezone.utc)
 
         # Cache for room names
         self.room_name_cache = {
@@ -154,7 +154,7 @@ class PredictionPublisher:
             )
 
             # Calculate time until transition
-            time_until = prediction_result.predicted_time - datetime.utcnow()
+            time_until = prediction_result.predicted_time - datetime.now(timezone.utc)
             time_until_seconds = max(0, int(time_until.total_seconds()))
 
             # Format human readable time
@@ -182,7 +182,7 @@ class PredictionPublisher:
                         "confidence": float(alt_confidence),
                         "time_until_seconds": max(
                             0,
-                            int((alt_time - datetime.utcnow()).total_seconds()),
+                            int((alt_time - datetime.now(timezone.utc)).total_seconds()),
                         ),
                     }
                 )
@@ -196,7 +196,7 @@ class PredictionPublisher:
                 time_until_human=time_until_human,
                 model_type=prediction_result.model_type,
                 model_version=prediction_result.model_version or "unknown",
-                prediction_made_at=datetime.utcnow().isoformat(),
+                prediction_made_at=datetime.now(timezone.utc).isoformat(),
                 room_id=room_id,
                 room_name=room_name,
                 base_predictions=base_predictions,
@@ -204,7 +204,7 @@ class PredictionPublisher:
                 alternatives=alternatives,
                 prediction_reliability=reliability,
                 features_count=len(prediction_result.features_used or []),
-                last_updated=datetime.utcnow().isoformat(),
+                last_updated=datetime.now(timezone.utc).isoformat(),
             )
 
             # Determine topic
@@ -220,7 +220,7 @@ class PredictionPublisher:
 
             if result.success:
                 self.predictions_published += 1
-                self.last_prediction_time = datetime.utcnow()
+                self.last_prediction_time = datetime.now(timezone.utc)
 
                 logger.debug(
                     f"Published prediction for {room_name}: {prediction_result.transition_type} "
@@ -242,7 +242,7 @@ class PredictionPublisher:
                 success=False,
                 topic=f"{self.config.topic_prefix}/{room_id}/prediction",
                 payload_size=0,
-                publish_time=datetime.utcnow(),
+                publish_time=datetime.now(timezone.utc),
                 error_message=str(e),
             )
 
@@ -270,7 +270,7 @@ class PredictionPublisher:
         try:
             # Calculate uptime
             uptime_seconds = int(
-                (datetime.utcnow() - self.system_start_time).total_seconds()
+                (datetime.now(timezone.utc) - self.system_start_time).total_seconds()
             )
 
             # Extract tracking statistics
@@ -333,7 +333,7 @@ class PredictionPublisher:
                 active_alerts=active_alerts,
                 last_error=last_error,
                 error_count_last_hour=0,  # Would need to be tracked
-                last_updated=datetime.utcnow().isoformat(),
+                last_updated=datetime.now(timezone.utc).isoformat(),
                 system_start_time=self.system_start_time.isoformat(),
             )
 
@@ -361,7 +361,7 @@ class PredictionPublisher:
                 success=False,
                 topic=f"{self.config.topic_prefix}/system/status",
                 payload_size=0,
-                publish_time=datetime.utcnow(),
+                publish_time=datetime.now(timezone.utc),
                 error_message=str(e),
             )
 
