@@ -7,7 +7,7 @@ health checks, retry logic, and proper cleanup for PostgreSQL with TimescaleDB.
 
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import hashlib
 import logging
 import time
@@ -473,7 +473,7 @@ class DatabaseManager:
         analysis = {
             "query": query[:200] + "..." if len(query) > 200 else query,
             "parameters": parameters,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         try:
@@ -562,7 +562,7 @@ class DatabaseManager:
             Dictionary with connection pool statistics
         """
         metrics = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "pool_status": "unknown",
             "connection_stats": self._connection_stats.copy(),
         }
@@ -630,7 +630,7 @@ class DatabaseManager:
         """
         health_status = {
             "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "connection_stats": self._connection_stats.copy(),
             "timescale_status": None,
             "performance_metrics": {},
@@ -745,7 +745,7 @@ class DatabaseManager:
                         }
                     )
 
-                self._connection_stats["last_health_check"] = datetime.utcnow()
+                self._connection_stats["last_health_check"] = datetime.now(timezone.utc)
 
         except Exception as e:
             health_status["status"] = "unhealthy"

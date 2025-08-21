@@ -1,0 +1,60 @@
+..............................................EEEEEEEEEEEEEEEE..EEEEEE.. [  9%]
+....F................................................................FF. [ 19%]
+...........FFF......F...FFF...FFF..F.................................... [ 29%]
+..............................................................FF.FF..... [ 39%]
+....F.FFFFF.FFFF
+============================== warnings summary ===============================
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_fields.py:161
+  C:\Users\eu074\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_fields.py:161: UserWarning: Field "model_info" has conflict with protected namespace "model_".
+  
+  You may be able to resolve this warning by setting `model_config['protected_namespaces'] = ()`.
+    warnings.warn(
+
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_config.py:291
+  C:\Users\eu074\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_config.py:291: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.8/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+..\..\..\..\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_config.py:341
+  C:\Users\eu074\AppData\Local\Programs\Python\Python312\Lib\site-packages\pydantic\_internal\_config.py:341: UserWarning: Valid config keys have changed in V2:
+  * 'schema_extra' has been renamed to 'json_schema_extra'
+    warnings.warn(message, UserWarning)
+
+tests/unit/test_adaptation/test_retrainer.py: 10 warnings
+  C:\Users\eu074\OneDrive\Documents\GitHub\ha-ml-predictor\tests\unit\test_adaptation\test_retrainer.py:223: FutureWarning: 'H' is deprecated and will be removed in a future version, please use 'h' instead.
+    "timestamp": pd.date_range(
+
+tests/unit/test_adaptation/test_retrainer.py::TestDataManagement::test_data_validation_before_training
+  C:\Users\eu074\OneDrive\Documents\GitHub\ha-ml-predictor\tests\unit\test_adaptation\test_retrainer.py:1207: RuntimeWarning: coroutine 'AdaptiveRetrainer._validate_training_data' was never awaited
+    is_valid = await adaptive_retrainer._validate_training_data(empty_X, empty_y)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/unit/test_adaptation/test_tracking_manager.py::TestTrackingManagerInitialization::test_manager_initialization
+tests/unit/test_adaptation/test_tracking_manager.py::TestTrackingManagerInitialization::test_disabled_manager_initialization
+tests/unit/test_adaptation/test_tracking_manager.py::TestPredictionRecording::test_prediction_recording_with_disabled_tracking
+  C:\Users\eu074\OneDrive\Documents\GitHub\ha-ml-predictor\src\integration\mqtt_integration_manager.py:86: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.system_start_time = datetime.utcnow()
+
+tests/unit/test_adaptation/test_tracking_manager.py: 34 warnings
+  C:\Users\eu074\OneDrive\Documents\GitHub\ha-ml-predictor\src\integration\realtime_publisher.py:428: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.system_start_time = datetime.utcnow()
+
+tests/unit/test_adaptation/test_tracking_manager.py::TestTrackingManagerInitialization::test_manager_initialization
+tests/unit/test_adaptation/test_tracking_manager.py::TestTrackingManagerInitialization::test_disabled_manager_initialization
+tests/unit/test_adaptation/test_tracking_manager.py::TestPredictionRecording::test_prediction_recording_with_disabled_tracking
+  C:\Users\eu074\OneDrive\Documents\GitHub\ha-ml-predictor\src\integration\enhanced_mqtt_manager.py:122: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self._last_stats_update = datetime.utcnow()
+
+tests/unit/test_adaptation/test_tracking_manager.py: 31 warnings
+  C:\Users\eu074\OneDrive\Documents\GitHub\ha-ml-predictor\src\integration\dashboard.py:378: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self._dashboard_start_time = datetime.utcnow()
+
+tests/unit/test_adaptation/test_tracking_manager.py: 114 warnings
+  C:\Users\eu074\OneDrive\Documents\GitHub\ha-ml-predictor\src\integration\websocket_api.py:725: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    timestamp=datetime.utcnow(),
+
+tests/unit/test_adaptation/test_tracking_manager.py: 114 warnings
+  C:\Users\eu074\OneDrive\Documents\GitHub\ha-ml-predictor\src\integration\websocket_api.py:1100: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    time_until = prediction_result.predicted_time - datetime.utcnow()
+
+tests/unit/test_adaptation/test_tracking_manager.py::TestDriftDetectionIntegration::test_manual_drift_detection

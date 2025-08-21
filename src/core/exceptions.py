@@ -240,6 +240,42 @@ class WebSocketError(HomeAssistantError):
         )
 
 
+class WebSocketConnectionError(WebSocketError):
+    """Raised when WebSocket connection fails."""
+
+    def __init__(self, url: str, cause: Optional[Exception] = None):
+        super().__init__(reason="Connection failed", url=url)
+        self.cause = cause
+        self.error_code = "WEBSOCKET_CONNECTION_ERROR"
+
+
+class WebSocketAuthenticationError(WebSocketError):
+    """Raised when WebSocket authentication fails."""
+
+    def __init__(self, url: str, auth_method: Optional[str] = None):
+        reason = "Authentication failed"
+        if auth_method:
+            reason += f" ({auth_method})"
+        super().__init__(reason=reason, url=url)
+        self.error_code = "WEBSOCKET_AUTH_ERROR"
+        if auth_method:
+            self.context["auth_method"] = auth_method
+
+
+class WebSocketValidationError(WebSocketError):
+    """Raised when WebSocket message validation fails."""
+
+    def __init__(
+        self, url: str, validation_error: str, message_type: Optional[str] = None
+    ):
+        reason = f"Message validation failed: {validation_error}"
+        super().__init__(reason=reason, url=url)
+        self.error_code = "WEBSOCKET_VALIDATION_ERROR"
+        self.context["validation_error"] = validation_error
+        if message_type:
+            self.context["message_type"] = message_type
+
+
 # Database Errors
 
 
@@ -355,14 +391,20 @@ class FeatureExtractionError(FeatureEngineeringError):
     def __init__(
         self,
         feature_type: str,
-        room_id: str,
+        room_id: Optional[str] = None,
         cause: Optional[Exception] = None,
     ):
-        message = f"Feature extraction failed: {feature_type} for room {room_id}"
+        if room_id:
+            message = f"Feature extraction failed: {feature_type} for room {room_id}"
+            context = {"feature_type": feature_type, "room_id": room_id}
+        else:
+            message = f"Feature extraction failed: {feature_type}"
+            context = {"feature_type": feature_type}
+
         super().__init__(
             message=message,
             error_code="FEATURE_EXTRACTION_ERROR",
-            context={"feature_type": feature_type, "room_id": room_id},
+            context=context,
             severity=ErrorSeverity.MEDIUM,
             cause=cause,
         )
@@ -486,6 +528,111 @@ class ModelPredictionError(ModelError):
         )
 
 
+# Alias for backward compatibility
+PredictionError = ModelPredictionError
+
+
+class InsufficientTrainingDataError(ModelError):
+    """Raised when insufficient training data is available for model training."""
+
+    def __init__(
+        self,
+        model_type: str,
+        room_id: str,
+        required_samples: int,
+        available_samples: int,
+        cause: Optional[Exception] = None,
+    ):
+        message = (
+            f"Insufficient training data for {model_type} in room {room_id}: "
+            f"need {required_samples}, have {available_samples}"
+        )
+        super().__init__(
+            message=message,
+            error_code="INSUFFICIENT_TRAINING_DATA_ERROR",
+            context={
+                "model_type": model_type,
+                "room_id": room_id,
+                "required_samples": required_samples,
+                "available_samples": available_samples,
+            },
+            severity=ErrorSeverity.MEDIUM,
+            cause=cause,
+        )
+
+
+class ModelNotFoundError(ModelError):
+    """Raised when a required model is not found."""
+
+    def __init__(
+        self,
+        model_type: str,
+        room_id: str,
+        model_path: Optional[str] = None,
+    ):
+        message = f"Model not found: {model_type} for room {room_id}"
+        context = {"model_type": model_type, "room_id": room_id}
+        if model_path:
+            context["model_path"] = model_path
+
+        super().__init__(
+            message=message,
+            error_code="MODEL_NOT_FOUND_ERROR",
+            context=context,
+            severity=ErrorSeverity.HIGH,
+        )
+
+
+class ModelVersionMismatchError(ModelError):
+    """Raised when model version doesn't match expected version."""
+
+    def __init__(
+        self,
+        model_type: str,
+        room_id: str,
+        expected_version: str,
+        actual_version: str,
+    ):
+        message = (
+            f"Model version mismatch for {model_type} in room {room_id}: "
+            f"expected {expected_version}, got {actual_version}"
+        )
+        super().__init__(
+            message=message,
+            error_code="MODEL_VERSION_MISMATCH_ERROR",
+            context={
+                "model_type": model_type,
+                "room_id": room_id,
+                "expected_version": expected_version,
+                "actual_version": actual_version,
+            },
+            severity=ErrorSeverity.MEDIUM,
+        )
+
+
+class MissingFeatureError(FeatureEngineeringError):
+    """Raised when required features are missing for model operation."""
+
+    def __init__(
+        self,
+        feature_names: List[str],
+        room_id: str,
+        operation: str = "prediction",
+    ):
+        features_str = ", ".join(feature_names)
+        message = f"Missing required features for {operation} in room {room_id}: {features_str}"
+        super().__init__(
+            message=message,
+            error_code="MISSING_FEATURE_ERROR",
+            context={
+                "feature_names": feature_names,
+                "room_id": room_id,
+                "operation": operation,
+            },
+            severity=ErrorSeverity.MEDIUM,
+        )
+
+
 class ModelValidationError(ModelError):
     """Raised when model validation fails."""
 
@@ -571,7 +718,32 @@ class IntegrationError(OccupancyPredictionError):
     pass
 
 
-class MQTTPublishError(IntegrationError):
+class MQTTError(IntegrationError):
+    """Base class for MQTT-related errors."""
+
+    pass
+
+
+class MQTTConnectionError(MQTTError):
+    """Raised when MQTT connection fails."""
+
+    def __init__(
+        self,
+        broker: str,
+        port: int,
+        cause: Optional[Exception] = None,
+    ):
+        message = f"Failed to connect to MQTT broker at {broker}:{port}"
+        super().__init__(
+            message=message,
+            error_code="MQTT_CONNECTION_ERROR",
+            context={"broker": broker, "port": port},
+            severity=ErrorSeverity.HIGH,
+            cause=cause,
+        )
+
+
+class MQTTPublishError(MQTTError):
     """Raised when MQTT publishing fails."""
 
     def __init__(
@@ -584,6 +756,25 @@ class MQTTPublishError(IntegrationError):
         super().__init__(
             message=message,
             error_code="MQTT_PUBLISH_ERROR",
+            context={"topic": topic, "broker": broker},
+            severity=ErrorSeverity.MEDIUM,
+            cause=cause,
+        )
+
+
+class MQTTSubscriptionError(MQTTError):
+    """Raised when MQTT subscription fails."""
+
+    def __init__(
+        self,
+        topic: str,
+        broker: str,
+        cause: Optional[Exception] = None,
+    ):
+        message = f"Failed to subscribe to MQTT topic '{topic}' on broker '{broker}'"
+        super().__init__(
+            message=message,
+            error_code="MQTT_SUBSCRIPTION_ERROR",
             context={"topic": topic, "broker": broker},
             severity=ErrorSeverity.MEDIUM,
             cause=cause,
@@ -645,6 +836,97 @@ class SystemResourceError(OccupancyPredictionError):
         )
 
 
+class SystemError(OccupancyPredictionError):
+    """Raised when a general system error occurs."""
+
+    def __init__(
+        self,
+        component: str,
+        operation: str,
+        cause: Optional[Exception] = None,
+    ):
+        message = f"System error in {component} during {operation}"
+        super().__init__(
+            message=message,
+            error_code="SYSTEM_ERROR",
+            context={"component": component, "operation": operation},
+            severity=ErrorSeverity.HIGH,
+            cause=cause,
+        )
+
+
+class ResourceExhaustionError(SystemResourceError):
+    """Raised when system resources are exhausted."""
+
+    def __init__(
+        self,
+        resource_type: str,
+        current_usage: float,
+        limit: float,
+        unit: str = "%",
+    ):
+        super().__init__(
+            resource_type=resource_type,
+            resource_name=f"{current_usage}{unit}/{limit}{unit}",
+        )
+        self.message = (
+            f"Resource exhaustion: {resource_type} at {current_usage}{unit} "
+            f"(limit: {limit}{unit})"
+        )
+        self.error_code = "RESOURCE_EXHAUSTION_ERROR"
+        self.context.update(
+            {
+                "current_usage": current_usage,
+                "limit": limit,
+                "unit": unit,
+            }
+        )
+
+
+class ServiceUnavailableError(OccupancyPredictionError):
+    """Raised when a required service is unavailable."""
+
+    def __init__(
+        self,
+        service_name: str,
+        reason: str = "Service unavailable",
+        retry_after: Optional[int] = None,
+    ):
+        message = f"Service unavailable: {service_name} - {reason}"
+        context = {"service_name": service_name, "reason": reason}
+        if retry_after:
+            context["retry_after_seconds"] = retry_after
+
+        super().__init__(
+            message=message,
+            error_code="SERVICE_UNAVAILABLE_ERROR",
+            context=context,
+            severity=ErrorSeverity.HIGH,
+        )
+
+
+class MaintenanceModeError(OccupancyPredictionError):
+    """Raised when system is in maintenance mode."""
+
+    def __init__(
+        self,
+        component: str,
+        maintenance_until: Optional[str] = None,
+    ):
+        message = f"System component in maintenance mode: {component}"
+        context = {"component": component}
+        if maintenance_until:
+            context["maintenance_until"] = maintenance_until
+            message += f" (until {maintenance_until})"
+
+        super().__init__(
+            message=message,
+            error_code="MAINTENANCE_MODE_ERROR",
+            context=context,
+            severity=ErrorSeverity.MEDIUM,
+        )
+
+
 class APIError(OccupancyPredictionError):
     """Base class for API-related errors."""
 
@@ -694,6 +976,84 @@ class RateLimitExceededError(APIError):
         super().__init__(
             message=message,
             error_code="RATE_LIMIT_EXCEEDED",
+            context=error_context,
+            severity=ErrorSeverity.MEDIUM,
+        )
+
+
+# Alias for backward compatibility
+APIRateLimitError = RateLimitExceededError
+
+
+class APIAuthorizationError(APIError):
+    """Raised when API authorization fails."""
+
+    def __init__(
+        self,
+        message: str = "Authorization failed",
+        endpoint: Optional[str] = None,
+        required_permission: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ):
+        error_context = context or {}
+        if endpoint:
+            error_context["endpoint"] = endpoint
+        if required_permission:
+            error_context["required_permission"] = required_permission
+
+        super().__init__(
+            message=message,
+            error_code="API_AUTHORIZATION_ERROR",
+            context=error_context,
+            severity=ErrorSeverity.HIGH,
+        )
+
+
+class APISecurityError(APIError):
+    """Raised when API security violations are detected."""
+
+    def __init__(
+        self,
+        message: str = "Security violation detected",
+        violation_type: Optional[str] = None,
+        endpoint: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ):
+        error_context = context or {}
+        if violation_type:
+            error_context["violation_type"] = violation_type
+        if endpoint:
+            error_context["endpoint"] = endpoint
+
+        super().__init__(
+            message=message,
+            error_code="API_SECURITY_ERROR",
+            context=error_context,
+            severity=ErrorSeverity.CRITICAL,
+        )
+
+
+class APIResourceNotFoundError(APIError):
+    """Raised when a requested API resource is not found."""
+
+    def __init__(
+        self,
+        resource_type: str,
+        resource_id: str,
+        endpoint: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ):
+        message = f"{resource_type} with ID '{resource_id}' not found"
+        error_context = context or {}
+        error_context.update(
+            {"resource_type": resource_type, "resource_id": resource_id}
+        )
+        if endpoint:
+            error_context["endpoint"] = endpoint
+
+        super().__init__(
+            message=message,
+            error_code="API_RESOURCE_NOT_FOUND",
             context=error_context,
             severity=ErrorSeverity.MEDIUM,
         )

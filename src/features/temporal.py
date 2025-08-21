@@ -368,6 +368,22 @@ class TemporalFeatureExtractor:
             len(string_values) / len(sensor_values) if sensor_values else 0.0
         )
 
+        # Add sensor type ratios
+        sensor_type_counts = {"motion": 0, "door": 0, "presence": 0}
+        for event in events:
+            if (
+                hasattr(event, "sensor_type")
+                and event.sensor_type in sensor_type_counts
+            ):
+                sensor_type_counts[event.sensor_type] += 1
+
+        total_events = len(events) if events else 1
+        features["motion_sensor_ratio"] = sensor_type_counts["motion"] / total_events
+        features["door_sensor_ratio"] = sensor_type_counts["door"] / total_events
+        features["presence_sensor_ratio"] = (
+            sensor_type_counts["presence"] / total_events
+        )
+
         return features
 
     def _extract_cyclical_features(self, target_time: datetime) -> Dict[str, float]:
@@ -384,8 +400,8 @@ class TemporalFeatureExtractor:
 
         # Day of week (0-6, Monday=0)
         day_of_week = local_time.weekday()
-        features["day_sin"] = math.sin(2 * math.pi * day_of_week / 7)
-        features["day_cos"] = math.cos(2 * math.pi * day_of_week / 7)
+        features["day_of_week_sin"] = math.sin(2 * math.pi * day_of_week / 7)
+        features["day_of_week_cos"] = math.cos(2 * math.pi * day_of_week / 7)
 
         # Month of year (1-12)
         month = local_time.month
@@ -647,8 +663,8 @@ class TemporalFeatureExtractor:
             # Cyclical features
             "hour_sin": 0.0,
             "hour_cos": 1.0,
-            "day_sin": 0.0,
-            "day_cos": 1.0,
+            "day_of_week_sin": 0.0,
+            "day_of_week_cos": 1.0,
             "month_sin": 0.0,
             "month_cos": 1.0,
             "day_of_month_sin": 0.0,
@@ -674,6 +690,10 @@ class TemporalFeatureExtractor:
             "avg_occupancy_confidence": 0.5,
             "recent_occupancy_ratio": 0.5,
             "state_stability": 0.5,
+            # Sensor type ratios
+            "motion_sensor_ratio": 0.0,
+            "door_sensor_ratio": 0.0,
+            "presence_sensor_ratio": 0.0,
         }
 
     def get_feature_names(self) -> List[str]:
@@ -692,8 +712,8 @@ class TemporalFeatureExtractor:
             "current_state_duration": "current_state_duration",
             "hour_sin": "hour_sin",
             "hour_cos": "hour_cos",
-            "day_sin": "day_sin",
-            "day_cos": "day_cos",
+            "day_of_week_sin": "day_of_week_sin",
+            "day_of_week_cos": "day_of_week_cos",
             "is_weekend": "is_weekend",
         }
 

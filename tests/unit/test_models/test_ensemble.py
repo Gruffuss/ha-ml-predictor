@@ -1016,30 +1016,48 @@ class TestEnsemblePerformance:
         for model_name, model in ensemble.base_models.items():
             model.is_trained = True
 
-            # Fast mock predictions
-            mock_predictions = [
-                PredictionResult(
-                    predicted_time=datetime.utcnow() + timedelta(seconds=1800),
-                    transition_type="vacant_to_occupied",
-                    confidence_score=0.8,
-                    model_type=model_name,
-                )
-            ]
-            model.predict = AsyncMock(return_value=mock_predictions)
+            # Fast mock predictions that scale with input size
+            async def mock_predict(features_input, prediction_time, current_state):
+                """Mock prediction that returns results matching input size."""
+                input_len = len(features_input)
+                return [
+                    PredictionResult(
+                        predicted_time=datetime.utcnow()
+                        + timedelta(seconds=1800 + i * 10),
+                        transition_type="vacant_to_occupied",
+                        confidence_score=0.8,
+                        model_type=model_name,
+                    )
+                    for i in range(input_len)
+                ]
+
+            model.predict = AsyncMock(side_effect=mock_predict)
 
         ensemble.is_trained = True
         ensemble.base_models_trained = True
         ensemble.meta_learner_trained = True
         ensemble.feature_names = list(train_features.columns)
 
-        # Fast mock meta-learner
+        # Fast mock meta-learner that scales with input
         ensemble.meta_learner = MagicMock()
-        ensemble.meta_learner.predict = MagicMock(return_value=np.array([1800.0]))
+
+        def mock_meta_predict(X):
+            """Mock meta-learner that returns predictions matching input size."""
+            input_len = len(X) if hasattr(X, "__len__") else 1
+            return np.array([1800.0] * input_len)
+
+        ensemble.meta_learner.predict = MagicMock(side_effect=mock_meta_predict)
 
         ensemble.meta_scaler = MagicMock()
-        ensemble.meta_scaler.transform = MagicMock(
-            return_value=np.array([[0, 0, 0, 0]])
-        )
+
+        def mock_scaler_transform(X):
+            """Mock scaler that returns scaled data matching input size."""
+            input_len = len(X) if hasattr(X, "__len__") else 1
+            input_cols = X.shape[1] if hasattr(X, "shape") and len(X.shape) > 1 else 4
+            return np.zeros((input_len, input_cols))
+
+        ensemble.meta_scaler.transform = MagicMock(side_effect=mock_scaler_transform)
+        ensemble.meta_scaler.n_features_in_ = 4  # Set expected features count
 
         ensemble.model_weights = {
             "lstm": 0.25,

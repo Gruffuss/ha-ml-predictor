@@ -192,6 +192,9 @@ class FeatureStore:
         config: Optional[SystemConfig] = None,
         cache_size: int = 1000,
         enable_persistence: bool = True,
+        # Support both parameter name formats for backward compatibility
+        feature_engine: Optional[FeatureEngineeringEngine] = None,
+        default_lookback_hours: int = 24,
     ):
         """
         Initialize the feature store.
@@ -200,12 +203,15 @@ class FeatureStore:
             config: System configuration
             cache_size: Maximum number of cached features
             enable_persistence: Whether to enable database persistence
+            feature_engine: Optional pre-initialized feature engine
+            default_lookback_hours: Default lookback window in hours
         """
         self.config = config or get_config()
         self.enable_persistence = enable_persistence
+        self.default_lookback_hours = default_lookback_hours
 
         # Initialize components
-        self.feature_engine = FeatureEngineeringEngine(self.config)
+        self.feature_engine = feature_engine or FeatureEngineeringEngine(self.config)
         self.cache = FeatureCache(cache_size)
 
         # Database manager for persistence

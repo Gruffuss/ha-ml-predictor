@@ -212,6 +212,33 @@ class SequentialFeatureExtractor:
                 current_sequence = 1
         features["max_room_sequence_length"] = max_sequence
 
+        # Calculate transition regularity (consistency of transition timing)
+        if len(events) > 2:
+            transition_intervals = []
+            for i in range(1, len(events)):
+                interval = (
+                    events[i].timestamp - events[i - 1].timestamp
+                ).total_seconds()
+                transition_intervals.append(interval)
+
+            if transition_intervals:
+                mean_interval = statistics.mean(transition_intervals)
+                if mean_interval > 0:
+                    cv = (
+                        statistics.stdev(transition_intervals) / mean_interval
+                        if len(transition_intervals) > 1
+                        else 0
+                    )
+                    features["transition_regularity"] = max(
+                        0.0, 1.0 - cv
+                    )  # Higher value = more regular
+                else:
+                    features["transition_regularity"] = 0.0
+            else:
+                features["transition_regularity"] = 0.0
+        else:
+            features["transition_regularity"] = 0.0
+
         return features
 
     def _extract_velocity_features(self, events: List[SensorEvent]) -> Dict[str, float]:

@@ -5,7 +5,7 @@ This module defines SQLAlchemy models optimized for TimescaleDB to handle
 time-series sensor data, predictions, and model performance tracking.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from decimal import Decimal
@@ -214,7 +214,7 @@ class SensorEvent(Base):
     ) -> List["SensorEvent"]:
         """Get events where state changed from previous state."""
         if end_time is None:
-            end_time = datetime.utcnow()
+            end_time = datetime.now(timezone.utc)
 
         query = (
             select(cls)
@@ -244,7 +244,7 @@ class SensorEvent(Base):
         events = await cls.get_state_changes(
             session,
             room_id,
-            datetime.utcnow() - timedelta(hours=lookback_hours),
+            datetime.now(timezone.utc) - timedelta(hours=lookback_hours),
         )
 
         # Group events into sequences based on time gaps
@@ -842,9 +842,13 @@ class Prediction(Base):
 
     # Validation results
     actual_transition_time = Column(DateTime(timezone=True))
+    actual_time = Column(
+        DateTime(timezone=True), nullable=True
+    )  # Alias for actual_transition_time for compatibility
     accuracy_minutes = Column(Float)  # Difference in minutes
     is_accurate = Column(Boolean)  # Within threshold
     validation_timestamp = Column(DateTime(timezone=True))
+    status = Column(String(20), default="pending")  # For test compatibility
 
     # Context - References maintained at application level for TimescaleDB compatibility
     # No foreign key constraints to avoid conflicts with TimescaleDB partitioning
@@ -870,6 +874,16 @@ class Prediction(Base):
             if kwargs["predicted_time"] != kwargs["predicted_transition_time"]:
                 # Use predicted_transition_time as the authoritative value
                 kwargs["predicted_time"] = kwargs["predicted_transition_time"]
+
+        # Handle actual_time compatibility - if only actual_time is provided,
+        # use it for actual_transition_time as well
+        if "actual_time" in kwargs and "actual_transition_time" not in kwargs:
+            kwargs["actual_transition_time"] = kwargs["actual_time"]
+        # If both are provided, ensure they're the same for consistency
+        elif "actual_time" in kwargs and "actual_transition_time" in kwargs:
+            if kwargs["actual_time"] != kwargs["actual_transition_time"]:
+                # Use actual_transition_time as the authoritative value
+                kwargs["actual_time"] = kwargs["actual_transition_time"]
 
         # Call parent constructor
         super().__init__(**kwargs)

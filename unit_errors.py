@@ -1,1023 +1,140 @@
-==================================== ERRORS ====================================
-_ ERROR at setup of TestContextualFeatureExtractorEdgeCases.test_no_room_states _
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-file /home/runner/work/ha-ml-predictor/ha-ml-predictor/tests/unit/test_features/test_contextual.py, line 813
-      def test_no_room_states(self, extractor, target_time):
-E       fixture 'target_time' not found
->       available fixtures: _session_event_loop, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, class_mocker, cleanup_background_tasks, cov, doctest_namespace, event_loop, event_loop_policy, extra, extractor, extras, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, include_metadata_in_junit_xml, metadata, mock_aiohttp_session, mock_event_processor, mock_ha_client, mock_websocket, mocker, module_mocker, monkeypatch, no_cover, package_mocker, populated_test_db, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, sample_ha_events, sample_sensor_events, session_mocker, test_config_dir, test_db_engine, test_db_manager, test_db_session, test_environment_variables, test_room_config, test_system_config, testrun_uid, tests/unit/test_features/__init__.py::<event_loop>, tests/unit/test_features/test_contextual.py::<event_loop>, tests/unit/test_features/test_contextual.py::TestContextualFeat
->       use 'pytest --fixtures [testpath]' for help on them.
-/home/runner/work/ha-ml-predictor/ha-ml-predictor/tests/unit/test_features/test_contextual.py:813
-__ ERROR at setup of TestAccuracyMetricsRetrieval.test_room_accuracy_metrics ___
-[gw1] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_validator.py:118: in prediction_history
-    prediction = Prediction(
-<string>:4: in __init__
-    ???
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/state.py:571: in _initialize_instance
-    with util.safe_reraise():
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
-    raise exc_value.with_traceback(exc_tb)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/state.py:569: in _initialize_instance
-    manager.original_init(*mixed[1:], **kwargs)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/decl_base.py:2179: in _declarative_constructor
-    raise TypeError(
-E   TypeError: 'predicted_time' is an invalid keyword argument for Prediction
-_ ERROR at setup of TestAccuracyMetricsRetrieval.test_overall_accuracy_metrics _
-[gw1] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_validator.py:118: in prediction_history
-    prediction = Prediction(
-<string>:4: in __init__
-    ???
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/state.py:571: in _initialize_instance
-    with util.safe_reraise():
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
-    raise exc_value.with_traceback(exc_tb)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/state.py:569: in _initialize_instance
-    manager.original_init(*mixed[1:], **kwargs)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/decl_base.py:2179: in _declarative_constructor
-    raise TypeError(
-E   TypeError: 'predicted_time' is an invalid keyword argument for Prediction
-_ ERROR at setup of TestAccuracyMetricsRetrieval.test_model_specific_accuracy_metrics _
-[gw1] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_validator.py:118: in prediction_history
-    prediction = Prediction(
-<string>:4: in __init__
-    ???
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/state.py:571: in _initialize_instance
-    with util.safe_reraise():
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
-    raise exc_value.with_traceback(exc_tb)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/state.py:569: in _initialize_instance
-    manager.original_init(*mixed[1:], **kwargs)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/decl_base.py:2179: in _declarative_constructor
-    raise TypeError(
-E   TypeError: 'predicted_time' is an invalid keyword argument for Prediction
-_ ERROR at setup of TestAccuracyMetricsRetrieval.test_accuracy_trend_analysis __
-[gw1] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_validator.py:118: in prediction_history
-    prediction = Prediction(
-<string>:4: in __init__
-    ???
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/state.py:571: in _initialize_instance
-    with util.safe_reraise():
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
-    raise exc_value.with_traceback(exc_tb)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/state.py:569: in _initialize_instance
-    manager.original_init(*mixed[1:], **kwargs)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/decl_base.py:2179: in _declarative_constructor
-    raise TypeError(
-E   TypeError: 'predicted_time' is an invalid keyword argument for Prediction
-____ ERROR at setup of TestValidationStatistics.test_room_prediction_counts ____
-[gw1] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_validator.py:118: in prediction_history
-    prediction = Prediction(
-<string>:4: in __init__
-    ???
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/state.py:571: in _initialize_instance
-    with util.safe_reraise():
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
-    raise exc_value.with_traceback(exc_tb)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/state.py:569: in _initialize_instance
-    manager.original_init(*mixed[1:], **kwargs)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/decl_base.py:2179: in _declarative_constructor
-    raise TypeError(
-E   TypeError: 'predicted_time' is an invalid keyword argument for Prediction
-=================================== FAILURES ===================================
-____________ TestOptimizationStrategies.test_bayesian_optimization _____________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_optimizer.py:293: in test_bayesian_optimization
-    assert result.total_evaluations > 0
-E   AssertionError: assert 0 > 0
-E    +  where 0 = OptimizationResult(success=True, optimization_time_seconds=0.000215, best_parameters={}, best_score=0.7, improvement_over_default=0.0, total_evaluations=0, convergence_achieved=True, optimization_history=[], validation_score=None, training_score=None, cross_validation_scores=None, model_complexity=None, prediction_latency_ms=None, memory_usage_mb=None, error_message='No optimization dimensions available').total_evaluations
------------------------------- Captured log call -------------------------------
-WARNING  src.adaptation.optimizer:optimizer.py:636 No valid dimensions for optimization - using default parameters
-__________ TestOptimizationHistory.test_optimization_history_tracking __________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_optimizer.py:603: in test_optimization_history_tracking
-    assert model_key in optimizer._optimization_history
-E   AssertionError: assert 'test_room_test_model' in {'test_model': [OptimizationResult(success=True, optimization_time_seconds=0.000149, best_parameters={}, best_score=0.7, improvement_over_default=0.0, total_evaluations=0, convergence_achieved=True, optimization_history=[], validation_score=None, training_score=None, cross_validation_scores=None, model_complexity=None, prediction_latency_ms=None, memory_usage_mb=None, error_message='No optimization dimensions available')]}
-E    +  where {'test_model': [OptimizationResult(success=True, optimization_time_seconds=0.000149, best_parameters={}, best_score=0.7, improvement_over_default=0.0, total_evaluations=0, convergence_achieved=True, optimization_history=[], validation_score=None, training_score=None, cross_validation_scores=None, model_complexity=None, prediction_latency_ms=None, memory_usage_mb=None, error_message='No optimization dimensions available')]} = <src.adaptation.optimizer.ModelOptimizer object at 0x7fb19f458380>._optimization_history
------------------------------- Captured log call -------------------------------
-WARNING  src.adaptation.optimizer:optimizer.py:636 No valid dimensions for optimization - using default parameters
-_____________ TestErrorHandling.test_model_training_error_handling _____________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_optimizer.py:845: in test_model_training_error_handling
-    assert not result.success
-E   AssertionError: assert not True
-E    +  where True = OptimizationResult(success=True, optimization_time_seconds=0.000202, best_parameters={}, best_score=0.7, improvement_over_default=0.0, total_evaluations=0, convergence_achieved=True, optimization_history=[], validation_score=None, training_score=None, cross_validation_scores=None, model_complexity=None, prediction_latency_ms=None, memory_usage_mb=None, error_message='No optimization dimensions available').success
------------------------------- Captured log call -------------------------------
-WARNING  src.adaptation.optimizer:optimizer.py:636 No valid dimensions for optimization - using default parameters
-________ TestRetrainingNeedEvaluation.test_cooldown_period_enforcement _________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_retrainer.py:491: in test_cooldown_period_enforcement
-    assert request is None
-E   AssertionError: assert RetrainingRequest(request_id='bathroom_lstm_1755552185', room_id='bathroom', model_type=<ModelType.LSTM: 'lstm'>, trigger=<RetrainingTrigger.ACCURACY_DEGRADATION: 'accuracy_degradation'>, strategy=<RetrainingStrategy.FULL_RETRAIN: 'full_retrain'>, priority=6.0, created_time=datetime.datetime(2025, 8, 18, 21, 23, 5, 370206), accuracy_metrics=AccuracyMetrics(total_predictions=100, validated_predictions=85, accurate_predictions=45, expired_predictions=0, failed_predictions=0, accuracy_rate=52.9, mean_error_minutes=28.5, median_error_minutes=25.0, std_error_minutes=0.0, rmse_minutes=0.0, mae_minutes=0.0, error_percentiles={}, accuracy_by_level={}, mean_bias_minutes=0.0, bias_std_minutes=0.0, mean_confidence=0.0, confidence_accuracy_correlation=0.68, overconfidence_rate=0.0, underconfidence_rate=0.0, measurement_period_start=datetime.datetime(2025, 8, 17, 21, 23, 5, 369129), measurement_period_end=datetime.datetime(2025, 8, 18, 21, 23, 5, 369137), predictions_per_hour=0.0), drift_metrics
------------------------------- Captured log call -------------------------------
-ERROR    src.adaptation.retrainer:retrainer.py:917 Error checking cooldown for bathroom_lstm: can't compare offset-naive and offset-aware datetimes
-_____ TestErrorHandlingAndEdgeCases.test_memory_usage_with_large_datasets ______
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_validator.py:1280: in test_memory_usage_with_large_datasets
-    with patch.object(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/unittest/mock.py:1467: in __enter__
-    original, local = self.get_original()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/unittest/mock.py:1437: in get_original
-    raise AttributeError(
-E   AttributeError: <src.adaptation.validator.PredictionValidator object at 0x7fb197da5700> does not have the attribute '_get_predictions_from_db'
-___________________ TestSensorState.test_sensor_state_values ___________________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_core/test_constants.py:71: in test_sensor_state_values
-    assert SensorState.OFF.value == "of"
-E   AssertionError: assert 'off' == 'of'
-E     - of
-E     + off
-E     ?   +
-_________________ TestSensorState.test_sensor_state_membership _________________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_core/test_constants.py:85: in test_sensor_state_membership
-    assert "of" in states
-E   AssertionError: assert 'of' in ['on', 'off', 'open', 'closed', 'unknown', 'unavailable']
-____________________ TestStateConstants.test_absence_states ____________________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_core/test_constants.py:149: in test_absence_states
-    assert ABSENCE_STATES == ["of"]
-E   AssertionError: assert ['off'] == ['of']
-E     At index 0 diff: 'off' != 'of'
-E     Full diff:
-E     - ['of']
-E     + ['off']
-E     ?     +
-_________________ TestDatabaseManager.test_initialize_success __________________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_data/test_database.py:101: in test_initialize_success
-    assert manager.is_initialized
-E   assert False
-E    +  where False = <src.data.storage.database.DatabaseManager object at 0x7fb197e717c0>.is_initialized
-______________ TestDatabaseManager.test_verify_connection_success ______________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_data/test_database.py:258: in test_verify_connection_success
-    mock_engine.begin.return_value.__aenter__.return_value = mock_conn
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/unittest/mock.py:662: in __getattr__
-    raise AttributeError(name)
-E   AttributeError: __aenter__
-________________ TestDatabaseManager.test_execute_query_success ________________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/data/storage/database.py:337: in execute_query
-    return await asyncio.wait_for(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/asyncio/tasks.py:520: in wait_for
-    return await fut
-src/data/storage/database.py:327: in _execute_query
-    async with self.get_session() as session:
-E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
-During handling of the above exception, another exception occurred:
-tests/unit/test_data/test_database.py:373: in test_execute_query_success
-    result = await test_db_manager.execute_query(
-src/data/storage/database.py:363: in execute_query
-    raise DatabaseQueryError(
-E   src.core.exceptions.DatabaseQueryError: Database query failed: SELECT 1... | Error Code: DB_QUERY_ERROR | Context: query=SELECT 1, parameters={'param': 'value'} | Caused by: TypeError: 'coroutine' object does not support the asynchronous context manager protocol
------------------------------- Captured log call -------------------------------
-ERROR    src.data.storage.database:database.py:362 Unexpected database error: 'coroutine' object does not support the asynchronous context manager protocol
-________________ TestDatabaseManager.test_health_check_healthy _________________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_data/test_database.py:416: in test_health_check_healthy
-    assert health["status"] == "healthy"
-E   AssertionError: assert 'unhealthy' == 'healthy'
-E     - healthy
-E     + unhealthy
-E     ? ++
------------------------------- Captured log call -------------------------------
-ERROR    src.data.storage.database:database.py:735 Database health check failed: 'coroutine' object does not support the asynchronous context manager protocol
-_________ TestDatabaseManager.test_health_check_timescaledb_available __________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_data/test_database.py:464: in test_health_check_timescaledb_available
-    assert health["timescale_status"] == "available"
-E   AssertionError: assert None == 'available'
------------------------------- Captured log call -------------------------------
-ERROR    src.data.storage.database:database.py:735 Database health check failed: 'coroutine' object does not support the asynchronous context manager protocol
-________ TestDatabaseManager.test_health_check_timescaledb_unavailable _________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_data/test_database.py:501: in test_health_check_timescaledb_unavailable
-    assert health["timescale_status"] == "unavailable"
-E   AssertionError: assert None == 'unavailable'
------------------------------- Captured log call -------------------------------
-ERROR    src.data.storage.database:database.py:735 Database health check failed: 'coroutine' object does not support the asynchronous context manager protocol
-______ TestDatabaseManager.test_health_check_timescaledb_version_parsing _______
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_data/test_database.py:526: in test_health_check_timescaledb_version_parsing
-    with self.subTest(version_string=version_string):
-E   AttributeError: 'TestDatabaseManager' object has no attribute 'subTest'
-___ TestDatabaseManager.test_health_check_timescaledb_version_parsing_error ____
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_data/test_database.py:591: in test_health_check_timescaledb_version_parsing_error
-    assert health["timescale_status"] == "available"
-E   AssertionError: assert None == 'available'
------------------------------- Captured log call -------------------------------
-ERROR    src.data.storage.database:database.py:735 Database health check failed: 'coroutine' object does not support the asynchronous context manager protocol
-____________________ TestDatabaseManager.test_close_cleanup ____________________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_data/test_database.py:637: in test_close_cleanup
-    await manager.close()
-src/data/storage/database.py:754: in close
-    await self._cleanup()
-src/data/storage/database.py:762: in _cleanup
-    await self._health_check_task
-E   TypeError: object Mock can't be used in 'await' expression
-_______________ TestGlobalDatabaseFunctions.test_get_db_session ________________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_data/test_database.py:725: in test_get_db_session
-    async with get_db_session() as session:
-E   TypeError: 'async_generator' object does not support the asynchronous context manager protocol
-___ TestDatabaseManagerEdgeCases.test_verify_connection_timescaledb_warning ____
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_data/test_database.py:952: in test_verify_connection_timescaledb_warning
-    mock_engine.begin.return_value.__aenter__.return_value = mock_conn
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/unittest/mock.py:662: in __getattr__
-    raise AttributeError(name)
-E   AttributeError: __aenter__
-_______ TestDatabaseManagerEdgeCases.test_get_session_rollback_on_error ________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/unittest/mock.py:928: in assert_called_once
-    raise AssertionError(msg)
-E   AssertionError: Expected 'close' to have been called once. Called 2 times.
-E   Calls: [call(), call()].
-During handling of the above exception, another exception occurred:
-tests/unit/test_data/test_database.py:977: in test_get_session_rollback_on_error
-    mock_session.close.assert_called_once()
-E   AssertionError: Expected 'close' to have been called once. Called 2 times.
-E   Calls: [call(), call()].
-_____ TestDatabaseManagerEdgeCases.test_health_check_with_previous_errors ______
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_data/test_database.py:999: in test_health_check_with_previous_errors
-    assert health["status"] == "healthy"
-E   AssertionError: assert 'unhealthy' == 'healthy'
-E     - healthy
-E     + unhealthy
-E     ? ++
------------------------------- Captured log call -------------------------------
-ERROR    src.data.storage.database:database.py:735 Database health check failed: 'coroutine' object does not support the asynchronous context manager protocol
-______________ TestDatabaseManagerIntegration.test_full_lifecycle ______________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/data/storage/database.py:87: in initialize
-    await self._verify_connection()
-src/data/storage/database.py:213: in _verify_connection
-    async with self.engine.begin() as conn:
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/contextlib.py:210: in __aenter__
-    return await anext(self.gen)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py:1066: in begin
-    async with conn:
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/base.py:121: in __aenter__
-    return await self.start(is_ctxmanager=True)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py:274: in start
-    await greenlet_spawn(self.sync_engine.connect)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:201: in greenlet_spawn
-    result = context.throw(*sys.exc_info())
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3277: in connect
-    return self._connection_cls(self)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/base.py:143: in __init__
-    self._dbapi_connection = engine.raw_connection()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3301: in raw_connection
-    return self.pool.connect()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:447: in connect
-    return _ConnectionFairy._checkout(self)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:1264: in _checkout
-    fairy = _ConnectionRecord.checkout(pool)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:711: in checkout
-    rec = pool._do_get()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/impl.py:177: in _do_get
-    with util.safe_reraise():
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
-    raise exc_value.with_traceback(exc_tb)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/impl.py:175: in _do_get
-    return self._create_connection()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:388: in _create_connection
-    return _ConnectionRecord(self)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:673: in __init__
-    self.__connect()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:899: in __connect
-    with util.safe_reraise():
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
-    raise exc_value.with_traceback(exc_tb)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:895: in __connect
-    self.dbapi_connection = connection = pool._invoke_creator(self)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/create.py:661: in connect
-    return dialect.connect(*cargs, **cparams)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/default.py:629: in connect
-    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:964: in connect
-    await_only(creator_fn(*arg, **kw)),
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:132: in await_only
-    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:196: in greenlet_spawn
-    value = await result
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connection.py:2421: in connect
-    return await connect_utils._connect(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:1075: in _connect
-    raise last_error or exceptions.TargetServerAttributeNotMatched(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:1049: in _connect
-    conn = await _connect_addr(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:886: in _connect_addr
-    return await __connect_addr(params, True, *args)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:931: in __connect_addr
-    tr, pr = await connector
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:802: in _create_ssl_connection
-    tr, pr = await loop.create_connection(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/asyncio/base_events.py:1140: in create_connection
-    raise OSError('Multiple exceptions: {}'.format(
-E   OSError: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5432, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5432)
-During handling of the above exception, another exception occurred:
-tests/unit/test_data/test_database.py:1035: in test_full_lifecycle
-    await manager.initialize()
-src/data/storage/database.py:102: in initialize
-    raise DatabaseConnectionError(
-E   src.core.exceptions.DatabaseConnectionError: Failed to connect to database: postgresql+asyncpg://localhost/testdb | Error Code: DB_CONNECTION_ERROR | Context: connection_string=postgresql+asyncpg://localhost/testdb | Caused by: OSError: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5432, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5432)
-___________ TestDatabaseManagerIntegration.test_concurrent_sessions ____________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/data/storage/database.py:87: in initialize
-    await self._verify_connection()
-src/data/storage/database.py:213: in _verify_connection
-    async with self.engine.begin() as conn:
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/contextlib.py:210: in __aenter__
-    return await anext(self.gen)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py:1066: in begin
-    async with conn:
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/base.py:121: in __aenter__
-    return await self.start(is_ctxmanager=True)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py:274: in start
-    await greenlet_spawn(self.sync_engine.connect)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:201: in greenlet_spawn
-    result = context.throw(*sys.exc_info())
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3277: in connect
-    return self._connection_cls(self)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/base.py:143: in __init__
-    self._dbapi_connection = engine.raw_connection()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3301: in raw_connection
-    return self.pool.connect()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:447: in connect
-    return _ConnectionFairy._checkout(self)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:1264: in _checkout
-    fairy = _ConnectionRecord.checkout(pool)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:711: in checkout
-    rec = pool._do_get()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/impl.py:177: in _do_get
-    with util.safe_reraise():
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
-    raise exc_value.with_traceback(exc_tb)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/impl.py:175: in _do_get
-    return self._create_connection()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:388: in _create_connection
-    return _ConnectionRecord(self)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:673: in __init__
-    self.__connect()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:899: in __connect
-    with util.safe_reraise():
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
-    raise exc_value.with_traceback(exc_tb)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:895: in __connect
-    self.dbapi_connection = connection = pool._invoke_creator(self)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/create.py:661: in connect
-    return dialect.connect(*cargs, **cparams)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/default.py:629: in connect
-    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:964: in connect
-    await_only(creator_fn(*arg, **kw)),
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:132: in await_only
-    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:196: in greenlet_spawn
-    value = await result
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connection.py:2421: in connect
-    return await connect_utils._connect(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:1075: in _connect
-    raise last_error or exceptions.TargetServerAttributeNotMatched(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:1049: in _connect
-    conn = await _connect_addr(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:886: in _connect_addr
-    return await __connect_addr(params, True, *args)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:931: in __connect_addr
-    tr, pr = await connector
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:802: in _create_ssl_connection
-    tr, pr = await loop.create_connection(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/asyncio/base_events.py:1140: in create_connection
-    raise OSError('Multiple exceptions: {}'.format(
-E   OSError: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5432, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5432)
-During handling of the above exception, another exception occurred:
-tests/unit/test_data/test_database.py:1067: in test_concurrent_sessions
-    await manager.initialize()
-src/data/storage/database.py:102: in initialize
-    raise DatabaseConnectionError(
-E   src.core.exceptions.DatabaseConnectionError: Failed to connect to database: postgresql+asyncpg://localhost/testdb | Error Code: DB_CONNECTION_ERROR | Context: connection_string=postgresql+asyncpg://localhost/testdb | Caused by: OSError: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5432, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5432)
-_____ TestDatabaseManagerIntegration.test_retry_mechanism_with_real_errors _____
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/data/storage/database.py:87: in initialize
-    await self._verify_connection()
-src/data/storage/database.py:213: in _verify_connection
-    async with self.engine.begin() as conn:
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/contextlib.py:210: in __aenter__
-    return await anext(self.gen)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py:1066: in begin
-    async with conn:
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/base.py:121: in __aenter__
-    return await self.start(is_ctxmanager=True)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/engine.py:274: in start
-    await greenlet_spawn(self.sync_engine.connect)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:201: in greenlet_spawn
-    result = context.throw(*sys.exc_info())
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3277: in connect
-    return self._connection_cls(self)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/base.py:143: in __init__
-    self._dbapi_connection = engine.raw_connection()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/base.py:3301: in raw_connection
-    return self.pool.connect()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:447: in connect
-    return _ConnectionFairy._checkout(self)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:1264: in _checkout
-    fairy = _ConnectionRecord.checkout(pool)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:711: in checkout
-    rec = pool._do_get()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/impl.py:177: in _do_get
-    with util.safe_reraise():
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
-    raise exc_value.with_traceback(exc_tb)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/impl.py:175: in _do_get
-    return self._create_connection()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:388: in _create_connection
-    return _ConnectionRecord(self)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:673: in __init__
-    self.__connect()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:899: in __connect
-    with util.safe_reraise():
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/langhelpers.py:224: in __exit__
-    raise exc_value.with_traceback(exc_tb)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/pool/base.py:895: in __connect
-    self.dbapi_connection = connection = pool._invoke_creator(self)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/create.py:661: in connect
-    return dialect.connect(*cargs, **cparams)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/default.py:629: in connect
-    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py:964: in connect
-    await_only(creator_fn(*arg, **kw)),
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:132: in await_only
-    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:196: in greenlet_spawn
-    value = await result
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connection.py:2421: in connect
-    return await connect_utils._connect(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:1075: in _connect
-    raise last_error or exceptions.TargetServerAttributeNotMatched(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:1049: in _connect
-    conn = await _connect_addr(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:886: in _connect_addr
-    return await __connect_addr(params, True, *args)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:931: in __connect_addr
-    tr, pr = await connector
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/asyncpg/connect_utils.py:802: in _create_ssl_connection
-    tr, pr = await loop.create_connection(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/asyncio/base_events.py:1140: in create_connection
-    raise OSError('Multiple exceptions: {}'.format(
-E   OSError: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5432, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5432)
-During handling of the above exception, another exception occurred:
-tests/unit/test_data/test_database.py:1094: in test_retry_mechanism_with_real_errors
-    await manager.initialize()
-src/data/storage/database.py:102: in initialize
-    raise DatabaseConnectionError(
-E   src.core.exceptions.DatabaseConnectionError: Failed to connect to database: postgresql+asyncpg://localhost/testdb | Error Code: DB_CONNECTION_ERROR | Context: connection_string=postgresql+asyncpg://localhost/testdb | Caused by: OSError: Multiple exceptions: [Errno 111] Connect call failed ('::1', 5432, 0, 0), [Errno 111] Connect call failed ('127.0.0.1', 5432)
-____________________ TestSensorEvent.test_get_recent_events ____________________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:1709: in _object_value_for_elem
-    return self._object_lookup[elem]  # type: ignore[return-value]
-E   KeyError: 'off'
-The above exception was the direct cause of the following exception:
-tests/unit/test_data/test_models.py:87: in test_get_recent_events
-    recent_events = await SensorEvent.get_recent_events(
-src/data/storage/models.py:204: in get_recent_events
-    result = await session.execute(query)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:463: in execute
-    result = await greenlet_spawn(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
-    result = context.switch(value)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2365: in execute
-    return self._execute_internal(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2251: in _execute_internal
-    result: Result[Any] = compile_state_cls.orm_execute_statement(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/context.py:309: in orm_execute_statement
-    return cls.orm_setup_cursor_result(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/context.py:616: in orm_setup_cursor_result
-    return loading.instances(result, querycontext)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:262: in instances
-    _prebuffered = list(chunks(None))
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
-    fetch = cursor._raw_all_rows()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/result.py:541: in _raw_all_rows
-    return [make_row(row) for row in rows]
-lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
-    ???
-lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
-    ???
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:1829: in process
-    value = self._object_value_for_elem(value)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:1711: in _object_value_for_elem
-    raise LookupError(
-E   LookupError: 'off' is not among the defined enum values. Enum name: sensor_state_enum. Possible values: on, of, open, ..., unknown
-__________ TestSensorEvent.test_get_recent_events_with_sensor_filter ___________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:1709: in _object_value_for_elem
-    return self._object_lookup[elem]  # type: ignore[return-value]
-E   KeyError: 'off'
-The above exception was the direct cause of the following exception:
-tests/unit/test_data/test_models.py:106: in test_get_recent_events_with_sensor_filter
-    recent_events = await SensorEvent.get_recent_events(
-src/data/storage/models.py:204: in get_recent_events
-    result = await session.execute(query)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/ext/asyncio/session.py:463: in execute
-    result = await greenlet_spawn(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/util/_concurrency_py3k.py:203: in greenlet_spawn
-    result = context.switch(value)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2365: in execute
-    return self._execute_internal(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/session.py:2251: in _execute_internal
-    result: Result[Any] = compile_state_cls.orm_execute_statement(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/context.py:309: in orm_execute_statement
-    return cls.orm_setup_cursor_result(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/context.py:616: in orm_setup_cursor_result
-    return loading.instances(result, querycontext)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:262: in instances
-    _prebuffered = list(chunks(None))
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/orm/loading.py:220: in chunks
-    fetch = cursor._raw_all_rows()
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/engine/result.py:541: in _raw_all_rows
-    return [make_row(row) for row in rows]
-lib/sqlalchemy/cyextension/resultproxy.pyx:22: in sqlalchemy.cyextension.resultproxy.BaseRow.__init__
-    ???
-lib/sqlalchemy/cyextension/resultproxy.pyx:79: in sqlalchemy.cyextension.resultproxy._apply_processors
-    ???
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:1829: in process
-    value = self._object_value_for_elem(value)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sqlalchemy/sql/sqltypes.py:1711: in _object_value_for_elem
-    raise LookupError(
-E   LookupError: 'off' is not among the defined enum values. Enum name: sensor_state_enum. Possible values: on, of, open, ..., unknown
-__________ TestContextualFeatureExtractor.test_natural_light_patterns __________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_contextual.py:774: in test_natural_light_patterns
-    assert features["natural_light_available"] == expected_light
-E   assert 1.0 == 0.0
-______ TestFeatureEngineeringEngine.test_error_handling_extractor_failure ______
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_engineering.py:332: in test_error_handling_extractor_failure
-    with pytest.raises(FeatureExtractionError):
-E   Failed: DID NOT RAISE <class 'src.core.exceptions.FeatureExtractionError'>
------------------------------- Captured log call -------------------------------
-ERROR    src.features.engineering:engineering.py:328 Failed to extract temporal features: Temporal extraction failed
-______ TestFeatureEngineeringEngine.test_validate_configuration_no_config ______
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_engineering.py:473: in test_validate_configuration_no_config
-    assert validation_results["valid"] is False
-E   assert True is False
------------------------------- Captured log call -------------------------------
-WARNING  src.features.engineering:engineering.py:690 No room configurations available - feature extraction may be limited
-_________ TestFeatureEngineeringEngine.test_large_feature_set_handling _________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_engineering.py:760: in test_large_feature_set_handling
-    assert len(features) == total_expected
-E   AssertionError: assert 231 == 230
-E    +  where 231 = len({'contextual_contextual_feature_0': 200.0, 'contextual_contextual_feature_1': 201.0, 'contextual_contextual_feature_10': 210.0, 'contextual_contextual_feature_11': 211.0, ...})
-__________ TestDriftDetectionIntegration.test_manual_drift_detection ___________
-[gw1] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_tracking_manager.py:462: in test_manual_drift_detection
-    assert result is not None
-E   assert None is not None
------------------------------- Captured log call -------------------------------
-ERROR    src.adaptation.tracking_manager:tracking_manager.py:849 Failed to check drift for living_room: object DriftMetrics can't be used in 'await' expression
-_______ TestSequentialFeatureExtractor.test_extract_features_multi_room ________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/sequential.py:111: in extract_features
-    self._extract_movement_classification_features(
-src/features/sequential.py:543: in _extract_movement_classification_features
-    classification = self.classifier.classify_movement(
-src/data/ingestion/event_processor.py:218: in classify_movement
-    metrics = self._calculate_movement_metrics(sequence, room_config)
-src/data/ingestion/event_processor.py:278: in _calculate_movement_metrics
-    metrics["spatial_dispersion"] = self._calculate_spatial_dispersion(
-src/data/ingestion/event_processor.py:449: in _calculate_spatial_dispersion
-    for sensor_type, sensors in room_config.sensors.items():
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/unittest/mock.py:660: in __getattr__
-    raise AttributeError("Mock object has no attribute %r" % name)
-E   AttributeError: Mock object has no attribute 'sensors'
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_sequential.py:155: in test_extract_features_multi_room
-    features = extractor.extract_features(
-src/features/sequential.py:125: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for sequential features in room 'living_room' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=sequential, room_id=living_room | Caused by: AttributeError: Mock object has no attribute 'sensors'
------------------------------- Captured log call -------------------------------
-ERROR    src.features.sequential:sequential.py:122 Failed to extract sequential features: Mock object has no attribute 'sensors'
-_______ TestSequentialFeatureExtractor.test_extract_features_single_room _______
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/sequential.py:111: in extract_features
-    self._extract_movement_classification_features(
-src/features/sequential.py:543: in _extract_movement_classification_features
-    classification = self.classifier.classify_movement(
-src/data/ingestion/event_processor.py:218: in classify_movement
-    metrics = self._calculate_movement_metrics(sequence, room_config)
-src/data/ingestion/event_processor.py:278: in _calculate_movement_metrics
-    metrics["spatial_dispersion"] = self._calculate_spatial_dispersion(
-src/data/ingestion/event_processor.py:449: in _calculate_spatial_dispersion
-    for sensor_type, sensors in room_config.sensors.items():
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/unittest/mock.py:660: in __getattr__
-    raise AttributeError("Mock object has no attribute %r" % name)
-E   AttributeError: Mock object has no attribute 'sensors'
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_sequential.py:183: in test_extract_features_single_room
-    features = extractor.extract_features(
-src/features/sequential.py:125: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for sequential features in room 'living_room' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=sequential, room_id=living_room | Caused by: AttributeError: Mock object has no attribute 'sensors'
------------------------------- Captured log call -------------------------------
-ERROR    src.features.sequential:sequential.py:122 Failed to extract sequential features: Mock object has no attribute 'sensors'
-____________ TestSequentialFeatureExtractor.test_empty_room_configs ____________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_sequential.py:426: in test_empty_room_configs
-    assert "human_movement_probability" in features
-E   AssertionError: assert 'human_movement_probability' in {'active_room_count': 2, 'avg_event_interval': 106.66666666666667, 'avg_room_dwell_time': 320.0, 'burst_ratio': 0.0, ...}
-_________ TestSequentialFeatureExtractor.test_no_classifier_available __________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_sequential.py:438: in test_no_classifier_available
-    assert features["human_movement_probability"] == 0.5
-E   KeyError: 'human_movement_probability'
-____ TestSequentialFeatureExtractorMovementPatterns.test_cat_like_patterns _____
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_sequential.py:671: in test_cat_like_patterns
-    assert features["room_revisit_ratio"] > 0.5  # Frequent returns to same room
-E   assert 0.4 > 0.5
-____________________ TestFeatureCache.test_get_expired_item ____________________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_store.py:188: in test_get_expired_item
-    assert retrieved_features is None
-E   AssertionError: assert {'feature_1': 1.0, 'feature_2': 2.0} is None
-_______________________ TestFeatureCache.test_get_stats ________________________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_store.py:314: in test_get_stats
-    assert stats["hit_count"] == 1
-E   assert 0 == 1
-____________ TestFeatureCache.test_feature_type_order_independence _____________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_store.py:327: in test_feature_type_order_independence
-    assert key1 == key2
-E   AssertionError: assert '6c2226f0867d...439d7f7750289' == '75314a3e32a4...816ae4401a52f'
-E     - 75314a3e32a4357884b816ae4401a52f
-E     + 6c2226f0867d62d6048439d7f7750289
-_____________ TestFeatureStore.test_get_data_for_features_with_db ______________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_store.py:629: in test_get_data_for_features_with_db
-    assert len(events) == 2
-E   assert 0 == 2
-E    +  where 0 = len([])
------------------------------- Captured log call -------------------------------
-ERROR    src.features.store:store.py:520 Failed to get data for features: 'coroutine' object does not support the asynchronous context manager protocol
-_____ TestTemporalFeatureExtractor.test_extract_features_with_sample_data ______
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/temporal.py:97: in extract_features
-    generic_features = self._extract_generic_sensor_features(sorted_events)
-src/features/temporal.py:274: in _extract_generic_sensor_features
-    for key, value in event.attributes.items():
-E   TypeError: 'Mock' object is not iterable
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_temporal.py:98: in test_extract_features_with_sample_data
-    features = extractor.extract_features(sample_events, target_time)
-src/features/temporal.py:106: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for temporal features in room 'living_room' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=temporal, room_id=living_room | Caused by: TypeError: 'Mock' object is not iterable
------------------------------- Captured log call -------------------------------
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-_______ TestTemporalFeatureExtractor.test_extract_features_empty_events ________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:132: in test_extract_features_empty_events
-    assert features["hour_sin"] == math.sin(2 * math.pi * 15 / 24)  # 3 PM
-E   assert 0.0 == -0.7071067811865471
-E    +  where -0.7071067811865471 = <built-in function sin>((((2 * 3.141592653589793) * 15) / 24))
-E    +    where <built-in function sin> = math.sin
-E    +    and   3.141592653589793 = math.pi
-_______ TestTemporalFeatureExtractor.test_extract_features_single_event ________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/temporal.py:97: in extract_features
-    generic_features = self._extract_generic_sensor_features(sorted_events)
-src/features/temporal.py:274: in _extract_generic_sensor_features
-    for key, value in event.attributes.items():
-E   TypeError: 'Mock' object is not iterable
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_temporal.py:137: in test_extract_features_single_event
-    features = extractor.extract_features(single_event, target_time)
-src/features/temporal.py:106: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for temporal features in room 'living_room' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=temporal, room_id=living_room | Caused by: TypeError: 'Mock' object is not iterable
------------------------------- Captured log call -------------------------------
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-_____________ TestTemporalFeatureExtractor.test_time_calculations ______________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/temporal.py:97: in extract_features
-    generic_features = self._extract_generic_sensor_features(sorted_events)
-src/features/temporal.py:274: in _extract_generic_sensor_features
-    for key, value in event.attributes.items():
-E   TypeError: 'Mock' object is not iterable
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_temporal.py:163: in test_time_calculations
-    features = extractor.extract_features(events, target_time)
-src/features/temporal.py:106: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for temporal features in room '<Mock name='mock.room_id' id='140400804716304'>' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=temporal, room_id=<Mock name='mock.room_id' id='140400804716304'> | Caused by: TypeError: 'Mock' object is not iterable
------------------------------- Captured log call -------------------------------
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-___________ TestTemporalFeatureExtractor.test_cyclical_time_features ___________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:188: in test_cyclical_time_features
-    assert abs(features["hour_sin"] - expected_sin) < 0.001
-E   assert 1.0 < 0.001
-E    +  where 1.0 = abs((0.0 - 1.0))
-____________ TestTemporalFeatureExtractor.test_day_of_week_features ____________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:207: in test_day_of_week_features
-    assert abs(features["day_sin"] - expected_sin) < 0.001
-E   assert 0.7818314824680298 < 0.001
-E    +  where 0.7818314824680298 = abs((0.0 - 0.7818314824680298))
-____________ TestTemporalFeatureExtractor.test_work_hours_detection ____________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:225: in test_work_hours_detection
-    assert features["is_work_hours"] == (1.0 if is_work_hours else 0.0)
-E   assert 0.0 == 1.0
-________ TestTemporalFeatureExtractor.test_state_duration_calculations _________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/temporal.py:97: in extract_features
-    generic_features = self._extract_generic_sensor_features(sorted_events)
-src/features/temporal.py:274: in _extract_generic_sensor_features
-    for key, value in event.attributes.items():
-E   TypeError: 'Mock' object is not iterable
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_temporal.py:249: in test_state_duration_calculations
-    features = extractor.extract_features(events, target_time)
-src/features/temporal.py:106: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for temporal features in room '<Mock name='mock.room_id' id='140400804717936'>' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=temporal, room_id=<Mock name='mock.room_id' id='140400804717936'> | Caused by: TypeError: 'Mock' object is not iterable
------------------------------- Captured log call -------------------------------
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-_____________ TestTemporalFeatureExtractor.test_activity_patterns ______________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/temporal.py:97: in extract_features
-    generic_features = self._extract_generic_sensor_features(sorted_events)
-src/features/temporal.py:274: in _extract_generic_sensor_features
-    for key, value in event.attributes.items():
-E   TypeError: 'Mock' object is not iterable
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_temporal.py:273: in test_activity_patterns
-    features = extractor.extract_features(events, target_time)
-src/features/temporal.py:106: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for temporal features in room '<Mock name='mock.room_id' id='140400805169728'>' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=temporal, room_id=<Mock name='mock.room_id' id='140400805169728'> | Caused by: TypeError: 'Mock' object is not iterable
------------------------------- Captured log call -------------------------------
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-____________ TestTemporalFeatureExtractor.test_sensor_type_features ____________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/temporal.py:97: in extract_features
-    generic_features = self._extract_generic_sensor_features(sorted_events)
-src/features/temporal.py:274: in _extract_generic_sensor_features
-    for key, value in event.attributes.items():
-E   TypeError: 'Mock' object is not iterable
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_temporal.py:296: in test_sensor_type_features
-    features = extractor.extract_features(events, target_time)
-src/features/temporal.py:106: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for temporal features in room '<Mock name='mock.room_id' id='140400804710496'>' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=temporal, room_id=<Mock name='mock.room_id' id='140400804710496'> | Caused by: TypeError: 'Mock' object is not iterable
------------------------------- Captured log call -------------------------------
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-__________ TestTemporalFeatureExtractor.test_recent_activity_features __________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/temporal.py:97: in extract_features
-    generic_features = self._extract_generic_sensor_features(sorted_events)
-src/features/temporal.py:274: in _extract_generic_sensor_features
-    for key, value in event.attributes.items():
-E   TypeError: 'Mock' object is not iterable
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_temporal.py:328: in test_recent_activity_features
-    features = extractor.extract_features(events, target_time)
-src/features/temporal.py:106: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for temporal features in room '<Mock name='mock.room_id' id='140400863051856'>' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=temporal, room_id=<Mock name='mock.room_id' id='140400863051856'> | Caused by: TypeError: 'Mock' object is not iterable
------------------------------- Captured log call -------------------------------
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-_____________ TestTemporalFeatureExtractor.test_timezone_handling ______________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:353: in test_timezone_handling
-    assert abs(features["hour_sin"] - expected_sin) < 0.001
-E   assert 0.7071067811865471 < 0.001
-E    +  where 0.7071067811865471 = abs((0.0 - -0.7071067811865471))
-____________ TestTemporalFeatureExtractor.test_feature_consistency _____________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/temporal.py:97: in extract_features
-    generic_features = self._extract_generic_sensor_features(sorted_events)
-src/features/temporal.py:274: in _extract_generic_sensor_features
-    for key, value in event.attributes.items():
-E   TypeError: 'Mock' object is not iterable
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_temporal.py:360: in test_feature_consistency
-    features1 = extractor.extract_features(sample_events, target_time)
-src/features/temporal.py:106: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for temporal features in room 'living_room' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=temporal, room_id=living_room | Caused by: TypeError: 'Mock' object is not iterable
------------------------------- Captured log call -------------------------------
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-___________ TestTemporalFeatureExtractor.test_edge_case_no_on_events ___________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/temporal.py:97: in extract_features
-    generic_features = self._extract_generic_sensor_features(sorted_events)
-src/features/temporal.py:274: in _extract_generic_sensor_features
-    for key, value in event.attributes.items():
-E   TypeError: 'Mock' object is not iterable
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_temporal.py:383: in test_edge_case_no_on_events
-    features = extractor.extract_features(events, target_time)
-src/features/temporal.py:106: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for temporal features in room '<Mock name='mock.room_id' id='140400804721872'>' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=temporal, room_id=<Mock name='mock.room_id' id='140400804721872'> | Caused by: TypeError: 'Mock' object is not iterable
------------------------------- Captured log call -------------------------------
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-__________ TestTemporalFeatureExtractor.test_edge_case_no_off_events ___________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/temporal.py:97: in extract_features
-    generic_features = self._extract_generic_sensor_features(sorted_events)
-src/features/temporal.py:274: in _extract_generic_sensor_features
-    for key, value in event.attributes.items():
-E   TypeError: 'Mock' object is not iterable
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_temporal.py:405: in test_edge_case_no_off_events
-    features = extractor.extract_features(events, target_time)
-src/features/temporal.py:106: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for temporal features in room '<Mock name='mock.room_id' id='140400860057616'>' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=temporal, room_id=<Mock name='mock.room_id' id='140400860057616'> | Caused by: TypeError: 'Mock' object is not iterable
------------------------------- Captured log call -------------------------------
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-______________ TestTemporalFeatureExtractor.test_very_old_events _______________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:428: in test_very_old_events
-    features = extractor.extract_features(
-E   TypeError: TemporalFeatureExtractor.extract_features() got an unexpected keyword argument 'lookback_hours'
-_________ TestSystemStatusAndMetrics.test_real_time_metrics_retrieval __________
-[gw1] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_tracking_manager.py:621: in test_real_time_metrics_retrieval
-    assert metrics is not None
-E   assert None is not None
------------------------------- Captured log call -------------------------------
-ERROR    src.adaptation.tracking_manager:tracking_manager.py:740 Failed to get real-time metrics: object Mock can't be used in 'await' expression
-___________ TestSystemStatusAndMetrics.test_active_alerts_retrieval ____________
-[gw1] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_tracking_manager.py:641: in test_active_alerts_retrieval
-    assert len(alerts) == 2
-E   assert 0 == 2
-E    +  where 0 = len([])
------------------------------- Captured log call -------------------------------
-ERROR    src.adaptation.tracking_manager:tracking_manager.py:760 Failed to get active alerts: object list can't be used in 'await' expression
-_________ TestTemporalFeatureExtractor.test_performance_large_dataset __________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/temporal.py:97: in extract_features
-    generic_features = self._extract_generic_sensor_features(sorted_events)
-src/features/temporal.py:274: in _extract_generic_sensor_features
-    for key, value in event.attributes.items():
-E   TypeError: 'Mock' object is not iterable
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_temporal.py:469: in test_performance_large_dataset
-    features = extractor.extract_features(large_events, target_time)
-src/features/temporal.py:106: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for temporal features in room '<Mock name='mock.room_id' id='140400719030336'>' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=temporal, room_id=<Mock name='mock.room_id' id='140400719030336'> | Caused by: TypeError: 'Mock' object is not iterable
------------------------------- Captured log call -------------------------------
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-____________ TestTemporalFeatureExtractor.test_cache_functionality _____________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:491: in test_cache_functionality
-    extractor.temporal_cache["test"] = "value"
-E   AttributeError: 'TemporalFeatureExtractor' object has no attribute 'temporal_cache'
-_______ TestTemporalFeatureExtractor.test_different_lookback_windows[1] ________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:503: in test_different_lookback_windows
-    features = extractor.extract_features(
-E   TypeError: TemporalFeatureExtractor.extract_features() got an unexpected keyword argument 'lookback_hours'
-_______ TestTemporalFeatureExtractor.test_different_lookback_windows[6] ________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:503: in test_different_lookback_windows
-    features = extractor.extract_features(
-E   TypeError: TemporalFeatureExtractor.extract_features() got an unexpected keyword argument 'lookback_hours'
-_______ TestTemporalFeatureExtractor.test_different_lookback_windows[12] _______
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:503: in test_different_lookback_windows
-    features = extractor.extract_features(
-E   TypeError: TemporalFeatureExtractor.extract_features() got an unexpected keyword argument 'lookback_hours'
-_______ TestTemporalFeatureExtractor.test_different_lookback_windows[24] _______
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:503: in test_different_lookback_windows
-    features = extractor.extract_features(
-E   TypeError: TemporalFeatureExtractor.extract_features() got an unexpected keyword argument 'lookback_hours'
-_______ TestTemporalFeatureExtractor.test_different_lookback_windows[48] _______
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:503: in test_different_lookback_windows
-    features = extractor.extract_features(
-E   TypeError: TemporalFeatureExtractor.extract_features() got an unexpected keyword argument 'lookback_hours'
-_________ TestTemporalFeatureExtractor.test_month_and_season_features __________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:563: in test_month_and_season_features
-    assert abs(features["month_sin"] - expected_sin) < 0.001
-E   assert 0.49999999999999994 < 0.001
-E    +  where 0.49999999999999994 = abs((0.0 - 0.49999999999999994))
-___________ TestTemporalFeatureExtractor.test_concurrent_extraction ____________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/features/temporal.py:97: in extract_features
-    generic_features = self._extract_generic_sensor_features(sorted_events)
-src/features/temporal.py:274: in _extract_generic_sensor_features
-    for key, value in event.attributes.items():
-E   TypeError: 'Mock' object is not iterable
-During handling of the above exception, another exception occurred:
-tests/unit/test_features/test_temporal.py:584: in test_concurrent_extraction
-    results = await asyncio.gather(*tasks)
-tests/unit/test_features/test_temporal.py:580: in extract_features
-    return extractor.extract_features(sample_events, target_time)
-src/features/temporal.py:106: in extract_features
-    raise FeatureExtractionError(
-E   src.core.exceptions.FeatureExtractionError: Feature extraction failed for temporal features in room 'living_room' | Error Code: FEATURE_EXTRACTION_ERROR | Context: feature_type=temporal, room_id=living_room | Caused by: TypeError: 'Mock' object is not iterable
------------------------------- Captured log call -------------------------------
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-ERROR    src.features.temporal:temporal.py:103 Failed to extract temporal features: 'Mock' object is not iterable
-_______________ TestTemporalFeatureExtractor.test_stats_tracking _______________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_features/test_temporal.py:596: in test_stats_tracking
-    initial_stats = extractor.get_extraction_stats()
-E   AttributeError: 'TemporalFeatureExtractor' object has no attribute 'get_extraction_stats'
-__________ TestHAEvent.test_ha_event_is_valid_false_missing_entity_id __________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_ingestion/test_ha_client.py:107: in test_ha_event_is_valid_false_missing_entity_id
-    assert event.is_valid() is False
-E   AssertionError: assert '' is False
-E    +  where '' = <bound method HAEvent.is_valid of HAEvent(entity_id='', state='on', previous_state='off', timestamp=datetime.datetime(2025, 8, 18, 21, 23, 24, 682964, tzinfo=datetime.timezone.utc), attributes={}, event_type='state_changed')>()
-E    +    where <bound method HAEvent.is_valid of HAEvent(entity_id='', state='on', previous_state='off', timestamp=datetime.datetime(2025, 8, 18, 21, 23, 24, 682964, tzinfo=datetime.timezone.utc), attributes={}, event_type='state_changed')> = HAEvent(entity_id='', state='on', previous_state='off', timestamp=datetime.datetime(2025, 8, 18, 21, 23, 24, 682964, tzinfo=datetime.timezone.utc), attributes={}, event_type='state_changed').is_valid
-______ TestHomeAssistantClient.test_test_authentication_connection_error _______
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_ingestion/test_ha_client.py:394: in test_test_authentication_connection_error
-    await client._test_authentication()
-src/data/ingestion/ha_client.py:197: in _test_authentication
-    async with self.session.get(api_url) as response:
-E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
-_____________ TestSystemStatusAndMetrics.test_alert_acknowledgment _____________
-[gw1] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_adaptation/test_tracking_manager.py:660: in test_alert_acknowledgment
-    assert success
-E   assert False
------------------------------- Captured log call -------------------------------
-ERROR    src.adaptation.tracking_manager:tracking_manager.py:774 Failed to acknowledge alert: object bool can't be used in 'await' expression
-_____________ TestBasePredictor.test_prediction_history_management _____________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-tests/unit/test_models/test_base_predictors.py:297: in test_prediction_history_management
-    assert len(predictor.prediction_history) == 500
-E   AssertionError: assert 599 == 500
-E    +  where 599 = len([(datetime.datetime(2025, 8, 18, 21, 23, 26, 45046), PredictionResult(predicted_time=datetime.datetime(2025, 8, 18, 21, 53, 26, 45046), transition_type='vacant_to_occupied', confidence_score=0.8, prediction_interval=None, alternatives=None, model_type='gp', model_version=None, features_used=None, prediction_metadata=None)), (datetime.datetime(2025, 8, 18, 21, 23, 26, 45046), PredictionResult(predicted_time=datetime.datetime(2025, 8, 18, 21, 53, 26, 45046), transition_type='vacant_to_occupied', confidence_score=0.8, prediction_interval=None, alternatives=None, model_type='gp', model_version=None, features_used=None, prediction_metadata=None)), (datetime.datetime(2025, 8, 18, 21, 23, 26, 45046), PredictionResult(predicted_time=datetime.datetime(2025, 8, 18, 21, 53, 26, 45046), transition_type='vacant_to_occupied', confidence_score=0.8, prediction_interval=None, alternatives=None, model_type='gp', model_version=None, features_used=None, prediction_metadata=None)), (datetime.datetime(2025,
-E    +    where [(datetime.datetime(2025, 8, 18, 21, 23, 26, 45046), PredictionResult(predicted_time=datetime.datetime(2025, 8, 18, 21, 53, 26, 45046), transition_type='vacant_to_occupied', confidence_score=0.8, prediction_interval=None, alternatives=None, model_type='gp', model_version=None, features_used=None, prediction_metadata=None)), (datetime.datetime(2025, 8, 18, 21, 23, 26, 45046), PredictionResult(predicted_time=datetime.datetime(2025, 8, 18, 21, 53, 26, 45046), transition_type='vacant_to_occupied', confidence_score=0.8, prediction_interval=None, alternatives=None, model_type='gp', model_version=None, features_used=None, prediction_metadata=None)), (datetime.datetime(2025, 8, 18, 21, 23, 26, 45046), PredictionResult(predicted_time=datetime.datetime(2025, 8, 18, 21, 53, 26, 45046), transition_type='vacant_to_occupied', confidence_score=0.8, prediction_interval=None, alternatives=None, model_type='gp', model_version=None, features_used=None, prediction_metadata=None)), (datetime.datetime(2025, 8, 18, 
-_______________ TestLSTMPredictor.test_lstm_training_convergence _______________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/models/base/lstm_predictor.py:174: in train
-    training_score = r2_score(y_train_original, y_pred_train_original)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sklearn/utils/_param_validation.py:218: in wrapper
-    return func(*args, **kwargs)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sklearn/metrics/_regression.py:1276: in r2_score
-    _check_reg_targets_with_floating_dtype(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sklearn/metrics/_regression.py:209: in _check_reg_targets_with_floating_dtype
-    y_type, y_true, y_pred, sample_weight, multioutput = _check_reg_targets(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sklearn/metrics/_regression.py:114: in _check_reg_targets
-    check_consistent_length(y_true, y_pred, sample_weight)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sklearn/utils/validation.py:473: in check_consistent_length
-    raise ValueError(
-E   ValueError: Found input variables with inconsistent numbers of samples: [151, 200]
-During handling of the above exception, another exception occurred:
-tests/unit/test_models/test_base_predictors.py:353: in test_lstm_training_convergence
-    result = await predictor.train(
-src/models/base/lstm_predictor.py:263: in train
-    raise ModelTrainingError(model_type="lstm", room_id=self.room_id, cause=e)
-E   src.core.exceptions.ModelTrainingError: Model training failed for lstm model in room 'test_room' | Error Code: MODEL_TRAINING_ERROR | Context: model_type=lstm, room_id=test_room | Caused by: ValueError: Found input variables with inconsistent numbers of samples: [151, 200]
------------------------------- Captured log call -------------------------------
-ERROR    src.models.base.lstm_predictor:lstm_predictor.py:252 LSTM training failed: Found input variables with inconsistent numbers of samples: [151, 200]
-________________ TestLSTMPredictor.test_lstm_prediction_format _________________
-[gw0] linux -- Python 3.12.11 /opt/hostedtoolcache/Python/3.12.11/x64/bin/python
-src/models/base/lstm_predictor.py:174: in train
-    training_score = r2_score(y_train_original, y_pred_train_original)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sklearn/utils/_param_validation.py:218: in wrapper
-    return func(*args, **kwargs)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sklearn/metrics/_regression.py:1276: in r2_score
-    _check_reg_targets_with_floating_dtype(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sklearn/metrics/_regression.py:209: in _check_reg_targets_with_floating_dtype
-    y_type, y_true, y_pred, sample_weight, multioutput = _check_reg_targets(
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sklearn/metrics/_regression.py:114: in _check_reg_targets
-    check_consistent_length(y_true, y_pred, sample_weight)
-/opt/hostedtoolcache/Python/3.12.11/x64/lib/python3.12/site-packages/sklearn/utils/validation.py:473: in check_consistent_length
-    raise ValueError(
-E   ValueError: Found input variables with inconsistent numbers of samples: [151, 10]
-During handling of the above exception, another exception occurred:
-tests/unit/test_models/test_base_predictors.py:382: in test_lstm_prediction_format
-    await predictor.train(train_features, train_targets)
-src/models/base/lstm_predictor.py:263: in train
-    raise ModelTrainingError(model_type="lstm", room_id=self.room_id, cause=e)
-E   src.core.exceptions.ModelTrainingError: Model training failed for lstm model in room 'test_room' | Error Code: MODEL_TRAINING_ERROR | Context: model_type=lstm, room_id=test_room | Caused by: ValueError: Found input variables with inconsistent numbers of samples: [151, 10]
+FAILED tests/unit/test_adaptation/test_retrainer.py::TestRetrainingNeedEvaluation::test_cooldown_period_enforcement - AssertionError: assert RetrainingRequest(request_id='bathroom_lstm_1755678029', room_id='bathroom', model_type=<ModelType.LSTM: 'lstm'>, trigger=<RetrainingTrigger.ACCURACY_DEGRADATION: 'accuracy_degradation'>, strategy=<RetrainingStrategy.FULL_RETRAIN: 'full_retrain'>, priority=6.0, created_time=datetime.datetime(2025, 8, 20, 8, 20, 29, 237337), accuracy_metrics=AccuracyMetrics(total_predictions=100, validated_predictions=85, accurate_predictions=45, expired_predictions=0, failed_predictions=0, accuracy_rate=52.9, mean_error_minutes=28.5, median_error_minutes=25.0, std_error_minutes=0.0, rmse_minutes=0.0, mae_minutes=0.0, error_percentiles={}, accuracy_by_level={}, mean_bias_minutes=0.0, bias_std_minutes=0.0, mean_confidence=0.0, confidence_accuracy_correlation=0.68, overconfidence_rate=0.0, underconfidence_rate=0.0, measurement_period_start=datetime.datetime(2025, 8, 19, 8, 20, 29, 235834), measurement_period_end=datetime.datetime(2025, 8, 20, 8, 20, 29, 235859), predictions_per_hour=0.0), drift_metrics=None, performance_degradation={}, retraining_parameters={'lookback_days': 14, 'validation_split': 0.2, 'feature_refresh': True, 'max_training_time_minutes': 60, 'early_stopping_patience': 10, 'min_improvement_threshold': 0.01}, model_hyperparameters={}, feature_engineering_config={}, validation_strategy=['time_series_split', 'holdout'], status=<RetrainingStatus.PENDING: 'pending'>, started_time=None, completed_time=None, error_message=None, execution_log=[], resource_usage_log=[], checkpoint_data={}, training_result=None, performance_improvement={}, prediction_results=[], validation_metrics={}, lookback_days=14, validation_split=0.2, feature_refresh=True) is None
+FAILED tests/unit/test_adaptation/test_tracking_manager.py::TestPerformanceAndConcurrency::test_memory_usage_monitoring - assert 100 < 100
+FAILED tests/unit/test_adaptation/test_validator.py::TestPredictionRecording::test_prediction_recording_with_metadata - TypeError: 'ValidationRecord' object is not subscriptable
+FAILED tests/unit/test_adaptation/test_validator.py::TestPredictionRecording::test_duplicate_prediction_handling - TypeError: object of type 'ValidationRecord' has no len()
+FAILED tests/unit/test_adaptation/test_validator.py::TestPredictionRecording::test_prediction_expiration_handling - AttributeError: 'PredictionValidator' object has no attribute '_cleanup_expired_predictions'
+FAILED tests/unit/test_adaptation/test_validator.py::TestPredictionValidation::test_successful_prediction_validation - AttributeError: <src.adaptation.validator.PredictionValidator object at 0x7f2472813290> does not have the attribute '_update_validation_in_db'
+FAILED tests/unit/test_adaptation/test_validator.py::TestPredictionValidation::test_prediction_validation_multiple_candidates - AttributeError: <src.adaptation.validator.PredictionValidator object at 0x7f24726eaf90> does not have the attribute '_update_validation_in_db'
+FAILED tests/unit/test_adaptation/test_validator.py::TestPredictionValidation::test_validation_with_no_pending_predictions - AttributeError: <src.adaptation.validator.PredictionValidator object at 0x7f24726e9e50> does not have the attribute '_update_validation_in_db'
+FAILED tests/unit/test_adaptation/test_validator.py::TestPredictionValidation::test_validation_time_window_enforcement - AttributeError: <src.adaptation.validator.PredictionValidator object at 0x7f2472711640> does not have the attribute '_update_validation_in_db'
+FAILED tests/unit/test_adaptation/test_validator.py::TestAccuracyMetricsRetrieval::test_time_filtered_accuracy_metrics - TypeError: PredictionValidator.get_accuracy_metrics() got an unexpected keyword argument 'start_time'
+FAILED tests/unit/test_adaptation/test_validator.py::TestValidationStatistics::test_validation_stats_collection - TypeError: object dict can't be used in 'await' expression
+FAILED tests/unit/test_adaptation/test_validator.py::TestValidationStatistics::test_validation_performance_metrics - AttributeError: 'PredictionValidator' object has no attribute 'get_performance_stats'
+FAILED tests/unit/test_adaptation/test_validator.py::TestValidationStatistics::test_total_predictions_counter - AttributeError: 'PredictionValidator' object has no attribute 'get_total_predictions'. Did you mean: '_total_predictions'?
+FAILED tests/unit/test_adaptation/test_validator.py::TestValidationStatistics::test_validation_rate_calculation - AttributeError: 'PredictionValidator' object has no attribute 'get_validation_rate'. Did you mean: 'get_validation_stats'?
+FAILED tests/unit/test_adaptation/test_validator.py::TestDatabaseIntegration::test_prediction_storage_to_database - TypeError: PredictionValidator._store_prediction_to_db() got an unexpected keyword argument 'room_id'
+FAILED tests/unit/test_adaptation/test_validator.py::TestDatabaseIntegration::test_validation_update_in_database - AttributeError: 'PredictionValidator' object has no attribute '_update_validation_in_db'. Did you mean: '_update_predictions_in_db'?
+FAILED tests/unit/test_adaptation/test_validator.py::TestDatabaseIntegration::test_predictions_retrieval_from_database - AssertionError: assert [] == [<Mock id='13...94513827584'>]
+  Right contains 3 more items, first extra item: <Mock id='139794513827344'>
+  Full diff:
+    [
+  +  ,
+  -  <Mock id='139794513827344'>,
+  -  <Mock id='139794513827536'>,
+  -  <Mock id='139794513827584'>,
+    ]
+FAILED tests/unit/test_adaptation/test_validator.py::TestCleanupAndMaintenance::test_expired_predictions_cleanup - TypeError: object of type 'ValidationRecord' has no len()
+FAILED tests/unit/test_adaptation/test_validator.py::TestCleanupAndMaintenance::test_validation_history_cleanup - AttributeError: 'PredictionValidator' object has no attribute 'cleanup_old_predictions'. Did you mean: 'cleanup_old_records'?
+FAILED tests/unit/test_adaptation/test_validator.py::TestCleanupAndMaintenance::test_pending_predictions_size_limit - TypeError: object of type 'ValidationRecord' has no len()
+FAILED tests/unit/test_adaptation/test_validator.py::TestErrorHandlingAndEdgeCases::test_validation_with_invalid_actual_time - assert False
+ +  where False = isinstance(TypeError("PredictionValidator.validate_prediction() got an unexpected keyword argument 'actual_time'"), (<class 'ValueError'>, <class 'src.core.exceptions.OccupancyPredictionError'>))
+FAILED tests/unit/test_adaptation/test_validator.py::TestErrorHandlingAndEdgeCases::test_concurrent_validation_operations - AttributeError: <src.adaptation.validator.PredictionValidator object at 0x7f24725e4bf0> does not have the attribute '_update_validation_in_db'
+FAILED tests/unit/test_data/test_database.py::TestDatabaseManager::test_initialize_success - AssertionError: Expected '_create_engine' to have been called once. Called 0 times.
+FAILED tests/unit/test_data/test_database.py::TestDatabaseManager::test_verify_connection_success - assert 0 > 0
+ +  where 0 = len([])
+FAILED tests/unit/test_data/test_database.py::TestDatabaseManager::test_get_session_success - TypeError: '_AsyncGeneratorContextManager' object is not an async iterator
+FAILED tests/unit/test_data/test_database.py::TestDatabaseManager::test_get_session_retry_on_connection_error - TypeError: '_AsyncGeneratorContextManager' object is not an async iterator
+FAILED tests/unit/test_data/test_database.py::TestDatabaseManager::test_get_session_max_retries_exceeded - TypeError: '_AsyncGeneratorContextManager' object is not an async iterator
+FAILED tests/unit/test_data/test_database.py::TestDatabaseManager::test_get_session_non_connection_error - TypeError: '_AsyncGeneratorContextManager' object is not an async iterator
+FAILED tests/unit/test_data/test_database.py::TestDatabaseManagerEdgeCases::test_get_session_rollback_on_error - TypeError: '_AsyncGeneratorContextManager' object is not an async iterator
+FAILED tests/unit/test_data/test_database.py::TestDatabaseManagerIntegration::test_full_lifecycle - assert False
+ +  where False = <src.data.storage.database.DatabaseManager object at 0x7f24726e8470>.is_initialized
+FAILED tests/unit/test_data/test_database.py::TestDatabaseManagerIntegration::test_retry_mechanism_with_real_errors - TypeError: '_AsyncGeneratorContextManager' object is not an async iterator
+FAILED tests/unit/test_data/test_models.py::TestSensorEvent::test_get_state_changes - LookupError: 'of' is not among the defined enum values. Enum name: sensor_state_enum. Possible values: on, off, open, ..., unknown
+FAILED tests/unit/test_data/test_models.py::TestSensorEvent::test_get_transition_sequences - LookupError: 'of' is not among the defined enum values. Enum name: sensor_state_enum. Possible values: on, off, open, ..., unknown
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractor::test_extract_features_comprehensive - AssertionError: assert 'temperature_change_rate' in {'avg_door_open_duration': 480.0, 'avg_humidity': 50.0, 'avg_light': 350.0, 'avg_temperature': 23.0, ...}
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractor::test_environmental_features_temperature - TypeError: ContextualFeatureExtractor._extract_environmental_features() missing 1 required positional argument: 'target_time'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractor::test_environmental_features_humidity - TypeError: ContextualFeatureExtractor._extract_environmental_features() missing 1 required positional argument: 'target_time'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractor::test_environmental_features_light - TypeError: ContextualFeatureExtractor._extract_environmental_features() missing 1 required positional argument: 'target_time'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractor::test_door_state_features - TypeError: ContextualFeatureExtractor._extract_door_state_features() missing 1 required positional argument: 'target_time'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractor::test_multi_room_correlation_features - TypeError: ContextualFeatureExtractor._extract_multi_room_features() missing 2 required positional arguments: 'room_states' and 'target_time'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractor::test_seasonal_features - AssertionError: assert 'season_indicator' in {'is_autumn': 0.0, 'is_holiday_season': 1.0, 'is_spring': 0.0, 'is_summer': 0.0, ...}
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractor::test_weather_integration_features - TypeError: ContextualFeatureExtractor._extract_environmental_features() missing 1 required positional argument: 'target_time'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractor::test_cross_sensor_correlation - KeyError: 'avg_light_level'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractor::test_occupancy_spread_analysis - TypeError: ContextualFeatureExtractor._extract_multi_room_features() missing 2 required positional arguments: 'room_states' and 'target_time'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractor::test_environmental_sensor_identification - AttributeError: 'ContextualFeatureExtractor' object has no attribute '_filter_environmental_events'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractor::test_feature_calculation_edge_cases - KeyError: 'temperature_stability'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractor::test_default_features_completeness - AssertionError: No features found for category: seasonal
+assert False
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractorIntegration::test_realistic_home_scenario - KeyError: 'active_rooms_count'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractorIntegration::test_seasonal_behavior_patterns - KeyError: 'avg_light_level'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractorIntegration::test_multi_home_correlation - TypeError: ContextualFeatureExtractor._extract_multi_room_features() missing 2 required positional arguments: 'room_states' and 'target_time'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractorEdgeCases::test_mixed_sensor_types - KeyError: 'avg_light_level'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractorEdgeCases::test_invalid_sensor_values - assert -488.25 == 22.5
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractorEdgeCases::test_extreme_environmental_conditions - KeyError: 'temperature_stability'
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractorEdgeCases::test_rapid_state_changes - assert 20 == 19.0
+FAILED tests/unit/test_features/test_contextual.py::TestContextualFeatureExtractorEdgeCases::test_single_room_multi_states - TypeError: ContextualFeatureExtractor._extract_multi_room_features() missing 2 required positional arguments: 'room_states' and 'target_time'
+FAILED tests/unit/test_features/test_engineering.py::TestFeatureEngineeringEngine::test_error_handling_extractor_failure - Failed: DID NOT RAISE <class 'src.core.exceptions.FeatureExtractionError'>
+FAILED tests/unit/test_features/test_engineering.py::TestFeatureEngineeringEngine::test_validate_configuration_no_config - assert True is False
+FAILED tests/unit/test_features/test_sequential.py::TestSequentialFeatureExtractorMovementPatterns::test_cat_like_patterns - assert 0.4 > 0.5
+FAILED tests/unit/test_features/test_store.py::TestFeatureCache::test_cache_expired_records - AssertionError: assert {'feature': 1.0} is None
+FAILED tests/unit/test_features/test_store.py::TestFeatureStore::test_feature_store_configuration - AttributeError: 'FeatureStore' object has no attribute 'default_lookback_hours'
+FAILED tests/unit/test_features/test_temporal.py::TestTemporalFeatureExtractor::test_feature_value_ranges - KeyError: 'day_of_week_sin'
+FAILED tests/unit/test_features/test_temporal.py::TestTemporalFeatureExtractor::test_event_sequence_patterns - AssertionError: assert 'transition_regularity' in {'activity_variance': 0.25, 'avg_off_duration': 1800.0, 'avg_on_duration': 600.0, 'avg_transition_interval': 600.0, ...}
+FAILED tests/unit/test_features/test_temporal.py::TestTemporalFeatureExtractor::test_cyclical_encoding_accuracy - assert 2.0 < 0.0001
+ +  where 2.0 = abs((1.0 - -1.0))
+FAILED tests/unit/test_features/test_temporal.py::TestTemporalFeatureExtractor::test_sensor_type_distribution - KeyError: 'motion_sensor_ratio'
+FAILED tests/unit/test_ingestion/test_ha_client.py::TestHAEvent::test_ha_event_is_valid_false_missing_entity_id - AssertionError: assert '' is False
+ +  where '' = <bound method HAEvent.is_valid of HAEvent(entity_id='', state='on', previous_state='off', timestamp=datetime.datetime(2025, 8, 20, 8, 20, 44, 734873, tzinfo=datetime.timezone.utc), attributes={}, event_type='state_changed')>()
+ +    where <bound method HAEvent.is_valid of HAEvent(entity_id='', state='on', previous_state='off', timestamp=datetime.datetime(2025, 8, 20, 8, 20, 44, 734873, tzinfo=datetime.timezone.utc), attributes={}, event_type='state_changed')> = HAEvent(entity_id='', state='on', previous_state='off', timestamp=datetime.datetime(2025, 8, 20, 8, 20, 44, 734873, tzinfo=datetime.timezone.utc), attributes={}, event_type='state_changed').is_valid
+FAILED tests/unit/test_ingestion/test_ha_client.py::TestHomeAssistantClient::test_test_authentication_401 - TypeError: 'int' object is not subscriptable
+FAILED tests/unit/test_ingestion/test_ha_client.py::TestHomeAssistantClient::test_authenticate_websocket_auth_failed - TypeError: 'int' object is not subscriptable
+FAILED tests/unit/test_models/test_ensemble.py::TestEnsembleTraining::test_ensemble_model_weight_calculation - AssertionError: assert 'lstm' == 'xgboost'
+  - xgboost
+  + lstm
+FAILED tests/unit/test_models/test_ensemble.py::TestEnsemblePrediction::test_ensemble_prediction_error_handling - src.core.exceptions.ModelPredictionError: Model prediction failed: ensemble for room test_room | Error Code: MODEL_PREDICTION_ERROR | Context: model_type=ensemble, room_id=test_room | Caused by: Exception: Model prediction failed
+FAILED tests/unit/test_models/test_ensemble.py::TestEnsembleIncrementalUpdate::test_ensemble_incremental_update - src.core.exceptions.ModelTrainingError: Model training failed: ensemble for room test_room | Error Code: MODEL_TRAINING_ERROR | Context: model_type=ensemble, room_id=test_room | Caused by: ValueError: Found input variables with inconsistent numbers of samples: [160, 640]
+FAILED tests/unit/test_models/test_ensemble.py::TestEnsembleIncrementalUpdate::test_incremental_update_error_handling - src.core.exceptions.ModelTrainingError: Model training failed: ensemble for room test_room | Error Code: MODEL_TRAINING_ERROR | Context: model_type=ensemble, room_id=test_room | Caused by: ModelTrainingError: Model training failed: ensemble for room test_room | Error Code: MODEL_TRAINING_ERROR | Context: model_type=ensemble, room_id=test_room | Caused by: ValueError: Input X contains NaN.
+LinearRegression does not accept missing values encoded as NaN natively. For supervised learning, you might want to consider sklearn.ensemble.HistGradientBoostingClassifier and Regressor which accept missing values encoded as NaNs natively. Alternatively, it is possible to preprocess the data, for instance by using an imputer transformer in a pipeline or drop samples with missing values. See https://scikit-learn.org/stable/modules/impute.html You can find a list of all estimators that handle NaN values at the following page: https://scikit-learn.org/stable/modules/impute.html#estimators-that-handle-nan-values
+FAILED tests/unit/test_models/test_ensemble.py::TestEnsemblePerformance::test_ensemble_prediction_latency - AssertionError: assert 1 == 20
+ +  where 1 = len([PredictionResult(predicted_time=datetime.datetime(2025, 8, 20, 8, 50, 57, 993630), transition_type='vacant_to_occupied', confidence_score=0.7999999455269103, prediction_interval=None, alternatives=[(datetime.datetime(2025, 8, 20, 8, 50, 57, 992023), 0.8), (datetime.datetime(2025, 8, 20, 8, 50, 57, 992305), 0.8), (datetime.datetime(2025, 8, 20, 8, 50, 57, 992509), 0.8)], model_type='ensemble', model_version='v1.0', features_used=['hour_sin', 'hour_cos', 'weekday', 'prev_state_duration', 'transition_count_1h', 'state_stability', 'temp', 'temp_squared', 'motion_intensity', 'smooth_pattern', 'smooth_trend', 'feature_0', 'feature_1', 'feature_2', 'feature_3'], prediction_metadata={'time_until_transition_seconds': 1800.0, 'prediction_method': 'stacking_ensemble', 'base_model_predictions': {'lstm': 1799.998393, 'xgboost': 1799.998675, 'hmm': 1799.998879, 'gp': 1799.99907}, 'model_weights': {'lstm': 0.25, 'xgboost': 0.35, 'hmm': 0.2, 'gp': 0.2}, 'meta_learner_type': 'xgboost', 'combination_method': 'meta_learner_weighted'})])
+ +  and   20 = len(         hour_sin      hour_cos  weekday  ...  feature_1  feature_2  feature_3\n640 -1.000000e+00 -1.836970e-16        0  ...  -0.991091   0.209686   1.295007\n641  2.588190e-01 -9.659258e-01        1  ...   1.329794   0.457542  -0.282125\n642 -7.071068e-01  7.071068e-01        2  ...  -1.675580   0.433748  -0.630864\n643  1.000000e+00  6.123234e-17        0  ...  -0.806520  -1.771897  -0.864430\n644  7.071068e-01 -7.071068e-01        5  ...   1.677201   0.636870   0.692776\n645 -1.000000e+00 -1.836970e-16        0  ...  -0.435139  -0.671015  -0.204707\n646  1.000000e+00  6.123234e-17        1  ...  -1.314879  -1.095839  -0.386495\n647  5.000000e-01  8.660254e-01        4  ...   0.219072  -1.104452  -0.813665\n648  1.224647e-16 -1.000000e+00        0  ...  -0.475392   0.433542  -0.769666\n649  1.224647e-16 -1.000000e+00        6  ...  -0.835870  -0.222575   0.320058\n650 -9.659258e-01 -2.588190e-01        0  ...  -1.095871  -1.681969  -1.315438\n651 -9.659258e-01  2.588190e-01        5  ...   2.768374   0.478038   0.994869\n652  9.659258e-01 -2.588190e-01        5  ...  -0.251552  -1.439608  -0.533845\n653  8.660254e-01 -5.000000e-01        2  ...  -1.925567   0.139821  -0.149636\n654  1.000000e+00  6.123234e-17        5  ...   1.493710   0.238499  -1.336978\n655  0.000000e+00  1.000000e+00        3  ...   0.611071   0.885577  -0.012366\n656  5.000000e-01  8.660254e-01        1  ...  -0.766466   1.781685  -0.328321\n657  1.224647e-16 -1.000000e+00        1  ...  -0.933119  -1.364676  -0.050081\n658 -8.660254e-01 -5.000000e-01        4  ...   0.673473  -0.052474   1.471709\n659 -2.588190e-01  9.659258e-01        4  ...  -0.246918  -0.276335   0.177698\n\n[20 rows x 15 columns])
+FAILED tests/unit/test_models/test_model_serialization.py::TestBasicModelSerialization::test_save_load_trained_xgboost_model - src.core.exceptions.ModelPredictionError: Model prediction failed: xgboost for room test_room | Error Code: MODEL_PREDICTION_ERROR | Context: model_type=xgboost, room_id=test_room | Caused by: NotFittedError: This StandardScaler instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+FAILED tests/unit/test_models/test_model_serialization.py::TestEnsembleModelSerialization::test_ensemble_base_model_serialization - AssertionError: assert 'placeholder' == 'test_room'
+  - test_room
+  + placeholder
+FAILED tests/unit/test_models/test_model_serialization.py::TestSerializationErrorHandling::test_partial_model_data_loading - _pickle.PicklingError: Can't pickle <class 'unittest.mock.MagicMock'>: it's not the same object as unittest.mock.MagicMock
+FAILED tests/unit/test_models/test_model_serialization.py::TestMultipleModelSerialization::test_model_comparison_after_serialization - src.core.exceptions.ModelPredictionError: Model prediction failed: xgboost for room test_room | Error Code: MODEL_PREDICTION_ERROR | Context: model_type=xgboost, room_id=test_room | Caused by: NotFittedError: This StandardScaler instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+FAILED tests/unit/test_models/test_model_serialization.py::TestBackwardsCompatibility::test_version_compatibility_handling - _pickle.PicklingError: Can't pickle <class 'unittest.mock.MagicMock'>: it's not the same object as unittest.mock.MagicMock
+FAILED tests/unit/test_adaptation/test_tracking_manager.py::TestPerformanceAndConcurrency::test_background_task_management - assert 0 > 0
+ERROR tests/unit/test_core/test_exceptions.py
+ERROR tests/unit/test_models/test_base_predictors.py
+ERROR tests/unit/test_models/test_training_config.py
+ERROR tests/unit/test_models/test_training_pipeline.py
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestModelOptimizer::test_optimizer_initialization - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestModelOptimizer::test_parameter_space_initialization - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationStrategies::test_bayesian_optimization - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationStrategies::test_grid_search_optimization - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationStrategies::test_random_search_optimization - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationStrategies::test_empty_parameter_space_handling - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationObjectives::test_accuracy_objective_function - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationObjectives::test_confidence_calibration_objective - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationObjectives::test_composite_objective - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationConstraints::test_time_constraint_enforcement - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationConstraints::test_performance_constraint_validation - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationHistory::test_optimization_history_tracking - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationHistory::test_parameter_caching - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationHistory::test_performance_history_tracking - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationStatistics::test_success_rate_calculation - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestOptimizationStatistics::test_average_improvement_tracking - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestErrorHandling::test_model_training_error_handling - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestErrorHandling::test_objective_function_error_handling - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestErrorHandling::test_timeout_handling - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestPerformanceOptimization::test_optimization_performance_metrics - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestPerformanceOptimization::test_concurrent_optimizations - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_optimizer.py::TestPerformanceOptimization::test_memory_usage_tracking - TypeError: AccuracyMetrics.__init__() got an unexpected keyword argument 'avg_error_minutes'
+ERROR tests/unit/test_adaptation/test_validator.py::TestAccuracyMetricsRetrieval::test_room_accuracy_metrics - TypeError: 'actual_time' is an invalid keyword argument for Prediction
+ERROR tests/unit/test_adaptation/test_validator.py::TestAccuracyMetricsRetrieval::test_overall_accuracy_metrics - TypeError: 'actual_time' is an invalid keyword argument for Prediction
+ERROR tests/unit/test_adaptation/test_validator.py::TestAccuracyMetricsRetrieval::test_model_specific_accuracy_metrics - TypeError: 'actual_time' is an invalid keyword argument for Prediction
+ERROR tests/unit/test_adaptation/test_validator.py::TestAccuracyMetricsRetrieval::test_accuracy_trend_analysis - TypeError: 'actual_time' is an invalid keyword argument for Prediction
+ERROR tests/unit/test_adaptation/test_validator.py::TestValidationStatistics::test_room_prediction_counts - TypeError: 'actual_time' is an invalid keyword argument for Prediction
+ERROR tests/unit/test_features/test_store.py::TestFeatureStore::test_store_initialization - TypeError: FeatureStore.__init__() got an unexpected keyword argument 'feature_engine'
+ERROR tests/unit/test_features/test_store.py::TestFeatureStore::test_get_features_from_cache - TypeError: FeatureStore.__init__() got an unexpected keyword argument 'feature_engine'
+ERROR tests/unit/test_features/test_store.py::TestFeatureStore::test_get_features_cache_miss - TypeError: FeatureStore.__init__() got an unexpected keyword argument 'feature_engine'
+ERROR tests/unit/test_features/test_store.py::TestFeatureStore::test_get_batch_features_success - TypeError: FeatureStore.__init__() got an unexpected keyword argument 'feature_engine'
+ERROR tests/unit/test_features/test_store.py::TestFeatureStore::test_get_batch_features_with_exceptions - TypeError: FeatureStore.__init__() got an unexpected keyword argument 'feature_engine'
+ERROR tests/unit/test_features/test_store.py::TestFeatureStore::test_compute_training_data - TypeError: FeatureStore.__init__() got an unexpected keyword argument 'feature_engine'
+ERROR tests/unit/test_features/test_store.py::TestFeatureStore::test_get_data_for_features_with_db - TypeError: FeatureStore.__init__() got an unexpected keyword argument 'feature_engine'
+ERROR tests/unit/test_features/test_store.py::TestFeatureStore::test_feature_store_stats - TypeError: FeatureStore.__init__() got an unexpected keyword argument 'feature_engine'
+ERROR tests/unit/test_features/test_store.py::TestFeatureStore::test_cache_key_generation - TypeError: FeatureStore.__init__() got an unexpected keyword argument 'feature_engine'
+========== 77 failed, 462 passed, 26674 warnings, 40 errors in 54.92s ==========

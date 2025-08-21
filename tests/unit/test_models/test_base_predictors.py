@@ -15,7 +15,7 @@ import pytest
 
 from src.core.constants import ModelType
 from src.core.exceptions import ModelTrainingError, PredictionError
-from src.models.base.gaussian_process_predictor import GaussianProcessPredictor
+from src.models.base.gp_predictor import GaussianProcessPredictor
 from src.models.base.hmm_predictor import HMMPredictor
 from src.models.base.lstm_predictor import LSTMPredictor
 from src.models.base.predictor import BasePredictor, PredictionResult, TrainingResult

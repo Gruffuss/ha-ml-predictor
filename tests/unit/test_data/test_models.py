@@ -4,7 +4,7 @@ Unit tests for database models.
 Tests SQLAlchemy models, relationships, class methods, and data validation.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
 from decimal import Decimal
@@ -32,7 +32,7 @@ class TestSensorEvent:
 
     def test_sensor_event_creation(self):
         """Test creating a sensor event with all fields."""
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
         attributes = {"device_class": "motion", "friendly_name": "Test Sensor"}
 
         event = SensorEvent(
@@ -40,7 +40,7 @@ class TestSensorEvent:
             sensor_id="binary_sensor.test_motion",
             sensor_type="motion",
             state="on",
-            previous_state="of",
+            previous_state="off",
             timestamp=timestamp,
             attributes=attributes,
             is_human_triggered=True,
@@ -52,7 +52,7 @@ class TestSensorEvent:
         assert event.sensor_id == "binary_sensor.test_motion"
         assert event.sensor_type == "motion"
         assert event.state == "on"
-        assert event.previous_state == "of"
+        assert event.previous_state == "off"
         assert event.timestamp == timestamp
         assert event.attributes == attributes
         assert event.is_human_triggered is True
@@ -65,14 +65,14 @@ class TestSensorEvent:
             room_id="bedroom",
             sensor_id="binary_sensor.bedroom_motion",
             sensor_type="presence",
-            state="of",
-            timestamp=datetime.utcnow(),
+            state="off",
+            timestamp=datetime.now(timezone.utc),
         )
 
         assert event.room_id == "bedroom"
         assert event.sensor_id == "binary_sensor.bedroom_motion"
         assert event.sensor_type == "presence"
-        assert event.state == "of"
+        assert event.state == "off"
         assert event.is_human_triggered is True  # Default value
 
     @pytest.mark.asyncio
@@ -114,7 +114,7 @@ class TestSensorEvent:
     @pytest.mark.asyncio
     async def test_get_state_changes(self, test_db_session):
         """Test getting events where state changed."""
-        base_time = datetime.utcnow() - timedelta(hours=1)
+        base_time = datetime.now(timezone.utc) - timedelta(hours=1)
 
         # Create events with state changes
         events = [
@@ -123,7 +123,7 @@ class TestSensorEvent:
                 sensor_id="binary_sensor.test",
                 sensor_type="motion",
                 state="on",
-                previous_state="of",
+                previous_state="off",
                 timestamp=base_time + timedelta(minutes=i * 10),
             )
             for i in range(3)
@@ -161,7 +161,7 @@ class TestSensorEvent:
     @pytest.mark.asyncio
     async def test_get_transition_sequences(self, test_db_session):
         """Test getting transition sequences for pattern analysis."""
-        base_time = datetime.utcnow() - timedelta(hours=1)
+        base_time = datetime.now(timezone.utc) - timedelta(hours=1)
 
         # Create a sequence of events within time window
         sequence1_events = []
@@ -170,8 +170,8 @@ class TestSensorEvent:
                 room_id="test_room",
                 sensor_id=f"binary_sensor.sensor_{i % 2}",
                 sensor_type="motion",
-                state="on" if i % 2 == 0 else "of",
-                previous_state="of" if i % 2 == 0 else "on",
+                state="on" if i % 2 == 0 else "off",
+                previous_state="off" if i % 2 == 0 else "on",
                 timestamp=base_time + timedelta(minutes=i * 2),
             )
             sequence1_events.append(event)
@@ -184,8 +184,8 @@ class TestSensorEvent:
                 room_id="test_room",
                 sensor_id="binary_sensor.sensor_2",
                 sensor_type="motion",
-                state="on" if i % 2 == 0 else "of",
-                previous_state="of" if i % 2 == 0 else "on",
+                state="on" if i % 2 == 0 else "off",
+                previous_state="off" if i % 2 == 0 else "on",
                 timestamp=base_time + timedelta(minutes=40 + i * 2),
             )
             sequence2_events.append(event)
@@ -212,7 +212,7 @@ class TestRoomState:
 
     def test_room_state_creation(self):
         """Test creating a room state with all fields."""
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
         certainty_factors = {"sensor_confidence": 0.9, "pattern_match": 0.8}
 
         room_state = RoomState(
@@ -241,7 +241,7 @@ class TestRoomState:
     @pytest.mark.asyncio
     async def test_get_current_state(self, test_db_session):
         """Test getting current room state."""
-        base_time = datetime.utcnow()
+        base_time = datetime.now(timezone.utc)
 
         # Create multiple room states
         states = [
@@ -288,7 +288,7 @@ class TestRoomState:
     @pytest.mark.asyncio
     async def test_get_occupancy_history(self, test_db_session):
         """Test getting occupancy history."""
-        base_time = datetime.utcnow()
+        base_time = datetime.now(timezone.utc)
 
         # Create occupancy history over 25 hours
         states = []
@@ -323,7 +323,7 @@ class TestPrediction:
 
     def test_prediction_creation(self):
         """Test creating a prediction with all fields."""
-        prediction_time = datetime.utcnow()
+        prediction_time = datetime.now(timezone.utc)
         transition_time = prediction_time + timedelta(minutes=15)
         feature_importance = {"temperature": 0.3, "motion": 0.7}
         alternatives = [
@@ -365,7 +365,7 @@ class TestPrediction:
     @pytest.mark.asyncio
     async def test_get_pending_validations(self, test_db_session):
         """Test getting predictions that need validation."""
-        base_time = datetime.utcnow()
+        base_time = datetime.now(timezone.utc)
 
         # Create predictions at different times
         predictions = [
@@ -433,7 +433,7 @@ class TestPrediction:
     @pytest.mark.asyncio
     async def test_get_accuracy_metrics(self, test_db_session):
         """Test calculating accuracy metrics."""
-        base_time = datetime.utcnow()
+        base_time = datetime.now(timezone.utc)
 
         # Create predictions with accuracy data
         predictions = [
@@ -503,8 +503,8 @@ class TestModelAccuracy:
 
     def test_model_accuracy_creation(self):
         """Test creating model accuracy record."""
-        start_time = datetime.utcnow() - timedelta(days=1)
-        end_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc) - timedelta(days=1)
+        end_time = datetime.now(timezone.utc)
         baseline_comparison = {"previous_accuracy": 0.75, "improvement": 0.05}
 
         accuracy = ModelAccuracy(
@@ -549,7 +549,7 @@ class TestFeatureStore:
 
     def test_feature_store_creation(self):
         """Test creating feature store record."""
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(timezone.utc)
         temporal_features = {
             "hour_sin": 0.5,
             "hour_cos": 0.866,
@@ -604,7 +604,7 @@ class TestFeatureStore:
     @pytest.mark.asyncio
     async def test_get_latest_features(self, test_db_session):
         """Test getting latest features for a room."""
-        base_time = datetime.utcnow()
+        base_time = datetime.now(timezone.utc)
 
         # Create feature records at different times
         features = [
@@ -668,7 +668,7 @@ class TestFeatureStore:
 
         feature_store = FeatureStore(
             room_id="test_room",
-            feature_timestamp=datetime.utcnow(),
+            feature_timestamp=datetime.now(timezone.utc),
             temporal_features=temporal_features,
             sequential_features=sequential_features,
             contextual_features=contextual_features,
@@ -711,7 +711,7 @@ class TestModelApplicationLevelRelationships:
             sensor_id="binary_sensor.test",
             sensor_type="motion",
             state="on",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
         test_db_session.add(event)
         await test_db_session.flush()  # Get the ID
@@ -719,8 +719,9 @@ class TestModelApplicationLevelRelationships:
         # Create prediction triggered by this event (application-level relationship)
         prediction = Prediction(
             room_id="test_room",
-            prediction_time=datetime.utcnow(),
-            predicted_transition_time=datetime.utcnow() + timedelta(minutes=15),
+            prediction_time=datetime.now(timezone.utc),
+            predicted_transition_time=datetime.now(timezone.utc)
+            + timedelta(minutes=15),
             transition_type="occupied_to_vacant",
             confidence_score=0.8,
             model_type="lstm",
@@ -752,7 +753,7 @@ class TestModelApplicationLevelRelationships:
         # Create room state
         room_state = RoomState(
             room_id="test_room",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             is_occupied=True,
             occupancy_confidence=0.9,
         )
@@ -762,8 +763,9 @@ class TestModelApplicationLevelRelationships:
         # Create prediction based on this room state (application-level relationship)
         prediction = Prediction(
             room_id="test_room",
-            prediction_time=datetime.utcnow(),
-            predicted_transition_time=datetime.utcnow() + timedelta(minutes=20),
+            prediction_time=datetime.now(timezone.utc),
+            predicted_transition_time=datetime.now(timezone.utc)
+            + timedelta(minutes=20),
             transition_type="occupied_to_vacant",
             confidence_score=0.75,
             model_type="xgboost",
@@ -799,7 +801,7 @@ class TestModelConstraints:
             sensor_id="binary_sensor.test",
             sensor_type="motion",
             state="on",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             confidence_score=0.8,
         )
         test_db_session.add(event)
@@ -818,8 +820,8 @@ class TestModelConstraints:
             room_id="test_room",
             model_type="lstm",
             model_version="v1.0",
-            measurement_start=datetime.utcnow() - timedelta(days=1),
-            measurement_end=datetime.utcnow(),
+            measurement_start=datetime.now(timezone.utc) - timedelta(days=1),
+            measurement_end=datetime.now(timezone.utc),
             total_predictions=100,
             accurate_predictions=85,  # Less than total
             accuracy_rate=0.85,
@@ -919,8 +921,8 @@ class TestModelIntegration:
             sensor_id="binary_sensor.test_motion",
             sensor_type="motion",
             state="on",
-            previous_state="of",
-            timestamp=datetime.utcnow() - timedelta(minutes=30),
+            previous_state="off",
+            timestamp=datetime.now(timezone.utc) - timedelta(minutes=30),
             is_human_triggered=True,
             confidence_score=0.85,
         )
@@ -930,7 +932,7 @@ class TestModelIntegration:
         # 2. Create room state based on event
         room_state = RoomState(
             room_id="integration_test_room",
-            timestamp=datetime.utcnow() - timedelta(minutes=25),
+            timestamp=datetime.now(timezone.utc) - timedelta(minutes=25),
             is_occupied=True,
             occupancy_confidence=0.9,
             transition_trigger=trigger_event.sensor_id,
@@ -939,8 +941,8 @@ class TestModelIntegration:
         await test_db_session.flush()
 
         # 3. Create prediction based on room state
-        prediction_time = datetime.utcnow() - timedelta(minutes=20)
-        predicted_transition = datetime.utcnow() - timedelta(minutes=5)
+        prediction_time = datetime.now(timezone.utc) - timedelta(minutes=20)
+        predicted_transition = datetime.now(timezone.utc) - timedelta(minutes=5)
 
         prediction = Prediction(
             room_id="integration_test_room",
@@ -961,9 +963,9 @@ class TestModelIntegration:
             room_id="integration_test_room",
             sensor_id="binary_sensor.test_motion",
             sensor_type="motion",
-            state="of",
+            state="off",
             previous_state="on",
-            timestamp=datetime.utcnow(),  # Actual transition happened now
+            timestamp=datetime.now(timezone.utc),  # Actual transition happened now
             is_human_triggered=True,
             confidence_score=0.9,
         )
@@ -978,7 +980,7 @@ class TestModelIntegration:
             / 60
         )
         prediction.is_accurate = prediction.accuracy_minutes <= 15  # Within threshold
-        prediction.validation_timestamp = datetime.utcnow()
+        prediction.validation_timestamp = datetime.now(timezone.utc)
 
         await test_db_session.commit()
 
@@ -1013,7 +1015,7 @@ class TestModelIntegration:
     @pytest.mark.asyncio
     async def test_feature_store_lifecycle(self, test_db_session):
         """Test feature store lifecycle with expiration."""
-        base_time = datetime.utcnow()
+        base_time = datetime.now(timezone.utc)
 
         # Create feature store entries with different expiration times
         fresh_features = FeatureStore(
