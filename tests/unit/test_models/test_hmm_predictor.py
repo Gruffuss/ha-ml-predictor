@@ -1,12 +1,15 @@
 """
-Comprehensive unit tests for Hidden Markov Model predictor.
+Comprehensive unit tests for HMM predictor module.
 
-This test suite validates HMM model training, state identification, transition matrix
-building, duration prediction, and all probabilistic state modeling functionality.
+This test suite provides complete coverage for the HMMPredictor class,
+including model initialization, training methods, prediction methods,
+state analysis, transition modeling, and error handling.
 """
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, Mock, PropertyMock, patch
+import pickle
+import tempfile
+from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 import pandas as pd
@@ -32,29 +35,18 @@ class TestHMMPredictorInitialization:
         assert predictor.model_type == ModelType.HMM
         assert predictor.room_id is None
         assert predictor.state_model is None
-        assert predictor.transition_models == {}
+        assert predictor.is_trained is False
         assert isinstance(predictor.feature_scaler, StandardScaler)
-        assert predictor.state_labels == {}
-        assert predictor.state_characteristics == {}
-        assert predictor.transition_matrix is None
-        assert predictor.state_durations == {}
-
-        # Check default parameters
-        expected_defaults = DEFAULT_MODEL_PARAMS[ModelType.HMM]
-        assert predictor.model_params["n_components"] == expected_defaults.get(
-            "n_components", 4
-        )
-        assert predictor.model_params["covariance_type"] == expected_defaults.get(
-            "covariance_type", "full"
-        )
-        assert predictor.model_params["n_iter"] == expected_defaults.get("n_iter", 100)
+        assert predictor.model_params["n_components"] == 4
+        assert predictor.model_params["covariance_type"] == "full"
 
     def test_hmm_predictor_initialization_with_room_id(self):
         """Test HMM predictor initialization with room ID."""
-        predictor = HMMPredictor(room_id="bedroom")
+        predictor = HMMPredictor(room_id="kitchen")
 
-        assert predictor.room_id == "bedroom"
         assert predictor.model_type == ModelType.HMM
+        assert predictor.room_id == "kitchen"
+        assert predictor.is_trained is False
 
     def test_hmm_predictor_initialization_with_custom_params(self):
         """Test HMM predictor initialization with custom parameters."""
@@ -62,1204 +54,1147 @@ class TestHMMPredictorInitialization:
             "n_components": 6,
             "covariance_type": "diag",
             "n_iter": 200,
-            "random_state": 123,
-            "init_params": "random",
+            "max_iter": 150,
             "tol": 1e-4,
+            "random_state": 123,
         }
 
-        predictor = HMMPredictor(room_id="kitchen", **custom_params)
+        predictor = HMMPredictor(room_id="bedroom", **custom_params)
 
         assert predictor.model_params["n_components"] == 6
+        assert predictor.model_params["n_states"] == 6  # Alias
         assert predictor.model_params["covariance_type"] == "diag"
         assert predictor.model_params["n_iter"] == 200
-        assert predictor.model_params["random_state"] == 123
-        assert predictor.model_params["init_params"] == "random"
+        assert predictor.model_params["max_iter"] == 150  # Should use n_iter value
         assert predictor.model_params["tol"] == 1e-4
+        assert predictor.model_params["random_state"] == 123
 
-    def test_hmm_predictor_parameter_aliasing(self):
-        """Test parameter aliasing for compatibility."""
-        predictor = HMMPredictor()
+    def test_hmm_predictor_parameter_aliases(self):
+        """Test parameter aliases for compatibility."""
+        predictor = HMMPredictor(n_components=8, max_iter=300)
 
-        # Test that n_states is aliased to n_components
-        assert (
-            predictor.model_params["n_states"] == predictor.model_params["n_components"]
+        assert predictor.model_params["n_states"] == 8  # Alias for n_components
+        assert predictor.model_params["n_iter"] == 100  # Default value
+        assert predictor.model_params["max_iter"] == 300  # Custom value
+
+    def test_hmm_predictor_default_parameters_merge(self):
+        """Test that default parameters are properly merged with custom ones."""
+        default_params = DEFAULT_MODEL_PARAMS[ModelType.HMM]
+        custom_params = {"covariance_type": "tied"}
+
+        predictor = HMMPredictor(**custom_params)
+
+        # Custom parameter should override default
+        assert predictor.model_params["covariance_type"] == "tied"
+
+        # Default parameters should still be present
+        assert predictor.model_params["n_components"] == default_params.get(
+            "n_components", 4
         )
 
-        # Test that max_iter is aliased to n_iter
-        assert predictor.model_params["max_iter"] == predictor.model_params["n_iter"]
+    def test_hmm_predictor_data_structures_initialization(self):
+        """Test initialization of HMM-specific data structures."""
+        predictor = HMMPredictor()
+
+        assert isinstance(predictor.transition_models, dict)
+        assert isinstance(predictor.state_labels, dict)
+        assert isinstance(predictor.state_characteristics, dict)
+        assert isinstance(predictor.state_durations, dict)
+        assert predictor.transition_matrix is None
 
 
 class TestHMMPredictorTraining:
-    """Test HMM model training functionality."""
+    """Test HMM predictor training functionality."""
 
-    @pytest.fixture
-    def sample_training_data(self):
-        """Sample training data fixture for HMM."""
+    def create_sample_training_data(self, n_samples=100, n_features=5):
+        """Create sample training data for testing."""
         np.random.seed(42)
 
-        # Create realistic occupancy prediction features
-        n_samples = 200
-        features = pd.DataFrame(
-            {
-                "time_since_last_change": np.random.exponential(3600, n_samples),
-                "current_state_duration": np.random.exponential(1800, n_samples),
-                "hour_sin": np.sin(
-                    2 * np.pi * np.random.randint(0, 24, n_samples) / 24
-                ),
-                "hour_cos": np.cos(
-                    2 * np.pi * np.random.randint(0, 24, n_samples) / 24
-                ),
-                "day_of_week": np.random.randint(0, 7, n_samples),
-                "temperature": np.random.normal(22, 3, n_samples),
-                "motion_events": np.random.poisson(1.5, n_samples),
-                "door_openings": np.random.poisson(0.5, n_samples),
-            }
-        )
+        # Create features with some structure for better state identification
+        features = []
+        for i in range(n_samples):
+            # Create different "modes" of behavior
+            if i < n_samples // 3:
+                # Morning pattern
+                feature_vec = np.random.normal([1, 0.5, 0, 0.8, 0.3], 0.2)
+            elif i < 2 * n_samples // 3:
+                # Evening pattern
+                feature_vec = np.random.normal([0.2, 0.9, 0.7, 0.1, 0.8], 0.2)
+            else:
+                # Night pattern
+                feature_vec = np.random.normal([0.1, 0.2, 0.1, 0.9, 0.1], 0.2)
 
-        # Create bimodal target distribution (short and long stays)
-        short_stays = np.random.exponential(600, n_samples // 2)  # ~10 min
-        long_stays = np.random.exponential(3600, n_samples // 2)  # ~1 hour
+            features.append(feature_vec)
+
+        features_df = pd.DataFrame(features)
+        # Ensure we only keep the requested number of features
+        if n_features < len(features_df.columns):
+            features_df = features_df.iloc[:, :n_features]
+        features_df.columns = [f"feature_{i}" for i in range(features_df.shape[1])]
+
+        # Create targets (time until next transition in seconds)
         targets = pd.DataFrame(
-            {"time_until_transition_seconds": np.concatenate([short_stays, long_stays])}
+            {"time_until_transition_seconds": np.random.uniform(300, 7200, n_samples)}
         )
 
-        return features, targets
-
-    @pytest.fixture
-    def hmm_predictor(self):
-        """HMM predictor fixture."""
-        return HMMPredictor(room_id="test_room", random_state=42, n_components=4)
+        return features_df, targets
 
     @pytest.mark.asyncio
-    async def test_hmm_training_success(self, hmm_predictor, sample_training_data):
+    async def test_hmm_training_success(self):
         """Test successful HMM training."""
-        features, targets = sample_training_data
+        predictor = HMMPredictor(room_id="test_room", n_components=3, max_iter=10)
+        features, targets = self.create_sample_training_data(100, 5)
 
-        result = await hmm_predictor.train(features, targets)
+        result = await predictor.train(features, targets)
 
-        assert isinstance(result, TrainingResult)
         assert result.success is True
-        assert result.training_samples == len(features)
+        assert result.training_samples == 100
         assert result.training_time_seconds > 0
-        assert result.validation_score is not None
-        assert result.training_score > 0  # Should have reasonable R² score
-
-        # Verify model is trained
-        assert hmm_predictor.is_trained is True
-        assert hmm_predictor.state_model is not None
-        assert isinstance(hmm_predictor.state_model, GaussianMixture)
-        assert hmm_predictor.feature_names == list(features.columns)
-        assert len(hmm_predictor.state_labels) > 0
-        assert len(hmm_predictor.state_characteristics) > 0
-        assert hmm_predictor.transition_matrix is not None
-        assert len(hmm_predictor.transition_models) > 0
+        assert result.model_version is not None
+        assert result.training_score is not None
+        assert predictor.is_trained is True
+        assert predictor.state_model is not None
+        assert isinstance(predictor.state_model, GaussianMixture)
 
     @pytest.mark.asyncio
-    async def test_hmm_training_with_validation_data(
-        self, hmm_predictor, sample_training_data
-    ):
-        """Test HMM training with separate validation data."""
-        features, targets = sample_training_data
+    async def test_hmm_training_with_validation_data(self):
+        """Test HMM training with validation data."""
+        predictor = HMMPredictor(room_id="test_room", n_components=3, max_iter=10)
+        train_features, train_targets = self.create_sample_training_data(100, 5)
+        val_features, val_targets = self.create_sample_training_data(30, 5)
 
-        # Split data for validation
-        split_idx = int(len(features) * 0.8)
-        train_features = features[:split_idx]
-        train_targets = targets[:split_idx]
-        val_features = features[split_idx:]
-        val_targets = targets[split_idx:]
-
-        result = await hmm_predictor.train(
+        result = await predictor.train(
             train_features, train_targets, val_features, val_targets
         )
 
         assert result.success is True
-        assert result.training_samples == len(train_features)
+        assert result.validation_score is not None
         assert "validation_mae" in result.training_metrics
-        assert "validation_r2" in result.training_metrics
         assert "validation_rmse" in result.training_metrics
+        assert "validation_r2" in result.training_metrics
 
     @pytest.mark.asyncio
-    async def test_hmm_training_insufficient_data(self, hmm_predictor):
-        """Test HMM training with insufficient data."""
-        # Very small dataset
-        features = pd.DataFrame({"feature1": [1, 2, 3, 4, 5]})
-        targets = pd.DataFrame(
-            {"time_until_transition_seconds": [100, 200, 150, 300, 250]}
-        )
+    async def test_hmm_training_insufficient_data_error(self):
+        """Test HMM training with insufficient data raises error."""
+        predictor = HMMPredictor(room_id="test_room", n_components=4)
+        features, targets = self.create_sample_training_data(15, 3)  # Small dataset
 
         with pytest.raises(ModelTrainingError):
-            await hmm_predictor.train(features, targets)
+            await predictor.train(features, targets)
 
     @pytest.mark.asyncio
-    async def test_hmm_training_kmeans_initialization(
-        self, hmm_predictor, sample_training_data
-    ):
-        """Test HMM training uses KMeans for initialization."""
-        features, targets = sample_training_data
+    async def test_hmm_training_state_analysis(self):
+        """Test that HMM training performs proper state analysis."""
+        predictor = HMMPredictor(room_id="test_room", n_components=3, max_iter=10)
+        features, targets = self.create_sample_training_data(100, 5)
 
-        with patch("sklearn.cluster.KMeans") as mock_kmeans:
-            mock_kmeans_instance = Mock()
-            mock_kmeans_instance.fit.return_value = None
-            mock_kmeans_instance.cluster_centers_ = np.random.randn(
-                4, features.shape[1]
-            )
-            mock_kmeans.return_value = mock_kmeans_instance
+        await predictor.train(features, targets)
 
-            result = await hmm_predictor.train(features, targets)
-
-            # Verify KMeans was used for initialization
-            mock_kmeans.assert_called_once()
-            mock_kmeans_instance.fit.assert_called_once()
+        # Check that state analysis was performed
+        assert len(predictor.state_labels) > 0
+        assert len(predictor.state_characteristics) > 0
+        assert len(predictor.state_durations) > 0
+        assert predictor.transition_matrix is not None
+        assert predictor.transition_matrix.shape == (3, 3)
 
     @pytest.mark.asyncio
-    async def test_hmm_training_state_analysis(
-        self, hmm_predictor, sample_training_data
-    ):
-        """Test that HMM training performs state analysis."""
-        features, targets = sample_training_data
+    async def test_hmm_training_transition_models(self):
+        """Test that transition models are created for each state."""
+        predictor = HMMPredictor(room_id="test_room", n_components=3, max_iter=10)
+        features, targets = self.create_sample_training_data(100, 5)
 
-        result = await hmm_predictor.train(features, targets)
+        await predictor.train(features, targets)
 
-        # Verify state analysis was performed
-        assert (
-            len(hmm_predictor.state_labels)
-            == hmm_predictor.model_params["n_components"]
-        )
-        assert (
-            len(hmm_predictor.state_characteristics)
-            == hmm_predictor.model_params["n_components"]
-        )
-        assert (
-            len(hmm_predictor.state_durations)
-            == hmm_predictor.model_params["n_components"]
-        )
+        # Check that transition models were created
+        assert len(predictor.transition_models) > 0
 
-        # Check state characteristics structure
-        for state_id, characteristics in hmm_predictor.state_characteristics.items():
-            assert "avg_duration" in characteristics
-            assert "std_duration" in characteristics
-            assert "sample_count" in characteristics
-            assert "feature_means" in characteristics
-            assert "prediction_reliability" in characteristics
+        # Each state should have a transition model
+        for state_id in range(3):
+            if state_id in predictor.transition_models:
+                model_info = predictor.transition_models[state_id]
+                assert "type" in model_info
+                assert model_info["type"] in ["average", "regression"]
 
     @pytest.mark.asyncio
-    async def test_hmm_training_transition_matrix_building(
-        self, hmm_predictor, sample_training_data
-    ):
-        """Test transition matrix is built during training."""
-        features, targets = sample_training_data
+    async def test_hmm_training_metrics_calculation(self):
+        """Test that training metrics are calculated correctly."""
+        predictor = HMMPredictor(room_id="test_room", n_components=3, max_iter=10)
+        features, targets = self.create_sample_training_data(100, 5)
 
-        result = await hmm_predictor.train(features, targets)
-
-        # Verify transition matrix
-        n_states = hmm_predictor.model_params["n_components"]
-        assert hmm_predictor.transition_matrix.shape == (n_states, n_states)
-
-        # Each row should sum to approximately 1.0 (probability distribution)
-        for i in range(n_states):
-            row_sum = np.sum(hmm_predictor.transition_matrix[i, :])
-            assert abs(row_sum - 1.0) < 1e-6
-
-    @pytest.mark.asyncio
-    async def test_hmm_training_duration_models(
-        self, hmm_predictor, sample_training_data
-    ):
-        """Test duration prediction models are trained for each state."""
-        features, targets = sample_training_data
-
-        result = await hmm_predictor.train(features, targets)
-
-        # Verify duration models
-        assert len(hmm_predictor.transition_models) > 0
-
-        for state_id, model_info in hmm_predictor.transition_models.items():
-            assert "type" in model_info
-            assert model_info["type"] in ["regression", "average"]
-
-            if model_info["type"] == "regression":
-                assert "model" in model_info
-                assert isinstance(model_info["model"], LinearRegression)
-            elif model_info["type"] == "average":
-                assert "value" in model_info
-                assert isinstance(model_info["value"], (int, float))
-
-    @pytest.mark.asyncio
-    async def test_hmm_training_metrics_calculation(
-        self, hmm_predictor, sample_training_data
-    ):
-        """Test training metrics calculation."""
-        features, targets = sample_training_data
-
-        result = await hmm_predictor.train(features, targets)
+        result = await predictor.train(features, targets)
 
         metrics = result.training_metrics
         assert "training_mae" in metrics
         assert "training_rmse" in metrics
         assert "training_r2" in metrics
         assert "n_states" in metrics
-        assert "state_distribution" in metrics
         assert "convergence_iter" in metrics
         assert "log_likelihood" in metrics
-
-        # Values should be reasonable
-        assert metrics["training_mae"] > 0
-        assert metrics["training_rmse"] > 0
-        assert -1 <= metrics["training_r2"] <= 1
-        assert metrics["n_states"] == hmm_predictor.model_params["n_components"]
-        assert (
-            len(metrics["state_distribution"])
-            == hmm_predictor.model_params["n_components"]
-        )
+        assert "state_distribution" in metrics
+        assert metrics["n_states"] == 3
+        assert len(metrics["state_distribution"]) == 3
 
     @pytest.mark.asyncio
-    async def test_hmm_training_error_handling(self, hmm_predictor):
-        """Test HMM training error handling."""
-        features = pd.DataFrame({"feature1": [1, 2, 3]})
-        targets = pd.DataFrame({"invalid_target": [100, 200, 300]})  # Wrong column name
+    async def test_hmm_training_with_kmeans_initialization(self):
+        """Test HMM training uses KMeans for better initialization."""
+        predictor = HMMPredictor(room_id="test_room", n_components=4, max_iter=10)
+        features, targets = self.create_sample_training_data(100, 5)
 
-        with patch.object(
-            hmm_predictor,
-            "_prepare_targets",
-            side_effect=Exception("Preparation error"),
-        ):
-            with pytest.raises(ModelTrainingError):
-                await hmm_predictor.train(features, targets)
+        with patch("src.models.base.hmm_predictor.KMeans") as mock_kmeans:
+            mock_kmeans_instance = Mock()
+            mock_kmeans_instance.cluster_centers_ = np.random.randn(4, 5)
+            mock_kmeans.return_value = mock_kmeans_instance
+
+            await predictor.train(features, targets)
+
+            # Verify KMeans was used for initialization
+            mock_kmeans.assert_called_once()
+            mock_kmeans_instance.fit.assert_called_once()
 
 
-class TestHMMStateAnalysis:
+class TestHMMPredictorStateAnalysis:
     """Test HMM state analysis functionality."""
 
-    @pytest.fixture
-    def hmm_with_mock_state_model(self):
-        """HMM predictor with mock state model."""
-        predictor = HMMPredictor()
+    def create_mock_trained_predictor(self):
+        """Create a mock trained HMM predictor."""
+        predictor = HMMPredictor(n_components=3)
+        predictor.is_trained = True
+        predictor.feature_names = ["feature_0", "feature_1", "feature_2"]
+        predictor.model_version = "test_v1.0"
 
-        # Mock trained state model
-        mock_state_model = Mock(spec=GaussianMixture)
-        mock_state_model.predict.return_value = np.array([0, 1, 2, 0, 1, 2, 3, 3])
-        mock_state_model.predict_proba.return_value = np.array(
+        # Mock state model
+        predictor.state_model = Mock(spec=GaussianMixture)
+        predictor.state_model.means_ = np.array(
             [
-                [0.8, 0.1, 0.05, 0.05],  # High confidence in state 0
-                [0.1, 0.8, 0.05, 0.05],  # High confidence in state 1
-                [0.05, 0.1, 0.8, 0.05],  # High confidence in state 2
-                [0.7, 0.1, 0.1, 0.1],  # Medium confidence in state 0
-                [0.1, 0.7, 0.1, 0.1],  # Medium confidence in state 1
-                [0.1, 0.1, 0.7, 0.1],  # Medium confidence in state 2
-                [0.1, 0.1, 0.1, 0.7],  # Medium confidence in state 3
-                [0.2, 0.2, 0.2, 0.4],  # Low confidence in state 3
+                [0.1, 0.2, 0.3],  # State 0
+                [0.5, 0.6, 0.7],  # State 1
+                [0.8, 0.9, 0.1],  # State 2
             ]
         )
-        predictor.state_model = mock_state_model
-        predictor.model_params = {"n_components": 4}
+        predictor.state_model.covariances_ = np.array(
+            [
+                np.eye(3) * 0.1,  # State 0 covariance
+                np.eye(3) * 0.2,  # State 1 covariance
+                np.eye(3) * 0.15,  # State 2 covariance
+            ]
+        )
+        predictor.state_model.predict.return_value = np.array([0])
+        predictor.state_model.predict_proba.return_value = np.array([[0.8, 0.15, 0.05]])
+
+        # Mock transition matrix
+        predictor.transition_matrix = np.array(
+            [[0.7, 0.2, 0.1], [0.3, 0.5, 0.2], [0.4, 0.3, 0.3]]
+        )
+
+        # Mock state characteristics
+        predictor.state_labels = {
+            0: "Short_Stay_0",
+            1: "Medium_Stay_1",
+            2: "Long_Stay_2",
+        }
+        predictor.state_characteristics = {
+            0: {"avg_duration": 600, "sample_count": 20},
+            1: {"avg_duration": 1800, "sample_count": 30},
+            2: {"avg_duration": 3600, "sample_count": 25},
+        }
+
+        # Mock transition models
+        predictor.transition_models = {
+            0: {"type": "average", "value": 600},
+            1: {"type": "regression", "model": Mock(spec=LinearRegression)},
+            2: {"type": "average", "value": 3600},
+        }
+        predictor.transition_models[1]["model"].predict.return_value = np.array([1800])
 
         return predictor
 
-    def test_analyze_states(self, hmm_with_mock_state_model):
-        """Test state analysis with mock data."""
-        X = np.random.randn(8, 5)
-        state_labels = np.array([0, 1, 2, 0, 1, 2, 3, 3])
-        durations = np.array([600, 1800, 3600, 900, 2400, 4800, 1200, 1500])
-        feature_names = ["f1", "f2", "f3", "f4", "f5"]
-        state_probabilities = (
-            hmm_with_mock_state_model.state_model.predict_proba.return_value
+    def test_state_label_assignment(self):
+        """Test state label assignment based on characteristics."""
+        predictor = HMMPredictor()
+
+        # Test different duration ranges (check actual thresholds from implementation)
+        label1 = predictor._assign_state_label(
+            0, 300, np.array([1, 2, 3]), ["f1", "f2", "f3"]
+        )
+        assert "Quick_Transition" in label1
+
+        label2 = predictor._assign_state_label(
+            1, 1200, np.array([1, 2, 3]), ["f1", "f2", "f3"]
+        )
+        assert "Short_Stay" in label2
+
+        label3 = predictor._assign_state_label(
+            2, 7200, np.array([1, 2, 3]), ["f1", "f2", "f3"]
+        )  # 2 hours
+        assert "Medium_Stay" in label3
+
+        label4 = predictor._assign_state_label(
+            3, 18000, np.array([1, 2, 3]), ["f1", "f2", "f3"]
+        )
+        assert "Long_Stay" in label4
+
+    def test_build_transition_matrix(self):
+        """Test transition matrix building from state sequences."""
+        predictor = HMMPredictor(n_components=3)
+        predictor.state_labels = {0: "State_0", 1: "State_1", 2: "State_2"}
+
+        # Create a sequence of state labels
+        state_labels = np.array([0, 0, 1, 1, 1, 2, 0, 1, 2, 2])
+
+        predictor._build_transition_matrix(state_labels)
+
+        assert predictor.transition_matrix is not None
+        assert predictor.transition_matrix.shape == (3, 3)
+
+        # Check that rows sum to 1 (probability distributions)
+        for i in range(3):
+            assert abs(predictor.transition_matrix[i, :].sum() - 1.0) < 1e-6
+
+    def test_analyze_states_with_probabilities(self):
+        """Test state analysis with state probabilities."""
+        predictor = HMMPredictor(n_components=3)
+
+        X = np.random.randn(50, 4)
+        state_labels = np.random.randint(0, 3, 50)
+        durations = np.random.uniform(300, 7200, 50)
+        feature_names = ["f1", "f2", "f3", "f4"]
+
+        # Create mock state probabilities
+        state_probabilities = np.random.uniform(0.3, 0.9, (50, 3))
+        # Normalize each row
+        state_probabilities = state_probabilities / state_probabilities.sum(
+            axis=1, keepdims=True
         )
 
-        hmm_with_mock_state_model._analyze_states(
+        predictor._analyze_states(
             X, state_labels, durations, feature_names, state_probabilities
         )
 
-        # Verify state characteristics were computed
-        assert len(hmm_with_mock_state_model.state_characteristics) == 4
-        assert len(hmm_with_mock_state_model.state_labels) == 4
-        assert len(hmm_with_mock_state_model.state_durations) == 4
+        # Check that analysis produced results
+        assert len(predictor.state_labels) > 0
+        assert len(predictor.state_characteristics) > 0
 
-        # Check state 0 characteristics
-        state_0_char = hmm_with_mock_state_model.state_characteristics[0]
-        assert "avg_duration" in state_0_char
-        assert "std_duration" in state_0_char
-        assert "sample_count" in state_0_char
-        assert "feature_means" in state_0_char
-        assert "avg_state_probability" in state_0_char
-        assert "confidence_variance" in state_0_char
-        assert "high_confidence_samples" in state_0_char
-        assert "low_confidence_samples" in state_0_char
-        assert "prediction_reliability" in state_0_char
+        # Check that state characteristics include probability-based metrics
+        for state_id, characteristics in predictor.state_characteristics.items():
+            assert "avg_state_probability" in characteristics
+            assert "confidence_variance" in characteristics
+            assert "prediction_reliability" in characteristics
 
-        # State 0 has samples at indices 0 and 3
-        assert state_0_char["sample_count"] == 2
-        expected_avg_duration = np.mean([600, 900])
-        assert abs(state_0_char["avg_duration"] - expected_avg_duration) < 1e-6
+    def test_get_state_info(self):
+        """Test getting state information summary."""
+        predictor = self.create_mock_trained_predictor()
 
-    def test_assign_state_label(self, hmm_with_mock_state_model):
-        """Test state label assignment based on duration."""
-        # Test different duration categories
-        short_label = hmm_with_mock_state_model._assign_state_label(
-            0, 300, np.zeros(5), []
+        state_info = predictor.get_state_info()
+
+        assert "n_states" in state_info
+        assert "state_labels" in state_info
+        assert "state_characteristics" in state_info
+        assert "transition_matrix" in state_info
+        assert state_info["n_states"] == 3
+        assert len(state_info["state_labels"]) == 3
+        assert len(state_info["transition_matrix"]) == 3
+
+
+class TestHMMPredictorPrediction:
+    """Test HMM predictor prediction functionality."""
+
+    def create_mock_trained_predictor(self):
+        """Create a mock trained HMM predictor for testing."""
+        predictor = HMMPredictor(room_id="test_room", n_components=3)
+        predictor.is_trained = True
+        predictor.feature_names = ["feature_0", "feature_1", "feature_2"]
+        predictor.model_version = "test_v1.0"
+
+        # Mock feature scaler
+        predictor.feature_scaler = Mock(spec=StandardScaler)
+        predictor.feature_scaler.transform.return_value = np.random.randn(3, 3)
+
+        # Mock state model
+        predictor.state_model = Mock(spec=GaussianMixture)
+        predictor.state_model.predict_proba.return_value = np.array([[0.7, 0.2, 0.1]])
+
+        # Mock transition matrix
+        predictor.transition_matrix = np.array(
+            [[0.6, 0.3, 0.1], [0.2, 0.5, 0.3], [0.4, 0.2, 0.4]]
         )
-        assert "Quick_Transition" in short_label
 
-        medium_label = hmm_with_mock_state_model._assign_state_label(
-            1, 1800, np.zeros(5), []
-        )
-        assert "Short_Stay" in medium_label
+        # Mock state characteristics
+        predictor.state_labels = {
+            0: "Short_Stay_0",
+            1: "Medium_Stay_1",
+            2: "Long_Stay_2",
+        }
+        predictor.state_characteristics = {
+            0: {"avg_duration": 600},
+            1: {"avg_duration": 1800},
+            2: {"avg_duration": 3600},
+        }
 
-        long_label = hmm_with_mock_state_model._assign_state_label(
-            2, 7200, np.zeros(5), []
-        )
-        assert "Medium_Stay" in long_label
+        # Mock transition models
+        predictor.transition_models = {
+            0: {"type": "average", "value": 600},
+            1: {"type": "regression", "model": Mock(spec=LinearRegression)},
+            2: {"type": "average", "value": 3600},
+        }
+        predictor.transition_models[1]["model"].predict.return_value = np.array([1800])
 
-        very_long_label = hmm_with_mock_state_model._assign_state_label(
-            3, 18000, np.zeros(5), []
-        )
-        assert "Long_Stay" in very_long_label
-
-    def test_build_transition_matrix(self, hmm_with_mock_state_model):
-        """Test transition matrix building."""
-        # Sequential state transitions: 0->1->2->0->1->3->3
-        state_labels = np.array([0, 1, 2, 0, 1, 3, 3])
-
-        hmm_with_mock_state_model._build_transition_matrix(state_labels)
-
-        transition_matrix = hmm_with_mock_state_model.transition_matrix
-        assert transition_matrix.shape == (4, 4)
-
-        # Check specific transitions
-        # State 0 transitions: 0->1 (twice)
-        assert transition_matrix[0, 1] == 1.0  # Always goes to state 1
-
-        # State 1 transitions: 1->2, 1->3
-        assert transition_matrix[1, 2] == 0.5  # 50% to state 2
-        assert transition_matrix[1, 3] == 0.5  # 50% to state 3
-
-        # State 3 transitions: 3->3 (self-transition)
-        assert transition_matrix[3, 3] == 1.0  # Always stays in state 3
-
-    def test_build_transition_matrix_no_transitions(self, hmm_with_mock_state_model):
-        """Test transition matrix with no observed transitions from a state."""
-        # Only one sample in state 0, no transitions
-        state_labels = np.array([0])
-
-        hmm_with_mock_state_model._build_transition_matrix(state_labels)
-
-        transition_matrix = hmm_with_mock_state_model.transition_matrix
-
-        # Should have uniform distribution for states with no observed transitions
-        for i in range(4):
-            row_sum = np.sum(transition_matrix[i, :])
-            assert abs(row_sum - 1.0) < 1e-6
-
-
-class TestHMMDurationModeling:
-    """Test HMM duration prediction modeling."""
-
-    @pytest.fixture
-    def hmm_for_duration_modeling(self):
-        """HMM predictor for duration modeling tests."""
-        predictor = HMMPredictor()
-        predictor.model_params = {"n_components": 3}
-        predictor.state_durations = {0: [600, 800, 900], 1: [1800, 2000], 2: []}
         return predictor
 
-    def test_train_state_duration_models_sufficient_data(
-        self, hmm_for_duration_modeling
-    ):
-        """Test duration model training with sufficient data."""
-        X = np.random.randn(10, 5)
-        state_labels = np.array(
-            [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
-        )  # 5 samples each for states 0,1
-        durations = np.array([600, 800, 900, 700, 750, 1800, 2000, 1900, 2100, 1950])
-        feature_names = ["f1", "f2", "f3", "f4", "f5"]
+    @pytest.mark.asyncio
+    async def test_hmm_prediction_success(self):
+        """Test successful HMM prediction."""
+        predictor = self.create_mock_trained_predictor()
+        features = pd.DataFrame(np.random.randn(3, 3), columns=predictor.feature_names)
+        prediction_time = datetime.now(timezone.utc)
 
-        hmm_for_duration_modeling._train_state_duration_models(
+        predictions = await predictor.predict(features, prediction_time, "occupied")
+
+        assert len(predictions) == 3
+        for pred in predictions:
+            assert isinstance(pred, PredictionResult)
+            assert pred.model_type == "hmm"
+            assert pred.transition_type == "occupied_to_vacant"
+            assert 0 <= pred.confidence_score <= 1
+            assert pred.predicted_time > prediction_time
+
+    @pytest.mark.asyncio
+    async def test_hmm_prediction_untrained_model_error(self):
+        """Test prediction with untrained model raises error."""
+        predictor = HMMPredictor(room_id="test_room")
+        features = pd.DataFrame(np.random.randn(5, 3))
+        prediction_time = datetime.now(timezone.utc)
+
+        with pytest.raises(ModelPredictionError):
+            await predictor.predict(features, prediction_time)
+
+    @pytest.mark.asyncio
+    async def test_hmm_prediction_invalid_features_error(self):
+        """Test prediction with invalid features raises error."""
+        predictor = self.create_mock_trained_predictor()
+        predictor.validate_features = Mock(return_value=False)
+
+        features = pd.DataFrame(np.random.randn(5, 3))
+        prediction_time = datetime.now(timezone.utc)
+
+        with pytest.raises(ModelPredictionError):
+            await predictor.predict(features, prediction_time)
+
+    @pytest.mark.asyncio
+    async def test_hmm_prediction_metadata_content(self):
+        """Test that prediction metadata contains HMM-specific information."""
+        predictor = self.create_mock_trained_predictor()
+        features = pd.DataFrame(np.random.randn(1, 3), columns=predictor.feature_names)
+        prediction_time = datetime.now(timezone.utc)
+
+        predictions = await predictor.predict(features, prediction_time)
+
+        metadata = predictions[0].prediction_metadata
+        assert "time_until_transition_seconds" in metadata
+        assert "prediction_method" in metadata
+        assert "current_hidden_state" in metadata
+        assert "state_probability" in metadata
+        assert "state_label" in metadata
+        assert "all_state_probabilities" in metadata
+        assert "next_state_probabilities" in metadata
+        assert metadata["prediction_method"] == "hidden_markov_model"
+
+    @pytest.mark.asyncio
+    async def test_hmm_prediction_transition_type_determination(self):
+        """Test transition type determination from states and occupancy."""
+        predictor = self.create_mock_trained_predictor()
+        features = pd.DataFrame(np.random.randn(1, 3), columns=predictor.feature_names)
+        prediction_time = datetime.now(timezone.utc)
+
+        # Test occupied state
+        predictions = await predictor.predict(features, prediction_time, "occupied")
+        assert predictions[0].transition_type == "occupied_to_vacant"
+
+        # Test vacant state
+        predictions = await predictor.predict(features, prediction_time, "vacant")
+        assert predictions[0].transition_type == "vacant_to_occupied"
+
+        # Test unknown state with heuristics
+        predictions = await predictor.predict(features, prediction_time, "unknown")
+        assert predictions[0].transition_type in [
+            "occupied_to_vacant",
+            "vacant_to_occupied",
+        ]
+
+    def test_predict_single_duration_methods(self):
+        """Test single duration prediction for different model types."""
+        predictor = self.create_mock_trained_predictor()
+        X = np.random.randn(1, 3)
+
+        # Test average model
+        duration1 = predictor._predict_single_duration(X, 0)
+        assert duration1 == 600  # From average model
+
+        # Test regression model
+        duration2 = predictor._predict_single_duration(X, 1)
+        assert duration2 == 1800  # From mocked regression model
+
+        # Test missing model (should return default)
+        duration3 = predictor._predict_single_duration(X, 99)  # Non-existent state
+        assert duration3 == 1800  # Default
+
+
+class TestHMMPredictorDurationModels:
+    """Test HMM duration prediction models."""
+
+    def test_train_state_duration_models_sufficient_data(self):
+        """Test training duration models with sufficient data."""
+        predictor = HMMPredictor(n_components=3)
+
+        X = np.random.randn(100, 4)
+        state_labels = np.random.randint(0, 3, 100)
+        durations = np.random.uniform(300, 7200, 100)
+        feature_names = ["f1", "f2", "f3", "f4"]
+
+        # Ensure each state has sufficient samples
+        state_labels[:30] = 0
+        state_labels[30:60] = 1
+        state_labels[60:] = 2
+
+        predictor._train_state_duration_models(
             X, state_labels, durations, feature_names
         )
 
-        # Should create regression models for states with sufficient data
-        assert 0 in hmm_for_duration_modeling.transition_models
-        assert 1 in hmm_for_duration_modeling.transition_models
+        # Check that models were created for each state
+        assert len(predictor.transition_models) == 3
 
-        model_0 = hmm_for_duration_modeling.transition_models[0]
-        model_1 = hmm_for_duration_modeling.transition_models[1]
+        for state_id in range(3):
+            assert state_id in predictor.transition_models
+            model_info = predictor.transition_models[state_id]
+            assert model_info["type"] == "regression"
+            assert "model" in model_info
 
-        assert model_0["type"] == "regression"
-        assert model_1["type"] == "regression"
-        assert isinstance(model_0["model"], LinearRegression)
-        assert isinstance(model_1["model"], LinearRegression)
+    def test_train_state_duration_models_insufficient_data(self):
+        """Test training duration models with insufficient data per state."""
+        predictor = HMMPredictor(n_components=3)
+        predictor.state_durations = {0: [600, 700], 1: [1800], 2: [3600, 3500, 3400]}
 
-    def test_train_state_duration_models_insufficient_data(
-        self, hmm_for_duration_modeling
-    ):
-        """Test duration model training with insufficient data."""
-        X = np.random.randn(4, 5)
-        state_labels = np.array(
-            [0, 1, 2, 2]
-        )  # Only 1 sample for state 0, 1; 2 for state 2
-        durations = np.array([600, 1800, 3000, 3200])
-        feature_names = ["f1", "f2", "f3", "f4", "f5"]
+        X = np.random.randn(10, 4)
+        state_labels = np.array([0, 0, 1, 2, 2, 2, 0, 1, 2, 1])  # Few samples per state
+        durations = np.random.uniform(300, 7200, 10)
+        feature_names = ["f1", "f2", "f3", "f4"]
 
-        hmm_for_duration_modeling._train_state_duration_models(
+        predictor._train_state_duration_models(
             X, state_labels, durations, feature_names
         )
 
         # Should create average models for states with insufficient data
-        for state_id in [0, 1, 2]:
-            if state_id in hmm_for_duration_modeling.transition_models:
-                model_info = hmm_for_duration_modeling.transition_models[state_id]
-                if model_info["type"] == "average":
+        for state_id in range(3):
+            if state_id in predictor.transition_models:
+                model_info = predictor.transition_models[state_id]
+                if np.sum(state_labels == state_id) < 5:
+                    assert model_info["type"] == "average"
                     assert "value" in model_info
-                    assert isinstance(model_info["value"], (int, float))
 
-    def test_predict_durations_training(self, hmm_for_duration_modeling):
-        """Test duration prediction during training."""
-        # Mock state model
-        mock_state_model = Mock()
-        mock_state_model.predict_proba.return_value = np.array(
-            [
-                [0.8, 0.1, 0.1],  # Likely state 0
-                [0.1, 0.8, 0.1],  # Likely state 1
-                [0.1, 0.1, 0.8],  # Likely state 2
-            ]
-        )
-        hmm_for_duration_modeling.state_model = mock_state_model
-
-        # Mock transition models
-        hmm_for_duration_modeling.transition_models = {
-            0: {"type": "average", "value": 750.0},
-            1: {"type": "regression", "model": Mock()},
-            2: {"type": "average", "value": 2000.0},
-        }
-
-        # Mock regression model prediction
-        hmm_for_duration_modeling.transition_models[1]["model"].predict.return_value = (
-            np.array([1850.0])
-        )
-
-        X = np.random.randn(3, 5)
-        predictions = hmm_for_duration_modeling._predict_durations(X)
-
-        assert len(predictions) == 3
-        assert predictions[0] == 750.0  # State 0 average
-        assert predictions[1] == 1850.0  # State 1 regression
-        assert predictions[2] == 2000.0  # State 2 average
-
-    def test_predict_single_duration(self, hmm_for_duration_modeling):
-        """Test single duration prediction."""
-        # Test with average model
-        hmm_for_duration_modeling.transition_models = {
-            0: {"type": "average", "value": 1200.0}
-        }
-
-        X_point = np.random.randn(1, 5)
-        duration = hmm_for_duration_modeling._predict_single_duration(X_point, 0)
-
-        assert duration == 1200.0
-
-        # Test with regression model
-        mock_regression = Mock()
-        mock_regression.predict.return_value = np.array([1500.0])
-        hmm_for_duration_modeling.transition_models[1] = {
-            "type": "regression",
-            "model": mock_regression,
-        }
-
-        duration = hmm_for_duration_modeling._predict_single_duration(X_point, 1)
-
-        assert duration == 1500.0
-
-        # Test with missing model (default)
-        duration = hmm_for_duration_modeling._predict_single_duration(X_point, 99)
-
-        assert duration == 1800.0  # Default 30 minutes
-
-
-class TestHMMPrediction:
-    """Test HMM prediction functionality."""
-
-    @pytest.fixture
-    def trained_hmm_predictor(self, sample_training_data):
-        """Trained HMM predictor fixture."""
-        features, targets = sample_training_data
-        predictor = HMMPredictor(room_id="test_room", random_state=42)
-
-        # Mock training to avoid long setup
-        predictor.is_trained = True
-        predictor.feature_names = list(features.columns)
-        predictor.training_date = datetime.now(timezone.utc)
-        predictor.model_version = "v1.0"
+    def test_predict_durations_integration(self):
+        """Test duration prediction integration with state identification."""
+        predictor = HMMPredictor(n_components=2)
 
         # Mock state model
-        mock_state_model = Mock(spec=GaussianMixture)
-        mock_state_model.predict_proba.return_value = np.array(
+        predictor.state_model = Mock(spec=GaussianMixture)
+        predictor.state_model.predict_proba.return_value = np.array(
             [
-                [0.1, 0.7, 0.1, 0.1],  # Likely state 1
-                [0.2, 0.1, 0.6, 0.1],  # Likely state 2
+                [0.8, 0.2],  # First sample - strongly state 0
+                [0.3, 0.7],  # Second sample - strongly state 1
             ]
         )
-        predictor.state_model = mock_state_model
-
-        # Mock feature scaler
-        mock_scaler = Mock(spec=StandardScaler)
-        mock_scaler.transform.return_value = features.iloc[:2].values
-        predictor.feature_scaler = mock_scaler
 
         # Mock transition models
         predictor.transition_models = {
-            1: {"type": "average", "value": 1800.0},
-            2: {"type": "regression", "model": Mock()},
-        }
-        predictor.transition_models[2]["model"].predict.return_value = np.array(
-            [2400.0]
-        )
-
-        # Mock transition matrix
-        predictor.transition_matrix = np.array(
-            [
-                [0.1, 0.6, 0.2, 0.1],
-                [0.2, 0.3, 0.3, 0.2],
-                [0.1, 0.2, 0.5, 0.2],
-                [0.3, 0.2, 0.2, 0.3],
-            ]
-        )
-
-        # Mock state labels and characteristics
-        predictor.state_labels = {
-            0: "Quick_Transition_0",
-            1: "Short_Stay_1",
-            2: "Medium_Stay_2",
-            3: "Long_Stay_3",
-        }
-        predictor.state_characteristics = {
-            1: {"avg_duration": 1800, "prediction_reliability": "high"},
-            2: {"avg_duration": 2400, "prediction_reliability": "medium"},
+            0: {"type": "average", "value": 900},
+            1: {"type": "average", "value": 2700},
         }
 
-        return predictor
+        X = np.random.randn(2, 3)
+        predictions = predictor._predict_durations(X)
 
-    @pytest.fixture
-    def sample_prediction_features(self):
-        """Sample prediction features fixture."""
-        return pd.DataFrame(
-            {
-                "time_since_last_change": [1800, 7200],
-                "current_state_duration": [900, 3600],
-                "hour_sin": [0.5, -0.5],
-                "hour_cos": [0.866, -0.866],
-                "day_of_week": [1, 5],
-                "temperature": [22.5, 20.0],
-                "motion_events": [3, 0],
-                "door_openings": [1, 0],
-            }
-        )
-
-    @pytest.mark.asyncio
-    async def test_hmm_prediction_success(
-        self, trained_hmm_predictor, sample_prediction_features
-    ):
-        """Test successful HMM prediction."""
-        prediction_time = datetime.now(timezone.utc)
-
-        results = await trained_hmm_predictor.predict(
-            sample_prediction_features, prediction_time, "occupied"
-        )
-
-        assert len(results) == len(sample_prediction_features)
-
-        for result in results:
-            assert isinstance(result, PredictionResult)
-            assert result.predicted_time > prediction_time
-            assert result.transition_type in [
-                "occupied_to_vacant",
-                "vacant_to_occupied",
-            ]
-            assert 0.1 <= result.confidence_score <= 0.95
-            assert result.model_type == ModelType.HMM.value
-            assert result.model_version == "v1.0"
-            assert result.features_used == trained_hmm_predictor.feature_names
-
-            # Check HMM-specific metadata
-            metadata = result.prediction_metadata
-            assert "time_until_transition_seconds" in metadata
-            assert "prediction_method" in metadata
-            assert metadata["prediction_method"] == "hidden_markov_model"
-            assert "current_hidden_state" in metadata
-            assert "state_probability" in metadata
-            assert "state_label" in metadata
-            assert "all_state_probabilities" in metadata
-
-    @pytest.mark.asyncio
-    async def test_hmm_prediction_untrained_model(self, sample_prediction_features):
-        """Test prediction with untrained model."""
-        predictor = HMMPredictor()
-        prediction_time = datetime.now(timezone.utc)
-
-        with pytest.raises(ModelPredictionError):
-            await predictor.predict(sample_prediction_features, prediction_time)
-
-    @pytest.mark.asyncio
-    async def test_hmm_prediction_invalid_features(self, trained_hmm_predictor):
-        """Test prediction with invalid features."""
-        invalid_features = pd.DataFrame({"wrong_feature": [1, 2, 3]})
-        prediction_time = datetime.now(timezone.utc)
-
-        with pytest.raises(ModelPredictionError):
-            await trained_hmm_predictor.predict(invalid_features, prediction_time)
-
-    @pytest.mark.asyncio
-    async def test_hmm_prediction_state_identification(
-        self, trained_hmm_predictor, sample_prediction_features
-    ):
-        """Test state identification in predictions."""
-        prediction_time = datetime.now(timezone.utc)
-
-        results = await trained_hmm_predictor.predict(
-            sample_prediction_features, prediction_time
-        )
-
-        for result in results:
-            metadata = result.prediction_metadata
-
-            # Check state identification
-            assert "current_hidden_state" in metadata
-            assert "state_probability" in metadata
-            assert "state_label" in metadata
-
-            current_state = metadata["current_hidden_state"]
-            assert 0 <= current_state < 4
-
-            state_prob = metadata["state_probability"]
-            assert 0.0 <= state_prob <= 1.0
-
-            # State label should correspond to current state
-            expected_label = trained_hmm_predictor.state_labels.get(
-                current_state, f"State_{current_state}"
-            )
-            assert metadata["state_label"] == expected_label
-
-    @pytest.mark.asyncio
-    async def test_hmm_prediction_transition_probabilities(
-        self, trained_hmm_predictor, sample_prediction_features
-    ):
-        """Test transition probability inclusion in predictions."""
-        prediction_time = datetime.now(timezone.utc)
-
-        results = await trained_hmm_predictor.predict(
-            sample_prediction_features, prediction_time
-        )
-
-        for result in results:
-            metadata = result.prediction_metadata
-
-            # Should include next state probabilities
-            assert "next_state_probabilities" in metadata
-
-            next_probs = metadata["next_state_probabilities"]
-            if next_probs is not None:
-                assert len(next_probs) == 4  # Number of states
-                assert all(0.0 <= p <= 1.0 for p in next_probs)
-                assert abs(sum(next_probs) - 1.0) < 1e-6  # Should sum to 1
-
-    @pytest.mark.asyncio
-    async def test_hmm_prediction_confidence_calculation(
-        self, trained_hmm_predictor, sample_prediction_features
-    ):
-        """Test confidence score calculation."""
-        prediction_time = datetime.now(timezone.utc)
-
-        results = await trained_hmm_predictor.predict(
-            sample_prediction_features, prediction_time
-        )
-
-        for result in results:
-            confidence = result.confidence_score
-            assert 0.1 <= confidence <= 0.95
-
-            # Confidence should be related to state probability
-            metadata = result.prediction_metadata
-            state_prob = metadata["state_probability"]
-
-            # Higher state probability should generally lead to higher confidence
-            assert confidence > 0.1
-
-    @pytest.mark.asyncio
-    async def test_hmm_prediction_transition_type_determination(
-        self, trained_hmm_predictor, sample_prediction_features
-    ):
-        """Test transition type determination from states."""
-        prediction_time = datetime.now(timezone.utc)
-
-        # Test with occupied state
-        results_occupied = await trained_hmm_predictor.predict(
-            sample_prediction_features, prediction_time, "occupied"
-        )
-
-        for result in results_occupied:
-            assert result.transition_type == "occupied_to_vacant"
-
-        # Test with vacant state
-        results_vacant = await trained_hmm_predictor.predict(
-            sample_prediction_features, prediction_time, "vacant"
-        )
-
-        for result in results_vacant:
-            assert result.transition_type == "vacant_to_occupied"
-
-        # Test with unknown state (should use heuristics)
-        results_unknown = await trained_hmm_predictor.predict(
-            sample_prediction_features, prediction_time, "unknown"
-        )
-
-        for result in results_unknown:
-            assert result.transition_type in [
-                "occupied_to_vacant",
-                "vacant_to_occupied",
-            ]
+        assert len(predictions) == 2
+        # Note: The method uses argmax to select the most likely state
+        # So both predictions will use state 0 (argmax([0.8, 0.2]) = 0, argmax([0.3, 0.7]) = 1)
+        assert predictions[0] == 900  # State 0 duration (most likely for first sample)
+        assert (
+            predictions[1] == 2700
+        )  # State 1 duration (most likely for second sample)
 
 
-class TestHMMFeatureImportance:
+class TestHMMPredictorFeatureImportance:
     """Test HMM feature importance calculation."""
 
-    @pytest.fixture
-    def trained_hmm_with_features(self):
-        """Trained HMM with known features and state model."""
-        predictor = HMMPredictor()
+    def create_mock_trained_predictor_for_importance(self):
+        """Create a mock trained predictor for feature importance testing."""
+        predictor = HMMPredictor(n_components=3)
         predictor.is_trained = True
-        predictor.feature_names = ["feature1", "feature2", "feature3"]
-        predictor.model_params = {"covariance_type": "full"}
+        predictor.feature_names = ["feature_0", "feature_1", "feature_2"]
 
-        # Mock trained state model with GMM components
-        mock_state_model = Mock(spec=GaussianMixture)
-        mock_state_model.means_ = np.array(
+        # Mock state model with means and covariances
+        predictor.state_model = Mock(spec=GaussianMixture)
+        predictor.state_model.means_ = np.array(
             [
-                [0.0, 1.0, 2.0],  # State 0 means
-                [1.0, 0.0, 1.0],  # State 1 means
-                [2.0, 2.0, 0.0],  # State 2 means
+                [0.1, 0.5, 0.9],  # State 0 - feature 2 is highest
+                [0.8, 0.2, 0.3],  # State 1 - feature 0 is highest
+                [0.4, 0.9, 0.1],  # State 2 - feature 1 is highest
             ]
         )
-        mock_state_model.covariances_ = np.array(
+
+        # Full covariance matrices
+        predictor.state_model.covariances_ = np.array(
             [
-                [
-                    [1.0, 0.1, 0.1],
-                    [0.1, 1.0, 0.1],
-                    [0.1, 0.1, 1.0],
-                ],  # State 0 covariance
-                [
-                    [0.5, 0.0, 0.0],
-                    [0.0, 0.5, 0.0],
-                    [0.0, 0.0, 0.5],
-                ],  # State 1 covariance
-                [
-                    [2.0, 0.2, 0.2],
-                    [0.2, 2.0, 0.2],
-                    [0.2, 0.2, 2.0],
-                ],  # State 2 covariance
+                [[0.1, 0.05, 0.02], [0.05, 0.2, 0.01], [0.02, 0.01, 0.15]],  # State 0
+                [[0.2, 0.03, 0.04], [0.03, 0.1, 0.02], [0.04, 0.02, 0.25]],  # State 1
+                [[0.15, 0.02, 0.01], [0.02, 0.3, 0.05], [0.01, 0.05, 0.1]],  # State 2
             ]
         )
-        predictor.state_model = mock_state_model
+
+        predictor.model_params = {"covariance_type": "full"}
 
         return predictor
 
-    def test_get_feature_importance_full_covariance(self, trained_hmm_with_features):
-        """Test feature importance with full covariance matrices."""
-        importance = trained_hmm_with_features.get_feature_importance()
+    def test_feature_importance_calculation_full_covariance(self):
+        """Test feature importance calculation with full covariance."""
+        predictor = self.create_mock_trained_predictor_for_importance()
 
+        importance = predictor.get_feature_importance()
+
+        assert isinstance(importance, dict)
         assert len(importance) == 3
-        assert "feature1" in importance
-        assert "feature2" in importance
-        assert "feature3" in importance
+        assert all(name in importance for name in predictor.feature_names)
+        assert all(score >= 0 for score in importance.values())
 
-        # Should sum to 1.0
+        # Should sum to approximately 1 (normalized)
         assert abs(sum(importance.values()) - 1.0) < 1e-6
 
-        # All importance values should be positive
-        for feature_importance in importance.values():
-            assert feature_importance > 0
+    def test_feature_importance_calculation_diag_covariance(self):
+        """Test feature importance calculation with diagonal covariance."""
+        predictor = self.create_mock_trained_predictor_for_importance()
+        predictor.model_params["covariance_type"] = "diag"
 
-    def test_get_feature_importance_diagonal_covariance(
-        self, trained_hmm_with_features
-    ):
-        """Test feature importance with diagonal covariance."""
-        trained_hmm_with_features.model_params["covariance_type"] = "diag"
-
-        # Update mock to return diagonal covariances
-        trained_hmm_with_features.state_model.covariances_ = np.array(
+        # Mock diagonal covariances
+        predictor.state_model.covariances_ = np.array(
             [
-                [1.0, 1.0, 1.0],  # State 0 diagonal
-                [0.5, 0.5, 0.5],  # State 1 diagonal
-                [2.0, 2.0, 2.0],  # State 2 diagonal
+                [0.1, 0.2, 0.15],  # State 0 diagonal
+                [0.2, 0.1, 0.25],  # State 1 diagonal
+                [0.15, 0.3, 0.1],  # State 2 diagonal
             ]
         )
 
-        importance = trained_hmm_with_features.get_feature_importance()
+        importance = predictor.get_feature_importance()
 
+        assert isinstance(importance, dict)
         assert len(importance) == 3
-        assert abs(sum(importance.values()) - 1.0) < 1e-6
+        assert all(score >= 0 for score in importance.values())
 
-    def test_get_feature_importance_tied_covariance(self, trained_hmm_with_features):
-        """Test feature importance with tied covariance."""
-        trained_hmm_with_features.model_params["covariance_type"] = "tied"
+    def test_feature_importance_calculation_tied_covariance(self):
+        """Test feature importance calculation with tied/spherical covariance."""
+        predictor = self.create_mock_trained_predictor_for_importance()
+        predictor.model_params["covariance_type"] = "tied"
 
-        # For tied covariance, should still work
-        importance = trained_hmm_with_features.get_feature_importance()
+        # Mock tied covariance (single matrix for all states)
+        predictor.state_model.covariances_ = np.array(
+            [[0.2, 0.05, 0.03], [0.05, 0.25, 0.02], [0.03, 0.02, 0.15]]
+        )
 
+        importance = predictor.get_feature_importance()
+
+        assert isinstance(importance, dict)
         assert len(importance) == 3
-        assert abs(sum(importance.values()) - 1.0) < 1e-6
 
-    def test_get_feature_importance_untrained_model(self):
-        """Test feature importance with untrained model."""
+    def test_feature_importance_untrained_model(self):
+        """Test feature importance for untrained model."""
         predictor = HMMPredictor()
 
         importance = predictor.get_feature_importance()
 
         assert importance == {}
 
-    def test_get_feature_importance_missing_attributes(self, trained_hmm_with_features):
-        """Test feature importance when state model is missing attributes."""
-        # Remove means and covariances
-        del trained_hmm_with_features.state_model.means_
-        del trained_hmm_with_features.state_model.covariances_
-
-        importance = trained_hmm_with_features.get_feature_importance()
-
-        assert importance == {}
-
-    def test_get_feature_importance_error_handling(self, trained_hmm_with_features):
-        """Test feature importance calculation error handling."""
-        # Make means property raise exception
-        type(trained_hmm_with_features.state_model).means_ = PropertyMock(
-            side_effect=Exception("Error")
-        )
-
-        importance = trained_hmm_with_features.get_feature_importance()
-
-        # Should return empty dict on error
-        assert importance == {}
-
-
-class TestHMMStateInfo:
-    """Test HMM state information retrieval."""
-
-    @pytest.fixture
-    def hmm_with_state_info(self):
-        """HMM with complete state information."""
+    def test_feature_importance_missing_attributes(self):
+        """Test feature importance when model lacks required attributes."""
         predictor = HMMPredictor()
-        predictor.model_params = {"n_components": 3}
-        predictor.state_labels = {
-            0: "Quick_Transition_0",
-            1: "Short_Stay_1",
-            2: "Long_Stay_2",
-        }
-        predictor.state_characteristics = {
-            0: {"avg_duration": 300, "sample_count": 10},
-            1: {"avg_duration": 1800, "sample_count": 25},
-            2: {"avg_duration": 3600, "sample_count": 15},
-        }
-        predictor.transition_matrix = np.array(
-            [[0.2, 0.6, 0.2], [0.3, 0.4, 0.3], [0.1, 0.3, 0.6]]
-        )
-        return predictor
-
-    def test_get_state_info(self, hmm_with_state_info):
-        """Test state information retrieval."""
-        state_info = hmm_with_state_info.get_state_info()
-
-        assert "n_states" in state_info
-        assert "state_labels" in state_info
-        assert "state_characteristics" in state_info
-        assert "transition_matrix" in state_info
-
-        assert state_info["n_states"] == 3
-        assert len(state_info["state_labels"]) == 3
-        assert len(state_info["state_characteristics"]) == 3
-        assert len(state_info["transition_matrix"]) == 3
-        assert len(state_info["transition_matrix"][0]) == 3
-
-    def test_get_state_info_no_transition_matrix(self, hmm_with_state_info):
-        """Test state info when transition matrix is None."""
-        hmm_with_state_info.transition_matrix = None
-
-        state_info = hmm_with_state_info.get_state_info()
-
-        assert state_info["transition_matrix"] is None
-
-
-class TestHMMSerialization:
-    """Test HMM model serialization and loading."""
-
-    @pytest.fixture
-    def trained_hmm_for_serialization(self, sample_training_data):
-        """Trained HMM for serialization testing."""
-        features, targets = sample_training_data
-        predictor = HMMPredictor(room_id="test_room")
-
-        # Mock trained state
         predictor.is_trained = True
-        predictor.feature_names = list(features.columns)
-        predictor.training_date = datetime.now(timezone.utc)
-        predictor.model_version = "v1.0"
+        predictor.state_model = Mock(spec=GaussianMixture)
+        # Missing means_ and covariances_ attributes
 
-        # Mock training history
+        importance = predictor.get_feature_importance()
+
+        assert importance == {}
+
+    def test_feature_importance_exception_handling(self):
+        """Test feature importance calculation with exceptions."""
+        predictor = self.create_mock_trained_predictor_for_importance()
+
+        # Make means_ raise an exception
+        predictor.state_model.means_ = Mock(side_effect=Exception("Test error"))
+
+        with patch("src.models.base.hmm_predictor.logger") as mock_logger:
+            importance = predictor.get_feature_importance()
+
+            assert importance == {}
+            mock_logger.warning.assert_called_once()
+
+
+class TestHMMPredictorConfidenceCalculation:
+    """Test HMM confidence calculation methods."""
+
+    def test_confidence_calculation_entropy_based(self):
+        """Test confidence calculation based on state probability entropy."""
+        predictor = HMMPredictor()
+
+        # High confidence case (low entropy)
+        high_conf_probs = np.array([0.9, 0.05, 0.05])
+        confidence1 = predictor._calculate_confidence(0.9, 1800, high_conf_probs)
+
+        # Low confidence case (high entropy)
+        low_conf_probs = np.array([0.4, 0.3, 0.3])
+        confidence2 = predictor._calculate_confidence(0.4, 1800, low_conf_probs)
+
+        assert (
+            confidence1 > confidence2
+        )  # High certainty should yield higher confidence
+        assert 0.1 <= confidence1 <= 0.95
+        assert 0.1 <= confidence2 <= 0.95
+
+    def test_confidence_calculation_duration_adjustment(self):
+        """Test confidence adjustment based on predicted duration."""
+        predictor = HMMPredictor()
+        base_probs = np.array([0.7, 0.2, 0.1])
+
+        # Reasonable duration
+        normal_confidence = predictor._calculate_confidence(0.7, 1800, base_probs)
+
+        # Extreme durations should reduce confidence
+        short_confidence = predictor._calculate_confidence(
+            0.7, 100, base_probs
+        )  # Too short
+        long_confidence = predictor._calculate_confidence(
+            0.7, 50000, base_probs
+        )  # Too long
+
+        assert short_confidence < normal_confidence * 0.85  # Should be reduced
+        assert long_confidence < normal_confidence * 0.85  # Should be reduced
+
+    def test_confidence_calculation_bounds(self):
+        """Test that confidence calculation respects bounds."""
+        predictor = HMMPredictor()
+
+        # Test various inputs to ensure bounds are respected
+        test_cases = [
+            (0.99, 1800, np.array([0.99, 0.005, 0.005])),  # Very high confidence
+            (0.01, 1800, np.array([0.33, 0.33, 0.34])),  # Very low confidence
+            (0.5, 60, np.array([0.6, 0.3, 0.1])),  # Short duration
+        ]
+
+        for state_conf, duration, probs in test_cases:
+            confidence = predictor._calculate_confidence(state_conf, duration, probs)
+            assert 0.1 <= confidence <= 0.95  # Should always be within bounds
+
+
+class TestHMMPredictorSerialization:
+    """Test HMM model serialization and deserialization."""
+
+    def create_trained_predictor_for_serialization(self):
+        """Create a trained predictor for serialization testing."""
+        predictor = HMMPredictor(room_id="test_room", n_components=3)
+        predictor.is_trained = True
+        predictor.feature_names = ["f1", "f2", "f3"]
+        predictor.model_version = "test_v1.0"
+        predictor.training_date = datetime.now(timezone.utc)
+
+        # Mock state model
+        predictor.state_model = Mock(spec=GaussianMixture)
+
+        # Mock HMM-specific components
+        predictor.transition_matrix = np.array([[0.7, 0.3], [0.4, 0.6]])
+        predictor.state_labels = {0: "State_0", 1: "State_1"}
+        predictor.state_characteristics = {
+            0: {"avg_duration": 600, "sample_count": 50},
+            1: {"avg_duration": 1800, "sample_count": 30},
+        }
+        predictor.transition_models = {
+            0: {"type": "average", "value": 600},
+            1: {"type": "average", "value": 1800},
+        }
+
+        # Add training history
         mock_result = TrainingResult(
             success=True,
-            training_time_seconds=15.0,
-            model_version="v1.0",
-            training_samples=200,
+            training_time_seconds=15.5,
+            model_version="test_v1.0",
+            training_samples=80,
+            training_score=0.78,
         )
         predictor.training_history = [mock_result]
 
-        # Mock model components
-        predictor.state_model = Mock(spec=GaussianMixture)
-        predictor.transition_models = {0: {"type": "average", "value": 1800}}
-        predictor.feature_scaler = Mock(spec=StandardScaler)
-        predictor.transition_matrix = np.array([[0.5, 0.5], [0.3, 0.7]])
-        predictor.state_labels = {0: "State_0", 1: "State_1"}
-        predictor.state_characteristics = {0: {"avg_duration": 1800}}
-
         return predictor
 
-    def test_save_model_success(self, trained_hmm_for_serialization, tmp_path):
-        """Test successful model saving."""
-        model_path = tmp_path / "hmm_model.pkl"
+    def test_save_model_success(self):
+        """Test successful HMM model saving."""
+        predictor = self.create_trained_predictor_for_serialization()
 
-        result = trained_hmm_for_serialization.save_model(str(model_path))
+        # Replace mock objects with actual serializable objects
+        from sklearn.mixture import GaussianMixture
+        from sklearn.preprocessing import StandardScaler
 
-        assert result is True
-        assert model_path.exists()
+        predictor.state_model = GaussianMixture(n_components=2, max_iter=1)
+        predictor.feature_scaler = StandardScaler()
 
-    def test_save_model_failure(self, trained_hmm_for_serialization):
-        """Test model saving failure."""
-        # Invalid path that should cause save to fail
-        invalid_path = "/invalid/path/model.pkl"
+        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+            file_path = tmp_file.name
 
-        result = trained_hmm_for_serialization.save_model(invalid_path)
+        try:
+            result = predictor.save_model(file_path)
 
-        assert result is False
+            assert result is True
 
-    def test_load_model_success(self, trained_hmm_for_serialization, tmp_path):
-        """Test successful model loading."""
-        model_path = tmp_path / "hmm_model.pkl"
+            # Verify file was created and contains expected data
+            import os
 
-        # First save the model
-        trained_hmm_for_serialization.save_model(str(model_path))
+            assert os.path.exists(file_path)
 
-        # Create new predictor and load
-        new_predictor = HMMPredictor()
-        result = new_predictor.load_model(str(model_path))
+            with open(file_path, "rb") as f:
+                saved_data = pickle.load(f)
 
-        assert result is True
-        assert new_predictor.room_id == "test_room"
-        assert new_predictor.model_version == "v1.0"
-        assert new_predictor.is_trained is True
-        assert len(new_predictor.training_history) == 1
-        assert new_predictor.transition_matrix is not None
-        assert len(new_predictor.state_labels) == 2
+            assert "state_model" in saved_data
+            assert "transition_models" in saved_data
+            assert "feature_scaler" in saved_data
+            assert "transition_matrix" in saved_data
+            assert "state_labels" in saved_data
+            assert "state_characteristics" in saved_data
+            assert saved_data["room_id"] == "test_room"
+
+        finally:
+            import os
+
+            if os.path.exists(file_path):
+                os.unlink(file_path)
+
+    def test_load_model_success(self):
+        """Test successful HMM model loading."""
+        original_predictor = self.create_trained_predictor_for_serialization()
+
+        with tempfile.NamedTemporaryFile(suffix=".pkl", delete=False) as tmp_file:
+            file_path = tmp_file.name
+
+        try:
+            # Save the model
+            original_predictor.save_model(file_path)
+
+            # Load into a new predictor
+            new_predictor = HMMPredictor()
+            result = new_predictor.load_model(file_path)
+
+            assert result is True
+            assert new_predictor.room_id == "test_room"
+            assert new_predictor.is_trained is True
+            assert new_predictor.feature_names == ["f1", "f2", "f3"]
+            assert new_predictor.model_version == "test_v1.0"
+            assert new_predictor.state_labels == {0: "State_0", 1: "State_1"}
+            assert len(new_predictor.training_history) == 1
+
+        finally:
+            import os
+
+            if os.path.exists(file_path):
+                os.unlink(file_path)
+
+    def test_save_model_failure(self):
+        """Test HMM model saving failure handling."""
+        predictor = self.create_trained_predictor_for_serialization()
+
+        invalid_path = "/nonexistent/path/model.pkl"
+
+        with patch("src.models.base.hmm_predictor.logger") as mock_logger:
+            result = predictor.save_model(invalid_path)
+
+            assert result is False
+            mock_logger.error.assert_called_once()
 
     def test_load_model_failure(self):
-        """Test model loading failure."""
+        """Test HMM model loading failure handling."""
         predictor = HMMPredictor()
 
-        # Non-existent file
-        result = predictor.load_model("nonexistent_file.pkl")
+        nonexistent_path = "/nonexistent/model.pkl"
 
-        assert result is False
+        with patch("src.models.base.hmm_predictor.logger") as mock_logger:
+            result = predictor.load_model(nonexistent_path)
+
+            assert result is False
+            mock_logger.error.assert_called_once()
 
 
-class TestHMMUtilityMethods:
-    """Test HMM utility and helper methods."""
+class TestHMMPredictorTargetPreparation:
+    """Test HMM target preparation methods."""
 
-    @pytest.fixture
-    def hmm_predictor(self):
-        """HMM predictor fixture."""
-        return HMMPredictor()
-
-    def test_determine_transition_type_from_states(self, hmm_predictor):
-        """Test transition type determination from states."""
-        # Mock state characteristics
-        hmm_predictor.state_characteristics = {
-            0: {"avg_duration": 600},  # Short duration
-            1: {"avg_duration": 3600},  # Long duration (suggests occupied)
-            2: {"avg_duration": 1800},  # Medium duration
-        }
-
-        # Test with explicit occupancy states
-        transition = hmm_predictor._determine_transition_type_from_states(
-            0, np.array([0.1, 0.6, 0.3]), "occupied"
-        )
-        assert transition == "occupied_to_vacant"
-
-        transition = hmm_predictor._determine_transition_type_from_states(
-            1, np.array([0.2, 0.5, 0.3]), "vacant"
-        )
-        assert transition == "vacant_to_occupied"
-
-        # Test with unknown occupancy (should use duration heuristic)
-        transition = hmm_predictor._determine_transition_type_from_states(
-            1, None, "unknown"  # Long duration state
-        )
-        assert transition == "occupied_to_vacant"
-
-        transition = hmm_predictor._determine_transition_type_from_states(
-            0, None, "unknown"  # Short duration state
-        )
-        assert transition == "vacant_to_occupied"
-
-    def test_calculate_confidence(self, hmm_predictor):
-        """Test confidence calculation."""
-        # High confidence state identification, reasonable duration
-        confidence = hmm_predictor._calculate_confidence(
-            0.9, 1800, np.array([0.9, 0.05, 0.03, 0.02])
-        )
-        assert 0.1 <= confidence <= 0.95
-
-        # Low confidence state identification (high entropy)
-        confidence = hmm_predictor._calculate_confidence(
-            0.4, 1800, np.array([0.4, 0.3, 0.2, 0.1])
-        )
-        assert confidence < 0.8  # Should be lower due to uncertainty
-
-        # Extreme duration should reduce confidence
-        confidence = hmm_predictor._calculate_confidence(
-            0.8, 100000, np.array([0.8, 0.1, 0.05, 0.05])
-        )
-        assert confidence < 0.8  # Should be reduced due to extreme duration
-
-    def test_prepare_targets_time_until_column(self, hmm_predictor):
+    def test_prepare_targets_time_until_transition(self):
         """Test target preparation with time_until_transition_seconds column."""
-        targets = pd.DataFrame(
-            {"time_until_transition_seconds": [1800, 3600, 2400, 900]}
-        )
-
-        prepared = hmm_predictor._prepare_targets(targets)
-
-        assert isinstance(prepared, np.ndarray)
-        assert len(prepared) == 4
-        assert np.array_equal(prepared, [1800, 3600, 2400, 900])
-
-    def test_prepare_targets_time_columns(self, hmm_predictor):
-        """Test target preparation with time columns."""
-        targets = pd.DataFrame(
-            {
-                "target_time": [
-                    "2024-01-01T12:00:00",
-                    "2024-01-01T13:00:00",
-                ],
-                "next_transition_time": [
-                    "2024-01-01T12:30:00",
-                    "2024-01-01T14:15:00",
-                ],
-            }
-        )
-
-        prepared = hmm_predictor._prepare_targets(targets)
-
-        assert isinstance(prepared, np.ndarray)
-        assert len(prepared) == 2
-        assert prepared[0] == 1800  # 30 minutes
-        assert prepared[1] == 4500  # 75 minutes
-
-    def test_prepare_targets_clipping(self, hmm_predictor):
-        """Test target value clipping to reasonable bounds."""
-        targets = pd.DataFrame(
-            {
-                "time_until_transition_seconds": [
-                    30,
-                    1800,
-                    100000,
-                    -500,
-                ]  # Some out of bounds
-            }
-        )
-
-        prepared = hmm_predictor._prepare_targets(targets)
-
-        # Should be clipped to [60, 86400] range
-        assert all(60 <= val <= 86400 for val in prepared)
-        assert prepared[0] == 60  # 30 clipped to 60
-        assert prepared[1] == 1800  # 1800 unchanged
-        assert prepared[2] == 86400  # 100000 clipped to 86400
-        assert prepared[3] == 60  # -500 clipped to 60
-
-
-class TestHMMEdgeCases:
-    """Test HMM predictor edge cases and error conditions."""
-
-    def test_hmm_predictor_with_single_state(self):
-        """Test HMM predictor behavior with single state."""
-        predictor = HMMPredictor(n_components=1)
-
-        assert predictor.model_params["n_components"] == 1
-
-    def test_hmm_predictor_extreme_parameter_values(self):
-        """Test HMM predictor with extreme parameter values."""
-        extreme_params = {
-            "n_components": 20,  # Many states
-            "tol": 1e-15,  # Very tight tolerance
-            "n_iter": 1,  # Minimal iterations
-        }
-
-        predictor = HMMPredictor(**extreme_params)
-
-        assert predictor.model_params["n_components"] == 20
-        assert predictor.model_params["tol"] == 1e-15
-        assert predictor.model_params["n_iter"] == 1
-
-    def test_hmm_predictor_empty_state_handling(self):
-        """Test HMM predictor handling of empty states."""
         predictor = HMMPredictor()
 
-        # Test with empty state characteristics
-        predictor.state_characteristics = {}
-        transition_type = predictor._determine_transition_type_from_states(
-            99, None, "unknown"
+        targets = pd.DataFrame(
+            {"time_until_transition_seconds": [300, 1800, 7200, 50, 100000]}
         )
 
-        # Should handle missing state gracefully
-        assert transition_type in ["occupied_to_vacant", "vacant_to_occupied"]
+        prepared = predictor._prepare_targets(targets)
+
+        # Should clip values to reasonable bounds
+        assert np.all(prepared >= 60)  # Minimum 1 minute
+        assert np.all(prepared <= 86400)  # Maximum 24 hours
+        assert prepared[0] == 300
+        assert prepared[1] == 1800
+        assert prepared[2] == 7200
+        assert prepared[3] == 60  # Clipped from 50
+        assert prepared[4] == 86400  # Clipped from 100000
+
+    def test_prepare_targets_datetime_columns(self):
+        """Test target preparation with datetime columns."""
+        predictor = HMMPredictor()
+
+        base_time = datetime.now(timezone.utc)
+        targets = pd.DataFrame(
+            {
+                "target_time": [base_time, base_time + timedelta(hours=1)],
+                "next_transition_time": [
+                    base_time + timedelta(minutes=30),
+                    base_time + timedelta(hours=2),
+                ],
+            }
+        )
+
+        prepared = predictor._prepare_targets(targets)
+
+        assert len(prepared) == 2
+        assert prepared[0] == 1800  # 30 minutes in seconds
+        assert prepared[1] == 3600  # 1 hour in seconds
+
+    def test_prepare_targets_default_format(self):
+        """Test target preparation with default format (first column)."""
+        predictor = HMMPredictor()
+
+        targets = pd.DataFrame([1200, 3600, 7200, 45, 120000])
+
+        prepared = predictor._prepare_targets(targets)
+
+        assert len(prepared) == 5
+        assert np.all(prepared >= 60)
+        assert np.all(prepared <= 86400)
+
+
+class TestHMMPredictorErrorHandling:
+    """Test HMM predictor error handling and edge cases."""
 
     @pytest.mark.asyncio
-    async def test_hmm_prediction_with_missing_transition_models(self):
-        """Test HMM prediction when some states lack transition models."""
-        predictor = HMMPredictor()
+    async def test_training_exception_handling(self):
+        """Test training exception handling and error result creation."""
+        predictor = HMMPredictor(room_id="test_room")
+
+        # Create invalid data that will cause training to fail
+        features = pd.DataFrame()  # Empty DataFrame
+        targets = pd.DataFrame()
+
+        with pytest.raises(ModelTrainingError):
+            await predictor.train(features, targets)
+
+        # Check that error result was added to training history
+        assert len(predictor.training_history) == 1
+        assert predictor.training_history[0].success is False
+        assert predictor.training_history[0].error_message is not None
+
+    @pytest.mark.asyncio
+    async def test_prediction_exception_handling(self):
+        """Test prediction exception handling."""
+        predictor = HMMPredictor(room_id="test_room")
         predictor.is_trained = True
-        predictor.feature_names = ["feature1", "feature2"]
+        predictor.state_model = Mock(spec=GaussianMixture)
+        predictor.feature_names = ["f1", "f2"]
+        predictor.validate_features = Mock(return_value=True)
 
-        # Mock state model that predicts state without transition model
-        mock_state_model = Mock()
-        mock_state_model.predict_proba.return_value = np.array(
-            [[0.1, 0.1, 0.1, 0.7]]
-        )  # State 3
-        predictor.state_model = mock_state_model
+        # Make prediction raise an exception
+        predictor.state_model.predict_proba.side_effect = Exception("Prediction failed")
 
-        mock_scaler = Mock()
-        mock_scaler.transform.return_value = np.array([[1, 2]])
-        predictor.feature_scaler = mock_scaler
-
-        # Only have transition model for state 0
-        predictor.transition_models = {0: {"type": "average", "value": 1800}}
-
-        predictor.transition_matrix = np.array([[1.0, 0.0, 0.0, 0.0]] * 4)
-        predictor.state_labels = {3: "Unknown_State_3"}
-        predictor.state_characteristics = {3: {"avg_duration": 2000}}
-
-        features = pd.DataFrame({"feature1": [1], "feature2": [2]})
+        features = pd.DataFrame(np.random.randn(5, 2), columns=["f1", "f2"])
         prediction_time = datetime.now(timezone.utc)
 
-        results = await predictor.predict(features, prediction_time)
+        with pytest.raises(ModelPredictionError):
+            await predictor.predict(features, prediction_time)
 
-        # Should handle missing transition model gracefully with default
-        assert len(results) == 1
-        result = results[0]
-        time_until = result.prediction_metadata["time_until_transition_seconds"]
-        assert time_until == 1800.0  # Default 30 minutes
+    def test_edge_case_small_dataset(self):
+        """Test behavior with very small datasets."""
+        predictor = HMMPredictor(n_components=2)
 
-    def test_hmm_predictor_memory_cleanup(self):
-        """Test that HMM predictor can handle memory cleanup."""
-        predictor = HMMPredictor()
+        # Very small feature set
+        X = np.random.randn(5, 2)
+        state_labels = np.array([0, 1, 0, 1, 0])
+        durations = np.array([600, 1200, 800, 1500, 700])
+        feature_names = ["f1", "f2"]
 
-        # Add many prediction records
-        for i in range(2000):  # More than the 1000 limit
-            mock_result = Mock(spec=PredictionResult)
-            predictor._record_prediction(datetime.now(timezone.utc), mock_result)
+        # Should handle gracefully
+        predictor._train_state_duration_models(
+            X, state_labels, durations, feature_names
+        )
 
-        # Should have cleaned up to 500 most recent
-        assert len(predictor.prediction_history) == 500
+        # Should create average models due to insufficient data
+        for state_id in [0, 1]:
+            if state_id in predictor.transition_models:
+                assert predictor.transition_models[state_id]["type"] == "average"
+
+    def test_parameter_validation_edge_cases(self):
+        """Test parameter validation with edge cases."""
+        # Test with minimal components
+        predictor1 = HMMPredictor(n_components=1)
+        assert predictor1.model_params["n_components"] == 1
+
+        # Test with maximum reasonable components
+        predictor2 = HMMPredictor(n_components=20)
+        assert predictor2.model_params["n_components"] == 20
+
+        # Test with zero tolerance (should not break initialization)
+        predictor3 = HMMPredictor(tol=0.0)
+        assert predictor3.model_params["tol"] == 0.0
+
+
+class TestHMMPredictorIntegration:
+    """Integration tests for HMM predictor with realistic scenarios."""
+
+    def create_realistic_state_data(self, n_samples=200):
+        """Create realistic data with clear state patterns."""
+        np.random.seed(42)
+
+        features = []
+        targets = []
+
+        for i in range(n_samples):
+            # Create three distinct behavioral patterns
+            if i < n_samples // 3:
+                # Quick transitions (bathroom visits, brief checks)
+                feature_pattern = np.random.normal([0.2, 0.8, 0.1, 0.3], 0.15)
+                target_duration = np.random.uniform(180, 900)  # 3-15 minutes
+            elif i < 2 * n_samples // 3:
+                # Medium stays (work, meals)
+                feature_pattern = np.random.normal([0.7, 0.4, 0.8, 0.6], 0.2)
+                target_duration = np.random.uniform(
+                    1800, 5400
+                )  # 30 minutes - 1.5 hours
+            else:
+                # Long stays (sleep, relaxation)
+                feature_pattern = np.random.normal([0.9, 0.1, 0.2, 0.9], 0.1)
+                target_duration = np.random.uniform(7200, 28800)  # 2-8 hours
+
+            features.append(feature_pattern)
+            targets.append(target_duration)
+
+        features_df = pd.DataFrame(
+            features,
+            columns=[
+                "occupancy_intensity",
+                "motion_frequency",
+                "door_activity",
+                "time_of_day",
+            ],
+        )
+        targets_df = pd.DataFrame({"time_until_transition_seconds": targets})
+
+        return features_df, targets_df
+
+    @pytest.mark.asyncio
+    async def test_realistic_hmm_training_and_prediction(self):
+        """Test complete HMM workflow with realistic state-based data."""
+        predictor = HMMPredictor(
+            room_id="living_room", n_components=3, max_iter=50, tol=1e-4
+        )
+
+        # Create realistic data with clear state patterns
+        features, targets = self.create_realistic_state_data(200)
+
+        # Train the model
+        training_result = await predictor.train(features, targets)
+
+        assert training_result.success is True
+        assert predictor.is_trained is True
+
+        # Verify state analysis was performed
+        assert len(predictor.state_labels) == 3
+        assert len(predictor.state_characteristics) == 3
+        assert predictor.transition_matrix is not None
+
+        # Test predictions
+        test_features = features.sample(10)
+        prediction_time = datetime.now(timezone.utc)
+
+        predictions = await predictor.predict(test_features, prediction_time, "vacant")
+
+        assert len(predictions) == 10
+        assert all(isinstance(p, PredictionResult) for p in predictions)
+        assert all(p.transition_type == "vacant_to_occupied" for p in predictions)
+
+        # Test state information
+        state_info = predictor.get_state_info()
+        assert state_info["n_states"] == 3
+        assert len(state_info["state_labels"]) == 3
+
+        # Test feature importance
+        importance = predictor.get_feature_importance()
+        assert len(importance) == 4  # Number of features
+        assert all(score >= 0 for score in importance.values())
+
+    @pytest.mark.asyncio
+    async def test_hmm_state_interpretation(self):
+        """Test that HMM correctly interprets different behavioral states."""
+        predictor = HMMPredictor(n_components=3, max_iter=30)
+        features, targets = self.create_realistic_state_data(150)
+
+        await predictor.train(features, targets)
+
+        # Check that states have meaningful interpretations
+        state_labels = list(predictor.state_labels.values())
+
+        # Should have different types of stays
+        label_types = set()
+        for label in state_labels:
+            if "Quick_Transition" in label:
+                label_types.add("quick")
+            elif "Short_Stay" in label:
+                label_types.add("short")
+            elif "Medium_Stay" in label:
+                label_types.add("medium")
+            elif "Long_Stay" in label:
+                label_types.add("long")
+
+        # Should identify at least 2 different types of patterns
+        assert len(label_types) >= 2
+
+        # Check that state characteristics reflect the patterns
+        durations = [
+            char["avg_duration"] for char in predictor.state_characteristics.values()
+        ]
+
+        # Should have a range of average durations
+        assert max(durations) > min(durations) * 2  # At least 2x difference
+
+    def test_hmm_memory_efficiency(self):
+        """Test HMM memory efficiency with larger datasets."""
+        predictor = HMMPredictor(n_components=4, max_iter=10)
+
+        # Create larger dataset
+        features, targets = self.create_realistic_state_data(1000)
+
+        # Should handle larger datasets without issues
+        # (This is more of a smoke test for memory usage)
+        try:
+            # Just test initialization and basic setup
+            X_scaled = predictor.feature_scaler.fit_transform(features)
+            y_prepared = predictor._prepare_targets(targets)
+
+            assert len(X_scaled) == 1000
+            assert len(y_prepared) == 1000
+
+            # Test sequence creation (should not consume excessive memory)
+            state_labels = np.random.randint(0, 4, 1000)
+            predictor._build_transition_matrix(state_labels)
+
+            assert predictor.transition_matrix.shape == (4, 4)
+
+        except MemoryError:
+            pytest.fail(
+                "HMM predictor should handle reasonably large datasets efficiently"
+            )

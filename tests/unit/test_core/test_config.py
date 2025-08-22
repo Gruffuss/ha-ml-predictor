@@ -4,9 +4,12 @@ Unit tests for configuration management.
 Tests ConfigLoader, SystemConfig, and all configuration dataclasses.
 """
 
+import gc
 from pathlib import Path
 import sys
 import tempfile
+import threading
+import time
 from unittest.mock import mock_open, patch
 
 import pytest
@@ -848,3 +851,723 @@ class TestConfigIntegration:
             found_room = config.get_room_by_entity_id(entity_ids[0])
             assert found_room is not None
             assert isinstance(found_room, RoomConfig)
+
+
+class TestConfigurationBoundaryConditions:
+    """Test configuration loading with boundary conditions."""
+
+    def test_extremely_large_configuration_file(self):
+        """Test loading extremely large configuration files."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            # Create large configuration
+            large_config = {
+                "home_assistant": {"url": "http://test:8123", "token": "test"},
+                "database": {"connection_string": "postgresql://test"},
+                "mqtt": {"broker": "test"},
+                "prediction": {},
+                "features": {},
+                "logging": {},
+            }
+
+            # Add many repeated sections to make it large
+            for i in range(50):  # Reduced for CI performance
+                large_config[f"dummy_section_{i}"] = {
+                    f"key_{j}": f"value_{j}_" + "x" * 50  # Medium length values
+                    for j in range(20)  # 20 keys per section
+                }
+
+            # Create large rooms config
+            large_rooms = {"rooms": {}}
+            for i in range(100):  # 100 rooms
+                room_id = f"room_{i:04d}"
+                large_rooms["rooms"][room_id] = {
+                    "name": f"Room {i:04d} with a long name",
+                    "sensors": {
+                        "presence": {
+                            f"sensor_{j}": f"binary_sensor.room_{i:04d}_presence_{j}"
+                            for j in range(3)  # 3 sensors per room
+                        },
+                    },
+                }
+
+            with open(config_dir / "config.yaml", "w") as f:
+                yaml.dump(large_config, f)
+
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump(large_rooms, f)
+
+            loader = ConfigLoader(str(config_dir))
+
+            start_time = time.time()
+            config = loader.load_config()
+            load_time = time.time() - start_time
+
+            # Should load successfully
+            assert isinstance(config, SystemConfig)
+            assert len(config.rooms) == 100
+            assert load_time < 30.0  # Should load within 30 seconds
+
+    def test_configuration_with_extreme_values(self):
+        """Test configuration with extreme boundary values."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            extreme_config = {
+                "home_assistant": {
+                    "url": "http://test:8123",
+                    "token": "test",
+                    "websocket_timeout": 0,  # Minimum value
+                    "api_timeout": 86400,  # Very large value
+                },
+                "database": {
+                    "connection_string": "postgresql://test",
+                    "pool_size": 1,  # Minimum pool
+                    "max_overflow": 1000,  # Very large overflow
+                },
+                "mqtt": {
+                    "broker": "test",
+                    "port": 65535,  # Maximum port number
+                    "username": "",  # Empty string
+                    "password": "",
+                },
+                "prediction": {
+                    "interval_seconds": 1,  # Very frequent
+                    "accuracy_threshold_minutes": 10080,  # One week
+                },
+                "features": {
+                    "lookback_hours": 8760,  # One year
+                    "sequence_length": 1,  # Minimum sequence
+                },
+                "logging": {"level": "DEBUG"},
+            }
+
+            rooms_config = {"rooms": {}}
+
+            with open(config_dir / "config.yaml", "w") as f:
+                yaml.dump(extreme_config, f)
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump(rooms_config, f)
+
+            loader = ConfigLoader(str(config_dir))
+            config = loader.load_config()
+
+            # Should handle extreme values gracefully
+            assert config.home_assistant.websocket_timeout == 0
+            assert config.home_assistant.api_timeout == 86400
+            assert config.database.pool_size == 1
+            assert config.database.max_overflow == 1000
+            assert config.mqtt.port == 65535
+            assert config.prediction.interval_seconds == 1
+            assert config.features.lookback_hours == 8760
+
+    def test_configuration_with_unicode_edge_cases(self):
+        """Test configuration with various Unicode edge cases."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            unicode_config = {
+                "home_assistant": {"url": "http://test:8123", "token": "test"},
+                "database": {"connection_string": "postgresql://test"},
+                "mqtt": {"broker": "test"},
+                "prediction": {},
+                "features": {},
+                "logging": {},
+            }
+
+            # Rooms with Unicode characters
+            unicode_rooms = {
+                "rooms": {
+                    "café_room": {
+                        "name": "Café Room ☕",
+                        "sensors": {"presence": "binary_sensor.café"},
+                    },
+                    "测试房间": {
+                        "name": "测试房间 (Test Room)",
+                        "sensors": {"presence": "binary_sensor.test_chinese"},
+                    },
+                    "комната": {
+                        "name": "Русская комната",
+                        "sensors": {"presence": "binary_sensor.russian"},
+                    },
+                    "🏠_room": {
+                        "name": "Emoji Room 🏠🔥❄️",
+                        "sensors": {"presence": "binary_sensor.emoji"},
+                    },
+                }
+            }
+
+            with open(config_dir / "config.yaml", "w", encoding="utf-8") as f:
+                yaml.dump(unicode_config, f, allow_unicode=True)
+            with open(config_dir / "rooms.yaml", "w", encoding="utf-8") as f:
+                yaml.dump(unicode_rooms, f, allow_unicode=True)
+
+            loader = ConfigLoader(str(config_dir))
+            config = loader.load_config()
+
+            # Should handle Unicode correctly
+            assert "café_room" in config.rooms
+            assert config.rooms["café_room"].name == "Café Room ☕"
+            assert "测试房间" in config.rooms
+            assert config.rooms["测试房间"].name == "测试房间 (Test Room)"
+            assert "комната" in config.rooms
+            assert "🏠_room" in config.rooms
+
+
+class TestConfigurationMemoryAndResourceConstraints:
+    """Test configuration loading under resource constraints."""
+
+    def test_concurrent_configuration_loading_stress(self):
+        """Test concurrent configuration loading from multiple threads."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            # Create standard config
+            test_config = {
+                "home_assistant": {"url": "http://test:8123", "token": "test"},
+                "database": {"connection_string": "postgresql://test"},
+                "mqtt": {"broker": "test"},
+                "prediction": {},
+                "features": {},
+                "logging": {},
+            }
+
+            rooms_config = {
+                "rooms": {
+                    f"room_{i}": {
+                        "name": f"Room {i}",
+                        "sensors": {"presence": f"binary_sensor.room_{i}"},
+                    }
+                    for i in range(50)
+                }
+            }
+
+            with open(config_dir / "config.yaml", "w") as f:
+                yaml.dump(test_config, f)
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump(rooms_config, f)
+
+            # Test concurrent loading
+            results = []
+            exceptions = []
+
+            def load_config_thread():
+                try:
+                    loader = ConfigLoader(str(config_dir))
+                    config = loader.load_config()
+                    results.append(config)
+                except Exception as e:
+                    exceptions.append(e)
+
+            # Start multiple threads
+            threads = []
+            for _ in range(5):  # Reduced for CI stability
+                thread = threading.Thread(target=load_config_thread)
+                threads.append(thread)
+                thread.start()
+
+            # Wait for completion
+            for thread in threads:
+                thread.join()
+
+            # All should succeed
+            assert len(exceptions) == 0
+            assert len(results) == 5
+
+            # All results should be equivalent
+            for config in results:
+                assert isinstance(config, SystemConfig)
+                assert len(config.rooms) == 50
+
+
+class TestConfigurationCorruptionAndRecovery:
+    """Test configuration handling with data corruption and recovery."""
+
+    def test_partially_corrupted_yaml_recovery(self):
+        """Test recovery from partially corrupted YAML files."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            # Create YAML with corruption at end (should still parse beginning)
+            partially_corrupted = """
+home_assistant:
+  url: "http://test:8123"
+  token: "test_token"
+database:
+  connection_string: "postgresql://test"
+mqtt:
+  broker: "test"
+prediction: {}
+features: {}
+logging: {}
+# Corruption starts here: ñÿþ¤ª¨¦§°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ
+"""
+            with open(config_dir / "config.yaml", "w", encoding="utf-8") as f:
+                f.write(partially_corrupted)
+
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump({"rooms": {}}, f)
+
+            loader = ConfigLoader(str(config_dir))
+
+            # Should load successfully despite corruption at end
+            config = loader.load_config()
+            assert config.home_assistant.url == "http://test:8123"
+            assert config.database.connection_string == "postgresql://test"
+
+    def test_yaml_with_mixed_encodings(self):
+        """Test YAML files with mixed or invalid encodings."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            # Create file with mixed encoding issues
+            config_data = {
+                "home_assistant": {"url": "http://test:8123", "token": "test"},
+                "database": {"connection_string": "postgresql://test"},
+                "mqtt": {"broker": "test"},
+                "prediction": {},
+                "features": {},
+                "logging": {},
+            }
+
+            config_file = config_dir / "config.yaml"
+            # Write as UTF-8
+            with open(config_file, "w", encoding="utf-8") as f:
+                yaml.dump(config_data, f)
+
+            # Append binary data that's not valid UTF-8
+            with open(config_file, "ab") as f:
+                f.write(b"\xff\xfe\x00\x01\x02\x03")
+
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump({"rooms": {}}, f)
+
+            loader = ConfigLoader(str(config_dir))
+
+            # Should handle encoding issues gracefully
+            try:
+                config = loader.load_config()
+                # If it succeeds, verify it got the valid part
+                assert config.home_assistant.url == "http://test:8123"
+            except UnicodeDecodeError:
+                # Acceptable to fail with encoding error
+                pass
+
+    def test_yaml_with_circular_references_deep(self):
+        """Test YAML with deep circular references."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            # Create YAML with deeply nested circular references
+            complex_circular = """
+home_assistant: &ha
+  url: "http://test:8123"
+  token: "test_token"
+  reference: &ref1
+    back_ref: *ha
+    nested: &ref2
+      deep_ref: *ref1
+      deeper: &ref3
+        deepest_ref: *ref2
+        back_to_ha: *ha
+        
+database:
+  connection_string: "postgresql://test"
+  ha_config: *ha
+  
+mqtt:
+  broker: "test"
+  config_ref: *ref3
+  
+prediction: {}
+features: {}
+logging: {}
+"""
+            with open(config_dir / "config.yaml", "w") as f:
+                f.write(complex_circular)
+
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump({"rooms": {}}, f)
+
+            loader = ConfigLoader(str(config_dir))
+
+            # YAML parser should handle references without infinite loops
+            config = loader.load_config()
+            assert config.home_assistant.url == "http://test:8123"
+
+    def test_configuration_with_extremely_long_values(self):
+        """Test configuration with extremely long string values."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            # Create config with very long values
+            extremely_long_token = "token_" + "x" * 100000  # 100KB token
+            extremely_long_url = "http://" + "subdomain." * 1000 + "example.com:8123"
+
+            long_config = {
+                "home_assistant": {
+                    "url": extremely_long_url,
+                    "token": extremely_long_token,
+                },
+                "database": {
+                    "connection_string": "postgresql://user:pass@"
+                    + "host." * 100
+                    + "com/db"
+                },
+                "mqtt": {"broker": "test"},
+                "prediction": {},
+                "features": {},
+                "logging": {},
+            }
+
+            with open(config_dir / "config.yaml", "w") as f:
+                yaml.dump(long_config, f)
+
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump({"rooms": {}}, f)
+
+            loader = ConfigLoader(str(config_dir))
+
+            # Should handle very long values
+            config = loader.load_config()
+            assert len(config.home_assistant.token) > 100000
+            assert config.home_assistant.token.startswith("token_x")
+
+    def test_configuration_with_malformed_data_types(self):
+        """Test configuration with malformed data types."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            # Create config with wrong data types that might cause issues
+            malformed_config = {
+                "home_assistant": {
+                    "url": ["http://test:8123"],  # List instead of string
+                    "token": {"value": "test"},  # Dict instead of string
+                    "websocket_timeout": "thirty",  # String instead of int
+                    "api_timeout": [10, 20, 30],  # List instead of int
+                },
+                "database": {
+                    "connection_string": 12345,  # Int instead of string
+                    "pool_size": {"min": 5, "max": 10},  # Dict instead of int
+                    "max_overflow": "unlimited",  # String instead of int
+                },
+                "mqtt": {
+                    "broker": None,  # None instead of string
+                    "port": "1883",  # String that can be converted
+                    "username": {"user": "test"},  # Dict instead of string
+                },
+                "prediction": {
+                    "interval_seconds": [300],  # List instead of int
+                    "confidence_threshold": "70%",  # String instead of float
+                },
+                "features": {"temporal_features": "yes"},  # String instead of bool
+                "logging": {"level": 123},  # Int instead of string
+            }
+
+            with open(config_dir / "config.yaml", "w") as f:
+                yaml.dump(malformed_config, f)
+
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump({"rooms": {}}, f)
+
+            loader = ConfigLoader(str(config_dir))
+
+            # Should fail with type errors when trying to create dataclasses
+            with pytest.raises(TypeError):
+                loader.load_config()
+
+    def test_configuration_with_yaml_injection_attempts(self):
+        """Test configuration security against YAML injection attempts."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            # YAML with potential security issues (should be handled safely)
+            potentially_malicious_yaml = """
+home_assistant:
+  url: "http://test:8123"
+  token: "test_token"
+  
+# Attempt to execute Python code (should not execute)
+database: !!python/object/apply:os.system ["echo 'this should not execute'"]
+
+# Alternative malicious attempt
+mqtt:
+  broker: "test"
+  malicious: !!python/module:os
+
+prediction: {}
+features: {}
+logging: {}
+"""
+            with open(config_dir / "config.yaml", "w") as f:
+                f.write(potentially_malicious_yaml)
+
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump({"rooms": {}}, f)
+
+            loader = ConfigLoader(str(config_dir))
+
+            # yaml.safe_load should prevent execution of Python code
+            # This should either load safely or fail with a construction error
+            try:
+                config = loader.load_config()
+                # If it loads, the malicious parts should be ignored/converted safely
+                assert config.home_assistant.url == "http://test:8123"
+            except yaml.constructor.ConstructorError:
+                # Acceptable - safe_load prevented dangerous construction
+                pass
+            except Exception as e:
+                # Should not execute arbitrary code
+                assert "this should not execute" not in str(e)
+
+
+class TestConfigurationRecoveryMechanisms:
+    """Test configuration recovery and fallback mechanisms."""
+
+    def test_configuration_fallback_to_defaults(self):
+        """Test fallback to default values when config is corrupted."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            # Create minimal config that's missing many fields
+            minimal_config = {
+                "home_assistant": {"url": "http://test:8123", "token": "test"},
+                "database": {"connection_string": "postgresql://test"},
+                "mqtt": {"broker": "test"},
+                # Missing prediction, features, logging sections
+            }
+
+            with open(config_dir / "config.yaml", "w") as f:
+                yaml.dump(minimal_config, f)
+
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump({"rooms": {}}, f)
+
+            loader = ConfigLoader(str(config_dir))
+
+            # Should use defaults for missing sections
+            config = loader.load_config()
+
+            # Verify defaults are applied
+            assert config.prediction.interval_seconds == 300  # Default
+            assert config.features.lookback_hours == 24  # Default
+            assert config.logging.level == "INFO"  # Default
+
+    def test_configuration_partial_recovery(self):
+        """Test recovery when only part of configuration is corrupted."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            # Create config where rooms.yaml is corrupted but config.yaml is fine
+            good_config = {
+                "home_assistant": {"url": "http://test:8123", "token": "test"},
+                "database": {"connection_string": "postgresql://test"},
+                "mqtt": {"broker": "test"},
+                "prediction": {},
+                "features": {},
+                "logging": {},
+            }
+
+            # Corrupted rooms file
+            corrupted_rooms = "rooms:\n  invalid_yaml: [\n  # Missing closing bracket"
+
+            with open(config_dir / "config.yaml", "w") as f:
+                yaml.dump(good_config, f)
+
+            with open(config_dir / "rooms.yaml", "w") as f:
+                f.write(corrupted_rooms)
+
+            loader = ConfigLoader(str(config_dir))
+
+            # Should fail because rooms.yaml is required
+            with pytest.raises(yaml.YAMLError):
+                loader.load_config()
+
+    def test_configuration_validation_recovery(self):
+        """Test recovery from configuration validation failures."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            # Config with invalid but recoverable values
+            invalid_but_recoverable = {
+                "home_assistant": {
+                    "url": "",  # Empty URL
+                    "token": "test_token",
+                    "websocket_timeout": -1,  # Invalid timeout
+                    "api_timeout": 10,
+                },
+                "database": {
+                    "connection_string": "postgresql://test",
+                    "pool_size": 0,  # Invalid pool size
+                    "max_overflow": 20,
+                },
+                "mqtt": {"broker": "test"},
+                "prediction": {},
+                "features": {},
+                "logging": {},
+            }
+
+            with open(config_dir / "config.yaml", "w") as f:
+                yaml.dump(invalid_but_recoverable, f)
+
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump({"rooms": {}}, f)
+
+            loader = ConfigLoader(str(config_dir))
+
+            # Should fail validation due to empty URL and invalid values
+            with pytest.raises(TypeError):
+                loader.load_config()
+
+
+class TestConfigurationStabilityAndResilience:
+    """Test configuration system stability and resilience."""
+
+    def test_repeated_configuration_loading_stability(self):
+        """Test stability of repeated configuration loading."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            config_data = {
+                "home_assistant": {"url": "http://test:8123", "token": "test"},
+                "database": {"connection_string": "postgresql://test"},
+                "mqtt": {"broker": "test"},
+                "prediction": {},
+                "features": {},
+                "logging": {},
+            }
+
+            with open(config_dir / "config.yaml", "w") as f:
+                yaml.dump(config_data, f)
+
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump({"rooms": {}}, f)
+
+            loader = ConfigLoader(str(config_dir))
+
+            # Load configuration many times
+            configs = []
+            for i in range(100):
+                config = loader.load_config()
+                configs.append(config)
+
+                # Verify consistency
+                assert config.home_assistant.url == "http://test:8123"
+                assert config.database.connection_string == "postgresql://test"
+
+            # All configs should be equivalent but separate objects
+            for i in range(1, len(configs)):
+                assert configs[i].home_assistant.url == configs[0].home_assistant.url
+                assert configs[i] is not configs[0]  # Different objects
+
+    def test_configuration_loading_with_system_stress(self):
+        """Test configuration loading under system stress."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            # Create moderately large config
+            stress_config = {
+                "home_assistant": {"url": "http://test:8123", "token": "test"},
+                "database": {"connection_string": "postgresql://test"},
+                "mqtt": {"broker": "test"},
+                "prediction": {},
+                "features": {},
+                "logging": {},
+            }
+
+            # Add moderate complexity
+            for i in range(50):
+                stress_config[f"section_{i}"] = {
+                    f"key_{j}": f"value_{j}" for j in range(20)
+                }
+
+            rooms_config = {
+                "rooms": {f"room_{i}": {"name": f"Room {i}"} for i in range(200)}
+            }
+
+            with open(config_dir / "config.yaml", "w") as f:
+                yaml.dump(stress_config, f)
+
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump(rooms_config, f)
+
+            loader = ConfigLoader(str(config_dir))
+
+            # Load under simulated stress (rapid repeated loads)
+            start_time = time.time()
+            successful_loads = 0
+
+            while time.time() - start_time < 5.0:  # Run for 5 seconds
+                try:
+                    config = loader.load_config()
+                    successful_loads += 1
+                    assert len(config.rooms) == 200
+                except Exception as e:
+                    pytest.fail(f"Configuration loading failed under stress: {e}")
+
+                # Brief pause to avoid overwhelming system
+                time.sleep(0.01)
+
+            # Should have completed many loads successfully
+            assert successful_loads > 100  # At least 20 per second
+
+    def test_configuration_memory_stability(self):
+        """Test that configuration loading doesn't cause memory leaks."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_dir = Path(temp_dir)
+
+            config_data = {
+                "home_assistant": {"url": "http://test:8123", "token": "test"},
+                "database": {"connection_string": "postgresql://test"},
+                "mqtt": {"broker": "test"},
+                "prediction": {},
+                "features": {},
+                "logging": {},
+            }
+
+            # Create config with some data to allocate memory
+            large_rooms = {
+                "rooms": {
+                    f"room_{i}": {
+                        "name": f"Room {i}",
+                        "sensors": {
+                            f"sensor_{j}": f"binary_sensor.room_{i}_sensor_{j}"
+                            for j in range(10)
+                        },
+                    }
+                    for i in range(100)
+                }
+            }
+
+            with open(config_dir / "config.yaml", "w") as f:
+                yaml.dump(config_data, f)
+
+            with open(config_dir / "rooms.yaml", "w") as f:
+                yaml.dump(large_rooms, f)
+
+            loader = ConfigLoader(str(config_dir))
+
+            # Force garbage collection and get initial memory
+            gc.collect()
+            initial_objects = len(gc.get_objects())
+
+            # Load and release configurations multiple times
+            for i in range(50):
+                config = loader.load_config()
+                # Verify it loaded correctly
+                assert len(config.rooms) == 100
+                # Release reference
+                del config
+                # Periodic garbage collection
+                if i % 10 == 0:
+                    gc.collect()
+
+            # Final garbage collection
+            gc.collect()
+            final_objects = len(gc.get_objects())
+
+            # Memory usage shouldn't grow significantly
+            # (Allow some growth for test framework overhead)
+            object_growth = final_objects - initial_objects
+            assert object_growth < 1000  # Reasonable threshold

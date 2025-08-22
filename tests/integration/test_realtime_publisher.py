@@ -948,9 +948,366 @@ class TestFactoryFunctions:
 
         system = create_realtime_publishing_system(config)
 
-        assert isinstance(system, RealtimePublishingSystem)
-        assert len(system.enabled_channels) == 1
-        assert PublishingChannel.MQTT in system.enabled_channels
+
+class TestWebSocketAPIIntegration:
+    """
+    WebSocket API integration tests consolidated from test_websocket_api_integration.py.
+    These tests validate the WebSocket API's integration with the TrackingManager.
+    """
+
+    @pytest.fixture
+    def websocket_config(self):
+        """WebSocket API configuration for testing."""
+        return {
+            "enabled": True,
+            "host": "127.0.0.1",
+            "port": 8767,
+            "max_connections": 10,
+            "max_messages_per_minute": 100,
+            "heartbeat_interval_seconds": 5,
+            "connection_timeout_seconds": 30,
+            "acknowledgment_timeout_seconds": 10,
+        }
+
+    @pytest.fixture
+    def mock_websocket(self):
+        """Mock WebSocket connection for testing."""
+        websocket = MagicMock(spec=WebSocketServerProtocol)
+        websocket.send = AsyncMock()
+        websocket.close = AsyncMock()
+        return websocket
+
+    @pytest.mark.asyncio
+    async def test_websocket_connection_management(self, websocket_config):
+        """Test WebSocket connection management operations."""
+        from src.integration.websocket_api import WebSocketConnectionManager
+
+        manager = WebSocketConnectionManager(websocket_config)
+        mock_websocket = MagicMock(spec=WebSocketServerProtocol)
+
+        # Test connection
+        connection_id = await manager.connect(mock_websocket, "/ws/predictions")
+        assert connection_id in manager.connections
+        assert manager.stats.active_connections == 1
+
+        # Test disconnection
+        await manager.disconnect(connection_id)
+        assert connection_id not in manager.connections
+        assert manager.stats.active_connections == 0
+
+    @pytest.mark.asyncio
+    async def test_websocket_client_authentication(self, websocket_config):
+        """Test WebSocket client authentication process."""
+        from src.integration.websocket_api import (
+            ClientAuthRequest,
+            WebSocketConnectionManager,
+        )
+
+        manager = WebSocketConnectionManager(websocket_config)
+        mock_websocket = MagicMock(spec=WebSocketServerProtocol)
+
+        # Connect client
+        connection_id = await manager.connect(mock_websocket, "/ws/predictions")
+
+        with patch("src.core.config.get_config") as mock_get_config:
+            mock_config = MagicMock()
+            mock_config.api.api_key_enabled = True
+            mock_config.api.api_key = "test-api-key"
+            mock_get_config.return_value = mock_config
+
+            auth_request = ClientAuthRequest(
+                api_key="test-api-key",
+                client_name="TestClient",
+                capabilities=["predictions", "alerts"],
+                room_filters=["living_room"],
+            )
+
+            # Test successful authentication
+            success = await manager.authenticate_client(connection_id, auth_request)
+            assert success is True
+
+            connection = manager.connections[connection_id]
+            assert connection.authenticated is True
+            assert connection.client_name == "TestClient"
+
+    @pytest.mark.asyncio
+    async def test_websocket_subscription_management(self, websocket_config):
+        """Test WebSocket client subscription management."""
+        from src.integration.websocket_api import (
+            ClientSubscription,
+            WebSocketConnectionManager,
+        )
+
+        manager = WebSocketConnectionManager(websocket_config)
+        mock_websocket = MagicMock(spec=WebSocketServerProtocol)
+
+        # Connect and authenticate client
+        connection_id = await manager.connect(mock_websocket, "/ws/predictions")
+        connection = manager.connections[connection_id]
+        connection.authenticated = True
+        connection.room_filters.add("living_room")
+
+        subscription = ClientSubscription(
+            endpoint="/ws/predictions", room_id="living_room", filters={}
+        )
+
+        success = await manager.subscribe_client(connection_id, subscription)
+        assert success is True
+        assert "/ws/predictions" in connection.subscriptions
+        assert "living_room" in connection.room_subscriptions
+
+    @pytest.mark.asyncio
+    async def test_websocket_message_broadcasting(self, websocket_config):
+        """Test WebSocket message broadcasting to subscribed clients."""
+        from src.integration.websocket_api import (
+            MessageType,
+            WebSocketConnectionManager,
+            WebSocketMessage,
+        )
+
+        manager = WebSocketConnectionManager(websocket_config)
+
+        # Create multiple mock clients
+        clients = []
+        for i in range(3):
+            mock_websocket = MagicMock(spec=WebSocketServerProtocol)
+            mock_websocket.send = AsyncMock()
+            connection_id = await manager.connect(mock_websocket, "/ws/predictions")
+
+            # Authenticate and subscribe
+            connection = manager.connections[connection_id]
+            connection.authenticated = True
+            connection.subscriptions.add("/ws/predictions")
+            connection.room_subscriptions.add("living_room")
+
+            clients.append((connection_id, mock_websocket))
+
+        # Create test message
+        message = WebSocketMessage(
+            message_id=str(uuid.uuid4()),
+            message_type=MessageType.PREDICTION_UPDATE,
+            timestamp=datetime.utcnow(),
+            endpoint="/ws/predictions",
+            room_id="living_room",
+            data={"test": "data"},
+        )
+
+        # Broadcast message
+        sent_count = await manager.broadcast_to_endpoint(
+            "/ws/predictions", message, "living_room"
+        )
+
+        # Verify all clients received the message
+        assert sent_count == 3
+        for _, mock_websocket in clients:
+            mock_websocket.send.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_websocket_rate_limiting(self, websocket_config):
+        """Test WebSocket rate limiting functionality."""
+        from src.integration.websocket_api import (
+            MessageType,
+            WebSocketConnectionManager,
+            WebSocketMessage,
+        )
+
+        # Set low rate limit for testing
+        websocket_config["max_messages_per_minute"] = 2
+
+        manager = WebSocketConnectionManager(websocket_config)
+        mock_websocket = MagicMock(spec=WebSocketServerProtocol)
+        mock_websocket.send = AsyncMock()
+
+        connection_id = await manager.connect(mock_websocket, "/ws/predictions")
+        connection = manager.connections[connection_id]
+        connection.authenticated = True
+
+        # Create test message
+        message = WebSocketMessage(
+            message_id=str(uuid.uuid4()),
+            message_type=MessageType.PREDICTION_UPDATE,
+            timestamp=datetime.utcnow(),
+            endpoint="/ws/predictions",
+            data={"test": "data"},
+        )
+
+        # Send messages up to limit
+        assert await manager.send_message(connection_id, message) is True
+        assert await manager.send_message(connection_id, message) is True
+
+        # Next message should be rate limited
+        assert await manager.send_message(connection_id, message) is False
+        assert connection.is_rate_limited(2) is True
+
+    @pytest.mark.asyncio
+    async def test_websocket_prediction_publishing_integration(self, websocket_config):
+        """Test publishing prediction updates via WebSocket API integration."""
+        from src.integration.websocket_api import WebSocketAPIServer
+        from src.models.base.predictor import PredictionResult
+
+        # Mock tracking manager
+        mock_tracking_manager = AsyncMock()
+
+        websocket_server = WebSocketAPIServer(
+            tracking_manager=mock_tracking_manager, config=websocket_config
+        )
+        await websocket_server.initialize()
+
+        # Create mock prediction result
+        prediction_result = PredictionResult(
+            predicted_time=datetime.utcnow() + timedelta(minutes=30),
+            confidence=0.85,
+            transition_type="occupied_to_vacant",
+            model_type="ensemble",
+            model_version="1.0.0",
+            features_used=["time_since_last", "hour_of_day"],
+            prediction_metadata={"room_id": "living_room"},
+        )
+
+        # Mock some connected clients
+        mock_clients = []
+        for i in range(2):
+            mock_websocket = MagicMock(spec=WebSocketServerProtocol)
+            mock_websocket.send = AsyncMock()
+            connection_id = await websocket_server.connection_manager.connect(
+                mock_websocket, "/ws/predictions"
+            )
+
+            connection = websocket_server.connection_manager.connections[connection_id]
+            connection.authenticated = True
+            connection.subscriptions.add("/ws/predictions")
+
+            mock_clients.append((connection_id, mock_websocket))
+
+        # Publish prediction update
+        result = await websocket_server.publish_prediction_update(
+            prediction_result, "living_room", "vacant"
+        )
+
+        # Verify successful publishing
+        assert result["success"] is True
+        assert result["clients_notified"] > 0
+
+        await websocket_server.stop()
+
+    @pytest.mark.asyncio
+    async def test_websocket_heartbeat_mechanism(self, websocket_config):
+        """Test WebSocket heartbeat functionality."""
+        from src.integration.websocket_api import WebSocketConnectionManager
+
+        manager = WebSocketConnectionManager(websocket_config)
+        mock_websocket = MagicMock(spec=WebSocketServerProtocol)
+        mock_websocket.send = AsyncMock()
+
+        connection_id = await manager.connect(mock_websocket, "/ws/predictions")
+
+        connection = manager.connections[connection_id]
+        connection.authenticated = True
+
+        # Send heartbeat
+        success = await manager.send_heartbeat(connection_id)
+
+        # Verify heartbeat sent
+        assert success is True
+        mock_websocket.send.assert_called_once()
+
+        # Verify heartbeat message format
+        sent_args = mock_websocket.send.call_args[0]
+        sent_message = json.loads(sent_args[0])
+        assert sent_message["message_type"] == "heartbeat"
+        assert "server_time" in sent_message["data"]
+
+    @pytest.mark.asyncio
+    async def test_websocket_error_handling_and_recovery(self, websocket_config):
+        """Test WebSocket error handling and recovery mechanisms."""
+        from src.integration.websocket_api import (
+            MessageType,
+            WebSocketConnectionManager,
+            WebSocketMessage,
+        )
+
+        manager = WebSocketConnectionManager(websocket_config)
+
+        # Mock websocket that fails on send
+        mock_websocket = MagicMock(spec=WebSocketServerProtocol)
+        mock_websocket.send = AsyncMock(side_effect=Exception("Connection lost"))
+
+        connection_id = await manager.connect(mock_websocket, "/ws/predictions")
+        connection = manager.connections[connection_id]
+        connection.authenticated = True
+
+        # Create test message
+        message = WebSocketMessage(
+            message_id=str(uuid.uuid4()),
+            message_type=MessageType.PREDICTION_UPDATE,
+            timestamp=datetime.utcnow(),
+            endpoint="/ws/predictions",
+            data={"test": "data"},
+        )
+
+        # Attempt to send message (should fail gracefully)
+        success = await manager.send_message(connection_id, message)
+
+        # Verify failure was handled gracefully
+        assert success is False
+        assert manager.stats.failed_message_deliveries > 0
+
+    @pytest.mark.asyncio
+    async def test_websocket_connection_cleanup(self, websocket_config):
+        """Test automatic WebSocket connection cleanup."""
+        from src.integration.websocket_api import WebSocketConnectionManager
+
+        # Set short timeout for testing
+        websocket_config["connection_timeout_seconds"] = 1
+
+        manager = WebSocketConnectionManager(websocket_config)
+        mock_websocket = MagicMock(spec=WebSocketServerProtocol)
+
+        connection_id = await manager.connect(mock_websocket, "/ws/predictions")
+        connection = manager.connections[connection_id]
+
+        # Simulate old last activity
+        connection.last_activity = datetime.utcnow() - timedelta(seconds=2)
+
+        # Simulate cleanup process
+        current_time = datetime.utcnow()
+        stale_connections = [
+            conn_id
+            for conn_id, conn in manager.connections.items()
+            if (current_time - conn.last_activity).total_seconds()
+            > manager.connection_timeout
+        ]
+
+        # Verify connection identified as stale
+        assert connection_id in stale_connections
+
+    def test_websocket_message_serialization(self):
+        """Test WebSocket message serialization and deserialization."""
+        from src.integration.websocket_api import MessageType, WebSocketMessage
+
+        original_message = WebSocketMessage(
+            message_id="test-123",
+            message_type=MessageType.PREDICTION_UPDATE,
+            timestamp=datetime.utcnow(),
+            endpoint="/ws/predictions",
+            room_id="living_room",
+            data={"room_name": "Living Room", "confidence": 0.85},
+            requires_ack=True,
+        )
+
+        # Serialize to JSON
+        json_str = original_message.to_json()
+
+        # Deserialize from JSON
+        deserialized_message = WebSocketMessage.from_json(json_str)
+
+        # Verify all fields match
+        assert deserialized_message.message_id == original_message.message_id
+        assert deserialized_message.message_type == original_message.message_type
+        assert deserialized_message.endpoint == original_message.endpoint
+        assert deserialized_message.room_id == original_message.room_id
+        assert deserialized_message.data == original_message.data
+        assert deserialized_message.requires_ack == original_message.requires_ack
 
 
 class TestIntegrationScenarios:

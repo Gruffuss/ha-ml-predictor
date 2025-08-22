@@ -1,8 +1,8 @@
 """
-Comprehensive unit tests for TrackingManager system coordination.
+Unit tests for TrackingManager core functionality.
 
-This test module covers the central tracking manager's coordination between
-all adaptation components, integration workflows, and real-time monitoring.
+Pure unit tests for TrackingManager, TrackingConfig, and basic coordination logic.
+Integration tests are in tests/adaptation/test_tracking_manager.py.
 """
 
 import asyncio
@@ -18,919 +18,597 @@ from src.adaptation.drift_detector import (
     DriftMetrics,
     DriftSeverity,
 )
-from src.adaptation.optimizer import ModelOptimizer, OptimizationConfig
-from src.adaptation.retrainer import (
-    AdaptiveRetrainer,
-    RetrainingRequest,
-    RetrainingStatus,
+from src.adaptation.retrainer import AdaptiveRetrainer, RetrainerError
+from src.adaptation.tracker import AccuracyTracker, AlertSeverity
+from src.adaptation.tracking_manager import (
+    TrackingConfig,
+    TrackingManager,
+    TrackingManagerError,
 )
-from src.adaptation.tracker import AccuracyTracker
-from src.adaptation.tracking_manager import TrackingConfig, TrackingManager
 from src.adaptation.validator import AccuracyMetrics, PredictionValidator
-from src.models.base.predictor import PredictionResult
+from src.core.constants import ModelType, RoomId
+from src.core.exceptions import ErrorSeverity
+from src.data.storage.database import DatabaseManager
+from src.integration.mqtt_publisher import MQTTPublisher
 
-# Test fixtures
 
+class TestTrackingConfig:
+    """Unit tests for TrackingConfig class."""
 
-@pytest.fixture
-def tracking_config():
-    """Create tracking configuration for testing."""
-    return TrackingConfig(
-        enabled=True,
-        monitoring_interval_seconds=30,
-        auto_validation_enabled=True,
-        validation_window_minutes=15,
-        alert_thresholds={
+    def test_tracking_config_defaults(self):
+        """Test TrackingConfig initialization with default values."""
+        config = TrackingConfig()
+
+        assert config.enabled is True
+        assert config.monitoring_interval_seconds == 60
+        assert config.auto_validation_enabled is True
+        assert config.validation_window_minutes == 30
+        assert config.max_stored_alerts == 1000
+        assert config.trend_analysis_points == 10
+        assert config.cleanup_interval_hours == 24
+
+        # Real-time publishing defaults
+        assert config.realtime_publishing_enabled is True
+        assert config.websocket_enabled is True
+        assert config.sse_enabled is True
+        assert config.websocket_port == 8765
+
+        # Dashboard defaults
+        assert config.dashboard_enabled is True
+        assert config.dashboard_host == "0.0.0.0"
+        assert config.dashboard_port == 8888
+
+        # Drift detection defaults
+        assert config.drift_detection_enabled is True
+        assert config.drift_baseline_days == 30
+        assert config.drift_current_days == 7
+
+        # Adaptive retraining defaults
+        assert config.adaptive_retraining_enabled is True
+        assert config.retraining_accuracy_threshold == 60.0
+        assert config.max_concurrent_retrains == 2
+
+    def test_tracking_config_custom_values(self):
+        """Test TrackingConfig with custom values."""
+        config = TrackingConfig(
+            enabled=False,
+            monitoring_interval_seconds=30,
+            auto_validation_enabled=False,
+            validation_window_minutes=15,
+            max_stored_alerts=500,
+            trend_analysis_points=5,
+            realtime_publishing_enabled=False,
+            dashboard_enabled=False,
+            drift_detection_enabled=False,
+            adaptive_retraining_enabled=False,
+            retraining_accuracy_threshold=70.0,
+        )
+
+        assert config.enabled is False
+        assert config.monitoring_interval_seconds == 30
+        assert config.auto_validation_enabled is False
+        assert config.validation_window_minutes == 15
+        assert config.max_stored_alerts == 500
+        assert config.trend_analysis_points == 5
+        assert config.realtime_publishing_enabled is False
+        assert config.dashboard_enabled is False
+        assert config.drift_detection_enabled is False
+        assert config.adaptive_retraining_enabled is False
+        assert config.retraining_accuracy_threshold == 70.0
+
+    def test_post_init_alert_thresholds(self):
+        """Test __post_init__ sets up alert thresholds correctly."""
+        config = TrackingConfig()
+
+        expected_thresholds = {
             "accuracy_warning": 70.0,
             "accuracy_critical": 50.0,
             "error_warning": 20.0,
             "error_critical": 30.0,
-        },
-        drift_detection_enabled=True,
-        drift_check_interval_hours=6,
-        adaptive_retraining_enabled=True,
-        retraining_accuracy_threshold=60.0,
-        realtime_publishing_enabled=True,
-        dashboard_enabled=True,
-        websocket_api_enabled=True,
-    )
-
-
-@pytest.fixture
-def mock_database_manager():
-    """Mock database manager."""
-    db_manager = Mock()
-    db_manager.health_check = AsyncMock(return_value={"status": "healthy"})
-    return db_manager
-
-
-@pytest.fixture
-def mock_model_registry():
-    """Mock model registry with test models."""
-    registry = {
-        "living_room_lstm": Mock(),
-        "living_room_xgboost": Mock(),
-        "bedroom_ensemble": Mock(),
-    }
-    return registry
-
-
-@pytest.fixture
-def mock_mqtt_manager():
-    """Mock MQTT integration manager."""
-    mqtt_manager = Mock()
-    mqtt_manager.initialize = AsyncMock()
-    mqtt_manager.shutdown = AsyncMock()
-    mqtt_manager.publish_prediction = AsyncMock(
-        return_value={
-            "mqtt": {"success": True},
-            "websocket": {"success": True, "clients_notified": 3},
-            "sse": {"success": True, "clients_notified": 2},
         }
-    )
-    mqtt_manager.get_integration_stats = Mock(
-        return_value={
-            "mqtt_integration": {
-                "mqtt_connected": True,
-                "discovery_published": True,
-            },
-            "realtime_publishing": {"system_active": True},
-            "channels": {
-                "total_active": 3,
-                "enabled_channels": ["mqtt", "websocket", "sse"],
-            },
-            "connections": {"websocket_clients": 3, "sse_clients": 2},
-            "performance": {
-                "predictions_per_minute": 12,
-                "average_publish_latency_ms": 25,
-                "publish_success_rate": 0.98,
-            },
+        assert config.alert_thresholds == expected_thresholds
+
+    def test_custom_alert_thresholds_preserved(self):
+        """Test that custom alert thresholds are preserved."""
+        custom_thresholds = {
+            "accuracy_warning": 80.0,
+            "accuracy_critical": 60.0,
+            "error_warning": 15.0,
+            "error_critical": 25.0,
         }
-    )
-    return mqtt_manager
 
-
-@pytest.fixture
-def mock_notification_callbacks():
-    """Mock notification callbacks."""
-    callback = Mock()
-    callback.return_value = None
-    return [callback]
-
-
-@pytest_asyncio.fixture
-async def tracking_manager(
-    tracking_config,
-    mock_database_manager,
-    mock_model_registry,
-    mock_mqtt_manager,
-    mock_notification_callbacks,
-):
-    """Create tracking manager with mocked dependencies."""
-    manager = TrackingManager(
-        config=tracking_config,
-        database_manager=mock_database_manager,
-        model_registry=mock_model_registry,
-        mqtt_integration_manager=mock_mqtt_manager,
-        notification_callbacks=mock_notification_callbacks,
-    )
-
-    # Initialize with mocked components - keep patches active throughout fixture lifecycle
-    with (
-        patch(
-            "src.adaptation.tracking_manager.PredictionValidator"
-        ) as mock_validator_class,
-        patch("src.adaptation.tracking_manager.AccuracyTracker") as mock_tracker_class,
-        patch("src.adaptation.tracking_manager.ConceptDriftDetector"),
-        patch(
-            "src.adaptation.tracking_manager.AdaptiveRetrainer"
-        ) as mock_retrainer_class,
-        patch("src.adaptation.tracking_manager.ModelOptimizer"),
-    ):
-        # Mock validator instance with proper async methods
-        mock_validator_instance = Mock()
-        mock_validator_instance.record_prediction = AsyncMock()
-        mock_validator_instance.validate_prediction = AsyncMock(return_value=[])
-        mock_validator_instance.get_total_predictions = AsyncMock(return_value=0)
-        mock_validator_instance.get_validation_rate = AsyncMock(return_value=0.0)
-        mock_validator_instance.get_room_accuracy = AsyncMock(
-            return_value=Mock(
-                total_predictions=10,
-                validated_predictions=8,
-                accurate_predictions=6,
-                accuracy_rate=75.0,
-                mean_error_minutes=12.5,
-            )
-        )
-        mock_validator_instance.cleanup_old_predictions = AsyncMock()
-        mock_validator_instance._pending_predictions = {}
-        mock_validator_class.return_value = mock_validator_instance
-
-        # Mock accuracy tracker instance with async methods
-        mock_tracker_instance = Mock()
-        mock_tracker_instance.start_monitoring = AsyncMock()
-        mock_tracker_instance.stop_monitoring = AsyncMock()
-        mock_tracker_instance.add_notification_callback = Mock()
-        mock_tracker_class.return_value = mock_tracker_instance
-
-        # Mock the AdaptiveRetrainer instance and its async methods
-        mock_retrainer_instance = Mock()
-        mock_retrainer_instance.initialize = AsyncMock()
-        mock_retrainer_instance.shutdown = AsyncMock()
-        mock_retrainer_instance.evaluate_retraining_need = AsyncMock(return_value=None)
-        mock_retrainer_instance.request_retraining = AsyncMock(
-            return_value="test_request_id"
-        )
-        mock_retrainer_instance.get_retraining_status = AsyncMock(return_value={})
-        mock_retrainer_instance.cancel_retraining = AsyncMock(return_value=True)
-        mock_retrainer_instance.get_retrainer_stats = AsyncMock(return_value={})
-        mock_retrainer_class.return_value = mock_retrainer_instance
-
-        await manager.initialize()
-
-        try:
-            yield manager
-        finally:
-            # Cleanup
-            await manager.stop_tracking()
-
-
-@pytest.fixture
-def sample_prediction_result():
-    """Create sample prediction result for testing."""
-    return PredictionResult(
-        predicted_time=datetime.now(UTC) + timedelta(minutes=30),
-        transition_type="occupied",
-        confidence_score=0.85,
-        prediction_metadata={
-            "room_id": "living_room",
-            "model_type": "ensemble",
-            "features_used": ["temporal", "sequential"],
-            "prediction_id": "pred_12345",
-        },
-    )
-
-
-# Core tracking manager tests
+        config = TrackingConfig(alert_thresholds=custom_thresholds)
+        assert config.alert_thresholds == custom_thresholds
 
 
 class TestTrackingManagerInitialization:
-    """Test TrackingManager initialization and lifecycle."""
+    """Unit tests for TrackingManager initialization."""
 
-    @pytest.mark.asyncio
+    @pytest.fixture
+    def tracking_config(self):
+        """Create test tracking configuration."""
+        return TrackingConfig(
+            enabled=True,
+            monitoring_interval_seconds=60,
+            auto_validation_enabled=True,
+            drift_detection_enabled=True,
+            adaptive_retraining_enabled=True,
+        )
+
+    @pytest.fixture
+    def mock_database_manager(self):
+        """Create mock database manager."""
+        mock_db = MagicMock(spec=DatabaseManager)
+        mock_db.health_check = AsyncMock(return_value={"status": "healthy"})
+        return mock_db
+
+    @pytest.fixture
+    def mock_mqtt_publisher(self):
+        """Create mock MQTT publisher."""
+        mock_mqtt = MagicMock(spec=MQTTPublisher)
+        mock_mqtt.connect = AsyncMock()
+        mock_mqtt.disconnect = AsyncMock()
+        return mock_mqtt
+
     async def test_manager_initialization(self, tracking_config, mock_database_manager):
-        """Test tracking manager initialization."""
+        """Test basic TrackingManager initialization."""
         manager = TrackingManager(
             config=tracking_config,
             database_manager=mock_database_manager,
-            model_registry={},
         )
 
-        # Test initial state
-        assert manager.config == tracking_config
-        assert manager.database_manager == mock_database_manager
-        assert not manager._tracking_active
-        assert len(manager._background_tasks) == 0
+        assert manager._config == tracking_config
+        assert manager._database_manager == mock_database_manager
+        assert manager._prediction_validator is None  # Created on start
+        assert manager._accuracy_tracker is None  # Created on start
+        assert manager._drift_detector is None  # Created on start
+        assert manager._retrainer is None  # Created on start
+        assert not manager._running
+        assert manager._background_tasks == []
 
-        # Test configuration values
-        assert manager.config.enabled
-        assert manager.config.monitoring_interval_seconds == 30
-        assert manager.config.drift_detection_enabled
+    async def test_manager_initialization_with_components(
+        self, tracking_config, mock_database_manager
+    ):
+        """Test initialization with pre-built components."""
+        mock_validator = MagicMock(spec=PredictionValidator)
+        mock_tracker = MagicMock(spec=AccuracyTracker)
+        mock_drift = MagicMock(spec=ConceptDriftDetector)
+        mock_retrainer = MagicMock(spec=AdaptiveRetrainer)
 
-    @pytest.mark.asyncio
-    async def test_manager_initialization_with_components(self, tracking_manager):
-        """Test manager initialization with all components."""
-        assert tracking_manager._tracking_active
-        assert tracking_manager.validator is not None
-        assert tracking_manager.accuracy_tracker is not None
-        assert tracking_manager.drift_detector is not None
-        assert tracking_manager.adaptive_retrainer is not None
-        assert tracking_manager.model_optimizer is not None
-
-    @pytest.mark.asyncio
-    async def test_manager_shutdown(self, tracking_manager):
-        """Test graceful manager shutdown."""
-        # Verify manager is running
-        assert tracking_manager._tracking_active
-
-        # Stop tracking
-        await tracking_manager.stop_tracking()
-
-        # Verify shutdown
-        assert not tracking_manager._tracking_active
-        assert len(tracking_manager._background_tasks) == 0
-
-    @pytest.mark.asyncio
-    async def test_disabled_manager_initialization(self, mock_database_manager):
-        """Test initialization when tracking is disabled."""
-        disabled_config = TrackingConfig(enabled=False)
         manager = TrackingManager(
-            config=disabled_config, database_manager=mock_database_manager
+            config=tracking_config,
+            database_manager=mock_database_manager,
+            prediction_validator=mock_validator,
+            accuracy_tracker=mock_tracker,
+            drift_detector=mock_drift,
+            retrainer=mock_retrainer,
         )
 
-        await manager.initialize()
+        assert manager._prediction_validator == mock_validator
+        assert manager._accuracy_tracker == mock_tracker
+        assert manager._drift_detector == mock_drift
+        assert manager._retrainer == mock_retrainer
 
-        # Should not start any background tasks when disabled
-        assert not manager._tracking_active
-
-
-class TestPredictionRecording:
-    """Test prediction recording and integration workflows."""
-
-    @pytest.mark.asyncio
-    async def test_prediction_recording(
-        self, tracking_manager, sample_prediction_result
-    ):
-        """Test basic prediction recording."""
-        # Record prediction
-        await tracking_manager.record_prediction(sample_prediction_result)
-
-        # Verify prediction was processed
-        assert tracking_manager._total_predictions_recorded > 0
-
-        # Verify prediction was cached
-        room_id = sample_prediction_result.prediction_metadata["room_id"]
-        assert room_id in tracking_manager._pending_predictions
-        assert len(tracking_manager._pending_predictions[room_id]) > 0
-
-    @pytest.mark.asyncio
-    async def test_prediction_mqtt_integration(
-        self, tracking_manager, sample_prediction_result
-    ):
-        """Test prediction recording triggers MQTT publishing."""
-        # Record prediction
-        await tracking_manager.record_prediction(sample_prediction_result)
-
-        # Verify MQTT publishing was called
-        tracking_manager.mqtt_integration_manager.publish_prediction.assert_called_once()
-        call_args = (
-            tracking_manager.mqtt_integration_manager.publish_prediction.call_args
+    async def test_manager_shutdown(self, tracking_config, mock_database_manager):
+        """Test manager shutdown functionality."""
+        manager = TrackingManager(
+            config=tracking_config,
+            database_manager=mock_database_manager,
         )
-        assert call_args[1]["prediction_result"] == sample_prediction_result
 
-    @pytest.mark.asyncio
-    async def test_prediction_recording_with_disabled_tracking(
-        self, sample_prediction_result
-    ):
-        """Test prediction recording when tracking is disabled."""
+        # Simulate running state
+        manager._running = True
+        mock_task = AsyncMock()
+        manager._background_tasks = [mock_task]
+
+        await manager.shutdown()
+
+        assert not manager._running
+        mock_task.cancel.assert_called_once()
+
+    async def test_disabled_manager_initialization(self, mock_database_manager):
+        """Test initialization with tracking disabled."""
         disabled_config = TrackingConfig(enabled=False)
-        manager = TrackingManager(config=disabled_config)
 
-        # Should not fail even when disabled
-        await manager.record_prediction(sample_prediction_result)
-
-        # Should not record anything
-        assert manager._total_predictions_recorded == 0
-
-    @pytest.mark.asyncio
-    async def test_prediction_cache_cleanup(
-        self, tracking_manager, sample_prediction_result
-    ):
-        """Test automatic cleanup of old predictions in cache."""
-        # Create old prediction
-        old_prediction = PredictionResult(
-            predicted_time=datetime.now(UTC) - timedelta(hours=3),
-            transition_type="vacant",
-            confidence_score=0.75,
-            prediction_metadata={"room_id": "living_room"},
+        manager = TrackingManager(
+            config=disabled_config,
+            database_manager=mock_database_manager,
         )
 
-        # Record old prediction
-        await tracking_manager.record_prediction(old_prediction)
-
-        # Record new prediction
-        await tracking_manager.record_prediction(sample_prediction_result)
-
-        # Trigger cleanup
-        await tracking_manager._perform_cleanup()
-
-        # Old prediction should be cleaned up
-        room_predictions = tracking_manager._pending_predictions.get("living_room", [])
-        old_predictions = [
-            p
-            for p in room_predictions
-            if p.predicted_time < datetime.now(UTC) - timedelta(hours=2)
-        ]
-        assert len(old_predictions) == 0
+        assert not manager._config.enabled
+        assert manager._prediction_validator is None
+        assert manager._accuracy_tracker is None
 
 
-class TestRoomStateChangeHandling:
-    """Test room state change handling and validation triggering."""
+class TestTrackingManagerCore:
+    """Unit tests for core TrackingManager functionality."""
 
-    @pytest.mark.asyncio
-    async def test_room_state_change_handling(self, tracking_manager):
-        """Test handling of room state changes."""
-        room_id = "living_room"
-        new_state = "occupied"
-        change_time = datetime.now(UTC)
-        previous_state = "vacant"
-
-        # Handle state change
-        await tracking_manager.handle_room_state_change(
-            room_id=room_id,
-            new_state=new_state,
-            change_time=change_time,
-            previous_state=previous_state,
+    @pytest.fixture
+    async def tracking_manager(self):
+        """Create configured tracking manager for testing."""
+        config = TrackingConfig(
+            enabled=True,
+            monitoring_interval_seconds=1,  # Fast for testing
+            auto_validation_enabled=True,
         )
 
-        # Verify validation was performed
-        assert tracking_manager._total_validations_performed > 0
+        mock_db = MagicMock(spec=DatabaseManager)
+        mock_db.health_check = AsyncMock(return_value={"status": "healthy"})
 
-    @pytest.mark.asyncio
-    async def test_state_change_triggers_retraining_evaluation(self, tracking_manager):
-        """Test that state changes trigger retraining evaluation."""
-        room_id = "bedroom"
-
-        # Mock validator with poor accuracy
-        mock_room_accuracy = AccuracyMetrics(
-            total_predictions=50,
-            validated_predictions=45,
-            accurate_predictions=20,
-            accuracy_rate=44.4,
-            mean_error_minutes=35.2,
+        manager = TrackingManager(
+            config=config,
+            database_manager=mock_db,
         )
 
-        with patch.object(
-            tracking_manager.validator,
-            "get_room_accuracy",
-            return_value=mock_room_accuracy,
-        ):
-            # Handle state change
-            await tracking_manager.handle_room_state_change(
-                room_id=room_id,
-                new_state="vacant",
-                change_time=datetime.now(UTC),
-                previous_state="occupied",
-            )
+        # Mock components
+        manager._prediction_validator = MagicMock(spec=PredictionValidator)
+        manager._accuracy_tracker = MagicMock(spec=AccuracyTracker)
+        manager._drift_detector = MagicMock(spec=ConceptDriftDetector)
+        manager._retrainer = MagicMock(spec=AdaptiveRetrainer)
 
-        # Should trigger retraining evaluation due to poor accuracy
-        # (This is tested indirectly through the retrainer mock calls)
+        return manager
 
-    @pytest.mark.asyncio
-    async def test_disabled_validation_handling(self, tracking_manager):
-        """Test state change handling when validation is disabled."""
-        # Disable auto-validation
-        tracking_manager.config.auto_validation_enabled = False
-
-        initial_validations = tracking_manager._total_validations_performed
-
-        # Handle state change
-        await tracking_manager.handle_room_state_change(
-            room_id="test_room",
-            new_state="occupied",
-            change_time=datetime.now(UTC),
-        )
-
-        # Should not perform validation
-        assert tracking_manager._total_validations_performed == initial_validations
-
-
-class TestDriftDetectionIntegration:
-    """Test integration with drift detection system."""
-
-    @pytest.mark.asyncio
-    async def test_manual_drift_detection(self, tracking_manager):
-        """Test manual drift detection triggering."""
-        room_id = "living_room"
-
-        # Mock drift detection results
-        mock_drift_metrics = DriftMetrics(
-            room_id=room_id,
-            detection_time=datetime.now(UTC),
-            baseline_period=(
-                datetime.now(UTC) - timedelta(days=14),
-                datetime.now(UTC) - timedelta(days=3),
-            ),
-            current_period=(
-                datetime.now(UTC) - timedelta(days=3),
-                datetime.now(UTC),
-            ),
-            accuracy_degradation=22.5,
-            overall_drift_score=0.65,
-            drift_severity=DriftSeverity.MAJOR,
-            retraining_recommended=True,
-        )
-
-        # Use AsyncMock for async method
-        with patch.object(
-            tracking_manager.drift_detector,
-            "detect_drift",
-            new=AsyncMock(return_value=mock_drift_metrics),
-        ):
-            # Run drift detection
-            result = await tracking_manager.check_drift(room_id)
-
-            # Verify drift detection completed
-            assert result is not None
-            assert result.room_id == room_id
-            assert result.drift_severity == DriftSeverity.MAJOR
-            assert tracking_manager._total_drift_checks_performed > 0
-
-    @pytest.mark.asyncio
-    async def test_drift_based_retraining_triggering(self, tracking_manager):
-        """Test that significant drift triggers retraining."""
-        room_id = "bedroom"
-
-        # Mock critical drift
-        critical_drift = DriftMetrics(
-            room_id=room_id,
-            detection_time=datetime.now(UTC),
-            baseline_period=(
-                datetime.now(UTC) - timedelta(days=14),
-                datetime.now(UTC) - timedelta(days=3),
-            ),
-            current_period=(
-                datetime.now(UTC) - timedelta(days=3),
-                datetime.now(UTC),
-            ),
-            accuracy_degradation=35.0,
-            overall_drift_score=0.9,
-            drift_severity=DriftSeverity.CRITICAL,
-            immediate_attention_required=True,
-            retraining_recommended=True,
-        )
-
-        with patch.object(
-            tracking_manager.drift_detector,
-            "detect_drift",
-            return_value=critical_drift,
-        ):
-            # Run drift detection
-            await tracking_manager.check_drift(room_id)
-
-        # Critical drift should trigger immediate attention
-        # Verify through notification callbacks or retraining requests
-
-    @pytest.mark.asyncio
-    async def test_disabled_drift_detection(self, tracking_manager):
-        """Test behavior when drift detection is disabled."""
-        # Disable drift detection
-        tracking_manager.config.drift_detection_enabled = False
-
-        # Try to run drift detection
-        result = await tracking_manager.check_drift("test_room")
-
-        # Should return None when disabled
-        assert result is None
-
-
-class TestRetrainingIntegration:
-    """Test integration with adaptive retraining system."""
-
-    @pytest.mark.asyncio
-    async def test_manual_retraining_request(self, tracking_manager):
-        """Test manual retraining request."""
-        room_id = "living_room"
-        model_type = "lstm"
-
-        # Mock retraining request
-        with patch.object(
-            tracking_manager.adaptive_retrainer,
-            "request_retraining",
-            return_value="retrain_req_123",
-        ):
-            request_id = await tracking_manager.request_manual_retraining(
-                room_id=room_id,
-                model_type=model_type,
-                strategy="incremental",
-                priority=8.0,
-            )
-
-            # Verify request was submitted
-            assert request_id is not None
-            assert request_id == "retrain_req_123"
-
-    @pytest.mark.asyncio
-    async def test_retraining_status_tracking(self, tracking_manager):
-        """Test retraining status tracking."""
-        request_id = "retrain_req_456"
-
-        # Mock retraining status
-        mock_status = {
-            "request_id": request_id,
-            "room_id": "bedroom",
-            "model_type": "xgboost",
-            "status": "in_progress",
-            "progress": 45.0,
+    async def test_prediction_recording_basic(self, tracking_manager):
+        """Test basic prediction recording functionality."""
+        prediction_data = {
+            "room_id": "living_room",
+            "model_type": ModelType.ENSEMBLE,
+            "predicted_time": datetime.now(UTC),
+            "confidence": 0.85,
         }
 
-        with patch.object(
-            tracking_manager.adaptive_retrainer,
-            "get_retraining_status",
-            return_value=mock_status,
-        ):
-            status = await tracking_manager.get_retraining_status(request_id)
+        tracking_manager._prediction_validator.record_prediction = AsyncMock()
 
-            # Verify status retrieval
-            assert status is not None
-            assert status["request_id"] == request_id
-            assert status["status"] == "in_progress"
+        await tracking_manager.record_prediction(**prediction_data)
 
-    @pytest.mark.asyncio
-    async def test_retraining_cancellation(self, tracking_manager):
-        """Test retraining request cancellation."""
-        request_id = "retrain_req_789"
+        tracking_manager._prediction_validator.record_prediction.assert_called_once()
 
-        with patch.object(
-            tracking_manager.adaptive_retrainer,
-            "cancel_retraining",
-            return_value=True,
-        ):
-            success = await tracking_manager.cancel_retraining(request_id)
+    async def test_prediction_recording_disabled_tracking(self, mock_database_manager):
+        """Test prediction recording with disabled tracking."""
+        disabled_config = TrackingConfig(enabled=False)
+        manager = TrackingManager(
+            config=disabled_config,
+            database_manager=mock_database_manager,
+        )
 
-            # Verify cancellation
-            assert success
+        # Should not raise error but should not record
+        await manager.record_prediction(
+            room_id="test_room",
+            model_type=ModelType.LSTM,
+            predicted_time=datetime.now(UTC),
+            confidence=0.8,
+        )
 
+        # No components should be called since tracking is disabled
 
-class TestSystemStatusAndMetrics:
-    """Test system status reporting and metrics collection."""
+    async def test_validation_basic(self, tracking_manager):
+        """Test basic validation functionality."""
+        tracking_manager._prediction_validator.validate_prediction = AsyncMock()
 
-    @pytest.mark.asyncio
-    async def test_tracking_status_comprehensive(self, tracking_manager):
-        """Test comprehensive tracking status retrieval."""
-        # Get tracking status
-        status = await tracking_manager.get_tracking_status()
+        await tracking_manager.validate_prediction(
+            room_id="bedroom",
+            actual_time=datetime.now(UTC),
+        )
 
-        # Verify status structure
-        assert "tracking_active" in status
-        assert "config" in status
-        assert "performance" in status
-        assert "validator" in status
-        assert "accuracy_tracker" in status
-        assert "drift_detector" in status
-        assert "adaptive_retrainer" in status
-        assert "prediction_cache" in status
+        tracking_manager._prediction_validator.validate_prediction.assert_called_once()
 
-        # Verify status values
-        assert status["tracking_active"] is True
-        assert status["config"]["enabled"] is True
-        assert status["performance"]["total_predictions_recorded"] >= 0
+    async def test_get_accuracy_metrics(self, tracking_manager):
+        """Test getting accuracy metrics."""
+        mock_metrics = AccuracyMetrics(
+            total_predictions=100,
+            validated_predictions=95,
+            accuracy_rate=85.0,
+            mean_error_minutes=10.5,
+            predictions_per_hour=4.2,
+            confidence_calibration_score=0.88,
+        )
 
-    @pytest.mark.asyncio
-    async def test_real_time_metrics_retrieval(self, tracking_manager):
-        """Test real-time metrics retrieval."""
-        room_id = "living_room"
+        tracking_manager._prediction_validator.get_accuracy_metrics = AsyncMock(
+            return_value=mock_metrics
+        )
 
-        # Mock real-time metrics with AsyncMock for async method
-        with patch.object(
-            tracking_manager.accuracy_tracker,
-            "get_real_time_metrics",
-            new=AsyncMock(
-                return_value=Mock(accuracy_rate=85.0, average_error_minutes=12.5)
-            ),
-        ):
-            metrics = await tracking_manager.get_real_time_metrics(room_id=room_id)
+        result = await tracking_manager.get_accuracy_metrics(room_id="kitchen")
 
-            # Verify metrics retrieval
-            assert metrics is not None
-            assert hasattr(metrics, "accuracy_rate")
+        assert result == mock_metrics
+        tracking_manager._prediction_validator.get_accuracy_metrics.assert_called_once_with(
+            room_id="kitchen", hours=24, model_type=None
+        )
 
-    @pytest.mark.asyncio
-    async def test_active_alerts_retrieval(self, tracking_manager):
-        """Test active alerts retrieval."""
-        # Mock active alerts
+    async def test_get_real_time_metrics(self, tracking_manager):
+        """Test getting real-time tracking metrics."""
+        from src.adaptation.tracker import RealTimeMetrics
+
+        mock_rt_metrics = RealTimeMetrics(
+            room_id="office",
+            window_6h_accuracy=82.0,
+            window_24h_accuracy=79.0,
+        )
+
+        tracking_manager._accuracy_tracker.get_real_time_metrics = AsyncMock(
+            return_value=mock_rt_metrics
+        )
+
+        result = await tracking_manager.get_real_time_metrics(room_id="office")
+
+        assert result == mock_rt_metrics
+        tracking_manager._accuracy_tracker.get_real_time_metrics.assert_called_once_with(
+            room_id="office", model_type=None
+        )
+
+    async def test_get_active_alerts(self, tracking_manager):
+        """Test getting active alerts."""
+        from src.adaptation.tracker import AccuracyAlert
+
         mock_alerts = [
-            Mock(alert_id="alert_1", room_id="living_room", severity="warning"),
-            Mock(alert_id="alert_2", room_id="bedroom", severity="critical"),
+            AccuracyAlert(
+                alert_id="test_alert",
+                room_id="living_room",
+                severity=AlertSeverity.WARNING,
+                message="Test alert",
+            )
         ]
 
-        # Use AsyncMock for async method
-        with patch.object(
-            tracking_manager.accuracy_tracker,
-            "get_active_alerts",
-            new=AsyncMock(return_value=mock_alerts),
-        ):
-            alerts = await tracking_manager.get_active_alerts()
+        tracking_manager._accuracy_tracker.get_active_alerts = AsyncMock(
+            return_value=mock_alerts
+        )
 
-            # Verify alerts retrieval
-            assert len(alerts) == 2
-            assert alerts[0].alert_id == "alert_1"
+        result = await tracking_manager.get_active_alerts(room_id="living_room")
 
-    @pytest.mark.asyncio
-    async def test_alert_acknowledgment(self, tracking_manager):
-        """Test alert acknowledgment."""
-        alert_id = "alert_123"
-        acknowledged_by = "user_admin"
+        assert result == mock_alerts
+        tracking_manager._accuracy_tracker.get_active_alerts.assert_called_once()
 
-        # Use AsyncMock for async method
-        with patch.object(
-            tracking_manager.accuracy_tracker,
-            "acknowledge_alert",
-            new=AsyncMock(return_value=True),
-        ):
-            success = await tracking_manager.acknowledge_alert(
-                alert_id, acknowledged_by
-            )
+    async def test_acknowledge_alert(self, tracking_manager):
+        """Test acknowledging an alert."""
+        tracking_manager._accuracy_tracker.acknowledge_alert = AsyncMock(
+            return_value=True
+        )
 
-            # Verify acknowledgment
-            assert success
+        result = await tracking_manager.acknowledge_alert(
+            alert_id="test_alert", acknowledged_by="operator"
+        )
 
+        assert result is True
+        tracking_manager._accuracy_tracker.acknowledge_alert.assert_called_once_with(
+            "test_alert", acknowledged_by="operator"
+        )
 
-class TestIntegrationStatus:
-    """Test integration status reporting for various systems."""
+    async def test_manual_drift_detection(self, tracking_manager):
+        """Test manual drift detection trigger."""
+        mock_drift_metrics = DriftMetrics(
+            severity=DriftSeverity.MODERATE,
+            drift_score=0.65,
+            baseline_accuracy=82.0,
+            current_accuracy=75.0,
+            drift_indicators={"pattern_change": 0.7},
+        )
 
-    @pytest.mark.asyncio
-    async def test_mqtt_integration_status(self, tracking_manager):
-        """Test MQTT integration status reporting."""
-        status = tracking_manager.get_enhanced_mqtt_status()
+        tracking_manager._drift_detector.detect_drift = AsyncMock(
+            return_value=mock_drift_metrics
+        )
 
-        # Verify MQTT status structure
+        result = await tracking_manager.detect_drift(room_id="test_room")
+
+        assert result == mock_drift_metrics
+        tracking_manager._drift_detector.detect_drift.assert_called_once()
+
+    async def test_manual_retraining_request(self, tracking_manager):
+        """Test manual retraining request."""
+        tracking_manager._retrainer.schedule_retraining = AsyncMock(
+            return_value="retraining_job_123"
+        )
+
+        result = await tracking_manager.request_retraining(
+            room_id="bedroom", reason="manual_request"
+        )
+
+        assert result == "retraining_job_123"
+        tracking_manager._retrainer.schedule_retraining.assert_called_once()
+
+    async def test_get_tracking_status(self, tracking_manager):
+        """Test getting comprehensive tracking status."""
+        # Mock all status components
+        tracking_manager._prediction_validator.get_total_predictions = AsyncMock(
+            return_value=150
+        )
+        tracking_manager._accuracy_tracker.get_tracker_stats = AsyncMock(
+            return_value={"active_alerts": 2, "rooms_monitored": 5}
+        )
+        tracking_manager._drift_detector.get_detector_status = AsyncMock(
+            return_value={"last_check": datetime.now(UTC).isoformat()}
+        )
+        tracking_manager._retrainer.get_retraining_status = AsyncMock(
+            return_value={"active_jobs": 1, "completed_jobs": 10}
+        )
+
+        status = await tracking_manager.get_tracking_status()
+
         assert "enabled" in status
-        assert "type" in status
-        assert "mqtt_connected" in status
-        assert "realtime_publishing_active" in status
-        assert "total_channels" in status
-        assert "websocket_connections" in status
-        assert "sse_connections" in status
-
-        # Verify mock values
+        assert "prediction_validator" in status
+        assert "accuracy_tracker" in status
+        assert "drift_detector" in status
+        assert "retrainer" in status
         assert status["enabled"] is True
-        assert status["type"] == "enhanced"
-        assert status["mqtt_connected"] is True
-
-    @pytest.mark.asyncio
-    async def test_realtime_publishing_status(self, tracking_manager):
-        """Test real-time publishing status reporting."""
-        status = tracking_manager.get_realtime_publishing_status()
-
-        # Verify publishing status structure
-        assert "enabled" in status
-        assert "active" in status
-        assert "enabled_channels" in status
-        assert "websocket_connections" in status
-        assert "sse_connections" in status
-        assert "source" in status
-
-        # Verify values
-        assert status["enabled"] is True
-        assert status["source"] == "enhanced_mqtt_manager"
-
-    @pytest.mark.asyncio
-    async def test_drift_status_reporting(self, tracking_manager):
-        """Test drift detection status reporting."""
-        status = await tracking_manager.get_drift_status()
-
-        # Verify drift status structure
-        assert "drift_detection_enabled" in status
-        assert "drift_detector_available" in status
-        assert "total_drift_checks" in status
-        assert "last_drift_check" in status
-
-        # Verify configuration details
-        if status["drift_detection_enabled"]:
-            assert "drift_config" in status
-            assert "check_interval_hours" in status["drift_config"]
 
 
-class TestModelRegistration:
-    """Test model registration and management."""
+class TestTrackingManagerErrorHandling:
+    """Unit tests for error handling in TrackingManager."""
 
-    @pytest.mark.asyncio
-    async def test_model_registration(self, tracking_manager):
-        """Test model registration for adaptive retraining."""
-        room_id = "kitchen"
-        model_type = "ensemble"
-        mock_model = Mock()
+    @pytest.fixture
+    def error_manager(self):
+        """Create manager for error testing."""
+        config = TrackingConfig(enabled=True)
+        mock_db = MagicMock(spec=DatabaseManager)
 
-        # Register model
-        tracking_manager.register_model(room_id, model_type, mock_model)
+        manager = TrackingManager(
+            config=config,
+            database_manager=mock_db,
+        )
 
-        # Verify registration
-        model_key = f"{room_id}_{model_type}"
-        assert model_key in tracking_manager.model_registry
-        assert tracking_manager.model_registry[model_key] == mock_model
+        # Add mock components that will fail
+        manager._prediction_validator = MagicMock(spec=PredictionValidator)
+        manager._accuracy_tracker = MagicMock(spec=AccuracyTracker)
 
-    @pytest.mark.asyncio
-    async def test_model_unregistration(self, tracking_manager):
-        """Test model unregistration."""
-        room_id = "kitchen"
-        model_type = "ensemble"
-        mock_model = Mock()
+        return manager
 
-        # Register then unregister
-        tracking_manager.register_model(room_id, model_type, mock_model)
-        tracking_manager.unregister_model(room_id, model_type)
-
-        # Verify unregistration
-        model_key = f"{room_id}_{model_type}"
-        assert model_key not in tracking_manager.model_registry
-
-
-class TestNotificationCallbacks:
-    """Test notification callback management."""
-
-    @pytest.mark.asyncio
-    async def test_notification_callback_management(self, tracking_manager):
-        """Test adding and removing notification callbacks."""
-        callback_called = False
-
-        def test_callback(alert):
-            nonlocal callback_called
-            callback_called = True
-
-        # Add callback
-        tracking_manager.add_notification_callback(test_callback)
-        assert test_callback in tracking_manager.notification_callbacks
-
-        # Remove callback
-        tracking_manager.remove_notification_callback(test_callback)
-        assert test_callback not in tracking_manager.notification_callbacks
-
-    @pytest.mark.asyncio
-    async def test_callback_integration_with_tracker(self, tracking_manager):
-        """Test that callbacks are properly integrated with accuracy tracker."""
-        # Mock accuracy tracker
-        mock_tracker = Mock()
-        tracking_manager.accuracy_tracker = mock_tracker
-
-        def test_callback(alert):
-            pass
-
-        # Add callback
-        tracking_manager.add_notification_callback(test_callback)
-
-        # Verify tracker received callback
-        mock_tracker.add_notification_callback.assert_called_with(test_callback)
-
-
-class TestErrorHandling:
-    """Test error handling in tracking manager operations."""
-
-    @pytest.mark.asyncio
-    async def test_prediction_recording_error_handling(
-        self, tracking_manager, sample_prediction_result
-    ):
-        """Test error handling in prediction recording."""
-        # Mock validator to raise exception
-        tracking_manager.validator = Mock()
-        tracking_manager.validator.record_prediction = AsyncMock(
+    async def test_record_prediction_error_handling(self, error_manager):
+        """Test error handling in record_prediction."""
+        error_manager._prediction_validator.record_prediction = AsyncMock(
             side_effect=Exception("Database error")
         )
 
-        # Should not raise exception
-        await tracking_manager.record_prediction(sample_prediction_result)
-
-        # Should handle gracefully
-
-    @pytest.mark.asyncio
-    async def test_drift_detection_error_handling(self, tracking_manager):
-        """Test error handling in drift detection."""
-        # Mock drift detector to raise exception
-        tracking_manager.drift_detector = Mock()
-        tracking_manager.drift_detector.detect_drift = AsyncMock(
-            side_effect=Exception("Drift detection error")
-        )
-
-        # Should return None on error
-        result = await tracking_manager.check_drift("error_room")
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_status_retrieval_error_handling(self, tracking_manager):
-        """Test error handling in status retrieval."""
-        # Mock component to raise exception
-        tracking_manager.validator = Mock()
-        tracking_manager.validator.get_total_predictions = AsyncMock(
-            side_effect=Exception("Status error")
-        )
-
-        # Should return status with error indication
-        status = await tracking_manager.get_tracking_status()
-        assert "error" in str(status).lower() or status is not None
-
-
-class TestPerformanceAndConcurrency:
-    """Test performance characteristics and concurrent operations."""
-
-    @pytest.mark.asyncio
-    async def test_concurrent_prediction_recording(self, tracking_manager):
-        """Test concurrent prediction recording."""
-        # Create multiple prediction results
-        predictions = []
-        for i in range(10):
-            pred = PredictionResult(
-                predicted_time=datetime.now(UTC) + timedelta(minutes=30 + i),
-                transition_type="occupied",
-                confidence_score=0.8 + i * 0.01,
-                prediction_metadata={
-                    "room_id": f"room_{i % 3}",
-                    "prediction_id": f"pred_{i}",
-                },
+        with pytest.raises(TrackingManagerError):
+            await error_manager.record_prediction(
+                room_id="test_room",
+                model_type=ModelType.LSTM,
+                predicted_time=datetime.now(UTC),
+                confidence=0.8,
             )
-            predictions.append(pred)
 
-        # Record predictions concurrently
-        tasks = [tracking_manager.record_prediction(pred) for pred in predictions]
-        await asyncio.gather(*tasks)
-
-        # Verify all were recorded
-        assert tracking_manager._total_predictions_recorded >= len(predictions)
-
-    @pytest.mark.asyncio
-    async def test_background_task_management(self, tracking_manager):
-        """Test background task lifecycle management."""
-        # In test environment, background tasks are disabled by default
-        # Check if we're in test mode (background tasks disabled)
-        test_mode = os.getenv("DISABLE_BACKGROUND_TASKS") is not None
-
-        if test_mode:
-            # In test mode, no background tasks should be running
-            initial_task_count = len(tracking_manager._background_tasks)
-            assert initial_task_count == 0
-
-            # Test enabling background tasks by temporarily removing the env var
-            # and restarting tracking
-            original_env = os.environ.get("DISABLE_BACKGROUND_TASKS")
-            if "DISABLE_BACKGROUND_TASKS" in os.environ:
-                del os.environ["DISABLE_BACKGROUND_TASKS"]
-
-            try:
-                await tracking_manager.stop_tracking()
-                await tracking_manager.start_tracking()
-                # Now background tasks should be running
-                assert len(tracking_manager._background_tasks) > 0
-
-                # Test stopping tracking cleans up tasks
-                await tracking_manager.stop_tracking()
-                assert len(tracking_manager._background_tasks) == 0
-
-                # Test restarting tracking creates tasks again
-                await tracking_manager.start_tracking()
-                assert len(tracking_manager._background_tasks) > 0
-            finally:
-                # Restore original environment
-                if original_env is not None:
-                    os.environ["DISABLE_BACKGROUND_TASKS"] = original_env
-        else:
-            # In production mode, background tasks should be running
-            initial_task_count = len(tracking_manager._background_tasks)
-            assert initial_task_count > 0
-
-            # Stop and restart tracking
-            await tracking_manager.stop_tracking()
-            assert len(tracking_manager._background_tasks) == 0
-
-            await tracking_manager.start_tracking()
-            assert len(tracking_manager._background_tasks) > 0
-
-    @pytest.mark.asyncio
-    async def test_memory_usage_monitoring(self, tracking_manager):
-        """Test that prediction cache doesn't grow unbounded."""
-        # Record many predictions
-        for i in range(100):
-            pred = PredictionResult(
-                predicted_time=datetime.now(UTC) + timedelta(minutes=i),
-                transition_type="occupied",
-                confidence_score=0.8,
-                prediction_metadata={"room_id": "test_room"},
-            )
-            await tracking_manager.record_prediction(pred)
-
-        # Trigger cleanup
-        await tracking_manager._perform_cleanup()
-
-        # Verify cache was cleaned up appropriately
-        total_cached = sum(
-            len(preds) for preds in tracking_manager._pending_predictions.values()
+    async def test_validate_prediction_error_handling(self, error_manager):
+        """Test error handling in validate_prediction."""
+        error_manager._prediction_validator.validate_prediction = AsyncMock(
+            side_effect=Exception("Validation error")
         )
-        assert total_cached < 100  # Should have cleaned up old predictions
+
+        with pytest.raises(TrackingManagerError):
+            await error_manager.validate_prediction(
+                room_id="test_room",
+                actual_time=datetime.now(UTC),
+            )
+
+    async def test_get_metrics_error_handling(self, error_manager):
+        """Test error handling in get_accuracy_metrics."""
+        error_manager._prediction_validator.get_accuracy_metrics = AsyncMock(
+            side_effect=Exception("Metrics error")
+        )
+
+        with pytest.raises(TrackingManagerError):
+            await error_manager.get_accuracy_metrics(room_id="test_room")
+
+    async def test_component_initialization_error(self):
+        """Test error handling during component initialization."""
+        config = TrackingConfig(enabled=True)
+
+        # Mock database that fails health check
+        mock_db = MagicMock(spec=DatabaseManager)
+        mock_db.health_check = AsyncMock(side_effect=Exception("DB connection failed"))
+
+        manager = TrackingManager(
+            config=config,
+            database_manager=mock_db,
+        )
+
+        with pytest.raises(TrackingManagerError):
+            await manager.start()
+
+
+class TestTrackingManagerValidation:
+    """Unit tests for input validation in TrackingManager."""
+
+    @pytest.fixture
+    def validation_manager(self):
+        """Create manager for validation testing."""
+        config = TrackingConfig(enabled=True)
+        mock_db = MagicMock(spec=DatabaseManager)
+
+        manager = TrackingManager(
+            config=config,
+            database_manager=mock_db,
+        )
+
+        manager._prediction_validator = MagicMock(spec=PredictionValidator)
+        return manager
+
+    async def test_record_prediction_validation(self, validation_manager):
+        """Test input validation for record_prediction."""
+        # Invalid room_id
+        with pytest.raises(ValueError, match="room_id"):
+            await validation_manager.record_prediction(
+                room_id="",  # Empty string
+                model_type=ModelType.LSTM,
+                predicted_time=datetime.now(UTC),
+                confidence=0.8,
+            )
+
+        # Invalid confidence
+        with pytest.raises(ValueError, match="confidence"):
+            await validation_manager.record_prediction(
+                room_id="test_room",
+                model_type=ModelType.LSTM,
+                predicted_time=datetime.now(UTC),
+                confidence=1.5,  # > 1.0
+            )
+
+        # Invalid confidence (negative)
+        with pytest.raises(ValueError, match="confidence"):
+            await validation_manager.record_prediction(
+                room_id="test_room",
+                model_type=ModelType.LSTM,
+                predicted_time=datetime.now(UTC),
+                confidence=-0.1,  # < 0.0
+            )
+
+    async def test_validate_prediction_validation(self, validation_manager):
+        """Test input validation for validate_prediction."""
+        # Invalid room_id
+        with pytest.raises(ValueError, match="room_id"):
+            await validation_manager.validate_prediction(
+                room_id=None,  # None
+                actual_time=datetime.now(UTC),
+            )
+
+        # Invalid actual_time
+        with pytest.raises(ValueError, match="actual_time"):
+            await validation_manager.validate_prediction(
+                room_id="test_room",
+                actual_time=None,  # None
+            )
+
+    async def test_get_accuracy_metrics_validation(self, validation_manager):
+        """Test input validation for get_accuracy_metrics."""
+        # Invalid hours
+        with pytest.raises(ValueError, match="hours"):
+            await validation_manager.get_accuracy_metrics(
+                room_id="test_room",
+                hours=0,  # Must be > 0
+            )
+
+        # Invalid hours (negative)
+        with pytest.raises(ValueError, match="hours"):
+            await validation_manager.get_accuracy_metrics(
+                room_id="test_room",
+                hours=-5,  # Must be > 0
+            )
+
+
+class TestTrackingManagerUtilities:
+    """Unit tests for TrackingManager utility methods."""
+
+    def test_tracking_manager_error_creation(self):
+        """Test TrackingManagerError creation."""
+        error = TrackingManagerError("Test error message")
+
+        assert str(error) == "Test error message"
+        assert error.severity == ErrorSeverity.ERROR
+
+    def test_tracking_manager_error_with_severity(self):
+        """Test TrackingManagerError with custom severity."""
+        error = TrackingManagerError("Critical error", severity=ErrorSeverity.CRITICAL)
+
+        assert str(error) == "Critical error"
+        assert error.severity == ErrorSeverity.CRITICAL
+
+    def test_config_validation(self):
+        """Test TrackingConfig validation edge cases."""
+        # Test minimum values
+        config = TrackingConfig(
+            monitoring_interval_seconds=1,  # Minimum allowed
+            validation_window_minutes=1,  # Minimum allowed
+            max_stored_alerts=1,  # Minimum allowed
+            trend_analysis_points=2,  # Minimum allowed
+        )
+
+        assert config.monitoring_interval_seconds == 1
+        assert config.validation_window_minutes == 1
+        assert config.max_stored_alerts == 1
+        assert config.trend_analysis_points == 2

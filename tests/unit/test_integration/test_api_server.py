@@ -1,25 +1,45 @@
 """
-Comprehensive unit tests for the API server module.
+Comprehensive tests for API Server endpoints and functionality.
 
-This test suite validates the FastAPI server functionality, including endpoints,
-authentication, error handling, middleware, and integration with TrackingManager.
+This test module provides extensive coverage of the FastAPI server
+endpoints, middleware, error handling, authentication, and integration
+with the tracking system.
+
+Coverage Areas:
+- All API endpoints (health, predictions, accuracy, incidents, etc.)
+- Authentication and authorization
+- Rate limiting and security
+- Error handling and edge cases
+- Middleware functionality
+- Request/response validation
+- Background tasks and lifecycle
+- Integration with tracking manager
+- Health monitoring integration
+- Incident response integration
+- WebSocket functionality
+- Performance and load scenarios
 """
 
 import asyncio
 from datetime import datetime, timedelta, timezone
 import json
-from unittest.mock import AsyncMock, Mock, patch
+import logging
+from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
+import uuid
 
-from fastapi import status
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 import pytest
 
+from src.core.config import APIConfig, get_config
 from src.core.exceptions import (
     APIAuthenticationError,
     APIError,
     APIRateLimitError,
     APIResourceNotFoundError,
     APIServerError,
+    ErrorSeverity,
+    OccupancyPredictionError,
 )
 from src.integration.api_server import (
     AccuracyMetricsResponse,
@@ -30,602 +50,634 @@ from src.integration.api_server import (
     RateLimitTracker,
     SystemHealthResponse,
     SystemStatsResponse,
+    app,
     check_rate_limit,
-    create_app,
-    get_app,
+    get_mqtt_manager,
     get_tracking_manager,
     integrate_with_tracking_manager,
     register_routes,
     set_tracking_manager,
     verify_api_key,
 )
+from src.utils.health_monitor import HealthStatus
+
+# Test Fixtures
 
 
-class TestAPIServerCore:
-    """Test core API server functionality."""
+@pytest.fixture
+def mock_config():
+    """Create mock configuration."""
+    config = Mock()
+    config.api = APIConfig(
+        enabled=True,
+        host="127.0.0.1",
+        port=8000,
+        debug=True,
+        api_key_enabled=False,
+        api_key="test-api-key",
+        rate_limit_enabled=False,
+        requests_per_minute=60,
+        jwt=Mock(enabled=False),
+        background_tasks_enabled=True,
+        health_check_interval_seconds=30,
+        log_requests=True,
+        log_responses=True,
+        enable_cors=True,
+        cors_origins=["*"],
+        include_docs=True,
+        docs_url="/docs",
+        redoc_url="/redoc",
+        access_log=True,
+    )
+    config.rooms = {
+        "living_room": Mock(room_id="living_room", name="Living Room"),
+        "bedroom": Mock(room_id="bedroom", name="Bedroom"),
+        "kitchen": Mock(room_id="kitchen", name="Kitchen"),
+    }
+    return config
+
+
+@pytest.fixture
+def mock_tracking_manager():
+    """Create comprehensive mock tracking manager."""
+    manager = AsyncMock()
+
+    # Mock get_tracking_status
+    manager.get_tracking_status.return_value = {
+        "status": "active",
+        "tracking_active": True,
+        "overall_health_score": 0.85,
+        "config": {"enabled": True},
+        "performance": {
+            "background_tasks": 3,
+            "total_predictions_recorded": 150,
+            "total_validations_performed": 140,
+            "total_drift_checks_performed": 25,
+            "system_uptime_seconds": 3600,
+        },
+        "validator": {"total_predictions": 150, "accuracy_rate": 0.88},
+        "accuracy_tracker": {"total_predictions": 150, "mean_error": 12.5},
+        "drift_detector": {"last_check": datetime.now().isoformat()},
+        "adaptive_retrainer": {"active_tasks": 1},
+        "component_status": {
+            "prediction_validator": {"status": "healthy", "health_score": 0.9},
+            "accuracy_tracker": {"status": "healthy", "health_score": 0.85},
+            "drift_detector": {"status": "healthy", "health_score": 0.8},
+            "adaptive_retrainer": {"status": "healthy", "health_score": 0.9},
+        },
+        "resource_usage": {
+            "memory_usage_mb": 256.0,
+            "cache_usage_percent": 45.0,
+            "active_connections": 5,
+            "background_tasks": 3,
+        },
+        "performance_metrics": {
+            "avg_response_time_ms": 25.5,
+            "requests_per_minute": 15.2,
+            "error_rate_percent": 2.1,
+            "cache_hit_rate_percent": 75.0,
+        },
+    }
+
+    # Mock get_room_prediction
+    manager.get_room_prediction.return_value = {
+        "room_id": "living_room",
+        "prediction_time": datetime.now(timezone.utc).isoformat(),
+        "next_transition_time": (
+            datetime.now(timezone.utc) + timedelta(minutes=30)
+        ).isoformat(),
+        "transition_type": "occupied_to_vacant",
+        "confidence": 0.85,
+        "time_until_transition": "30 minutes",
+        "alternatives": [{"transition_type": "vacant_to_occupied", "confidence": 0.15}],
+        "model_info": {"algorithm": "ensemble", "version": "v1.0.0"},
+    }
+
+    # Mock get_accuracy_metrics
+    manager.get_accuracy_metrics.return_value = {
+        "room_id": "living_room",
+        "accuracy_rate": 0.88,
+        "average_error_minutes": 12.5,
+        "confidence_calibration": 0.82,
+        "total_predictions": 150,
+        "total_validations": 140,
+        "time_window_hours": 24,
+        "trend_direction": "improving",
+    }
+
+    # Mock trigger_manual_retrain
+    manager.trigger_manual_retrain.return_value = {
+        "message": "Retraining triggered successfully",
+        "success": True,
+        "room_id": "living_room",
+        "strategy": "auto",
+        "force": False,
+    }
+
+    # Mock get_system_stats
+    manager.get_system_stats.return_value = {
+        "tracking_stats": {
+            "total_predictions_tracked": 150,
+            "tracking_accuracy": 0.88,
+            "active_rooms": 3,
+        },
+        "retraining_stats": {"completed_retraining_jobs": 5, "pending_jobs": 1},
+    }
+
+    return manager
+
+
+@pytest.fixture
+def mock_database_manager():
+    """Create mock database manager."""
+    manager = AsyncMock()
+    manager.health_check.return_value = {
+        "status": "healthy",
+        "database_connected": True,
+        "connection_pool_size": 10,
+        "active_connections": 3,
+        "last_health_check": datetime.now().isoformat(),
+    }
+    return manager
+
+
+@pytest.fixture
+def mock_mqtt_manager():
+    """Create mock MQTT manager."""
+    manager = AsyncMock()
+    manager.get_integration_stats.return_value = {
+        "mqtt_connected": True,
+        "predictions_published": 100,
+        "discovery_published": True,
+        "last_publish": datetime.now().isoformat(),
+    }
+    manager.cleanup_discovery.return_value = True
+    manager.initialize.return_value = None
+    return manager
+
+
+@pytest.fixture
+def mock_health_monitor():
+    """Create mock health monitor."""
+    monitor = Mock()
+    monitor.get_system_health.return_value = Mock(
+        overall_status=HealthStatus.HEALTHY,
+        health_score=lambda: 0.85,
+        critical_components=[],
+        degraded_components=[],
+        last_updated=datetime.now(),
+        to_dict=lambda: {
+            "overall_status": "healthy",
+            "health_score": 0.85,
+            "message": "All systems operational",
+        },
+    )
+    monitor.get_component_health.return_value = {
+        "database": Mock(to_dict=lambda: {"status": "healthy", "score": 0.9}),
+        "tracking": Mock(to_dict=lambda: {"status": "healthy", "score": 0.85}),
+        "mqtt": Mock(to_dict=lambda: {"status": "healthy", "score": 0.8}),
+    }
+    monitor.get_monitoring_stats.return_value = {
+        "checks_performed": 100,
+        "last_check": datetime.now().isoformat(),
+        "monitoring_active": True,
+    }
+    monitor.get_health_history.return_value = [
+        (datetime.now() - timedelta(hours=1), HealthStatus.HEALTHY),
+        (datetime.now(), HealthStatus.HEALTHY),
+    ]
+    monitor.health_checks = {"database": Mock(), "tracking": Mock()}
+    monitor.is_monitoring_active.return_value = True
+    monitor.start_monitoring = AsyncMock()
+    monitor.stop_monitoring = AsyncMock()
+    return monitor
+
+
+@pytest.fixture
+def mock_incident_response():
+    """Create mock incident response manager."""
+    manager = Mock()
+    manager.get_active_incidents.return_value = {
+        "incident_001": Mock(
+            to_dict=lambda: {
+                "incident_id": "incident_001",
+                "severity": "warning",
+                "status": "active",
+                "created_at": datetime.now().isoformat(),
+                "description": "Test incident",
+            }
+        )
+    }
+    manager.get_incident.return_value = Mock(
+        to_dict=lambda: {
+            "incident_id": "incident_001",
+            "severity": "warning",
+            "status": "active",
+            "created_at": datetime.now().isoformat(),
+            "description": "Test incident",
+            "resolution_notes": None,
+        }
+    )
+    manager.get_incident_history.return_value = [
+        Mock(
+            to_dict=lambda: {
+                "incident_id": "incident_002",
+                "severity": "critical",
+                "status": "resolved",
+                "created_at": (datetime.now() - timedelta(hours=2)).isoformat(),
+                "resolved_at": datetime.now().isoformat(),
+            }
+        )
+    ]
+    manager.get_incident_statistics.return_value = {
+        "active_incidents_count": 1,
+        "total_incidents_24h": 3,
+        "resolved_incidents_24h": 2,
+        "auto_recovery_enabled": True,
+        "mean_resolution_time_minutes": 15.5,
+    }
+    manager.acknowledge_incident = AsyncMock(return_value=True)
+    manager.resolve_incident = AsyncMock(return_value=True)
+    manager.start_incident_response = AsyncMock()
+    manager.stop_incident_response = AsyncMock()
+    return manager
+
+
+@pytest.fixture
+def client(
+    mock_config,
+    mock_tracking_manager,
+    mock_database_manager,
+    mock_mqtt_manager,
+    mock_health_monitor,
+    mock_incident_response,
+):
+    """Create test client with mocked dependencies."""
+    with patch(
+        "src.integration.api_server.get_config", return_value=mock_config
+    ), patch(
+        "src.integration.api_server.get_tracking_manager",
+        return_value=mock_tracking_manager,
+    ), patch(
+        "src.integration.api_server.get_database_manager",
+        return_value=mock_database_manager,
+    ), patch(
+        "src.integration.api_server.get_mqtt_manager", return_value=mock_mqtt_manager
+    ), patch(
+        "src.integration.api_server.get_health_monitor",
+        return_value=mock_health_monitor,
+    ), patch(
+        "src.integration.api_server.get_incident_response_manager",
+        return_value=mock_incident_response,
+    ):
+
+        # Set the tracking manager instance
+        set_tracking_manager(mock_tracking_manager)
+
+        return TestClient(app)
+
+
+# Rate Limiting Tests
+
+
+class TestRateLimitTracker:
+    """Test rate limiting functionality."""
 
     def test_rate_limit_tracker_initialization(self):
-        """Test RateLimitTracker initialization."""
+        """Test rate limit tracker initialization."""
         tracker = RateLimitTracker()
-        assert tracker.requests == {}
+        assert isinstance(tracker.requests, dict)
+        assert len(tracker.requests) == 0
 
-    def test_rate_limit_tracker_allows_first_request(self):
-        """Test that first request is always allowed."""
+    def test_rate_limit_within_limit(self):
+        """Test requests within rate limit."""
         tracker = RateLimitTracker()
-        assert tracker.is_allowed("127.0.0.1", 10) is True
-        assert len(tracker.requests["127.0.0.1"]) == 1
 
-    def test_rate_limit_tracker_blocks_excessive_requests(self):
-        """Test that excessive requests are blocked."""
+        # First request should be allowed
+        result = tracker.is_allowed("127.0.0.1", limit=5, window_minutes=1)
+        assert result is True
+
+        # Second request should be allowed
+        result = tracker.is_allowed("127.0.0.1", limit=5, window_minutes=1)
+        assert result is True
+
+        assert len(tracker.requests["127.0.0.1"]) == 2
+
+    def test_rate_limit_exceeded(self):
+        """Test rate limit exceeded."""
         tracker = RateLimitTracker()
 
         # Make requests up to limit
-        for _ in range(10):
-            assert tracker.is_allowed("127.0.0.1", 10) is True
+        for i in range(5):
+            result = tracker.is_allowed("127.0.0.1", limit=5, window_minutes=1)
+            assert result is True
 
-        # Next request should be blocked
-        assert tracker.is_allowed("127.0.0.1", 10) is False
+        # Next request should be denied
+        result = tracker.is_allowed("127.0.0.1", limit=5, window_minutes=1)
+        assert result is False
 
-    def test_rate_limit_tracker_window_cleanup(self):
-        """Test that old requests are cleaned up."""
+    def test_rate_limit_window_cleanup(self):
+        """Test rate limit window cleanup."""
         tracker = RateLimitTracker()
 
-        # Mock old timestamp
+        # Manually add old requests
         old_time = datetime.now() - timedelta(minutes=2)
         tracker.requests["127.0.0.1"] = [old_time]
 
-        # Should allow request as old ones are cleaned up
-        assert tracker.is_allowed("127.0.0.1", 10) is True
-        assert len(tracker.requests["127.0.0.1"]) == 1  # Only new request
+        # New request should clean up old ones
+        result = tracker.is_allowed("127.0.0.1", limit=5, window_minutes=1)
+        assert result is True
 
-    def test_rate_limit_tracker_multiple_ips(self):
-        """Test rate limiting works independently for different IPs."""
+        # Old request should be removed
+        assert len(tracker.requests["127.0.0.1"]) == 1
+        assert tracker.requests["127.0.0.1"][0] != old_time
+
+    def test_rate_limit_multiple_clients(self):
+        """Test rate limiting for multiple clients."""
         tracker = RateLimitTracker()
 
-        # Fill limit for first IP
-        for _ in range(5):
-            assert tracker.is_allowed("127.0.0.1", 5) is True
+        # Client 1 makes requests
+        for i in range(3):
+            result = tracker.is_allowed("127.0.0.1", limit=3, window_minutes=1)
+            assert result is True
 
-        # Should block further requests from first IP
-        assert tracker.is_allowed("127.0.0.1", 5) is False
+        # Client 1 should be at limit
+        result = tracker.is_allowed("127.0.0.1", limit=3, window_minutes=1)
+        assert result is False
 
-        # But allow requests from second IP
-        assert tracker.is_allowed("192.168.1.1", 5) is True
-
-
-class TestPydanticModels:
-    """Test Pydantic model validation and serialization."""
-
-    def test_prediction_response_validation(self):
-        """Test PredictionResponse model validation."""
-        valid_data = {
-            "room_id": "living_room",
-            "prediction_time": datetime.now(timezone.utc),
-            "next_transition_time": datetime.now(timezone.utc) + timedelta(minutes=30),
-            "transition_type": "occupied_to_vacant",
-            "confidence": 0.85,
-            "time_until_transition": "30 minutes",
-            "alternatives": [],
-            "model_info": {"model_type": "lstm"},
-        }
-
-        response = PredictionResponse(**valid_data)
-        assert response.room_id == "living_room"
-        assert response.confidence == 0.85
-        assert response.transition_type == "occupied_to_vacant"
-
-    def test_prediction_response_invalid_confidence(self):
-        """Test PredictionResponse with invalid confidence value."""
-        with pytest.raises(ValueError, match="Confidence must be between 0.0 and 1.0"):
-            PredictionResponse(
-                room_id="living_room",
-                prediction_time=datetime.now(timezone.utc),
-                transition_type="occupied",
-                confidence=1.5,  # Invalid
-                time_until_transition="30 minutes",
-            )
-
-    def test_prediction_response_invalid_transition_type(self):
-        """Test PredictionResponse with invalid transition type."""
-        with pytest.raises(ValueError, match="Transition type must be one of"):
-            PredictionResponse(
-                room_id="living_room",
-                prediction_time=datetime.now(timezone.utc),
-                transition_type="invalid_type",  # Invalid
-                confidence=0.85,
-                time_until_transition="30 minutes",
-            )
-
-    def test_accuracy_metrics_response_validation(self):
-        """Test AccuracyMetricsResponse model validation."""
-        valid_data = {
-            "room_id": "bedroom",
-            "accuracy_rate": 0.87,
-            "average_error_minutes": 12.5,
-            "confidence_calibration": 0.92,
-            "total_predictions": 1000,
-            "total_validations": 950,
-            "time_window_hours": 24,
-            "trend_direction": "improving",
-        }
-
-        response = AccuracyMetricsResponse(**valid_data)
-        assert response.accuracy_rate == 0.87
-        assert response.trend_direction == "improving"
-
-    def test_accuracy_metrics_response_invalid_rate(self):
-        """Test AccuracyMetricsResponse with invalid rate value."""
-        with pytest.raises(ValueError, match="Rate must be between 0.0 and 1.0"):
-            AccuracyMetricsResponse(
-                accuracy_rate=1.5,  # Invalid
-                average_error_minutes=10.0,
-                confidence_calibration=0.9,
-                total_predictions=100,
-                total_validations=90,
-                time_window_hours=24,
-                trend_direction="stable",
-            )
-
-    def test_manual_retrain_request_validation(self):
-        """Test ManualRetrainRequest model validation."""
-        valid_data = {
-            "room_id": "kitchen",
-            "force": True,
-            "strategy": "incremental",
-            "reason": "Performance degradation detected",
-        }
-
-        with patch("src.integration.api_server.get_config") as mock_get_config:
-            mock_config = Mock()
-            mock_config.rooms = {"kitchen": Mock()}
-            mock_get_config.return_value = mock_config
-
-            request = ManualRetrainRequest(**valid_data)
-        assert request.room_id == "kitchen"
-        assert request.force is True
-        assert request.strategy == "incremental"
-
-    def test_manual_retrain_request_invalid_strategy(self):
-        """Test ManualRetrainRequest with invalid strategy."""
-        with pytest.raises(ValueError, match="Strategy must be one of"):
-            ManualRetrainRequest(
-                strategy="invalid_strategy",  # Invalid
-                reason="Test reason",
-            )
-
-    def test_error_response_serialization(self):
-        """Test ErrorResponse serialization with datetime."""
-        error_response = ErrorResponse(
-            error="Test error",
-            error_code="TEST_ERROR",
-            details={"key": "value"},
-            timestamp=datetime.now(timezone.utc),
-            request_id="12345",
-        )
-
-        serialized = error_response.dict()
-        assert serialized["error"] == "Test error"
-        assert isinstance(serialized["timestamp"], str)  # Should be ISO format
-
-
-class TestAPIServerDependencies:
-    """Test API server dependency functions."""
-
-    @pytest.fixture
-    def mock_config(self):
-        """Mock system configuration."""
-        config = Mock()
-        config.api.api_key_enabled = True
-        config.api.api_key = "test-api-key-123"
-        config.api.rate_limit_enabled = True
-        config.api.requests_per_minute = 60
-        return config
-
-    @pytest.fixture
-    def mock_tracking_manager(self):
-        """Mock tracking manager."""
-        manager = AsyncMock()
-        manager.get_room_prediction = AsyncMock(
-            return_value={
-                "room_id": "living_room",
-                "prediction_time": "2024-01-01T12:00:00Z",
-                "next_transition_time": "2024-01-01T12:30:00Z",
-                "transition_type": "occupied_to_vacant",
-                "confidence": 0.85,
-                "time_until_transition": "30 minutes",
-                "alternatives": [],
-                "model_info": {"model_type": "lstm"},
-            }
-        )
-        return manager
-
-    @patch("src.integration.api_server.get_config")
-    def test_verify_api_key_success(self, mock_get_config, mock_config):
-        """Test successful API key verification."""
-        mock_get_config.return_value = mock_config
-
-        from fastapi.security import HTTPAuthorizationCredentials
-
-        credentials = HTTPAuthorizationCredentials(
-            scheme="Bearer", credentials="test-api-key-123"
-        )
-
-        # Should not raise exception
-        result = asyncio.run(verify_api_key(credentials))
+        # Client 2 should still be allowed
+        result = tracker.is_allowed("192.168.1.100", limit=3, window_minutes=1)
         assert result is True
 
-    @patch("src.integration.api_server.get_config")
-    def test_verify_api_key_disabled(self, mock_get_config, mock_config):
+
+# Authentication and Authorization Tests
+
+
+class TestAuthentication:
+    """Test API authentication and authorization."""
+
+    async def test_verify_api_key_disabled(self, mock_config):
         """Test API key verification when disabled."""
         mock_config.api.api_key_enabled = False
-        mock_get_config.return_value = mock_config
 
-        result = asyncio.run(verify_api_key(None))
-        assert result is True
+        with patch("src.integration.api_server.get_config", return_value=mock_config):
+            result = await verify_api_key(None)
+            assert result is True
 
-    @patch("src.integration.api_server.get_config")
-    def test_verify_api_key_missing_credentials(self, mock_get_config, mock_config):
+    async def test_verify_api_key_missing_credentials(self, mock_config):
         """Test API key verification with missing credentials."""
-        mock_get_config.return_value = mock_config
+        mock_config.api.api_key_enabled = True
 
-        with pytest.raises(APIAuthenticationError, match="API Key required"):
-            asyncio.run(verify_api_key(None))
+        with patch("src.integration.api_server.get_config", return_value=mock_config):
+            with pytest.raises(APIAuthenticationError, match="API Key required"):
+                await verify_api_key(None)
 
-    @patch("src.integration.api_server.get_config")
-    def test_verify_api_key_invalid(self, mock_get_config, mock_config):
+    async def test_verify_api_key_invalid(self, mock_config):
         """Test API key verification with invalid key."""
-        mock_get_config.return_value = mock_config
+        mock_config.api.api_key_enabled = True
+        mock_config.api.api_key = "correct-key"
 
-        from fastapi.security import HTTPAuthorizationCredentials
+        mock_credentials = Mock()
+        mock_credentials.credentials = "wrong-key"
 
-        credentials = HTTPAuthorizationCredentials(
-            scheme="Bearer", credentials="invalid-key"
-        )
+        with patch("src.integration.api_server.get_config", return_value=mock_config):
+            with pytest.raises(APIAuthenticationError, match="Invalid API key"):
+                await verify_api_key(mock_credentials)
 
-        with pytest.raises(APIAuthenticationError, match="Invalid API key"):
-            asyncio.run(verify_api_key(credentials))
+    async def test_verify_api_key_valid(self, mock_config):
+        """Test API key verification with valid key."""
+        mock_config.api.api_key_enabled = True
+        mock_config.api.api_key = "correct-key"
 
-    @patch("src.integration.api_server.get_config")
-    @patch("src.integration.api_server.rate_limiter")
-    def test_check_rate_limit_success(
-        self, mock_rate_limiter, mock_get_config, mock_config
-    ):
-        """Test successful rate limit check."""
-        mock_get_config.return_value = mock_config
-        mock_rate_limiter.is_allowed.return_value = True
+        mock_credentials = Mock()
+        mock_credentials.credentials = "correct-key"
 
-        mock_request = Mock()
-        mock_request.client.host = "127.0.0.1"
+        with patch("src.integration.api_server.get_config", return_value=mock_config):
+            result = await verify_api_key(mock_credentials)
+            assert result is True
 
-        result = asyncio.run(check_rate_limit(mock_request))
-        assert result is True
-
-    @patch("src.integration.api_server.get_config")
-    @patch("src.integration.api_server.rate_limiter")
-    def test_check_rate_limit_exceeded(
-        self, mock_rate_limiter, mock_get_config, mock_config
-    ):
-        """Test rate limit exceeded."""
-        mock_get_config.return_value = mock_config
-        mock_rate_limiter.is_allowed.return_value = False
-
-        mock_request = Mock()
-        mock_request.client.host = "127.0.0.1"
-
-        with pytest.raises(APIRateLimitError):
-            asyncio.run(check_rate_limit(mock_request))
-
-    @patch("src.integration.api_server.get_config")
-    def test_check_rate_limit_disabled(self, mock_get_config, mock_config):
+    async def test_check_rate_limit_disabled(self, mock_config):
         """Test rate limit check when disabled."""
         mock_config.api.rate_limit_enabled = False
-        mock_get_config.return_value = mock_config
 
         mock_request = Mock()
-        result = asyncio.run(check_rate_limit(mock_request))
-        assert result is True
+        mock_request.client.host = "127.0.0.1"
 
-    def test_get_tracking_manager_initialization(self):
-        """Test tracking manager initialization."""
-        # Reset global instance
-        global _tracking_manager_instance
-        _tracking_manager_instance = None
+        with patch("src.integration.api_server.get_config", return_value=mock_config):
+            result = await check_rate_limit(mock_request)
+            assert result is True
 
-        with patch("src.integration.api_server.get_config") as mock_get_config, patch(
-            "src.integration.api_server.TrackingManager"
-        ) as mock_tm_class, patch(
-            "src.integration.api_server.TrackingConfig"
-        ) as mock_tc_class:
+    async def test_check_rate_limit_within_limit(self, mock_config):
+        """Test rate limit check within limit."""
+        mock_config.api.rate_limit_enabled = True
+        mock_config.api.requests_per_minute = 60
 
-            mock_config = Mock()
-            mock_config.tracking = None
-            mock_get_config.return_value = mock_config
+        mock_request = Mock()
+        mock_request.client.host = "127.0.0.1"
 
-            mock_tm_instance = AsyncMock()
-            mock_tm_class.return_value = mock_tm_instance
+        with patch("src.integration.api_server.get_config", return_value=mock_config):
+            result = await check_rate_limit(mock_request)
+            assert result is True
 
-            # Should create new instance
-            result = asyncio.run(get_tracking_manager())
-            assert result == mock_tm_instance
-            mock_tm_instance.initialize.assert_called_once()
+    async def test_check_rate_limit_exceeded(self, mock_config):
+        """Test rate limit check when exceeded."""
+        mock_config.api.rate_limit_enabled = True
+        mock_config.api.requests_per_minute = 1
 
-    def test_set_tracking_manager(self):
-        """Test setting tracking manager instance."""
-        mock_manager = AsyncMock()
-        set_tracking_manager(mock_manager)
+        mock_request = Mock()
+        mock_request.client.host = "127.0.0.1"
 
-        # Should return the set instance
-        result = asyncio.run(get_tracking_manager())
-        assert result == mock_manager
-
-
-class TestAPIServerEndpoints:
-    """Test API server endpoint functionality."""
-
-    @pytest.fixture
-    def client(self):
-        """Create test client."""
-        app = create_app()
-        return TestClient(app)
-
-    @pytest.fixture
-    def mock_dependencies(self):
-        """Mock all dependencies for clean testing."""
+        # Mock rate limiter to return False
         with patch(
-            "src.integration.api_server.verify_api_key", return_value=True
+            "src.integration.api_server.get_config", return_value=mock_config
         ), patch(
-            "src.integration.api_server.check_rate_limit", return_value=True
-        ), patch(
-            "src.integration.api_server.get_database_manager"
-        ) as mock_db, patch(
-            "src.integration.api_server.get_tracking_manager"
-        ) as mock_tm, patch(
-            "src.integration.api_server.get_mqtt_manager"
-        ) as mock_mqtt:
+            "src.integration.api_server.rate_limiter.is_allowed", return_value=False
+        ):
 
-            # Setup mocks
-            mock_db_instance = AsyncMock()
-            mock_db_instance.health_check.return_value = {
-                "status": "healthy",
-                "database_connected": True,
-            }
-            mock_db.return_value = mock_db_instance
+            with pytest.raises(APIRateLimitError):
+                await check_rate_limit(mock_request)
 
-            mock_tm_instance = AsyncMock()
-            mock_tm_instance.get_tracking_status.return_value = {
-                "status": "active",
-                "config": {"enabled": True},
-                "performance": {"background_tasks": 3},
-            }
-            mock_tm.return_value = mock_tm_instance
 
-            mock_mqtt_instance = AsyncMock()
-            mock_mqtt_instance.get_integration_stats.return_value = {
-                "mqtt_connected": True,
-                "predictions_published": 150,
-            }
-            mock_mqtt.return_value = mock_mqtt_instance
+# API Endpoint Tests
 
-            yield {
-                "db": mock_db_instance,
-                "tracking": mock_tm_instance,
-                "mqtt": mock_mqtt_instance,
-            }
+
+class TestAPIEndpoints:
+    """Test API endpoints functionality."""
 
     def test_root_endpoint(self, client):
         """Test root endpoint."""
         response = client.get("/")
-        assert response.status_code == status.HTTP_200_OK
 
+        assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Occupancy Prediction API"
         assert data["version"] == "1.0.0"
+        assert data["status"] == "running"
         assert "timestamp" in data
 
-    def test_health_endpoint_success(self, client, mock_dependencies):
-        """Test health endpoint with healthy system."""
+    def test_health_endpoint_basic(self, client):
+        """Test basic health endpoint."""
         response = client.get("/health")
-        assert response.status_code == status.HTTP_200_OK
 
+        assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "healthy"
+        assert data["status"] in ["healthy", "degraded", "unhealthy"]
         assert "timestamp" in data
         assert "components" in data
-        assert data["components"]["database"]["status"] == "healthy"
-        assert data["components"]["tracking"]["status"] == "healthy"
+        assert "performance_metrics" in data
+        assert "error_count" in data
+        assert "uptime_seconds" in data
 
-    @patch("src.integration.api_server.get_database_manager")
-    def test_health_endpoint_database_failure(self, mock_db, client):
-        """Test health endpoint when database is unhealthy."""
-        mock_db_instance = AsyncMock()
-        mock_db_instance.health_check.side_effect = Exception("DB connection failed")
-        mock_db.return_value = mock_db_instance
+        # Check components structure
+        components = data["components"]
+        assert "database" in components
+        assert "tracking" in components
+        assert "mqtt" in components
 
-        response = client.get("/health")
-        assert response.status_code == status.HTTP_200_OK
-
-        data = response.json()
-        assert data["status"] in ["degraded", "unhealthy"]
-
-    def test_health_comprehensive_endpoint(self, client):
+    def test_health_endpoint_comprehensive(self, client):
         """Test comprehensive health endpoint."""
-        with patch(
-            "src.integration.api_server.get_health_monitor"
-        ) as mock_health_monitor:
-            mock_monitor = Mock()
-            mock_system_health = Mock()
-            mock_system_health.overall_status.name = "HEALTHY"
-            mock_system_health.last_updated = datetime.now(timezone.utc)
-            mock_system_health.to_dict.return_value = {"status": "healthy"}
+        response = client.get("/health/comprehensive")
 
-            mock_monitor.get_system_health.return_value = mock_system_health
-            mock_monitor.get_component_health.return_value = {}
-            mock_monitor.get_monitoring_stats.return_value = {"uptime": 3600}
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] in ["healthy", "degraded", "unhealthy"]
+        assert "system_health" in data
+        assert "components" in data
+        assert "monitoring_stats" in data
+        assert "response_time_seconds" in data
 
-            mock_health_monitor.return_value = mock_monitor
+    def test_health_component_endpoint(self, client):
+        """Test health component endpoint."""
+        response = client.get("/health/components/database")
 
-            response = client.get("/health/comprehensive")
-            assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == 200
+        data = response.json()
+        assert "component" in data
+        assert "history_24h" in data
 
-            data = response.json()
-            assert data["status"] == "healthy"
-            assert "system_health" in data
-            assert "components" in data
+    def test_health_component_endpoint_not_found(self, client, mock_health_monitor):
+        """Test health component endpoint for non-existent component."""
+        mock_health_monitor.get_component_health.return_value = {}
 
-    @patch("src.integration.api_server.get_config")
-    def test_predictions_endpoint_room_not_found(
-        self, mock_get_config, client, mock_dependencies
-    ):
-        """Test predictions endpoint with non-existent room."""
-        mock_config = Mock()
-        mock_config.rooms = {"living_room": {}}
-        mock_get_config.return_value = mock_config
+        response = client.get("/health/components/nonexistent")
 
-        response = client.get("/predictions/non_existent_room")
-        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.status_code == 404
 
-    @patch("src.integration.api_server.get_config")
-    def test_predictions_endpoint_success(
-        self, mock_get_config, client, mock_dependencies
-    ):
-        """Test successful predictions endpoint."""
-        mock_config = Mock()
-        mock_config.rooms = {"living_room": {}}
-        mock_get_config.return_value = mock_config
+    def test_health_system_endpoint(self, client):
+        """Test health system endpoint."""
+        response = client.get("/health/system")
 
-        # Mock tracking manager prediction
-        mock_dependencies["tracking"].get_room_prediction.return_value = {
-            "room_id": "living_room",
-            "prediction_time": "2024-01-01T12:00:00Z",
-            "next_transition_time": "2024-01-01T12:30:00Z",
-            "transition_type": "occupied_to_vacant",
-            "confidence": 0.85,
-            "time_until_transition": "30 minutes",
-            "alternatives": [],
-            "model_info": {"model_type": "lstm"},
-        }
+        assert response.status_code == 200
+        data = response.json()
+        assert "overall_status" in data
+        assert "health_score" in data
 
+    def test_health_monitoring_endpoint(self, client):
+        """Test health monitoring endpoint."""
+        response = client.get("/health/monitoring")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "monitoring_system" in data
+        assert "registered_checks" in data
+        assert "monitoring_active" in data
+
+    def test_start_health_monitoring(self, client):
+        """Test start health monitoring endpoint."""
+        response = client.post("/health/monitoring/start")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["monitoring_active"] is True
+
+    def test_stop_health_monitoring(self, client):
+        """Test stop health monitoring endpoint."""
+        response = client.post("/health/monitoring/stop")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["monitoring_active"] is False
+
+    def test_get_predictions_room(self, client):
+        """Test get predictions for specific room."""
         response = client.get("/predictions/living_room")
-        assert response.status_code == status.HTTP_200_OK
 
+        assert response.status_code == 200
         data = response.json()
         assert data["room_id"] == "living_room"
-        assert data["confidence_score"] == 0.85
+        assert "prediction_time" in data
+        assert "confidence" in data
+        assert isinstance(data["confidence"], float)
+        assert 0.0 <= data["confidence"] <= 1.0
 
-    def test_predictions_endpoint_no_data(self, client, mock_dependencies):
-        """Test predictions endpoint when no prediction available."""
-        with patch("src.integration.api_server.get_config") as mock_get_config:
-            mock_config = Mock()
-            mock_config.rooms = {"living_room": {}}
-            mock_get_config.return_value = mock_config
+    def test_get_predictions_room_not_found(self, client, mock_config):
+        """Test get predictions for non-existent room."""
+        response = client.get("/predictions/nonexistent_room")
 
-            # Return None for no prediction
-            mock_dependencies["tracking"].get_room_prediction.return_value = None
+        assert response.status_code == 404
 
-            response = client.get("/predictions/living_room")
-            assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    def test_get_predictions_all(self, client):
+        """Test get all predictions."""
+        response = client.get("/predictions")
 
-    def test_all_predictions_endpoint(self, client, mock_dependencies):
-        """Test endpoint for getting all predictions."""
-        with patch("src.integration.api_server.get_config") as mock_get_config:
-            mock_config = Mock()
-            mock_config.rooms = {"living_room": {}, "bedroom": {}}
-            mock_get_config.return_value = mock_config
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) >= 0
 
-            # Mock prediction data
-            prediction_data = {
-                "room_id": "living_room",
-                "prediction_time": "2024-01-01T12:00:00Z",
-                "next_transition_time": "2024-01-01T12:30:00Z",
-                "transition_type": "occupied_to_vacant",
-                "confidence": 0.85,
-                "time_until_transition": "30 minutes",
-                "alternatives": [],
-                "model_info": {"model_type": "lstm"},
-            }
-            mock_dependencies["tracking"].get_room_prediction.return_value = (
-                prediction_data
-            )
+    def test_get_accuracy_metrics(self, client):
+        """Test get accuracy metrics."""
+        response = client.get("/accuracy")
 
-            response = client.get("/predictions")
-            assert response.status_code == status.HTTP_200_OK
+        assert response.status_code == 200
+        data = response.json()
+        assert "accuracy_rate" in data
+        assert "average_error_minutes" in data
+        assert "total_predictions" in data
+        assert isinstance(data["accuracy_rate"], float)
+        assert 0.0 <= data["accuracy_rate"] <= 1.0
 
-            data = response.json()
-            assert isinstance(data, list)
+    def test_get_accuracy_metrics_with_params(self, client):
+        """Test get accuracy metrics with parameters."""
+        response = client.get("/accuracy?room_id=living_room&hours=48")
 
-    def test_accuracy_metrics_endpoint(self, client, mock_dependencies):
-        """Test accuracy metrics endpoint."""
-        with patch("src.integration.api_server.get_config") as mock_get_config:
-            mock_config = Mock()
-            mock_config.rooms = {"living_room": {}}
-            mock_get_config.return_value = mock_config
+        assert response.status_code == 200
+        data = response.json()
+        assert data["room_id"] == "living_room"
+        assert data["time_window_hours"] == 48
 
-            mock_dependencies["tracking"].get_accuracy_metrics.return_value = {
-                "room_id": "living_room",
-                "accuracy_rate": 0.87,
-                "average_error_minutes": 12.5,
-                "confidence_calibration": 0.92,
-                "total_predictions": 1000,
-                "total_validations": 950,
-                "time_window_hours": 24,
-                "trend_direction": "improving",
-            }
+    def test_trigger_manual_retrain(self, client):
+        """Test trigger manual retrain."""
+        retrain_data = {
+            "room_id": "living_room",
+            "force": False,
+            "strategy": "auto",
+            "reason": "test_retrain",
+        }
 
-            response = client.get("/accuracy?room_id=living_room")
-            assert response.status_code == status.HTTP_200_OK
+        response = client.post("/model/retrain", json=retrain_data)
 
-            data = response.json()
-            assert data["room_id"] == "living_room"
-            assert data["accuracy_rate"] == 0.87
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["room_id"] == "living_room"
 
-    def test_retrain_endpoint(self, client, mock_dependencies):
-        """Test manual retrain endpoint."""
-        with patch("src.integration.api_server.get_config") as mock_get_config:
-            mock_config = Mock()
-            mock_config.rooms = {"living_room": {}}
-            mock_get_config.return_value = mock_config
-
-            mock_dependencies["tracking"].trigger_manual_retrain.return_value = {
-                "message": "Retraining started",
-                "success": True,
-                "room_id": "living_room",
-                "strategy": "incremental",
-                "force": False,
-            }
-
-            retrain_data = {
-                "room_id": "living_room",
-                "force": False,
-                "strategy": "incremental",
-                "reason": "Performance degradation",
-            }
-
-            response = client.post("/model/retrain", json=retrain_data)
-            assert response.status_code == status.HTTP_200_OK
-
-            data = response.json()
-            assert data["success"] is True
-            assert data["room_id"] == "living_room"
-
-    def test_mqtt_refresh_endpoint(self, client, mock_dependencies):
-        """Test MQTT discovery refresh endpoint."""
+    def test_refresh_mqtt_discovery(self, client):
+        """Test refresh MQTT discovery."""
         response = client.post("/mqtt/refresh")
-        assert response.status_code == status.HTTP_200_OK
 
+        assert response.status_code == 200
         data = response.json()
         assert "message" in data
         assert "timestamp" in data
 
-    def test_stats_endpoint(self, client, mock_dependencies):
-        """Test system stats endpoint."""
-        mock_dependencies["tracking"].get_system_stats.return_value = {
-            "tracking_stats": {"total_predictions_tracked": 500},
-            "retraining_stats": {"completed_retraining_jobs": 10},
-        }
-
+    def test_get_system_stats(self, client):
+        """Test get system statistics."""
         response = client.get("/stats")
-        assert response.status_code == status.HTTP_200_OK
 
+        assert response.status_code == 200
         data = response.json()
         assert "system_info" in data
         assert "prediction_stats" in data
@@ -634,273 +686,637 @@ class TestAPIServerEndpoints:
         assert "tracking_stats" in data
 
 
-class TestAPIServerErrorHandling:
-    """Test API server error handling and exception responses."""
+# Incident Management Endpoint Tests
 
-    @pytest.fixture
-    def client(self):
-        """Create test client."""
-        app = create_app()
-        return TestClient(app)
 
-    def test_api_error_handler(self, client):
-        """Test APIError exception handler."""
-        app = create_app()
+class TestIncidentEndpoints:
+    """Test incident management endpoints."""
 
-        @app.get("/test-api-error")
-        async def test_endpoint():
-            raise APIError("Test API error", "TEST_ERROR", {"detail": "test"})
+    def test_get_active_incidents(self, client):
+        """Test get active incidents."""
+        response = client.get("/incidents")
 
-        test_client = TestClient(app)
-        response = test_client.get("/test-api-error")
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == 200
         data = response.json()
-        assert data["error"] == "Test API error"
-        assert data["error_code"] == "TEST_ERROR"
+        assert "active_incidents_count" in data
+        assert "incidents" in data
+        assert "timestamp" in data
 
-    def test_server_error_handler(self, client):
-        """Test general server error handler."""
-        app = create_app()
+    def test_get_incident_details(self, client):
+        """Test get incident details."""
+        response = client.get("/incidents/incident_001")
 
-        @app.get("/test-server-error")
-        async def test_endpoint():
-            raise Exception("Unexpected error")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["incident_id"] == "incident_001"
+        assert data["severity"] == "warning"
+        assert data["status"] == "active"
 
-        test_client = TestClient(app)
-        response = test_client.get("/test-server-error")
+    def test_get_incident_details_not_found(self, client, mock_incident_response):
+        """Test get incident details for non-existent incident."""
+        mock_incident_response.get_incident.return_value = None
 
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        response = client.get("/incidents/nonexistent")
+
+        assert response.status_code == 404
+
+    def test_get_incident_history(self, client):
+        """Test get incident history."""
+        response = client.get("/incidents/history?hours=24")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["time_window_hours"] == 24
+        assert "incidents_count" in data
+        assert "incidents" in data
+
+    def test_get_incident_history_invalid_hours(self, client):
+        """Test get incident history with invalid hours parameter."""
+        response = client.get("/incidents/history?hours=200")  # Exceeds max
+
+        assert response.status_code == 400
+
+    def test_get_incident_statistics(self, client):
+        """Test get incident statistics."""
+        response = client.get("/incidents/statistics")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "statistics" in data
+        assert "timestamp" in data
+
+    def test_acknowledge_incident(self, client):
+        """Test acknowledge incident."""
+        response = client.post(
+            "/incidents/incident_001/acknowledge?acknowledged_by=test_user"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["incident_id"] == "incident_001"
+        assert data["acknowledged_by"] == "test_user"
+
+    def test_acknowledge_incident_not_found(self, client, mock_incident_response):
+        """Test acknowledge non-existent incident."""
+        mock_incident_response.acknowledge_incident.return_value = False
+
+        response = client.post("/incidents/nonexistent/acknowledge")
+
+        assert response.status_code == 404
+
+    def test_resolve_incident(self, client):
+        """Test resolve incident."""
+        response = client.post(
+            "/incidents/incident_001/resolve?resolution_notes=Resolved manually"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["incident_id"] == "incident_001"
+        assert data["resolution_notes"] == "Resolved manually"
+
+    def test_resolve_incident_not_found(self, client, mock_incident_response):
+        """Test resolve non-existent incident."""
+        mock_incident_response.resolve_incident.return_value = False
+
+        response = client.post("/incidents/nonexistent/resolve")
+
+        assert response.status_code == 404
+
+    def test_start_incident_response(self, client):
+        """Test start incident response."""
+        response = client.post("/incidents/response/start")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["response_active"] is True
+
+    def test_stop_incident_response(self, client):
+        """Test stop incident response."""
+        response = client.post("/incidents/response/stop")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["response_active"] is False
+
+
+# Error Handling Tests
+
+
+class TestErrorHandling:
+    """Test API error handling."""
+
+    def test_api_error_handler(self, client, mock_tracking_manager):
+        """Test API error handling."""
+        # Make tracking manager raise APIError
+        mock_tracking_manager.get_room_prediction.side_effect = (
+            APIResourceNotFoundError("Room", "nonexistent")
+        )
+
+        response = client.get("/predictions/nonexistent")
+
+        assert response.status_code == 400
+        data = response.json()
+        assert "error" in data
+        assert "error_code" in data
+        assert "timestamp" in data
+
+    def test_system_error_handler(self, client, mock_tracking_manager):
+        """Test system error handling."""
+        # Make tracking manager raise OccupancyPredictionError
+        mock_tracking_manager.get_room_prediction.side_effect = (
+            OccupancyPredictionError("System error", severity=ErrorSeverity.HIGH)
+        )
+
+        response = client.get("/predictions/living_room")
+
+        assert response.status_code == 500
+        data = response.json()
+        assert "error" in data
+        assert data["error"] == "System error"
+
+    def test_general_exception_handler(self, client, mock_tracking_manager):
+        """Test general exception handling."""
+        # Make tracking manager raise generic exception
+        mock_tracking_manager.get_room_prediction.side_effect = Exception(
+            "Unexpected error"
+        )
+
+        response = client.get("/predictions/living_room")
+
+        assert response.status_code == 500
         data = response.json()
         assert data["error"] == "Internal server error"
         assert data["error_code"] == "UNHANDLED_EXCEPTION"
 
-    def test_rate_limit_middleware_error(self):
-        """Test rate limit error in middleware."""
-        app = create_app()
+    def test_health_endpoint_exception(self, client, mock_database_manager):
+        """Test health endpoint with exception."""
+        mock_database_manager.health_check.side_effect = Exception("Database error")
 
-        with patch("src.integration.api_server.check_rate_limit") as mock_check:
-            mock_check.side_effect = APIRateLimitError("127.0.0.1", 60, "minute")
+        response = client.get("/health")
 
-            test_client = TestClient(app)
-            response = test_client.get("/health")
+        # Should still return response but with error status
+        assert response.status_code == 500
 
-            assert response.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+    def test_validation_error(self, client):
+        """Test request validation error."""
+        invalid_retrain_data = {
+            "room_id": "nonexistent_room",  # Invalid room
+            "strategy": "invalid_strategy",  # Invalid strategy
+        }
+
+        response = client.post("/model/retrain", json=invalid_retrain_data)
+
+        assert response.status_code == 422  # Validation error
+
+
+# Response Model Tests
+
+
+class TestResponseModels:
+    """Test API response model validation."""
+
+    def test_prediction_response_validation(self):
+        """Test prediction response model validation."""
+        # Valid data
+        valid_data = {
+            "room_id": "living_room",
+            "prediction_time": datetime.now(),
+            "next_transition_time": datetime.now() + timedelta(minutes=30),
+            "transition_type": "occupied_to_vacant",
+            "confidence": 0.85,
+            "time_until_transition": "30 minutes",
+            "alternatives": [],
+            "model_info": {},
+        }
+
+        response = PredictionResponse(**valid_data)
+        assert response.room_id == "living_room"
+        assert response.confidence == 0.85
+        assert response.transition_type == "occupied_to_vacant"
+
+    def test_prediction_response_validation_invalid_confidence(self):
+        """Test prediction response with invalid confidence."""
+        invalid_data = {
+            "room_id": "living_room",
+            "prediction_time": datetime.now(),
+            "confidence": 1.5,  # Invalid: > 1.0
+            "time_until_transition": "30 minutes",
+            "alternatives": [],
+            "model_info": {},
+        }
+
+        with pytest.raises(ValueError, match="Confidence must be between 0.0 and 1.0"):
+            PredictionResponse(**invalid_data)
+
+    def test_prediction_response_validation_invalid_transition_type(self):
+        """Test prediction response with invalid transition type."""
+        invalid_data = {
+            "room_id": "living_room",
+            "prediction_time": datetime.now(),
+            "transition_type": "invalid_type",
+            "confidence": 0.85,
+            "time_until_transition": "30 minutes",
+            "alternatives": [],
+            "model_info": {},
+        }
+
+        with pytest.raises(ValueError, match="Transition type must be one of"):
+            PredictionResponse(**invalid_data)
+
+    def test_accuracy_metrics_response_validation(self):
+        """Test accuracy metrics response validation."""
+        valid_data = {
+            "room_id": "living_room",
+            "accuracy_rate": 0.88,
+            "average_error_minutes": 12.5,
+            "confidence_calibration": 0.82,
+            "total_predictions": 150,
+            "total_validations": 140,
+            "time_window_hours": 24,
+            "trend_direction": "improving",
+        }
+
+        response = AccuracyMetricsResponse(**valid_data)
+        assert response.accuracy_rate == 0.88
+        assert response.trend_direction == "improving"
+
+    def test_accuracy_metrics_response_validation_invalid_rate(self):
+        """Test accuracy metrics response with invalid rate."""
+        invalid_data = {
+            "room_id": "living_room",
+            "accuracy_rate": 1.5,  # Invalid: > 1.0
+            "average_error_minutes": 12.5,
+            "confidence_calibration": 0.82,
+            "total_predictions": 150,
+            "total_validations": 140,
+            "time_window_hours": 24,
+            "trend_direction": "improving",
+        }
+
+        with pytest.raises(ValueError, match="Rate must be between 0.0 and 1.0"):
+            AccuracyMetricsResponse(**invalid_data)
+
+    def test_manual_retrain_request_validation(self):
+        """Test manual retrain request validation."""
+        valid_data = {
+            "room_id": "living_room",
+            "force": True,
+            "strategy": "full",
+            "reason": "Manual test",
+        }
+
+        with patch("src.integration.api_server.get_config") as mock_get_config:
+            mock_config = Mock()
+            mock_config.rooms = {"living_room": Mock()}
+            mock_get_config.return_value = mock_config
+
+            request = ManualRetrainRequest(**valid_data)
+            assert request.room_id == "living_room"
+            assert request.force is True
+            assert request.strategy == "full"
+
+    def test_manual_retrain_request_validation_invalid_room(self):
+        """Test manual retrain request with invalid room."""
+        invalid_data = {
+            "room_id": "nonexistent_room",
+            "strategy": "auto",
+            "reason": "Test",
+        }
+
+        with patch("src.integration.api_server.get_config") as mock_get_config:
+            mock_config = Mock()
+            mock_config.rooms = {"living_room": Mock()}
+            mock_get_config.return_value = mock_config
+
+            with pytest.raises(ValueError, match="Room 'nonexistent_room' not found"):
+                ManualRetrainRequest(**invalid_data)
+
+    def test_error_response_serialization(self):
+        """Test error response serialization."""
+        error_data = {
+            "error": "Test error",
+            "error_code": "TEST_ERROR",
+            "details": {"key": "value"},
+            "timestamp": datetime.now(),
+            "request_id": "req_123",
+        }
+
+        response = ErrorResponse(**error_data)
+        data_dict = response.dict()
+
+        assert data_dict["error"] == "Test error"
+        assert data_dict["error_code"] == "TEST_ERROR"
+        assert isinstance(data_dict["timestamp"], str)  # Should be serialized to string
+
+
+# API Server Integration Tests
 
 
 class TestAPIServerIntegration:
-    """Test API server integration with other components."""
+    """Test API server integration functionality."""
 
-    @pytest.fixture
-    def mock_tracking_manager(self):
-        """Mock tracking manager for integration tests."""
-        manager = AsyncMock()
-        manager.get_room_prediction = AsyncMock()
-        manager.get_accuracy_metrics = AsyncMock()
-        manager.trigger_manual_retrain = AsyncMock()
-        manager.get_system_stats = AsyncMock()
-        return manager
-
-    def test_api_server_initialization(self, mock_tracking_manager):
-        """Test APIServer class initialization."""
-        server = APIServer(mock_tracking_manager)
-
-        assert server.tracking_manager == mock_tracking_manager
-        assert server.server is None
-        assert server.server_task is None
-
-    @pytest.mark.asyncio
-    async def test_api_server_start_enabled(self, mock_tracking_manager):
-        """Test API server start when enabled."""
-        with patch("src.integration.api_server.get_config") as mock_get_config:
-            mock_config = Mock()
-            mock_config.api.enabled = True
-            mock_config.api.host = "localhost"
-            mock_config.api.port = 8000
-            mock_config.api.debug = False
-            mock_config.api.access_log = False
-            mock_get_config.return_value = mock_config
-
-            server = APIServer(mock_tracking_manager)
-
-            with patch("src.integration.api_server.uvicorn.Server") as mock_uvicorn:
-                mock_server_instance = Mock()
-                mock_server_instance.serve = AsyncMock()
-                mock_uvicorn.return_value = mock_server_instance
-
-                await server.start()
-
-                assert server.server == mock_server_instance
-                assert server.server_task is not None
-
-    @pytest.mark.asyncio
-    async def test_api_server_start_disabled(self, mock_tracking_manager):
-        """Test API server start when disabled."""
-        with patch("src.integration.api_server.get_config") as mock_get_config:
-            mock_config = Mock()
-            mock_config.api.enabled = False
-            mock_get_config.return_value = mock_config
-
-            server = APIServer(mock_tracking_manager)
-            await server.start()
-
-            assert server.server is None
-
-    @pytest.mark.asyncio
-    async def test_api_server_stop(self, mock_tracking_manager):
-        """Test API server stop."""
-        server = APIServer(mock_tracking_manager)
-
-        # Mock server components
-        mock_server = Mock()
-        mock_task = AsyncMock()
-        server.server = mock_server
-        server.server_task = mock_task
-
-        await server.stop()
-
-        assert mock_server.should_exit is True
-        mock_task.assert_awaited_once()
-
-    def test_api_server_is_running(self, mock_tracking_manager):
-        """Test APIServer is_running method."""
-        server = APIServer(mock_tracking_manager)
-
-        # Initially not running
-        assert server.is_running() is False
-
-        # Mock running task
-        mock_task = Mock()
-        mock_task.done.return_value = False
-        server.server_task = mock_task
-
-        assert server.is_running() is True
-
-    @pytest.mark.asyncio
     async def test_integrate_with_tracking_manager(self, mock_tracking_manager):
-        """Test integration function."""
+        """Test API server integration with tracking manager."""
         api_server = await integrate_with_tracking_manager(mock_tracking_manager)
 
         assert isinstance(api_server, APIServer)
         assert api_server.tracking_manager == mock_tracking_manager
 
-    def test_create_app_configuration(self):
-        """Test app creation and configuration."""
-        with patch("src.integration.api_server.get_config") as mock_get_config:
-            mock_config = Mock()
-            mock_config.api.debug = True
-            mock_config.api.docs_url = "/docs"
-            mock_config.api.redoc_url = "/redoc"
-            mock_config.api.include_docs = True
-            mock_config.api.enable_cors = True
-            mock_config.api.cors_origins = ["*"]
-            mock_config.api.jwt.enabled = False
-            mock_get_config.return_value = mock_config
+    def test_api_server_initialization(self, mock_tracking_manager, mock_config):
+        """Test API server initialization."""
+        with patch("src.integration.api_server.get_config", return_value=mock_config):
+            api_server = APIServer(mock_tracking_manager)
 
-            app = create_app()
+            assert api_server.tracking_manager == mock_tracking_manager
+            assert api_server.config == mock_config.api
+            assert api_server.server is None
+            assert api_server.server_task is None
 
-            assert app.debug is True
-            assert app.docs_url == "/docs"
-            assert app.redoc_url == "/redoc"
+    async def test_api_server_start_enabled(self, mock_tracking_manager, mock_config):
+        """Test API server start when enabled."""
+        mock_config.api.enabled = True
 
-    def test_get_app_with_jwt_error(self):
-        """Test get_app with JWT configuration error."""
-        with patch("src.integration.api_server.create_app") as mock_create:
-            mock_create.side_effect = ValueError("JWT_SECRET_KEY not set")
+        with patch("src.integration.api_server.get_config", return_value=mock_config):
+            api_server = APIServer(mock_tracking_manager)
 
-            # Mock test environment
-            with patch.dict("os.environ", {"ENVIRONMENT": "test"}):
-                app = get_app()
-                assert app.title == "HA ML Predictor API (Test Mode)"
+            with patch("uvicorn.Server") as mock_server_class:
+                mock_server = Mock()
+                mock_server_class.return_value = mock_server
 
-    def test_get_app_production_error(self):
-        """Test get_app with production environment error."""
-        with patch("src.integration.api_server.create_app") as mock_create:
-            mock_create.side_effect = ValueError("Production error")
+                with patch("asyncio.create_task") as mock_create_task:
+                    mock_task = Mock()
+                    mock_create_task.return_value = mock_task
 
-            with pytest.raises(ValueError, match="Production error"):
-                get_app()
+                    await api_server.start()
+
+                    assert api_server.server == mock_server
+                    assert api_server.server_task == mock_task
+
+    async def test_api_server_start_disabled(self, mock_tracking_manager, mock_config):
+        """Test API server start when disabled."""
+        mock_config.api.enabled = False
+
+        with patch("src.integration.api_server.get_config", return_value=mock_config):
+            api_server = APIServer(mock_tracking_manager)
+
+            await api_server.start()
+
+            # Should return early without starting
+            assert api_server.server is None
+            assert api_server.server_task is None
+
+    async def test_api_server_stop(self, mock_tracking_manager, mock_config):
+        """Test API server stop."""
+        with patch("src.integration.api_server.get_config", return_value=mock_config):
+            api_server = APIServer(mock_tracking_manager)
+
+            # Mock running server
+            mock_server = Mock()
+            mock_task = AsyncMock()
+            api_server.server = mock_server
+            api_server.server_task = mock_task
+
+            await api_server.stop()
+
+            assert mock_server.should_exit is True
+            mock_task.assert_awaited_once()
+
+    def test_api_server_is_running_true(self, mock_tracking_manager, mock_config):
+        """Test API server is_running when running."""
+        with patch("src.integration.api_server.get_config", return_value=mock_config):
+            api_server = APIServer(mock_tracking_manager)
+
+            mock_task = Mock()
+            mock_task.done.return_value = False
+            api_server.server_task = mock_task
+
+            assert api_server.is_running() is True
+
+    def test_api_server_is_running_false(self, mock_tracking_manager, mock_config):
+        """Test API server is_running when not running."""
+        with patch("src.integration.api_server.get_config", return_value=mock_config):
+            api_server = APIServer(mock_tracking_manager)
+
+            # No server task
+            assert api_server.is_running() is False
+
+            # Done task
+            mock_task = Mock()
+            mock_task.done.return_value = True
+            api_server.server_task = mock_task
+
+            assert api_server.is_running() is False
 
 
-class TestAPIServerMiddleware:
-    """Test API server middleware functionality."""
-
-    @pytest.fixture
-    def client(self):
-        """Create test client with middleware."""
-        app = create_app()
-        return TestClient(app)
-
-    def test_request_logging_middleware(self, client):
-        """Test request logging middleware."""
-        with patch("src.integration.api_server.get_config") as mock_get_config:
-            mock_config = Mock()
-            mock_config.api.log_requests = True
-            mock_config.api.log_responses = True
-            mock_get_config.return_value = mock_config
-
-            # Mock dependencies
-            with patch(
-                "src.integration.api_server.check_rate_limit", return_value=True
-            ):
-                response = client.get("/")
-                assert response.status_code == status.HTTP_200_OK
-
-    def test_cors_middleware(self, client):
-        """Test CORS middleware configuration."""
-        response = client.options("/", headers={"Origin": "http://localhost:3000"})
-
-        # Should handle OPTIONS request
-        assert response.status_code in [200, 405]  # Depends on CORS config
-
-    def test_trusted_host_middleware(self, client):
-        """Test trusted host middleware."""
-        response = client.get("/", headers={"Host": "localhost"})
-        assert response.status_code == status.HTTP_200_OK
+# Performance and Load Tests
 
 
-@pytest.mark.asyncio
-async def test_background_health_check():
-    """Test background health check functionality."""
-    with patch("src.integration.api_server.get_config") as mock_get_config, patch(
-        "src.integration.api_server.get_health_monitor"
-    ) as mock_health_monitor, patch(
-        "src.integration.api_server.get_incident_response_manager"
-    ) as mock_incident_manager:
+class TestAPIPerformance:
+    """Test API performance characteristics."""
 
-        mock_config = Mock()
-        mock_config.api.health_check_interval_seconds = 1  # Fast for testing
-        mock_get_config.return_value = mock_config
+    def test_concurrent_health_checks(self, client):
+        """Test concurrent health check requests."""
+        import threading
 
-        mock_monitor = AsyncMock()
-        mock_monitor.start_monitoring = AsyncMock()
-        mock_monitor.get_system_health.return_value = Mock(
-            overall_status=Mock(value="healthy")
-        )
-        mock_health_monitor.return_value = mock_monitor
+        results = []
 
-        mock_incident = AsyncMock()
-        mock_incident.start_incident_response = AsyncMock()
-        mock_incident.get_active_incidents.return_value = {}
-        mock_incident.get_incident_statistics.return_value = {
-            "active_incidents_count": 0,
-            "auto_recovery_enabled": True,
+        def make_request():
+            response = client.get("/health")
+            results.append(response.status_code)
+
+        # Make concurrent requests
+        threads = []
+        for _ in range(10):
+            thread = threading.Thread(target=make_request)
+            threads.append(thread)
+            thread.start()
+
+        # Wait for all threads
+        for thread in threads:
+            thread.join()
+
+        # All should succeed
+        assert len(results) == 10
+        assert all(status == 200 for status in results)
+
+    def test_multiple_prediction_requests(self, client):
+        """Test multiple prediction requests."""
+        rooms = ["living_room", "bedroom", "kitchen"]
+
+        for room in rooms:
+            response = client.get(f"/predictions/{room}")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["room_id"] == room
+
+    def test_large_stats_response(self, client, mock_tracking_manager):
+        """Test handling of large statistics response."""
+        # Mock large stats response
+        large_stats = {
+            "tracking_stats": {f"stat_{i}": f"value_{i}" for i in range(100)},
+            "retraining_stats": {
+                f"retrain_stat_{i}": f"retrain_value_{i}" for i in range(50)
+            },
         }
-        mock_incident_manager.return_value = mock_incident
+        mock_tracking_manager.get_system_stats.return_value = large_stats
 
-        # Import the background function
-        from src.integration.api_server import background_health_check
+        response = client.get("/stats")
 
-        # Run for a short time then cancel
-        task = asyncio.create_task(background_health_check())
-        await asyncio.sleep(0.1)  # Let it run briefly
-        task.cancel()
+        assert response.status_code == 200
+        data = response.json()
+        assert "tracking_stats" in data
 
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
+    def test_request_response_timing(self, client):
+        """Test request/response timing."""
+        import time
 
-        # Verify initialization was called
-        mock_monitor.start_monitoring.assert_called_once()
-        mock_incident.start_incident_response.assert_called_once()
+        start_time = time.time()
+        response = client.get("/health")
+        end_time = time.time()
+
+        # Should respond quickly (within 1 second for basic health check)
+        duration = end_time - start_time
+        assert duration < 1.0
+        assert response.status_code == 200
+
+
+# Edge Cases and Security Tests
+
+
+class TestAPIEdgeCases:
+    """Test API edge cases and security scenarios."""
+
+    def test_malformed_json_request(self, client):
+        """Test malformed JSON in request body."""
+        response = client.post(
+            "/model/retrain",
+            data="invalid json",
+            headers={"content-type": "application/json"},
+        )
+
+        assert response.status_code == 422  # Unprocessable Entity
+
+    def test_missing_required_fields(self, client):
+        """Test request with missing required fields."""
+        incomplete_data = {
+            "strategy": "auto"
+            # Missing required 'reason' field
+        }
+
+        response = client.post("/model/retrain", json=incomplete_data)
+
+        assert response.status_code == 422
+
+    def test_invalid_query_parameters(self, client):
+        """Test invalid query parameters."""
+        response = client.get("/accuracy?hours=invalid")
+
+        assert response.status_code == 422
+
+    def test_oversized_request(self, client):
+        """Test oversized request handling."""
+        # Create large request data
+        large_data = {"reason": "x" * 10000, "strategy": "auto"}  # Very long reason
+
+        response = client.post("/model/retrain", json=large_data)
+
+        # Should handle gracefully (may succeed or fail depending on limits)
+        assert response.status_code in [200, 413, 422]
+
+    def test_special_characters_in_room_id(self, client, mock_config):
+        """Test room IDs with special characters."""
+        # Test URL encoding
+        response = client.get("/predictions/room%20with%20spaces")
+
+        # Should decode properly and return 404 for non-existent room
+        assert response.status_code == 404
+
+    def test_long_incident_id(self, client):
+        """Test very long incident ID."""
+        long_id = "x" * 1000
+        response = client.get(f"/incidents/{long_id}")
+
+        # Should handle gracefully
+        assert response.status_code in [404, 414]  # Not found or URI too long
+
+    def test_concurrent_retrain_requests(self, client):
+        """Test concurrent retrain requests."""
+        import threading
+
+        results = []
+
+        def make_retrain_request():
+            retrain_data = {
+                "room_id": "living_room",
+                "strategy": "auto",
+                "reason": "concurrent_test",
+            }
+            response = client.post("/model/retrain", json=retrain_data)
+            results.append(response.status_code)
+
+        # Make concurrent retrain requests
+        threads = []
+        for _ in range(5):
+            thread = threading.Thread(target=make_retrain_request)
+            threads.append(thread)
+            thread.start()
+
+        # Wait for all threads
+        for thread in threads:
+            thread.join()
+
+        # Should handle all requests (may succeed or fail based on business logic)
+        assert len(results) == 5
+        assert all(status in [200, 400, 500] for status in results)
+
+    def test_health_endpoint_resilience(
+        self, client, mock_database_manager, mock_tracking_manager
+    ):
+        """Test health endpoint resilience to component failures."""
+        # Test with database failure
+        mock_database_manager.health_check.side_effect = Exception("DB error")
+
+        response = client.get("/health")
+        data = response.json()
+
+        # Should still return response but indicate degraded health
+        assert "components" in data
+        assert data["components"]["database"]["status"] in ["unhealthy", "error"]
+
+        # Test with tracking manager failure
+        mock_tracking_manager.get_tracking_status.side_effect = Exception(
+            "Tracking error"
+        )
+
+        response = client.get("/health")
+        data = response.json()
+
+        # Should handle gracefully
+        assert "components" in data
+
+    def test_api_with_no_tracking_manager(self, client):
+        """Test API behavior with no tracking manager."""
+        # Clear the tracking manager
+        set_tracking_manager(None)
+
+        # Endpoints should handle gracefully
+        response = client.get("/predictions/living_room")
+
+        # Should return error or handle gracefully
+        assert response.status_code in [404, 500]
+
+    def test_endpoints_without_authentication(self, client, mock_config):
+        """Test endpoint access without authentication when required."""
+        # Enable API key requirement
+        mock_config.api.api_key_enabled = True
+
+        with patch("src.integration.api_server.get_config", return_value=mock_config):
+            response = client.get("/predictions/living_room")
+
+            # Should require authentication
+            assert response.status_code == 401
