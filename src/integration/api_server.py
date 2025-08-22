@@ -540,8 +540,9 @@ def register_routes(app: FastAPI):
 
             if not prediction_data:
                 raise APIServerError(
-                    f"get_prediction_for_{room_id}",
-                    Exception("No prediction available"),
+                    endpoint=f"/predictions/{room_id}",
+                    operation="get_room_prediction",
+                    cause=Exception("No prediction available"),
                 )
 
             return PredictionResponse(
@@ -569,7 +570,11 @@ def register_routes(app: FastAPI):
             logger.error(
                 f"Failed to get prediction for room {room_id}: {e}", exc_info=True
             )
-            raise APIServerError(f"get_prediction_for_{room_id}", e)
+            raise APIServerError(
+                endpoint=f"/predictions/{room_id}",
+                operation="get_room_prediction",
+                cause=e,
+            )
 
     @app.get("/predictions", response_model=List[PredictionResponse])
     async def get_all_predictions(
@@ -596,7 +601,11 @@ def register_routes(app: FastAPI):
 
         except Exception as e:
             logger.error(f"Failed to get all predictions: {e}", exc_info=True)
-            raise APIServerError("get_all_predictions", e)
+            raise APIServerError(
+                endpoint="/predictions",
+                operation="get_all_predictions",
+                cause=e,
+            )
 
 
 def create_app() -> FastAPI:
@@ -1008,7 +1017,11 @@ async def health_check():
 
     except Exception as e:
         logger.error(f"Health check failed: {e}", exc_info=True)
-        raise APIServerError("health_check", e)
+        raise APIServerError(
+            endpoint="/health",
+            operation="health_check",
+            cause=e,
+        )
 
 
 @app.get("/health/comprehensive")
@@ -1099,7 +1112,11 @@ async def get_component_health(component_name: str):
         raise
     except Exception as e:
         logger.error(f"Component health check failed for {component_name}: {e}")
-        raise APIServerError("component_health_check", e)
+        raise APIServerError(
+            endpoint="/health/components",
+            operation="component_health_check",
+            cause=e,
+        )
 
 
 @app.get("/health/system")
@@ -1113,7 +1130,11 @@ async def get_system_health_summary():
 
     except Exception as e:
         logger.error(f"System health summary failed: {e}")
-        raise APIServerError("system_health_summary", e)
+        raise APIServerError(
+            endpoint="/health/system",
+            operation="system_health_summary",
+            cause=e,
+        )
 
 
 @app.get("/health/monitoring")
@@ -1131,7 +1152,11 @@ async def get_health_monitoring_status():
 
     except Exception as e:
         logger.error(f"Health monitoring status failed: {e}")
-        raise APIServerError("health_monitoring_status", e)
+        raise APIServerError(
+            endpoint="/health/monitoring/status",
+            operation="health_monitoring_status",
+            cause=e,
+        )
 
 
 @app.post("/health/monitoring/start")
@@ -1158,7 +1183,11 @@ async def start_health_monitoring():
 
     except Exception as e:
         logger.error(f"Failed to start health monitoring: {e}")
-        raise APIServerError("start_health_monitoring", e)
+        raise APIServerError(
+            endpoint="/health/monitoring/start",
+            operation="start_health_monitoring",
+            cause=e,
+        )
 
 
 @app.post("/health/monitoring/stop")
@@ -1184,7 +1213,11 @@ async def stop_health_monitoring():
 
     except Exception as e:
         logger.error(f"Failed to stop health monitoring: {e}")
-        raise APIServerError("stop_health_monitoring", e)
+        raise APIServerError(
+            endpoint="/health/monitoring/stop",
+            operation="stop_health_monitoring",
+            cause=e,
+        )
 
 
 @app.get("/incidents")
@@ -1205,7 +1238,11 @@ async def get_active_incidents():
 
     except Exception as e:
         logger.error(f"Failed to get active incidents: {e}")
-        raise APIServerError("get_active_incidents", e)
+        raise APIServerError(
+            endpoint="/incidents/active",
+            operation="get_active_incidents",
+            cause=e,
+        )
 
 
 @app.get("/incidents/{incident_id}")
@@ -1224,7 +1261,11 @@ async def get_incident_details(incident_id: str):
         raise
     except Exception as e:
         logger.error(f"Failed to get incident {incident_id}: {e}")
-        raise APIServerError("get_incident_details", e)
+        raise APIServerError(
+            endpoint=f"/incidents/{incident_id}",
+            operation="get_incident_details",
+            cause=e,
+        )
 
 
 @app.get("/incidents/history")
@@ -1250,7 +1291,11 @@ async def get_incident_history(hours: int = 24):
         raise
     except Exception as e:
         logger.error(f"Failed to get incident history: {e}")
-        raise APIServerError("get_incident_history", e)
+        raise APIServerError(
+            endpoint="/incidents/history",
+            operation="get_incident_history",
+            cause=e,
+        )
 
 
 @app.get("/incidents/statistics")
@@ -1264,7 +1309,11 @@ async def get_incident_statistics():
 
     except Exception as e:
         logger.error(f"Failed to get incident statistics: {e}")
-        raise APIServerError("get_incident_statistics", e)
+        raise APIServerError(
+            endpoint="/incidents/statistics",
+            operation="get_incident_statistics",
+            cause=e,
+        )
 
 
 @app.post("/incidents/{incident_id}/acknowledge")
@@ -1292,7 +1341,11 @@ async def acknowledge_incident(incident_id: str, acknowledged_by: str = "API_Use
         raise
     except Exception as e:
         logger.error(f"Failed to acknowledge incident {incident_id}: {e}")
-        raise APIServerError("acknowledge_incident", e)
+        raise APIServerError(
+            endpoint=f"/incidents/{incident_id}/acknowledge",
+            operation="acknowledge_incident",
+            cause=e,
+        )
 
 
 @app.post("/incidents/{incident_id}/resolve")
@@ -1320,7 +1373,11 @@ async def resolve_incident(
         raise
     except Exception as e:
         logger.error(f"Failed to resolve incident {incident_id}: {e}")
-        raise APIServerError("resolve_incident", e)
+        raise APIServerError(
+            endpoint=f"/incidents/{incident_id}/resolve",
+            operation="resolve_incident",
+            cause=e,
+        )
 
 
 @app.post("/incidents/response/start")
@@ -1339,7 +1396,11 @@ async def start_incident_response():
 
     except Exception as e:
         logger.error(f"Failed to start incident response: {e}")
-        raise APIServerError("start_incident_response", e)
+        raise APIServerError(
+            endpoint="/incidents/response/start",
+            operation="start_incident_response",
+            cause=e,
+        )
 
 
 @app.post("/incidents/response/stop")
@@ -1358,7 +1419,11 @@ async def stop_incident_response():
 
     except Exception as e:
         logger.error(f"Failed to stop incident response: {e}")
-        raise APIServerError("stop_incident_response", e)
+        raise APIServerError(
+            endpoint="/incidents/response/stop",
+            operation="stop_incident_response",
+            cause=e,
+        )
 
 
 @app.get("/predictions/{room_id}", response_model=PredictionResponse)
@@ -1407,7 +1472,11 @@ async def get_room_prediction(
         raise
     except Exception as e:
         logger.error(f"Failed to get prediction for room {room_id}: {e}", exc_info=True)
-        raise APIServerError(f"get_prediction_for_{room_id}", e)
+        raise APIServerError(
+            endpoint=f"/v2/predictions/{room_id}",
+            operation="get_room_prediction_v2",
+            cause=e,
+        )
 
 
 @app.get("/predictions", response_model=List[PredictionResponse])
@@ -1432,7 +1501,11 @@ async def get_all_predictions(
 
     except Exception as e:
         logger.error(f"Failed to get all predictions: {e}", exc_info=True)
-        raise APIServerError("get_all_predictions", e)
+        raise APIServerError(
+            endpoint="/v2/predictions",
+            operation="get_all_predictions_v2",
+            cause=e,
+        )
 
 
 @app.get("/accuracy", response_model=AccuracyMetricsResponse)
@@ -1468,7 +1541,11 @@ async def get_accuracy_metrics(
         raise
     except Exception as e:
         logger.error(f"Failed to get accuracy metrics: {e}", exc_info=True)
-        raise APIServerError("get_accuracy_metrics", e)
+        raise APIServerError(
+            endpoint="/metrics/accuracy",
+            operation="get_accuracy_metrics",
+            cause=e,
+        )
 
 
 @app.post("/model/retrain")
@@ -1507,7 +1584,11 @@ async def trigger_manual_retrain(
         raise
     except Exception as e:
         logger.error(f"Failed to trigger retrain: {e}", exc_info=True)
-        raise APIServerError("trigger_retrain", e)
+        raise APIServerError(
+            endpoint="/models/retrain",
+            operation="trigger_retrain",
+            cause=e,
+        )
 
 
 @app.post("/mqtt/refresh")
@@ -1529,7 +1610,11 @@ async def refresh_mqtt_discovery(
 
     except Exception as e:
         logger.error(f"Failed to refresh MQTT discovery: {e}", exc_info=True)
-        raise APIServerError("refresh_mqtt_discovery", e)
+        raise APIServerError(
+            endpoint="/mqtt/discovery/refresh",
+            operation="refresh_mqtt_discovery",
+            cause=e,
+        )
 
 
 @app.get("/stats", response_model=SystemStatsResponse)
@@ -1571,7 +1656,11 @@ async def get_system_stats(
 
     except Exception as e:
         logger.error(f"Failed to get system stats: {e}", exc_info=True)
-        raise APIServerError("get_system_stats", e)
+        raise APIServerError(
+            endpoint="/system/stats",
+            operation="get_system_stats",
+            cause=e,
+        )
 
 
 # Server runner
