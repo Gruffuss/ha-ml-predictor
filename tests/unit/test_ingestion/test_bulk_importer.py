@@ -970,9 +970,11 @@ class TestBulkImporter:
             with pytest.raises(InsufficientTrainingDataError) as exc_info:
                 await importer.validate_data_sufficiency("test_room")
 
-            assert exc_info.value.room_id == "test_room"
-            assert exc_info.value.data_points == 40  # 10 days * 4 events/day avg
-            assert exc_info.value.time_span_days == 10
+            assert exc_info.value.context["room_id"] == "test_room"
+            assert (
+                exc_info.value.context["data_points"] == 40
+            )  # 10 days * 4 events/day avg
+            assert exc_info.value.context["time_span_days"] == 10
 
     @pytest.mark.asyncio
     async def test_validate_data_sufficiency_no_data(self, test_system_config):
@@ -995,9 +997,9 @@ class TestBulkImporter:
             with pytest.raises(InsufficientTrainingDataError) as exc_info:
                 await importer.validate_data_sufficiency("test_room")
 
-            assert exc_info.value.room_id == "test_room"
-            assert exc_info.value.data_points == 0
-            assert exc_info.value.time_span_days == 0
+            assert exc_info.value.context["room_id"] == "test_room"
+            assert exc_info.value.context["data_points"] == 0
+            assert exc_info.value.context["time_span_days"] == 0
 
     @pytest.mark.asyncio
     async def test_optimize_import_performance(self, test_system_config):
@@ -1279,3 +1281,648 @@ class TestBulkImporterIntegration:
             assert all(isinstance(event, SensorEvent) for event in inserted_events)
             assert inserted_events[0].room_id == "test_room"
             assert inserted_events[0].sensor_type == "presence"
+
+    @pytest.mark.asyncio
+    async def test_process_history_chunk_data_validation_error(
+        self, test_system_config
+    ):
+        """Test processing history chunk with DataValidationError from event processor."""
+        importer = BulkImporter(test_system_config)
+
+        # Mock event processor to raise DataValidationError
+        mock_processor = AsyncMock()
+        mock_processor.process_event_batch.side_effect = DataValidationError(
+            "validation_error", ["error1"], {"sample": "data"}
+        )
+        importer.event_processor = mock_processor
+
+        with patch.object(
+            importer, "_convert_history_record_to_ha_event"
+        ) as mock_convert:
+            mock_convert.return_value = Mock()  # Valid HAEvent
+
+            history_data = [{"entity_id": "test", "state": "on"}]
+
+            result = await importer._process_history_chunk("test_entity", history_data)
+
+            assert result == 0  # No events processed due to validation error
+            assert importer.stats["validation_errors"] == 1
+
+    @pytest.mark.asyncio
+    async def test_process_history_chunk_database_error(self, test_system_config):
+        """Test processing history chunk with DatabaseError."""
+        importer = BulkImporter(test_system_config)
+
+        # Mock event processor
+        mock_processor = AsyncMock()
+        mock_sensor_events = [Mock(), Mock()]
+        mock_processor.process_event_batch.return_value = mock_sensor_events
+        importer.event_processor = mock_processor
+
+        with (
+            patch.object(
+                importer, "_convert_history_record_to_ha_event"
+            ) as mock_convert,
+            patch.object(
+                importer, "_bulk_insert_events", side_effect=DatabaseError("DB error")
+            ) as mock_insert,
+        ):
+
+            mock_convert.return_value = Mock()
+
+            history_data = [{"entity_id": "test", "state": "on"}]
+
+            result = await importer._process_history_chunk("test_entity", history_data)
+
+            assert result == 0  # No events processed due to database error
+            assert importer.stats["database_errors"] == 1
+
+    @pytest.mark.asyncio
+    async def test_process_history_chunk_home_assistant_error(self, test_system_config):
+        """Test processing history chunk with HomeAssistantError."""
+        importer = BulkImporter(test_system_config)
+
+        # Mock event processor to raise HomeAssistantError
+        mock_processor = AsyncMock()
+        mock_processor.process_event_batch.side_effect = HomeAssistantError(
+            "HA API error"
+        )
+        importer.event_processor = mock_processor
+
+        with patch.object(
+            importer, "_convert_history_record_to_ha_event"
+        ) as mock_convert:
+            mock_convert.return_value = Mock()
+
+            history_data = [{"entity_id": "test", "state": "on"}]
+
+            result = await importer._process_history_chunk("test_entity", history_data)
+
+            assert result == 0
+            assert importer.stats["api_errors"] == 1
+
+    @pytest.mark.asyncio
+    async def test_process_history_chunk_generic_exception(self, test_system_config):
+        """Test processing history chunk with generic exception."""
+        importer = BulkImporter(test_system_config)
+
+        with patch.object(
+            importer,
+            "_convert_history_record_to_ha_event",
+            side_effect=Exception("Generic error"),
+        ):
+
+            history_data = [{"entity_id": "test", "state": "on"}]
+
+            result = await importer._process_history_chunk("test_entity", history_data)
+
+            assert result == 0  # Error handled gracefully
+            # The method actually converts generic errors to DataValidationError, so it's validation error
+            assert importer.stats["validation_errors"] == 1
+
+    @pytest.mark.asyncio
+    async def test_bulk_insert_events_large_batch_raw_sql(self, test_system_config):
+        """Test bulk insert with large batch using raw SQL."""
+        import_config = ImportConfig(batch_size=5)  # Small batch size
+        importer = BulkImporter(test_system_config, import_config)
+
+        # Create events exceeding batch size
+        events = []
+        for i in range(10):  # More than batch_size
+            events.append(
+                SensorEvent(
+                    room_id="test_room",
+                    sensor_id=f"binary_sensor.test_{i}",
+                    sensor_type="presence",
+                    state="on",
+                    timestamp=datetime(2023, 1, 1, i, tzinfo=timezone.utc),
+                    attributes={},
+                    is_human_triggered=True,
+                    created_at=datetime(2023, 1, 1, tzinfo=timezone.utc),
+                )
+            )
+
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = Mock()
+        mock_result.rowcount = 10
+        mock_session.execute.return_value = mock_result
+
+        with (
+            patch(
+                "src.data.ingestion.bulk_importer.get_db_session"
+            ) as mock_get_session,
+            patch(
+                "src.data.ingestion.bulk_importer.get_bulk_insert_query"
+            ) as mock_get_query,
+            patch("src.data.ingestion.bulk_importer.text") as mock_text,
+        ):
+
+            mock_context_manager = AsyncMock()
+            mock_context_manager.__aenter__.return_value = mock_session
+            mock_context_manager.__aexit__.return_value = None
+            mock_get_session.return_value = mock_context_manager
+
+            mock_get_query.return_value = "BULK INSERT SQL"
+            mock_text.return_value = "TEXT SQL"
+
+            result_count = await importer._bulk_insert_events(events)
+
+            assert result_count == 10
+            # Should use raw SQL for large batch
+            mock_get_query.assert_called_once()
+            mock_text.assert_called_once_with("BULK INSERT SQL")
+
+    @pytest.mark.asyncio
+    async def test_bulk_insert_events_skip_existing_disabled(self, test_system_config):
+        """Test bulk insert with skip_existing disabled."""
+        import_config = ImportConfig(skip_existing=False)
+        importer = BulkImporter(test_system_config, import_config)
+
+        events = [
+            SensorEvent(
+                room_id="test_room",
+                sensor_id="binary_sensor.test",
+                sensor_type="presence",
+                state="on",
+                timestamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
+                attributes={},
+                is_human_triggered=True,
+                created_at=datetime(2023, 1, 1, tzinfo=timezone.utc),
+            )
+        ]
+
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = Mock()
+        mock_result.rowcount = 1
+        mock_session.execute.return_value = mock_result
+
+        with patch(
+            "src.data.ingestion.bulk_importer.get_db_session"
+        ) as mock_get_session:
+            mock_context_manager = AsyncMock()
+            mock_context_manager.__aenter__.return_value = mock_session
+            mock_context_manager.__aexit__.return_value = None
+            mock_get_session.return_value = mock_context_manager
+
+            with patch("src.data.ingestion.bulk_importer.insert") as mock_insert:
+                mock_stmt = Mock()
+                mock_insert.return_value = mock_stmt
+
+                result_count = await importer._bulk_insert_events(events)
+
+                assert result_count == 1
+                # Should not call on_conflict_do_nothing when skip_existing is False
+                mock_stmt.on_conflict_do_nothing.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_bulk_insert_events_none_rowcount(self, test_system_config):
+        """Test bulk insert when result.rowcount is None."""
+        importer = BulkImporter(test_system_config)
+
+        events = [
+            SensorEvent(
+                room_id="test_room",
+                sensor_id="binary_sensor.test",
+                sensor_type="presence",
+                state="on",
+                timestamp=datetime(2023, 1, 1, tzinfo=timezone.utc),
+                attributes={},
+                is_human_triggered=True,
+                created_at=datetime(2023, 1, 1, tzinfo=timezone.utc),
+            )
+        ]
+
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = Mock()
+        mock_result.rowcount = None  # Simulate None rowcount
+        mock_session.execute.return_value = mock_result
+
+        with patch(
+            "src.data.ingestion.bulk_importer.get_db_session"
+        ) as mock_get_session:
+            mock_context_manager = AsyncMock()
+            mock_context_manager.__aenter__.return_value = mock_session
+            mock_context_manager.__aexit__.return_value = None
+            mock_get_session.return_value = mock_context_manager
+
+            result_count = await importer._bulk_insert_events(events)
+
+            # Should return len(insert_data) when rowcount is None
+            assert result_count == 1
+
+    @pytest.mark.asyncio
+    async def test_validate_data_sufficiency_database_error(self, test_system_config):
+        """Test data sufficiency validation with database error."""
+        importer = BulkImporter(test_system_config)
+
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_session.execute.side_effect = Exception("Database connection failed")
+
+        with patch(
+            "src.data.ingestion.bulk_importer.get_db_session"
+        ) as mock_get_session:
+            mock_context_manager = AsyncMock()
+            mock_context_manager.__aenter__.return_value = mock_session
+            mock_context_manager.__aexit__.return_value = None
+            mock_get_session.return_value = mock_context_manager
+
+            with pytest.raises(DatabaseError) as exc_info:
+                await importer.validate_data_sufficiency("test_room")
+
+            assert "Data sufficiency validation failed" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_optimize_import_performance_missing_psutil(self, test_system_config):
+        """Test performance optimization when psutil is not available."""
+        importer = BulkImporter(test_system_config)
+
+        # Set up performance metrics
+        importer.progress.processed_events = 1000
+        importer.progress.start_time = datetime.utcnow() - timedelta(seconds=100)
+
+        with patch("psutil.Process", side_effect=ImportError("psutil not available")):
+            result = await importer.optimize_import_performance()
+
+            assert result["performance_metrics"]["memory_usage_mb"] == "unavailable"
+
+    @pytest.mark.asyncio
+    async def test_optimize_import_performance_suggestions(self, test_system_config):
+        """Test performance optimization suggestions for various scenarios."""
+
+        # Test low throughput scenario
+        import_config = ImportConfig(batch_size=500, max_concurrent_entities=2)
+        importer = BulkImporter(test_system_config, import_config)
+
+        # Low events per second (49 events in 1 second = 49 events/sec < 50 threshold)
+        importer.progress.processed_events = 49
+        importer.progress.start_time = datetime.utcnow() - timedelta(seconds=1)
+
+        with patch("psutil.Process") as mock_process_class:
+            mock_process = Mock()
+            mock_process.memory_info.return_value.rss = 100 * 1024 * 1024  # 100MB
+            mock_process_class.return_value = mock_process
+
+            result = await importer.optimize_import_performance()
+
+            suggestions = result["optimization_suggestions"]
+            assert any("batch_size to 2000" in suggestion for suggestion in suggestions)
+            assert any(
+                "max_concurrent_entities" in suggestion for suggestion in suggestions
+            )
+
+        # Test high throughput scenario
+        import_config2 = ImportConfig(batch_size=5000, max_concurrent_entities=15)
+        importer2 = BulkImporter(test_system_config, import_config2)
+
+        # High events per second (300 events in 1 second = 300 events/sec > 200 threshold)
+        importer2.progress.processed_events = 300
+        importer2.progress.start_time = datetime.utcnow() - timedelta(seconds=1)
+
+        result2 = await importer2.optimize_import_performance()
+
+        suggestions2 = result2["optimization_suggestions"]
+        assert any("Decrease batch_size" in suggestion for suggestion in suggestions2)
+        assert any(
+            "Reduce max_concurrent_entities" in suggestion
+            for suggestion in suggestions2
+        )
+
+    @pytest.mark.asyncio
+    async def test_verify_import_integrity_empty_database(self, test_system_config):
+        """Test integrity verification with empty database."""
+        importer = BulkImporter(test_system_config)
+
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = Mock()
+        mock_result.__iter__ = Mock(return_value=iter([]))  # Empty result
+        mock_session.execute.return_value = mock_result
+
+        with patch(
+            "src.data.ingestion.bulk_importer.get_db_session"
+        ) as mock_get_session:
+            mock_context_manager = AsyncMock()
+            mock_context_manager.__aenter__.return_value = mock_session
+            mock_context_manager.__aexit__.return_value = None
+            mock_get_session.return_value = mock_context_manager
+
+            result = await importer.verify_import_integrity()
+
+            assert result["overall_integrity_score"] == 0.0
+            assert "Temporal consistency check" in result["checks_performed"]
+
+    @pytest.mark.asyncio
+    async def test_verify_import_integrity_perfect_score(self, test_system_config):
+        """Test integrity verification with perfect score."""
+        importer = BulkImporter(test_system_config)
+
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = Mock()
+        mock_result.__iter__ = Mock(
+            return_value=iter(
+                [
+                    Mock(
+                        room_id="test_room",
+                        total_events=1000,
+                        future_timestamps=0,  # No issues
+                        missing_states=0,  # No issues
+                    )
+                ]
+            )
+        )
+        mock_session.execute.return_value = mock_result
+
+        with patch(
+            "src.data.ingestion.bulk_importer.get_db_session"
+        ) as mock_get_session:
+            mock_context_manager = AsyncMock()
+            mock_context_manager.__aenter__.return_value = mock_session
+            mock_context_manager.__aexit__.return_value = None
+            mock_get_session.return_value = mock_context_manager
+
+            result = await importer.verify_import_integrity()
+
+            assert result["overall_integrity_score"] == 1.0  # Perfect score
+            assert "Data integrity excellent" in result["issues_found"]
+
+    @pytest.mark.asyncio
+    async def test_verify_import_integrity_database_error(self, test_system_config):
+        """Test integrity verification with database error."""
+        importer = BulkImporter(test_system_config)
+
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_session.execute.side_effect = Exception("Database error")
+
+        with patch(
+            "src.data.ingestion.bulk_importer.get_db_session"
+        ) as mock_get_session:
+            mock_context_manager = AsyncMock()
+            mock_context_manager.__aenter__.return_value = mock_session
+            mock_context_manager.__aexit__.return_value = None
+            mock_get_session.return_value = mock_context_manager
+
+            result = await importer.verify_import_integrity()
+
+            assert result["overall_integrity_score"] == 0.0
+            assert any(
+                "Integrity verification failed" in issue
+                for issue in result["issues_found"]
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_import_checkpoint_file_error(self, test_system_config):
+        """Test checkpoint creation with file write error."""
+        importer = BulkImporter(test_system_config)
+
+        with (
+            tempfile.TemporaryDirectory() as temp_dir,
+            patch("builtins.open", side_effect=OSError("Permission denied")),
+        ):
+            original_cwd = Path.cwd()
+            try:
+                import os
+
+                os.chdir(temp_dir)
+
+                result = await importer.create_import_checkpoint("test_checkpoint")
+
+                assert result is False
+            finally:
+                os.chdir(original_cwd)
+
+    @pytest.mark.asyncio
+    async def test_process_entity_with_semaphore(self, test_system_config):
+        """Test processing entity with semaphore concurrency control."""
+        importer = BulkImporter(test_system_config)
+
+        semaphore = asyncio.Semaphore(1)
+
+        # Mock the actual processing method
+        with patch.object(importer, "_process_single_entity") as mock_process:
+            mock_process.return_value = None
+
+            entity_id = "binary_sensor.test"
+            start_date = datetime(2023, 1, 1, tzinfo=timezone.utc)
+            end_date = datetime(2023, 1, 2, tzinfo=timezone.utc)
+
+            await importer._process_entity_with_semaphore(
+                semaphore, entity_id, start_date, end_date
+            )
+
+            mock_process.assert_called_once_with(entity_id, start_date, end_date)
+
+    @pytest.mark.asyncio
+    async def test_estimate_total_events_no_sample_events(self, test_system_config):
+        """Test event estimation when no sample events are found."""
+        importer = BulkImporter(test_system_config)
+
+        # Mock HA client to return empty history
+        mock_ha_client = AsyncMock()
+        mock_ha_client.get_entity_history.return_value = []  # No events
+        importer.ha_client = mock_ha_client
+
+        entity_ids = ["entity1", "entity2"]
+        start_date = datetime(2023, 1, 1, tzinfo=timezone.utc)
+        end_date = datetime(2023, 1, 2, tzinfo=timezone.utc)
+
+        await importer._estimate_total_events(entity_ids, start_date, end_date)
+
+        # Should not set total_events when no sample data is available
+        assert importer.progress.total_events == 0
+
+    @pytest.mark.asyncio
+    async def test_estimate_total_events_homeassistant_error(self, test_system_config):
+        """Test event estimation with HomeAssistantError."""
+        importer = BulkImporter(test_system_config)
+
+        # Mock HA client to raise HomeAssistantError
+        mock_ha_client = AsyncMock()
+        mock_ha_client.get_entity_history.side_effect = HomeAssistantError(
+            "HA API Error"
+        )
+        importer.ha_client = mock_ha_client
+
+        entity_ids = ["entity1"]
+        start_date = datetime(2023, 1, 1, tzinfo=timezone.utc)
+        end_date = datetime(2023, 1, 2, tzinfo=timezone.utc)
+
+        await importer._estimate_total_events(entity_ids, start_date, end_date)
+
+        # Should handle HomeAssistantError gracefully and increment stats
+        assert importer.stats["api_errors"] == 1
+        assert importer.progress.total_events == 0
+
+    @pytest.mark.asyncio
+    async def test_convert_history_record_missing_entity_id(self, test_system_config):
+        """Test converting history record with missing entity_id."""
+        importer = BulkImporter(test_system_config)
+
+        record = {
+            "state": "on",
+            "last_changed": "2023-01-01T12:00:00Z",
+            "attributes": {},
+        }
+
+        ha_event = importer._convert_history_record_to_ha_event(record)
+
+        # Should still create event with empty entity_id
+        assert ha_event is not None
+        assert ha_event.entity_id == ""
+        assert ha_event.state == "on"
+
+    @pytest.mark.asyncio
+    async def test_convert_history_record_use_last_updated(self, test_system_config):
+        """Test converting history record using last_updated when last_changed missing."""
+        importer = BulkImporter(test_system_config)
+
+        record = {
+            "entity_id": "binary_sensor.test",
+            "state": "on",
+            "last_updated": "2023-01-01T12:00:00Z",  # No last_changed
+            "attributes": {},
+        }
+
+        ha_event = importer._convert_history_record_to_ha_event(record)
+
+        assert ha_event is not None
+        assert ha_event.entity_id == "binary_sensor.test"
+        assert ha_event.timestamp == datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+    def test_determine_sensor_type_nested_sensors(self, test_system_config):
+        """Test sensor type determination with nested sensor config."""
+        importer = BulkImporter(test_system_config)
+
+        # Mock room config with nested sensors
+        mock_room_config = Mock()
+        mock_room_config.sensors = {
+            "presence": {
+                "primary": "binary_sensor.test_presence_primary",
+                "secondary": "binary_sensor.test_presence_secondary",
+            },
+            "door": "binary_sensor.test_door",
+        }
+
+        # Test nested dict match - secondary sensor
+        sensor_type = importer._determine_sensor_type(
+            "binary_sensor.test_presence_secondary", mock_room_config
+        )
+        assert sensor_type == "presence"
+
+        # Test string sensor match
+        sensor_type = importer._determine_sensor_type(
+            "binary_sensor.test_door", mock_room_config
+        )
+        assert sensor_type == "door"
+
+    def test_determine_sensor_type_light_entity(self, test_system_config):
+        """Test sensor type determination for light entities."""
+        importer = BulkImporter(test_system_config)
+
+        mock_room_config = Mock()
+        mock_room_config.sensors = {}
+
+        sensor_type = importer._determine_sensor_type(
+            "light.bedroom_ceiling", mock_room_config
+        )
+        assert sensor_type == "light"
+
+    def test_generate_sufficiency_recommendation_all_scenarios(
+        self, test_system_config
+    ):
+        """Test all scenarios for sufficiency recommendation generation."""
+        importer = BulkImporter(test_system_config)
+
+        # Test both insufficient (days and events)
+        recommendation = importer._generate_sufficiency_recommendation(
+            sufficient_days=False,
+            sufficient_events=False,
+            total_days=15,
+            avg_events_per_day=5.0,
+        )
+        assert "Need more historical data" in recommendation
+
+    @pytest.mark.asyncio
+    async def test_save_resume_data_no_file_configured(self, test_system_config):
+        """Test save resume data when no resume file is configured."""
+        importer = BulkImporter(test_system_config)
+        importer.import_config.resume_file = None  # No resume file configured
+
+        # Should not raise error
+        await importer._save_resume_data()
+
+    @pytest.mark.asyncio
+    async def test_save_resume_data_file_error(self, test_system_config):
+        """Test save resume data with file write error."""
+        importer = BulkImporter(test_system_config)
+
+        # Set invalid resume file path
+        importer.import_config.resume_file = "/invalid/path/resume.pkl"
+
+        # Should handle error gracefully
+        await importer._save_resume_data()
+
+    @pytest.mark.asyncio
+    async def test_load_resume_data_no_file_configured(self, test_system_config):
+        """Test load resume data when no resume file is configured."""
+        importer = BulkImporter(test_system_config)
+        importer.import_config.resume_file = None  # No resume file
+
+        # Should not modify resume data
+        await importer._load_resume_data()
+
+        assert importer._resume_data == {}
+        assert importer._completed_entities == set()
+
+    def test_convert_history_record_exception_handling(self, test_system_config):
+        """Test exception handling in history record conversion."""
+        importer = BulkImporter(test_system_config)
+
+        # Record that will cause datetime parsing exception
+        record = {
+            "entity_id": "binary_sensor.test",
+            "state": "on",
+            "last_changed": "not-a-timestamp",
+            "attributes": {},
+        }
+
+        ha_event = importer._convert_history_record_to_ha_event(record)
+
+        # Should return None and handle exception gracefully
+        assert ha_event is None
+
+    @pytest.mark.asyncio
+    async def test_process_entities_batch_all_completed(self, test_system_config):
+        """Test processing entities batch when all are already completed."""
+        importer = BulkImporter(test_system_config)
+
+        entity_ids = ["entity1", "entity2", "entity3"]
+        # Mark all entities as completed
+        importer._completed_entities = set(entity_ids)
+
+        with patch.object(importer, "_process_entity_with_semaphore") as mock_process:
+            start_date = datetime(2023, 1, 1, tzinfo=timezone.utc)
+            end_date = datetime(2023, 1, 2, tzinfo=timezone.utc)
+
+            await importer._process_entities_batch(entity_ids, start_date, end_date)
+
+            # Should not process any entities
+            mock_process.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_update_progress_with_periodic_logging(self, test_system_config):
+        """Test progress update with periodic logging trigger."""
+        importer = BulkImporter(test_system_config)
+
+        # Set processed entities to multiple of 10 to trigger logging
+        importer.progress.processed_entities = 20
+        importer.progress.processed_events = 1000
+        importer.progress.start_time = datetime.utcnow() - timedelta(seconds=100)
+
+        with patch("src.data.ingestion.bulk_importer.logger") as mock_logger:
+            await importer._update_progress()
+
+            # Should have logged progress info
+            mock_logger.info.assert_called_once()
+            log_call = mock_logger.info.call_args[0][0]
+            assert "Progress:" in log_call
+            assert "entities" in log_call
+            assert "events" in log_call

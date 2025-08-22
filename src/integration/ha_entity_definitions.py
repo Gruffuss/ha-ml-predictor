@@ -87,7 +87,6 @@ class HADeviceClass(Enum):
     # Button device classes
     RESTART = "restart"
     IDENTIFY = "identify"
-    UPDATE = "update"
 
 
 class HAEntityCategory(Enum):
@@ -136,8 +135,6 @@ class HAEntityConfig:
 class HASensorEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant sensor entities."""
 
-    entity_type: HAEntityType = HAEntityType.SENSOR
-
     # Sensor-specific attributes
     value_template: Optional[str] = None
     json_attributes_topic: Optional[str] = None
@@ -150,12 +147,14 @@ class HASensorEntityConfig(HAEntityConfig):
     last_reset_topic: Optional[str] = None
     last_reset_value_template: Optional[str] = None
 
+    def __post_init__(self):
+        if self.entity_type != HAEntityType.SENSOR:
+            self.entity_type = HAEntityType.SENSOR
+
 
 @dataclass
 class HABinarySensorEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant binary sensor entities."""
-
-    entity_type: HAEntityType = HAEntityType.BINARY_SENSOR
 
     # Binary sensor-specific attributes
     value_template: Optional[str] = None
@@ -164,12 +163,14 @@ class HABinarySensorEntityConfig(HAEntityConfig):
     device_class: Optional[str] = None
     off_delay: Optional[int] = None
 
+    def __post_init__(self):
+        if self.entity_type != HAEntityType.BINARY_SENSOR:
+            self.entity_type = HAEntityType.BINARY_SENSOR
+
 
 @dataclass
 class HAButtonEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant button entities."""
-
-    entity_type: HAEntityType = HAEntityType.BUTTON
 
     # Button-specific attributes
     command_topic: str = ""
@@ -179,15 +180,17 @@ class HAButtonEntityConfig(HAEntityConfig):
     retain: bool = False
     qos: int = 1
 
+    def __post_init__(self):
+        if self.entity_type != HAEntityType.BUTTON:
+            self.entity_type = HAEntityType.BUTTON
+
 
 @dataclass
 class HASwitchEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant switch entities."""
 
-    entity_type: HAEntityType = HAEntityType.SWITCH
-
     # Switch-specific attributes
-    command_topic: str
+    command_topic: str = ""
     state_on: str = "ON"
     state_off: str = "OFF"
     payload_on: str = "ON"
@@ -198,15 +201,17 @@ class HASwitchEntityConfig(HAEntityConfig):
     retain: bool = False
     qos: int = 1
 
+    def __post_init__(self):
+        if self.entity_type != HAEntityType.SWITCH:
+            self.entity_type = HAEntityType.SWITCH
+
 
 @dataclass
 class HANumberEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant number entities."""
 
-    entity_type: HAEntityType = HAEntityType.NUMBER
-
     # Number-specific attributes
-    command_topic: str
+    command_topic: str = ""
     command_template: Optional[str] = None
     min: float = 0
     max: float = 100
@@ -215,29 +220,33 @@ class HANumberEntityConfig(HAEntityConfig):
     unit_of_measurement: Optional[str] = None
     device_class: Optional[str] = None
 
+    def __post_init__(self):
+        if self.entity_type != HAEntityType.NUMBER:
+            self.entity_type = HAEntityType.NUMBER
+
 
 @dataclass
 class HASelectEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant select entities."""
 
-    entity_type: HAEntityType = HAEntityType.SELECT
-
     # Select-specific attributes
-    command_topic: str
+    command_topic: str = ""
     command_template: Optional[str] = None
     options: List[str] = field(default_factory=list)
     value_template: Optional[str] = None
     optimistic: bool = False
+
+    def __post_init__(self):
+        if self.entity_type != HAEntityType.SELECT:
+            self.entity_type = HAEntityType.SELECT
 
 
 @dataclass
 class HATextEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant text entities."""
 
-    entity_type: HAEntityType = HAEntityType.TEXT
-
     # Text-specific attributes
-    command_topic: str
+    command_topic: str = ""
     command_template: Optional[str] = None
     value_template: Optional[str] = None
     min: int = 0
@@ -245,30 +254,38 @@ class HATextEntityConfig(HAEntityConfig):
     mode: str = "text"  # text, password
     pattern: Optional[str] = None
 
+    def __post_init__(self):
+        if self.entity_type != HAEntityType.TEXT:
+            self.entity_type = HAEntityType.TEXT
+
 
 @dataclass
 class HAImageEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant image entities."""
 
-    entity_type: HAEntityType = HAEntityType.IMAGE
-
     # Image-specific attributes
-    url_template: str
+    url_template: str = ""
     content_type: str = "image/jpeg"
     verify_ssl: bool = True
+
+    def __post_init__(self):
+        if self.entity_type != HAEntityType.IMAGE:
+            self.entity_type = HAEntityType.IMAGE
 
 
 @dataclass
 class HADateTimeEntityConfig(HAEntityConfig):
     """Configuration for Home Assistant datetime entities."""
 
-    entity_type: HAEntityType = HAEntityType.DATETIME
-
     # DateTime-specific attributes
-    command_topic: str
+    command_topic: str = ""
     command_template: Optional[str] = None
     value_template: Optional[str] = None
     format: str = "%Y-%m-%d %H:%M:%S"
+
+    def __post_init__(self):
+        if self.entity_type != HAEntityType.DATETIME:
+            self.entity_type = HAEntityType.DATETIME
 
 
 @dataclass

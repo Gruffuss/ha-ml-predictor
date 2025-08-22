@@ -6,7 +6,7 @@ rate limiting, and error handling for the HomeAssistantClient class.
 """
 
 import asyncio
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 import json
 from unittest.mock import AsyncMock, MagicMock, Mock, call, patch
 
@@ -21,6 +21,7 @@ from src.core.exceptions import (
     HomeAssistantAPIError,
     HomeAssistantAuthenticationError,
     HomeAssistantConnectionError,
+    RateLimitExceededError,
     WebSocketError,
 )
 from src.data.ingestion.ha_client import (
@@ -1166,3 +1167,682 @@ class TestHomeAssistantClientIntegration:
             processed_entities.add(call_args[0][0])  # First argument is entity_id
 
         assert processed_entities == set(entity_ids)
+
+    @pytest.mark.asyncio
+    async def test_get_entity_state_rate_limit_retry(self, test_system_config):
+        """Test entity state retrieval with rate limiting and retry."""
+        client = HomeAssistantClient(test_system_config)
+
+        # Mock rate limiter to raise RateLimitExceededError first, then succeed
+        mock_rate_limiter = AsyncMock()
+        mock_rate_limiter.acquire.side_effect = [
+            RateLimitExceededError(
+                service="test",
+                limit=100,
+                window_seconds=60,
+                reset_time=1,
+            ),
+            None,  # Second call succeeds
+        ]
+        client.rate_limiter = mock_rate_limiter
+
+        expected_state = {
+            "entity_id": "binary_sensor.test",
+            "state": "on",
+            "attributes": {"device_class": "motion"},
+        }
+
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json.return_value = expected_state
+        mock_session = AsyncMock()
+
+        # Create a proper async context manager mock
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        # Make get() a synchronous method that returns the context manager
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+
+        client.session = mock_session
+
+        with patch("asyncio.sleep") as mock_sleep:
+            result = await client.get_entity_state("binary_sensor.test")
+
+            assert result == expected_state
+            # Should have retried after rate limit
+            assert mock_rate_limiter.acquire.call_count == 2
+            mock_sleep.assert_called_once_with(1)
+
+    @pytest.mark.asyncio
+    async def test_get_entity_state_server_rate_limit(self, test_system_config):
+        """Test entity state retrieval with server-side rate limiting."""
+        client = HomeAssistantClient(test_system_config)
+        client.rate_limiter = AsyncMock()
+        # Mock the window attribute properly
+        mock_window = Mock()
+        mock_window.total_seconds.return_value = 60
+        client.rate_limiter.window = mock_window
+
+        mock_response = AsyncMock()
+        mock_response.status = 429
+        mock_response.headers = {"Retry-After": "30"}
+        mock_session = AsyncMock()
+
+        # Create a proper async context manager mock
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+        client.session = mock_session
+
+        with pytest.raises(RateLimitExceededError) as exc_info:
+            await client.get_entity_state("binary_sensor.test")
+
+        assert exc_info.value.context["reset_time"] == 30
+        assert exc_info.value.context["service"] == "home_assistant_api"
+
+    @pytest.mark.asyncio
+    async def test_get_entity_history_server_rate_limit(self, test_system_config):
+        """Test entity history retrieval with server-side rate limiting."""
+        client = HomeAssistantClient(test_system_config)
+        client.rate_limiter = AsyncMock()
+        # Mock the window attribute properly
+        mock_window = Mock()
+        mock_window.total_seconds.return_value = 60
+        client.rate_limiter.window = mock_window
+
+        start_time = datetime.now(UTC) - timedelta(hours=1)
+
+        mock_response = AsyncMock()
+        mock_response.status = 429
+        mock_response.headers = {"Retry-After": "60"}
+        mock_session = AsyncMock()
+
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+        client.session = mock_session
+
+        with pytest.raises(RateLimitExceededError) as exc_info:
+            await client.get_entity_history("binary_sensor.test", start_time)
+
+        assert exc_info.value.context["service"] == "home_assistant_history_api"
+        assert exc_info.value.context["reset_time"] == 60
+
+    @pytest.mark.asyncio
+    async def test_get_entity_state_with_state_normalization(self, test_system_config):
+        """Test entity state retrieval with state normalization."""
+        client = HomeAssistantClient(test_system_config)
+        client.rate_limiter = AsyncMock()
+
+        raw_state = {
+            "entity_id": "binary_sensor.test",
+            "state": "ON",  # Uppercase state
+            "attributes": {"device_class": "motion"},
+        }
+
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json.return_value = raw_state
+        mock_session = AsyncMock()
+
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+        client.session = mock_session
+
+        result = await client.get_entity_state("binary_sensor.test")
+
+        # State should be normalized to lowercase
+        assert result["state"] == "on"
+
+    @pytest.mark.asyncio
+    async def test_get_entity_history_with_state_normalization(
+        self, test_system_config
+    ):
+        """Test entity history retrieval with state normalization."""
+        client = HomeAssistantClient(test_system_config)
+        client.rate_limiter = AsyncMock()
+
+        start_time = datetime.now(UTC) - timedelta(hours=1)
+        end_time = datetime.now(UTC)
+
+        raw_history = [
+            {
+                "entity_id": "binary_sensor.test",
+                "state": "ON",  # Uppercase state
+                "last_changed": start_time.isoformat() + "Z",
+                "attributes": {},
+            }
+        ]
+
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json.return_value = [raw_history]
+        mock_session = AsyncMock()
+
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.return_value = mock_response
+        mock_context_manager.__aexit__.return_value = None
+
+        mock_session.get = MagicMock(return_value=mock_context_manager)
+        client.session = mock_session
+
+        result = await client.get_entity_history(
+            "binary_sensor.test", start_time, end_time
+        )
+
+        # State should be normalized
+        assert result[0]["state"] == "on"
+
+    @pytest.mark.asyncio
+    async def test_get_bulk_history_with_rate_limit_handling(self, test_system_config):
+        """Test bulk history processing with rate limit error handling and retry."""
+        client = HomeAssistantClient(test_system_config)
+
+        entity_ids = ["binary_sensor.test_1", "binary_sensor.test_2"]
+        start_time = datetime.now(UTC) - timedelta(hours=1)
+        end_time = datetime.now(UTC)
+
+        call_count = 0
+
+        async def mock_get_history(entity_id, start, end):
+            nonlocal call_count
+            call_count += 1
+
+            if call_count == 1:  # First call raises rate limit error
+                rate_error = RateLimitExceededError(
+                    service="test", limit=100, window_seconds=60, reset_time=1
+                )
+                raise rate_error
+            else:  # Subsequent calls succeed
+                return [
+                    {
+                        "entity_id": entity_id,
+                        "state": "on",
+                        "last_changed": start.isoformat() + "Z",
+                    }
+                ]
+
+        client.get_entity_history = AsyncMock(side_effect=mock_get_history)
+
+        with patch("asyncio.sleep") as mock_sleep:
+            results = []
+            async for batch in client.get_bulk_history(
+                entity_ids, start_time, end_time, batch_size=1
+            ):
+                results.extend(batch)
+
+            # Should have processed the second entity after the first failed
+            assert len(results) == 1  # Only second entity succeeds
+            mock_sleep.assert_called()  # Should have slept during rate limit handling
+
+    @pytest.mark.asyncio
+    async def test_get_bulk_history_with_entity_not_found(self, test_system_config):
+        """Test bulk history processing with EntityNotFoundError."""
+        client = HomeAssistantClient(test_system_config)
+
+        entity_ids = ["binary_sensor.exists", "binary_sensor.missing"]
+        start_time = datetime.now(UTC) - timedelta(hours=1)
+        end_time = datetime.now(UTC)
+
+        async def mock_get_history(entity_id, start, end):
+            if entity_id == "binary_sensor.missing":
+                raise EntityNotFoundError(entity_id)
+            return [
+                {
+                    "entity_id": entity_id,
+                    "state": "on",
+                    "last_changed": start.isoformat() + "Z",
+                }
+            ]
+
+        client.get_entity_history = AsyncMock(side_effect=mock_get_history)
+
+        results = []
+        async for batch in client.get_bulk_history(
+            entity_ids, start_time, end_time, batch_size=2
+        ):
+            results.extend(batch)
+
+        # Should only get results for existing entity
+        assert len(results) == 1
+        assert results[0]["entity_id"] == "binary_sensor.exists"
+
+    @pytest.mark.asyncio
+    async def test_get_bulk_history_with_generic_error(self, test_system_config):
+        """Test bulk history processing with generic error."""
+        client = HomeAssistantClient(test_system_config)
+
+        entity_ids = ["binary_sensor.good", "binary_sensor.error"]
+        start_time = datetime.now(UTC) - timedelta(hours=1)
+        end_time = datetime.now(UTC)
+
+        async def mock_get_history(entity_id, start, end):
+            if entity_id == "binary_sensor.error":
+                raise Exception("Generic error")
+            return [
+                {
+                    "entity_id": entity_id,
+                    "state": "on",
+                    "last_changed": start.isoformat() + "Z",
+                }
+            ]
+
+        client.get_entity_history = AsyncMock(side_effect=mock_get_history)
+
+        results = []
+        async for batch in client.get_bulk_history(
+            entity_ids, start_time, end_time, batch_size=2
+        ):
+            results.extend(batch)
+
+        # Should only get results for good entity
+        assert len(results) == 1
+        assert results[0]["entity_id"] == "binary_sensor.good"
+
+    def test_validate_and_normalize_state_edge_cases(self, test_system_config):
+        """Test state validation and normalization for edge cases."""
+        client = HomeAssistantClient(test_system_config)
+
+        # Test empty state
+        assert client._validate_and_normalize_state("") == ""
+        assert client._validate_and_normalize_state(None) == ""
+
+        # Test whitespace handling
+        assert client._validate_and_normalize_state("  ON  ") == "on"
+
+        # Test partial matches
+        assert client._validate_and_normalize_state("motion_detected") == "on"
+        assert client._validate_and_normalize_state("motion_clear") == "off"
+        assert client._validate_and_normalize_state("door_opened") == "open"
+        assert client._validate_and_normalize_state("door_close") == "closed"
+        assert client._validate_and_normalize_state("sensor_active") == "on"
+        assert client._validate_and_normalize_state("sensor_inactive") == "off"
+        assert client._validate_and_normalize_state("no_motion") == "off"
+
+        # Test unknown state (should return normalized original)
+        assert client._validate_and_normalize_state("custom_state") == "custom_state"
+
+    @pytest.mark.asyncio
+    async def test_handle_event_missing_data(self, test_system_config):
+        """Test WebSocket event handling with missing data."""
+        client = HomeAssistantClient(test_system_config)
+
+        handler_calls = []
+
+        def mock_handler(event):
+            handler_calls.append(event)
+
+        client.add_event_handler(mock_handler)
+
+        # Test event with missing new_state
+        event_data_missing_state = {
+            "type": "event",
+            "event": {
+                "event_type": "state_changed",
+                "data": {
+                    "entity_id": "binary_sensor.test",
+                    # Missing new_state
+                    "old_state": {"state": "off"},
+                },
+            },
+        }
+
+        await client._handle_event(event_data_missing_state)
+
+        # Should not call handler for missing data
+        assert len(handler_calls) == 0
+
+        # Test event with missing entity_id
+        event_data_missing_entity = {
+            "type": "event",
+            "event": {
+                "event_type": "state_changed",
+                "data": {
+                    # Missing entity_id
+                    "new_state": {
+                        "state": "on",
+                        "last_changed": datetime.now(UTC).isoformat() + "Z",
+                    },
+                    "old_state": {"state": "off"},
+                },
+            },
+        }
+
+        await client._handle_event(event_data_missing_entity)
+
+        # Should not call handler for missing entity_id
+        assert len(handler_calls) == 0
+
+    @pytest.mark.asyncio
+    async def test_handle_event_timestamp_formats(self, test_system_config):
+        """Test WebSocket event handling with various timestamp formats."""
+        client = HomeAssistantClient(test_system_config)
+        client._subscribed_entities = {"binary_sensor.test"}
+
+        handler_calls = []
+
+        async def mock_handler(event):
+            handler_calls.append(event)
+
+        client.add_event_handler(mock_handler)
+
+        # Test with double timezone suffix (edge case from tests)
+        event_data = {
+            "type": "event",
+            "event": {
+                "event_type": "state_changed",
+                "data": {
+                    "entity_id": "binary_sensor.test",
+                    "new_state": {
+                        "state": "on",
+                        "last_changed": "2023-01-01T12:00:00+00:00+00:00",  # Double timezone
+                        "attributes": {},
+                    },
+                    "old_state": {"state": "off"},
+                },
+            },
+        }
+
+        await client._handle_event(event_data)
+
+        # Should handle double timezone and call handler
+        assert len(handler_calls) == 1
+        ha_event = handler_calls[0]
+        assert ha_event.timestamp == datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+    @pytest.mark.asyncio
+    async def test_handle_event_processing_error(self, test_system_config):
+        """Test WebSocket event processing error handling."""
+        client = HomeAssistantClient(test_system_config)
+        client._subscribed_entities = {"binary_sensor.test"}
+
+        # Mock handler that raises exception
+        def error_handler(event):
+            raise Exception("Handler error")
+
+        client.add_event_handler(error_handler)
+
+        event_data = {
+            "type": "event",
+            "event": {
+                "event_type": "state_changed",
+                "data": {
+                    "entity_id": "binary_sensor.test",
+                    "new_state": {
+                        "state": "on",
+                        "last_changed": datetime.now(UTC).isoformat() + "Z",
+                        "attributes": {},
+                    },
+                    "old_state": {"state": "off"},
+                },
+            },
+        }
+
+        # Should handle handler exceptions gracefully
+        await client._notify_event_handlers(
+            HAEvent(
+                entity_id="binary_sensor.test",
+                state="on",
+                previous_state="off",
+                timestamp=datetime.now(UTC),
+                attributes={},
+            )
+        )
+
+    @pytest.mark.asyncio
+    async def test_process_websocket_message_types(self, test_system_config):
+        """Test processing various WebSocket message types."""
+        client = HomeAssistantClient(test_system_config)
+
+        # Test pong message (should be handled silently)
+        pong_message = {"type": "pong"}
+        await client._process_websocket_message(pong_message)
+
+        # Test result message with pending response
+        future = asyncio.Future()
+        client._pending_responses[123] = future
+
+        result_message = {"type": "result", "id": 123, "success": True}
+        await client._process_websocket_message(result_message)
+
+        # Future should be resolved
+        assert future.done()
+        assert future.result() == result_message
+
+        # Test result message without pending response (should not error)
+        result_message_no_pending = {"type": "result", "id": 999, "success": True}
+        await client._process_websocket_message(result_message_no_pending)
+
+        # Test unknown message type (should be logged as debug)
+        unknown_message = {"type": "unknown_type", "data": "test"}
+        await client._process_websocket_message(unknown_message)
+
+    @pytest.mark.asyncio
+    async def test_handle_websocket_messages_json_error(self, test_system_config):
+        """Test WebSocket message handling with JSON decode error."""
+        client = HomeAssistantClient(test_system_config)
+        client._connected = True
+
+        # Mock websocket with invalid JSON
+        mock_websocket = AsyncMock()
+        mock_websocket.__aiter__ = AsyncMock(return_value=iter(["invalid json"]))
+        client.websocket = mock_websocket
+
+        with patch("src.data.ingestion.ha_client.logger") as mock_logger:
+            await client._handle_websocket_messages()
+
+            # Should log JSON decode warning
+            mock_logger.warning.assert_called_with(
+                "Received invalid JSON: invalid json"
+            )
+
+    @pytest.mark.asyncio
+    async def test_handle_websocket_messages_connection_closed(
+        self, test_system_config
+    ):
+        """Test WebSocket message handling when connection is closed."""
+        client = HomeAssistantClient(test_system_config)
+        client._connected = True
+
+        # Mock websocket that raises ConnectionClosed
+        mock_websocket = AsyncMock()
+        mock_websocket.__aiter__ = AsyncMock(side_effect=ConnectionClosed(None, None))
+        client.websocket = mock_websocket
+
+        with (
+            patch.object(client, "_reconnect") as mock_reconnect,
+            patch("asyncio.create_task") as mock_create_task,
+        ):
+            await client._handle_websocket_messages()
+
+            # Should attempt reconnection
+            mock_create_task.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_reconnect_max_attempts_reached(self, test_system_config):
+        """Test reconnection when max attempts are reached."""
+        client = HomeAssistantClient(test_system_config)
+        client._connected = True
+        client._reconnect_attempts = client._max_reconnect_attempts  # At max
+
+        with patch("src.data.ingestion.ha_client.logger") as mock_logger:
+            await client._reconnect()
+
+            # Should log error and not attempt reconnection
+            mock_logger.error.assert_called_with("Max reconnection attempts reached")
+
+    @pytest.mark.asyncio
+    async def test_reconnect_with_exponential_backoff(self, test_system_config):
+        """Test reconnection with exponential backoff."""
+        client = HomeAssistantClient(test_system_config)
+        client._connected = True
+        client._reconnect_attempts = 3
+        client._base_reconnect_delay = 1
+
+        with (
+            patch("asyncio.sleep") as mock_sleep,
+            patch.object(client, "_cleanup_connections"),
+            patch.object(client, "connect"),
+        ):
+            await client._reconnect()
+
+            # Should calculate exponential backoff: 1 * (2^(3-1)) = 4 seconds
+            expected_delay = 1 * (2 ** (3 - 1))  # 4 seconds
+            mock_sleep.assert_called_with(expected_delay)
+
+    @pytest.mark.asyncio
+    async def test_reconnect_delay_capped(self, test_system_config):
+        """Test reconnection delay is capped at maximum."""
+        client = HomeAssistantClient(test_system_config)
+        client._connected = True
+        client._reconnect_attempts = 10  # High number to exceed cap
+        client._base_reconnect_delay = 5
+
+        with (
+            patch("asyncio.sleep") as mock_sleep,
+            patch.object(client, "_cleanup_connections"),
+            patch.object(client, "connect"),
+        ):
+            await client._reconnect()
+
+            # Should be capped at 300 seconds (5 minutes)
+            mock_sleep.assert_called_with(300)
+
+    @pytest.mark.asyncio
+    async def test_reconnect_failure_triggers_retry(self, test_system_config):
+        """Test reconnection failure triggers another retry."""
+        client = HomeAssistantClient(test_system_config)
+        client._connected = True
+        client._reconnect_attempts = 1
+
+        with (
+            patch("asyncio.sleep"),
+            patch.object(client, "_cleanup_connections"),
+            patch.object(client, "connect", side_effect=Exception("Reconnect failed")),
+            patch.object(client, "_reconnect") as mock_reconnect_retry,
+            patch("asyncio.create_task") as mock_create_task,
+        ):
+            await client._reconnect()
+
+            # Should schedule another reconnection attempt
+            mock_create_task.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_subscribe_to_events_failed_response(self, test_system_config):
+        """Test event subscription with failed response."""
+        client = HomeAssistantClient(test_system_config)
+        client._connected = True
+        client.websocket = AsyncMock()
+
+        with patch(
+            "asyncio.wait_for", return_value={"success": False, "error": "Failed"}
+        ):
+            with pytest.raises(HomeAssistantAPIError):
+                await client.subscribe_to_events(["binary_sensor.test"])
+
+    def test_convert_history_to_sensor_events_double_timezone(self, test_system_config):
+        """Test converting history data with double timezone suffix."""
+        client = HomeAssistantClient(test_system_config)
+
+        history_data = [
+            {
+                "entity_id": "binary_sensor.test",
+                "state": "on",
+                "last_changed": "2023-01-01T12:00:00+00:00+00:00",  # Double timezone
+                "attributes": {},
+            }
+        ]
+
+        events = client.convert_history_to_sensor_events(
+            history_data, room_id="test_room", sensor_type="motion"
+        )
+
+        assert len(events) == 1
+        assert events[0].timestamp == datetime(
+            2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc
+        )
+
+    def test_convert_history_to_sensor_events_no_last_updated(self, test_system_config):
+        """Test converting history data with missing both timestamp fields."""
+        client = HomeAssistantClient(test_system_config)
+
+        history_data = [
+            {
+                "entity_id": "binary_sensor.test",
+                "state": "on",
+                # Missing both last_changed and last_updated
+                "attributes": {},
+            }
+        ]
+
+        events = client.convert_history_to_sensor_events(
+            history_data, room_id="test_room", sensor_type="motion"
+        )
+
+        # Should skip events without timestamp
+        assert len(events) == 0
+
+    @pytest.mark.asyncio
+    async def test_cleanup_connections_with_exceptions(self, test_system_config):
+        """Test connection cleanup with exceptions."""
+        client = HomeAssistantClient(test_system_config)
+
+        # Mock connections that raise exceptions when closing
+        mock_websocket = AsyncMock()
+        mock_websocket.close.side_effect = Exception("WebSocket close error")
+        mock_session = AsyncMock()
+        mock_session.close.side_effect = Exception("Session close error")
+
+        client.websocket = mock_websocket
+        client.session = mock_session
+
+        # Should handle exceptions gracefully
+        await client._cleanup_connections()
+
+        assert client.websocket is None
+        assert client.session is None
+
+    @pytest.mark.asyncio
+    async def test_get_entity_state_connection_error_in_context_manager(
+        self, test_system_config
+    ):
+        """Test entity state retrieval with connection error in async context manager."""
+        client = HomeAssistantClient(test_system_config)
+        client.rate_limiter = AsyncMock()
+
+        mock_session = AsyncMock()
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.side_effect = ClientError("Connection failed")
+        mock_session.get = Mock(return_value=mock_context_manager)
+        client.session = mock_session
+
+        with pytest.raises(HomeAssistantConnectionError):
+            await client.get_entity_state("binary_sensor.test")
+
+    @pytest.mark.asyncio
+    async def test_get_entity_history_connection_error_in_context_manager(
+        self, test_system_config
+    ):
+        """Test entity history retrieval with connection error in async context manager."""
+        client = HomeAssistantClient(test_system_config)
+        client.rate_limiter = AsyncMock()
+
+        start_time = datetime.now(UTC) - timedelta(hours=1)
+
+        mock_session = AsyncMock()
+        mock_context_manager = AsyncMock()
+        mock_context_manager.__aenter__.side_effect = ClientError("Connection failed")
+        mock_session.get = Mock(return_value=mock_context_manager)
+        client.session = mock_session
+
+        with pytest.raises(HomeAssistantConnectionError):
+            await client.get_entity_history("binary_sensor.test", start_time)

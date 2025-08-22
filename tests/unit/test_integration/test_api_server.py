@@ -175,7 +175,12 @@ class TestPydanticModels:
             "reason": "Performance degradation detected",
         }
 
-        request = ManualRetrainRequest(**valid_data)
+        with patch("src.integration.api_server.get_config") as mock_get_config:
+            mock_config = Mock()
+            mock_config.rooms = {"kitchen": Mock()}
+            mock_get_config.return_value = mock_config
+
+            request = ManualRetrainRequest(**valid_data)
         assert request.room_id == "kitchen"
         assert request.force is True
         assert request.strategy == "incremental"
