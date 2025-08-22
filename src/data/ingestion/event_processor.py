@@ -580,7 +580,7 @@ class MovementPatternClassifier:
             Tuple of (classification, confidence, detailed_metrics)
         """
         # Get classification result
-        result = self.classify_movement_sequence(sequence, room_config)
+        result = self.classify_movement(sequence, room_config)
 
         # Calculate detailed metrics
         metrics = self._calculate_movement_metrics(sequence, room_config)
@@ -705,8 +705,8 @@ class MovementPatternClassifier:
         )
 
         # Determine if same pattern type
-        class1 = self.classify_movement_sequence(sequence1, room_config)
-        class2 = self.classify_movement_sequence(sequence2, room_config)
+        class1 = self.classify_movement(sequence1, room_config)
+        class2 = self.classify_movement(sequence2, room_config)
         is_same_pattern = class1.is_human_triggered == class2.is_human_triggered
 
         return overall_similarity, comparison_metrics, is_same_pattern

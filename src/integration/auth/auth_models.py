@@ -214,8 +214,10 @@ class PasswordChangeRequest(BaseModel):
     @classmethod
     def passwords_match(cls, v, values):
         """Validate that passwords match."""
-        if "new_password" in values and v != values["new_password"]:
-            raise ValueError("Passwords do not match")
+        # In Pydantic V2, values is ValidationInfo object
+        if hasattr(values, "data") and "new_password" in values.data:
+            if v != values.data["new_password"]:
+                raise ValueError("Passwords do not match")
         return v
 
     @field_validator("new_password")
