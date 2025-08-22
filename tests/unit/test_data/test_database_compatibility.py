@@ -6,7 +6,7 @@ utilities for SQLite and PostgreSQL/TimescaleDB.
 """
 
 import os
-from unittest.mock import MagicMock, Mock, patch, PropertyMock
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
 from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint, event

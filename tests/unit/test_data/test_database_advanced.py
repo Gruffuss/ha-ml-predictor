@@ -9,7 +9,15 @@ import asyncio
 from datetime import datetime, timedelta, timezone
 import hashlib
 import time
-from unittest.mock import AsyncMock, MagicMock, Mock, call, patch, PropertyMock, mock_open
+from unittest.mock import (
+    AsyncMock,
+    MagicMock,
+    Mock,
+    PropertyMock,
+    call,
+    mock_open,
+    patch,
+)
 
 import pytest
 from sqlalchemy import text
