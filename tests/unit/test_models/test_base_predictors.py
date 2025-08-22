@@ -429,29 +429,106 @@ class TestLSTMPredictor:
             assert prediction.model_type == ModelType.LSTM.value
 
     @pytest.mark.asyncio
-    async def test_lstm_sequence_creation(self, validation_data):
-        """Test LSTM sequence data preparation."""
-        train_features, train_targets, _, _ = validation_data
+    async def test_lstm_sequence_creation(self):
+        """Test LSTM sequence data preparation with realistic parameters."""
         predictor = LSTMPredictor(room_id="test_room")
 
-        # Test with small dataset
-        small_features = train_features.head(50)
-        small_targets = train_targets.head(50)
+        # **FIX 1: USE MORE TEST DATA** - 250 samples instead of 50
+        n_samples = 250
+        n_features = 12
 
-        # Create sequences - pass DataFrames, not .values arrays
-        X_seq, y_seq = predictor._create_sequences(small_features, small_targets)
+        # Create realistic test features
+        test_features = pd.DataFrame(
+            {
+                "hour_sin": np.sin(2 * np.pi * np.arange(n_samples) / 24),
+                "hour_cos": np.cos(2 * np.pi * np.arange(n_samples) / 24),
+                "day_sin": np.sin(2 * np.pi * np.arange(n_samples) / 168),
+                "day_cos": np.cos(2 * np.pi * np.arange(n_samples) / 168),
+                "time_since_last_occupied": np.random.exponential(3600, n_samples),
+                "time_since_last_vacant": np.random.exponential(1800, n_samples),
+                "current_state_duration": np.random.exponential(2400, n_samples),
+                "temperature": np.random.normal(21, 3, n_samples),
+                "humidity": np.random.normal(45, 10, n_samples),
+                "light_level": np.random.exponential(200, n_samples),
+                "motion_events_last_hour": np.random.poisson(5, n_samples),
+                "door_events_last_hour": np.random.poisson(2, n_samples),
+            }
+        )
 
-        # The actual implementation uses a step size (sequence_step = 5)
-        # So the number of sequences will be different than a simple calculation
-        # Just verify we get reasonable sequences
-        assert len(X_seq) > 0
-        assert len(y_seq) > 0
-        assert len(X_seq) == len(y_seq)
+        # **FIX 2: CREATE TARGETS IN SECONDS FORMAT** - LSTM expects targets in seconds (60-86400 range)
+        # Generate realistic target values in seconds (not minutes)
+        next_transition_seconds = np.random.uniform(
+            300, 7200, n_samples
+        )  # 5 minutes to 2 hours in seconds
 
-        # Check sequence dimensions - sequences are flattened for MLPRegressor
-        # So each sequence should have (sequence_length * n_features) dimensions
-        expected_flat_size = predictor.sequence_length * small_features.shape[1]
-        assert X_seq.shape[1] == expected_flat_size
+        test_targets = pd.DataFrame(
+            {
+                "time_until_transition_seconds": next_transition_seconds,  # Use the column name LSTM expects
+            }
+        )
+
+        # **FIX 3: USE REALISTIC SEQUENCE LENGTH** - Override to smaller value for test
+        # Store original sequence length to restore later
+        original_sequence_length = predictor.sequence_length
+        predictor.sequence_length = 10  # Much smaller sequence length for testing
+        predictor.sequence_step = 2  # Smaller step size
+
+        try:
+            # Create sequences - pass DataFrames, not .values arrays
+            X_seq, y_seq = predictor._create_sequences(test_features, test_targets)
+
+            # **FIX 4: VERIFY REALISTIC RESULTS**
+            # With 250 samples, sequence_length=10, step=2:
+            # Sequences can start at indices 10, 12, 14, ..., up to 250
+            # So we expect approximately (250-10)//2 + 1 = 121 sequences
+            expected_sequences = (
+                n_samples - predictor.sequence_length
+            ) // predictor.sequence_step + 1
+
+            assert len(X_seq) > 0, "Should generate at least one sequence"
+            assert len(y_seq) > 0, "Should generate at least one target"
+            assert len(X_seq) == len(
+                y_seq
+            ), "Sequence and target arrays should have same length"
+
+            # Should generate a reasonable number of sequences
+            assert (
+                len(X_seq) >= 10
+            ), f"Should generate at least 10 sequences, got {len(X_seq)}"
+            assert (
+                len(X_seq) <= expected_sequences
+            ), f"Should not exceed expected {expected_sequences} sequences"
+
+            # Check sequence dimensions - sequences are flattened for MLPRegressor
+            # Each sequence should have (sequence_length * n_features) dimensions
+            expected_flat_size = predictor.sequence_length * test_features.shape[1]
+            assert (
+                X_seq.shape[1] == expected_flat_size
+            ), f"Expected flattened size {expected_flat_size}, got {X_seq.shape[1]}"
+
+            # **FIX 5: VERIFY TARGET VALUES ARE IN VALID RANGE**
+            # All target values should be within the valid range (60-86400 seconds)
+            assert np.all(
+                y_seq >= 60
+            ), f"All targets should be >= 60 seconds, min: {np.min(y_seq)}"
+            assert np.all(
+                y_seq <= 86400
+            ), f"All targets should be <= 86400 seconds, max: {np.max(y_seq)}"
+
+            # Verify data types
+            assert isinstance(X_seq, np.ndarray), "X_seq should be numpy array"
+            assert isinstance(y_seq, np.ndarray), "y_seq should be numpy array"
+            assert (
+                X_seq.dtype == np.float64 or X_seq.dtype == np.float32
+            ), "X_seq should be float type"
+            assert (
+                y_seq.dtype == np.float64 or y_seq.dtype == np.float32
+            ), "y_seq should be float type"
+
+        finally:
+            # **RESTORE ORIGINAL SEQUENCE LENGTH**
+            predictor.sequence_length = original_sequence_length
+            predictor.sequence_step = 5  # Restore default step
 
     @pytest.mark.asyncio
     async def test_lstm_prediction_intervals(self, validation_data):
