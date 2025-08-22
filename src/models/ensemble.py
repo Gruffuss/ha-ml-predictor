@@ -7,8 +7,8 @@ predictors (LSTM, XGBoost, HMM) using stacking with a meta-learner.
 
 from datetime import datetime, timedelta, timezone
 import logging
-from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 import warnings
 
 import numpy as np
@@ -28,6 +28,20 @@ from .base.xgboost_predictor import XGBoostPredictor
 
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
+
+
+def _ensure_timezone_aware(dt: datetime, default_tz=timezone.utc) -> datetime:
+    """Ensure datetime is timezone-aware, using default timezone if naive."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=default_tz)
+    return dt
+
+
+def _safe_time_difference(dt1: datetime, dt2: datetime) -> float:
+    """Calculate time difference safely handling timezone-aware/naive datetimes."""
+    dt1_aware = _ensure_timezone_aware(dt1)
+    dt2_aware = _ensure_timezone_aware(dt2)
+    return (dt1_aware - dt2_aware).total_seconds()
 
 
 class OccupancyEnsemble(BasePredictor):
@@ -283,10 +297,15 @@ class OccupancyEnsemble(BasePredictor):
                         base_results[model_name] = model_results
 
                         # Extract prediction values for meta-learner
-                        base_predictions[model_name] = [
-                            (r.predicted_time - prediction_time).total_seconds()
-                            for r in model_results
-                        ]
+                        base_time_predictions = []
+                        for r in model_results:
+                            # Use utility function for safe time difference calculation
+                            time_diff = _safe_time_difference(
+                                r.predicted_time, prediction_time
+                            )
+                            base_time_predictions.append(time_diff)
+
+                        base_predictions[model_name] = base_time_predictions
                     except Exception as e:
                         failed_models.append(model_name)
                         logger.warning(
@@ -569,9 +588,11 @@ class OccupancyEnsemble(BasePredictor):
                     # Extract time until transition for meta-features
                     for i, pred in enumerate(val_predictions):
                         original_idx = val_idx[i]
-                        time_until = (
-                            pred.predicted_time - datetime.now(timezone.utc)
-                        ).total_seconds()
+
+                        # Use utility function for safe time difference calculation
+                        time_until = _safe_time_difference(
+                            pred.predicted_time, datetime.now(timezone.utc)
+                        )
                         meta_features[original_idx, model_idx] = time_until
 
                 except Exception as e:
@@ -814,13 +835,31 @@ class OccupancyEnsemble(BasePredictor):
             if hasattr(self.meta_scaler, "n_features_in_"):
                 expected_features = self.meta_scaler.n_features_in_
                 if meta_df.shape[1] != expected_features:
-                    logger.warning(
+                    logger.debug(
                         f"Meta-feature dimension mismatch. Expected {expected_features}, "
                         f"got {meta_df.shape[1]}. Adjusting features."
                     )
                     if meta_df.shape[1] > expected_features:
-                        # Truncate to expected size
-                        meta_df = meta_df.iloc[:, :expected_features]
+                        # Truncate to expected size - select most important columns
+                        # Keep base model predictions first, then add original features
+                        base_model_cols = [
+                            col
+                            for col in meta_df.columns
+                            if col in self.base_models.keys()
+                        ]
+                        orig_feature_cols = [
+                            col
+                            for col in meta_df.columns
+                            if col not in self.base_models.keys()
+                        ]
+
+                        # Prioritize base model predictions
+                        selected_cols = base_model_cols[:expected_features]
+                        if len(selected_cols) < expected_features:
+                            remaining_slots = expected_features - len(selected_cols)
+                            selected_cols.extend(orig_feature_cols[:remaining_slots])
+
+                        meta_df = meta_df[selected_cols]
                     else:
                         # Pad with zeros
                         padding_cols = expected_features - meta_df.shape[1]
@@ -836,7 +875,7 @@ class OccupancyEnsemble(BasePredictor):
                 meta_scaled, columns=meta_df.columns, index=meta_df.index
             )
         except Exception as e:
-            logger.error(
+            logger.warning(
                 f"Failed to scale meta features: {e}. Using unscaled features as fallback."
             )
             return meta_df
@@ -844,13 +883,17 @@ class OccupancyEnsemble(BasePredictor):
     def _select_important_features(self, features: pd.DataFrame) -> pd.DataFrame:
         """Select most important features to include with meta-features."""
         # Select a subset of key features (limit to prevent dimension explosion)
-        max_features = 10
-        if len(features.columns) <= max_features:
-            return features.copy()
+        # Start with smaller subset to better match expected scaler dimensions
+        max_features = (
+            6  # Reduced from 10 to better match 4 base models + some features
+        )
 
-        # Select first max_features columns as a simple strategy
-        # In practice, this could use feature importance or correlation analysis
-        selected_features = features.iloc[:, :max_features].copy()
+        if len(features.columns) <= max_features:
+            selected_features = features.copy()
+        else:
+            # Select first max_features columns as a simple strategy
+            # In practice, this could use feature importance or correlation analysis
+            selected_features = features.iloc[:, :max_features].copy()
 
         # Rename to avoid column name conflicts
         selected_features.columns = [f"orig_{col}" for col in selected_features.columns]
@@ -865,13 +908,16 @@ class OccupancyEnsemble(BasePredictor):
         for model_name, model in self.base_models.items():
             if model.is_trained:
                 try:
-                    results = await model.predict(
-                        features, datetime.now(timezone.utc), "unknown"
-                    )
-                    base_predictions[model_name] = [
-                        (r.predicted_time - datetime.now(timezone.utc)).total_seconds()
-                        for r in results
-                    ]
+                    ref_time = datetime.now(timezone.utc)
+                    results = await model.predict(features, ref_time, "unknown")
+
+                    time_predictions = []
+                    for r in results:
+                        # Use utility function for safe time difference calculation
+                        time_diff = _safe_time_difference(r.predicted_time, ref_time)
+                        time_predictions.append(time_diff)
+
+                    base_predictions[model_name] = time_predictions
                 except Exception as e:
                     logger.warning(f"Base model {model_name} prediction failed: {e}")
                     # Use default predictions
@@ -990,9 +1036,10 @@ class OccupancyEnsemble(BasePredictor):
             base_predictions = {}
             for model_name, results in base_results.items():
                 if idx < len(results):
-                    time_until = (
-                        results[idx].predicted_time - prediction_time
-                    ).total_seconds()
+                    # Use utility function for safe time difference calculation
+                    time_until = _safe_time_difference(
+                        results[idx].predicted_time, prediction_time
+                    )
                     base_predictions[model_name] = float(time_until)
 
             # Create ensemble prediction result
@@ -1035,12 +1082,15 @@ class OccupancyEnsemble(BasePredictor):
         predictions = []
         gp_uncertainty = None
 
+        # Get reference time - use timezone-aware if possible
+        ref_time = datetime.now(timezone.utc)
+
         for model_name, results in base_results.items():
             if idx < len(results):
                 confidences.append(results[idx].confidence_score)
-                pred_time = (
-                    results[idx].predicted_time - datetime.now(timezone.utc)
-                ).total_seconds()
+
+                # Use utility function for safe time difference calculation
+                pred_time = _safe_time_difference(results[idx].predicted_time, ref_time)
                 predictions.append(pred_time)
 
                 # Extract GP uncertainty information if available
@@ -1224,28 +1274,28 @@ class OccupancyEnsemble(BasePredictor):
     def save_model(self, file_path: Union[str, Path]) -> bool:
         """
         Save the ensemble model with all base models and meta-learner.
-        
+
         Args:
             file_path: Path to save the model
-        
+
         Returns:
             True if successful, False otherwise
         """
         try:
-            import pickle
             from pathlib import Path
-            
+            import pickle
+
             # Save base models to separate files
             base_path = Path(file_path)
             base_models_dir = base_path.parent / f"{base_path.stem}_base_models"
             base_models_dir.mkdir(exist_ok=True)
-            
+
             base_model_paths = {}
             for name, model in self.base_models.items():
                 model_path = base_models_dir / f"{name}_model.pkl"
                 if model.save_model(str(model_path)):
                     base_model_paths[name] = str(model_path)
-            
+
             # Save ensemble data
             ensemble_data = {
                 "model_type": self.model_type.value,
@@ -1266,34 +1316,34 @@ class OccupancyEnsemble(BasePredictor):
                 "meta_learner": self.meta_learner,
                 "base_model_paths": base_model_paths,
             }
-            
+
             with open(file_path, "wb") as f:
                 pickle.dump(ensemble_data, f)
-            
+
             logger.info(f"Ensemble model saved to {file_path}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to save ensemble model: {e}")
             return False
-    
+
     def load_model(self, file_path: Union[str, Path]) -> bool:
         """
         Load the ensemble model with all base models and meta-learner.
-        
+
         Args:
             file_path: Path to load the model from
-        
+
         Returns:
             True if successful, False otherwise
         """
         try:
-            import pickle
             from pathlib import Path
-            
+            import pickle
+
             with open(file_path, "rb") as f:
                 ensemble_data = pickle.load(f)
-            
+
             # Restore ensemble attributes
             self.model_type = ModelType(ensemble_data["model_type"])
             self.room_id = ensemble_data.get("room_id")
@@ -1306,9 +1356,11 @@ class OccupancyEnsemble(BasePredictor):
             self.meta_learner_trained = ensemble_data.get("meta_learner_trained", False)
             self.model_weights = ensemble_data.get("model_weights", {})
             self.model_performance = ensemble_data.get("model_performance", {})
-            self.cross_validation_scores = ensemble_data.get("cross_validation_scores", {})
+            self.cross_validation_scores = ensemble_data.get(
+                "cross_validation_scores", {}
+            )
             self.meta_learner = ensemble_data.get("meta_learner")
-            
+
             # Load base models
             base_model_paths = ensemble_data.get("base_model_paths", {})
             for name, model_path in base_model_paths.items():
@@ -1319,21 +1371,21 @@ class OccupancyEnsemble(BasePredictor):
                             logger.warning(f"Failed to load base model {name}")
                     else:
                         logger.warning(f"Base model file not found: {model_path}")
-            
+
             # Update base model room_ids to match ensemble
             for model in self.base_models.values():
                 model.room_id = self.room_id
-            
+
             # Restore training history
             history_data = ensemble_data.get("training_history", [])
             self.training_history = []
             for result_dict in history_data:
                 result = TrainingResult(**result_dict)
                 self.training_history.append(result)
-            
+
             logger.info(f"Ensemble model loaded from {file_path}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to load ensemble model: {e}")
             return False
