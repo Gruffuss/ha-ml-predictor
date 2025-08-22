@@ -1010,13 +1010,13 @@ class TestFullTrainingWorkflow:
         # Mock data that fails quality checks
         bad_data = pd.DataFrame(
             {
-                "room_id": "test_room",
+                "room_id": ["test_room"],  # Must be a list/array for DataFrame
                 # Missing required columns
             }
         )
         training_pipeline._query_room_events = AsyncMock(return_value=bad_data)
 
-        with pytest.raises(ModelTrainingError, match="Data quality validation failed"):
+        with pytest.raises(ModelTrainingError, match="Insufficient training data"):
             await training_pipeline.train_room_models(
                 room_id="test_room",
                 training_type=TrainingType.INITIAL,

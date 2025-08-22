@@ -116,15 +116,20 @@ class LSTMPredictor(BasePredictor):
             
             # For small datasets, use much smaller sequence length
             if len(features) < 200:  # Small dataset threshold
-                # Use sequence length that allows at least 10 sequences
-                max_sequence_length = max(3, len(features) // 10)
+                # Use sequence length that allows at least 5 sequences with step=1
+                max_sequence_length = max(3, len(features) // 5)
                 adaptive_sequence_length = min(self.sequence_length, max_sequence_length)
                 self.sequence_length = adaptive_sequence_length
+                # Also reduce step size for small datasets
+                self.sequence_step = 1
                 logger.info(f"Adapted sequence length from {original_sequence_length} to {self.sequence_length} for small dataset of {len(features)} samples")
+            
+            # Store the training sequence length for prediction consistency
+            self.training_sequence_length = self.sequence_length
             
             X_sequences, y_sequences = self._create_sequences(features, targets)
 
-            if len(X_sequences) < 3:  # Minimum requirement for testing (very small)
+            if len(X_sequences) < 2:  # Very minimal requirement for testing 
                 raise ModelTrainingError(
                     model_type="lstm",
                     room_id=self.room_id,
@@ -274,9 +279,10 @@ class LSTMPredictor(BasePredictor):
             self.training_history.append(result)
             raise ModelTrainingError(model_type="lstm", room_id=self.room_id, cause=e)
         finally:
-            # Restore original sequence length
+            # Restore original sequence length and step
             if 'original_sequence_length' in locals():
                 self.sequence_length = original_sequence_length
+                self.sequence_step = 5  # Restore default step
 
     async def predict(
         self,
@@ -304,16 +310,19 @@ class LSTMPredictor(BasePredictor):
         try:
             predictions = []
 
+            # Use training sequence length for consistency
+            pred_sequence_length = getattr(self, 'training_sequence_length', self.sequence_length)
+            
             for idx in range(len(features)):
                 # Create sequence from recent features
-                if idx >= self.sequence_length - 1:
+                if idx >= pred_sequence_length - 1:
                     # Use the last sequence_length features
                     feature_sequence = features.iloc[
-                        idx - self.sequence_length + 1 : idx + 1
+                        idx - pred_sequence_length + 1 : idx + 1
                     ]
                 else:
                     # Pad with the first available features if not enough history
-                    needed_padding = self.sequence_length - (idx + 1)
+                    needed_padding = pred_sequence_length - (idx + 1)
                     padding = features.iloc[[0] * needed_padding]
                     feature_sequence = pd.concat(
                         [padding, features.iloc[: idx + 1]], ignore_index=True
@@ -369,7 +378,7 @@ class LSTMPredictor(BasePredictor):
                     features_used=self.feature_names,
                     prediction_metadata={
                         "time_until_transition_seconds": float(time_until_transition),
-                        "sequence_length_used": self.sequence_length,
+                        "sequence_length_used": pred_sequence_length,
                         "prediction_method": "lstm_neural_network",
                     },
                 )

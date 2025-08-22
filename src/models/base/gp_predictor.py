@@ -349,6 +349,12 @@ class GaussianProcessPredictor(BasePredictor):
 
                 # Calibrate uncertainty on validation data
                 self._calibrate_uncertainty(y_val_true, y_val_pred_mean, y_val_pred_std)
+            else:
+                # If no validation set, use training score as validation score
+                validation_score = training_score
+                validation_mae = training_mae
+                validation_rmse = training_rmse
+                avg_validation_std = avg_prediction_std
 
             # Update model state
             self.is_trained = True
