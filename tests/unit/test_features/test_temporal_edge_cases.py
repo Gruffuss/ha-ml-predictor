@@ -40,11 +40,11 @@ class TestTemporalFeatureExtractorEdgeCases:
     def test_extract_features_with_none_events(self, extractor, target_time):
         """Test feature extraction with None events list returns default features."""
         features = extractor.extract_features(None, target_time)
-        
+
         # Should return default features without raising exception
         assert isinstance(features, dict)
         assert len(features) > 0
-        
+
         # Check some expected default features
         assert "time_since_last_event" in features
         assert "hour_sin" in features

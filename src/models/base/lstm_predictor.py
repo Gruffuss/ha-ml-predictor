@@ -70,12 +70,12 @@ class LSTMPredictor(BasePredictor):
             "validation_fraction": default_params.get("validation_fraction", 0.1),
             "alpha": default_params.get("alpha", 0.0001),  # L2 regularization
             "dropout": (
-                default_params.get("dropout_rate") 
+                default_params.get("dropout_rate")
                 if "dropout_rate" in kwargs
                 else default_params.get("dropout", 0.2)
             ),  # Use dropout_rate if provided, else dropout
             "dropout_rate": (
-                default_params.get("dropout_rate") 
+                default_params.get("dropout_rate")
                 if "dropout_rate" in kwargs
                 else default_params.get("dropout", 0.2)
             ),  # Use dropout_rate if provided, else dropout
