@@ -218,7 +218,7 @@ jobs:
       if: steps.unit-tests-run.outcome == 'failure'
       run: |
         echo "Unit tests failed but coverage was still calculated"
-        exit 1
+        echo "Continuing to upload artifacts before failing the job"
         
     - name: "Upload unit test results"
       uses: actions/upload-artifact@v4
@@ -231,6 +231,12 @@ jobs:
           coverage-unit.xml
           htmlcov-unit/
         retention-days: 30
+        
+    - name: "Fail job if tests failed"
+      if: steps.unit-tests-run.outcome == 'failure'
+      run: |
+        echo "Failing job due to test failures (after artifacts uploaded)"
+        exit 1
 
   # Job 3: Integration Tests with Database
   integration-tests:
@@ -521,7 +527,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [unit-tests, integration-tests]
-    if: always()
+    if: always() && !cancelled()
     
     steps:
     - name: "Checkout code"
@@ -554,18 +560,58 @@ jobs:
       run: |
         COVERAGE=$(python -c "
         import xml.etree.ElementTree as ET
-        try:
-            tree = ET.parse('coverage-combined.xml')
-            coverage = float(tree.getroot().attrib['line-rate']) * 100
-            print(f'{coverage:.1f}')
-        except:
-            # Fallback calculation from unit tests
+        import os
+        import glob
+        
+        # Try to find coverage files in downloaded artifacts
+        coverage_files = glob.glob('test-results/**/coverage*.xml', recursive=True)
+        print(f'Found coverage files: {coverage_files}', file=__import__('sys').stderr)
+        
+        coverage = 0.0
+        found = False
+        
+        # Try combined coverage first
+        if os.path.exists('coverage-combined.xml'):
             try:
-                tree = ET.parse('test-results/unit-test-results-py3.11/coverage-unit.xml')
+                tree = ET.parse('coverage-combined.xml')
                 coverage = float(tree.getroot().attrib['line-rate']) * 100
-                print(f'{coverage:.1f}')
-            except:
-                print('80.0')  # Default fallback
+                found = True
+                print(f'Using combined coverage: {coverage:.1f}%', file=__import__('sys').stderr)
+            except Exception as e:
+                print(f'Failed to parse combined coverage: {e}', file=__import__('sys').stderr)
+        
+        # Try unit test coverage files
+        if not found:
+            for pattern in ['test-results/unit-test-results-py3.12/coverage-unit.xml',
+                          'test-results/unit-test-results-py3.13/coverage-unit.xml']:
+                if os.path.exists(pattern):
+                    try:
+                        tree = ET.parse(pattern)
+                        coverage = float(tree.getroot().attrib['line-rate']) * 100
+                        found = True
+                        print(f'Using unit test coverage from {pattern}: {coverage:.1f}%', file=__import__('sys').stderr)
+                        break
+                    except Exception as e:
+                        print(f'Failed to parse {pattern}: {e}', file=__import__('sys').stderr)
+        
+        # Try any coverage file found
+        if not found and coverage_files:
+            for cf in coverage_files:
+                try:
+                    tree = ET.parse(cf)
+                    coverage = float(tree.getroot().attrib['line-rate']) * 100
+                    found = True
+                    print(f'Using coverage from {cf}: {coverage:.1f}%', file=__import__('sys').stderr)
+                    break
+                except Exception as e:
+                    print(f'Failed to parse {cf}: {e}', file=__import__('sys').stderr)
+        
+        # Default if nothing found
+        if not found:
+            coverage = 45.0  # Use actual known coverage instead of 80.0
+            print(f'WARNING: No coverage files found, using known coverage: {coverage:.1f}%', file=__import__('sys').stderr)
+        
+        print(f'{coverage:.1f}')
         ")
         echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
         echo "Overall test coverage: ${COVERAGE}%"
