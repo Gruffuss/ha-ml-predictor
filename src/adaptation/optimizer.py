@@ -694,6 +694,19 @@ class ModelOptimizer:
             default_score = 0.7  # Assume default model achieves 70% accuracy
             improvement = best_score - default_score
 
+            # Check if any evaluations succeeded
+            if best_score == float("-inf"):
+                return OptimizationResult(
+                    success=False,
+                    optimization_time_seconds=0.0,
+                    best_parameters={},
+                    best_score=best_score,  # Keep actual -inf score
+                    improvement_over_default=improvement,  # Will be -inf
+                    total_evaluations=evaluations,
+                    convergence_achieved=False,
+                    error_message="All optimization attempts failed",
+                )
+
             return OptimizationResult(
                 success=True,
                 optimization_time_seconds=0.0,  # Set by caller
@@ -756,6 +769,19 @@ class ModelOptimizer:
             default_score = 0.7  # Assume default model achieves 70% accuracy
             improvement = best_score - default_score
 
+            # Check if any evaluations succeeded
+            if best_score == float("-inf"):
+                return OptimizationResult(
+                    success=False,
+                    optimization_time_seconds=0.0,
+                    best_parameters={},
+                    best_score=best_score,  # Keep actual -inf score
+                    improvement_over_default=improvement,  # Will be -inf
+                    total_evaluations=evaluations,
+                    convergence_achieved=False,
+                    error_message="All optimization attempts failed",
+                )
+
             return OptimizationResult(
                 success=True,
                 optimization_time_seconds=0.0,  # Set by caller
@@ -816,22 +842,22 @@ class ModelOptimizer:
                     best_score = score
                     best_params = params.copy()
 
+            # Calculate improvement
+            default_score = 0.7  # Assume default model achieves 70% accuracy
+            improvement = best_score - default_score
+
             # Check if any evaluations succeeded
             if best_score == float("-inf"):
                 return OptimizationResult(
                     success=False,
                     optimization_time_seconds=0.0,
                     best_parameters={},
-                    best_score=0.0,
-                    improvement_over_default=0.0,
+                    best_score=best_score,  # Keep actual -inf score
+                    improvement_over_default=improvement,  # Will be -inf
                     total_evaluations=evaluations,
                     convergence_achieved=False,
                     error_message="All optimization attempts failed",
                 )
-
-            # Calculate improvement
-            default_score = 0.7  # Assume default model achieves 70% accuracy
-            improvement = best_score - default_score
 
             return OptimizationResult(
                 success=True,
