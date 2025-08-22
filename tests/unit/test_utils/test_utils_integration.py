@@ -321,7 +321,7 @@ class TestUtilitiesSystemIntegration:
         )
         assert 0.01 <= error_rate <= 0.05  # 1-5% error rate
 
-        print(f"\nProduction Simulation Results:")
+        print("\nProduction Simulation Results:")
         print(f"Predictions: {production_results['predictions']}")
         print(f"Training Events: {production_results['training_events']}")
         print(f"Errors: {production_results['errors']}")
@@ -575,7 +575,7 @@ class TestUtilitiesResourceManagement:
         # Analyze memory usage
         total_memory_increase = process.memory_info().rss - initial_memory
 
-        print(f"\nMemory Management Integration Test:")
+        print("\nMemory Management Integration Test:")
         print(f"Initial Memory: {initial_memory / 1024 / 1024:.1f} MB")
         print(f"Final Memory: {process.memory_info().rss / 1024 / 1024:.1f} MB")
         print(f"Total Increase: {total_memory_increase / 1024 / 1024:.1f} MB")
@@ -765,7 +765,7 @@ class TestUtilitiesResourceManagement:
         # Should complete efficiently
         assert profiler.duration_seconds < 30.0
 
-        print(f"\nThread Safety Integration Test:")
+        print("\nThread Safety Integration Test:")
         print(f"Threads: {num_threads}")
         print(f"Operations per thread: {iterations_per_thread}")
         print(f"Total operations: {expected_operations}")
@@ -914,7 +914,7 @@ class TestUtilitiesEndToEndScenarios:
             room_data["avg_accuracy"] /= count
             room_data["avg_duration"] /= count
 
-        print(f"\nEnd-to-End Occupancy Prediction Simulation:")
+        print("\nEnd-to-End Occupancy Prediction Simulation:")
         print(f"Total predictions: {len(prediction_results)}")
         print(f"Rooms: {list(by_room.keys())}")
 
@@ -1043,7 +1043,7 @@ class TestUtilitiesEndToEndScenarios:
         # Should complete efficiently
         assert profiler.duration_seconds < 5.0
 
-        print(f"\nReal-time Monitoring Simulation:")
+        print("\nReal-time Monitoring Simulation:")
         print(f"Events processed: {monitoring_results['events_processed']}")
         print(f"Resource updates: {monitoring_results['resource_updates']}")
         print(f"Alerts generated: {monitoring_results['alerts_generated']}")
@@ -1220,7 +1220,7 @@ class TestUtilitiesProductionReadiness:
 
                         # Log prediction
                         logger.info(
-                            f"Production prediction completed",
+                            "Production prediction completed",
                             extra={
                                 "room_id": room_id,
                                 "batch": prediction_batch,
@@ -1269,7 +1269,7 @@ class TestUtilitiesProductionReadiness:
             production_stats["predictions_completed"] / profiler.duration_seconds
         )
 
-        print(f"\nProduction Load Test Results:")
+        print("\nProduction Load Test Results:")
         print(f"Total predictions: {production_stats['predictions_completed']}")
         print(f"Errors: {production_stats['errors']}")
         print(f"Duration: {profiler.duration_seconds:.2f}s")

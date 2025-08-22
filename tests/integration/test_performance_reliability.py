@@ -279,7 +279,7 @@ class TestHighThroughputPerformance:
             p95_response_time < PERFORMANCE_CONFIG["latency_threshold_ms"] / 1000 * 2
         ), f"P95 response time {p95_response_time*1000:.1f}ms too high"
 
-        print(f"High-throughput API test results:")
+        print("High-throughput API test results:")
         print(f"  Requests: {len(status_codes)} in {total_duration:.2f}s")
         print(f"  Throughput: {throughput:.1f} req/s")
         print(f"  Success rate: {success_rate:.2%}")
@@ -357,7 +357,7 @@ class TestHighThroughputPerformance:
             avg_publish_time < 0.1
         ), f"Average publish time {avg_publish_time:.3f}s too high"
 
-        print(f"High-throughput MQTT test results:")
+        print("High-throughput MQTT test results:")
         print(f"  Messages: {len(results)} in {total_duration:.2f}s")
         print(f"  Throughput: {throughput:.1f} msg/s")
         print(f"  Success rate: {success_rate:.2%}")
@@ -408,7 +408,7 @@ class TestHighThroughputPerformance:
                 try:
                     prediction = await tracking_manager.get_room_prediction(room_id)
                     results.append(prediction is not None)
-                except:
+                except Exception:
                     results.append(False)
             return results
 
@@ -497,7 +497,7 @@ class TestHighThroughputPerformance:
             overall_throughput >= 50
         ), f"Mixed operations throughput {overall_throughput:.1f} below 50 ops/s"
 
-        print(f"Mixed high-throughput test results:")
+        print("Mixed high-throughput test results:")
         print(f"  Total operations: {total_operations} in {total_duration:.2f}s")
         print(f"  Overall throughput: {overall_throughput:.1f} ops/s")
         print(f"  Overall success rate: {overall_success_rate:.2%}")
@@ -606,7 +606,7 @@ class TestResourceUsageAndConstraints:
             max(memory_samples) - min(memory_samples) if memory_samples else 0
         )
 
-        print(f"Memory usage analysis:")
+        print("Memory usage analysis:")
         print(f"  Initial: {initial_memory:.1f}MB")
         print(f"  Final: {final_memory:.1f}MB")
         print(f"  Increase: {memory_increase:.1f}MB")
@@ -686,7 +686,7 @@ class TestResourceUsageAndConstraints:
         ), f"Average CPU {avg_cpu:.1f}% too high"
         assert max_cpu < 95, f"Max CPU {max_cpu:.1f}% approaching saturation"
 
-        print(f"CPU usage analysis:")
+        print("CPU usage analysis:")
         print(f"  Requests: {request_count} in {duration:.2f}s")
         print(f"  Throughput: {throughput:.1f} req/s")
         print(f"  Average CPU: {avg_cpu:.1f}%")
@@ -730,7 +730,7 @@ class TestResourceUsageAndConstraints:
             object_increase < 10000
         ), f"Object increase {object_increase} suggests memory leak"
 
-        print(f"Object lifecycle analysis:")
+        print("Object lifecycle analysis:")
         print(f"  Initial objects: {initial_objects}")
         print(f"  Final objects: {final_objects}")
         print(f"  Net increase: {object_increase}")
@@ -944,7 +944,7 @@ class TestLongRunningStability:
                 growth_consistency < 0.8
             ), f"Consistent memory growth {growth_consistency:.1%} suggests leak"
 
-            print(f"Memory leak analysis:")
+            print("Memory leak analysis:")
             print(f"  Memory growth per cycle: {memory_growth:.1f}MB")
             print(f"  Growth consistency: {growth_consistency:.1%}")
             print(f"  Tracked objects: {leak_tracker.count()}")
@@ -996,7 +996,7 @@ class TestNetworkLatencyAndTimeouts:
         ), f"Success rate {success_rate:.2%} too low under latency"
         assert throughput >= 10, f"Throughput {throughput:.1f} too low under latency"
 
-        print(f"Network latency test:")
+        print("Network latency test:")
         print(f"  Messages: {message_count} in {duration:.2f}s")
         print(f"  Throughput: {throughput:.1f} msg/s")
         print(f"  Success rate: {success_rate:.2%}")
@@ -1061,7 +1061,7 @@ class TestNetworkLatencyAndTimeouts:
             avg_response_time < timeout_threshold * 0.8
         ), f"Average response time {avg_response_time:.2f}s approaching timeout"
 
-        print(f"Timeout handling test:")
+        print("Timeout handling test:")
         print(f"  Requests: {request_count}")
         print(f"  Timeouts: {timeout_count} ({timeout_rate:.2%})")
         print(f"  Avg response time: {avg_response_time:.2f}s")
@@ -1123,7 +1123,7 @@ class TestErrorRecoveryAndGracefulDegradation:
                     )
                     if response.status_code == 200:
                         api_successes += 1
-                except:
+                except Exception:
                     pass
 
         # MQTT operations with failures
@@ -1134,7 +1134,7 @@ class TestErrorRecoveryAndGracefulDegradation:
                 )
                 if result.success:
                     mqtt_successes += 1
-            except:
+            except Exception:
                 pass
 
         # Recovery analysis
@@ -1150,7 +1150,7 @@ class TestErrorRecoveryAndGracefulDegradation:
             mqtt_success_rate >= expected_success_rate * 0.8
         ), f"MQTT success rate {mqtt_success_rate:.2%} too low for failure rate"
 
-        print(f"Failure recovery test:")
+        print("Failure recovery test:")
         print(f"  Expected success rate: {expected_success_rate:.2%}")
         print(f"  API actual success rate: {api_success_rate:.2%}")
         print(f"  MQTT actual success rate: {mqtt_success_rate:.2%}")
@@ -1218,7 +1218,7 @@ class TestErrorRecoveryAndGracefulDegradation:
                         )
                         if response.status_code == 200:
                             successes += 1
-                    except:
+                    except Exception:
                         pass
 
             success_rate = successes / attempts
@@ -1248,6 +1248,6 @@ class TestErrorRecoveryAndGracefulDegradation:
                     result["success_rate"] >= 0.1
                 ), f"Stage '{stage}' success rate {result['success_rate']:.2%} shows no graceful degradation"
 
-        print(f"Graceful degradation analysis:")
+        print("Graceful degradation analysis:")
         for stage, result in stage_results.items():
             print(f"  {stage}: {result['success_rate']:.2%} - {result['description']}")

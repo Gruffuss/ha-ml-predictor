@@ -710,7 +710,7 @@ class TestConcurrentCrossComponentOperations:
                     prediction = await tracking_manager.get_room_prediction(room)
                     if prediction:
                         successes += 1
-                except:
+                except Exception:
                     pass
             return successes
 

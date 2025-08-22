@@ -122,7 +122,7 @@ keyfile /tmp/server.key
         # Clean up config file
         try:
             os.unlink(config_file)
-        except:
+        except Exception:
             pass
 
 

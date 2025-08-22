@@ -777,7 +777,7 @@ class TestWebSocketIntegration:
             for ws in active_connections:
                 try:
                     ws.close()
-                except:
+                except Exception:
                     pass
 
     @pytest.mark.integration

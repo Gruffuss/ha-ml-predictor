@@ -251,7 +251,7 @@ class TestCrossModuleConstantDependencies:
             cat_val = CAT_MOVEMENT_PATTERNS[key]
 
             # Both should be same type
-            assert type(human_val) == type(cat_val), f"Type mismatch for {key}"
+            assert isinstance(human_val, type(cat_val)), f"Type mismatch for {key}"
 
             if key == "max_velocity_ms":
                 # Cats generally faster than humans
