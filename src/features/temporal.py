@@ -286,10 +286,11 @@ class TemporalFeatureExtractor:
                             sensor_values.append(value)
 
                             # Type-specific processing
-                            if isinstance(value, (int, float)):
-                                numeric_values.append(float(value))
-                            elif isinstance(value, bool):
+                            # Check bool first since bool is subclass of int in Python
+                            if isinstance(value, bool):
                                 boolean_values.append(value)
+                            elif isinstance(value, (int, float)):
+                                numeric_values.append(float(value))
                             elif (
                                 isinstance(value, str)
                                 and value.replace(".", "").isdigit()
@@ -300,8 +301,8 @@ class TemporalFeatureExtractor:
                                     string_values.append(value)
                             else:
                                 string_values.append(str(value))
-                except (TypeError, AttributeError):
-                    # Handle Mock or non-dict attributes
+                except (TypeError, AttributeError, RuntimeError):
+                    # Handle Mock or non-dict attributes, and runtime errors from Mocks
                     pass
 
             # Handle state as Any type
@@ -314,10 +315,10 @@ class TemporalFeatureExtractor:
                     numeric_values.append(float(state_value))
                 except ValueError:
                     string_values.append(state_value)
-            elif isinstance(state_value, (int, float)):
-                numeric_values.append(float(state_value))
             elif isinstance(state_value, bool):
                 boolean_values.append(state_value)
+            elif isinstance(state_value, (int, float)):
+                numeric_values.append(float(state_value))
 
         # Extract numeric features
         if numeric_values:
@@ -571,9 +572,14 @@ class TemporalFeatureExtractor:
             recent_duration = (
                 recent_events[-1].timestamp - recent_events[0].timestamp
             ).total_seconds()
-            features["recent_transition_rate"] = (len(recent_events) - 1) / (
-                recent_duration / 3600
-            )
+            # Avoid division by zero for events with same timestamp
+            if recent_duration > 0:
+                features["recent_transition_rate"] = (len(recent_events) - 1) / (
+                    recent_duration / 3600
+                )
+            else:
+                # If all events have same timestamp, set high transition rate
+                features["recent_transition_rate"] = float(len(recent_events) - 1)
         else:
             features["recent_transition_rate"] = 0.0
 

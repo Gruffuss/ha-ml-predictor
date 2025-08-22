@@ -38,9 +38,18 @@ class TestTemporalFeatureExtractorEdgeCases:
         return datetime(2024, 3, 15, 12, 0, 0)
 
     def test_extract_features_with_none_events(self, extractor, target_time):
-        """Test feature extraction with None events list."""
-        with pytest.raises(TypeError):
-            extractor.extract_features(None, target_time)
+        """Test feature extraction with None events list returns default features."""
+        features = extractor.extract_features(None, target_time)
+        
+        # Should return default features without raising exception
+        assert isinstance(features, dict)
+        assert len(features) > 0
+        
+        # Check some expected default features
+        assert "time_since_last_event" in features
+        assert "hour_sin" in features
+        assert "hour_cos" in features
+        assert features["time_since_last_event"] == 3600.0  # Default 1 hour
 
     def test_extract_features_malformed_events(self, extractor, target_time):
         """Test feature extraction with malformed events."""

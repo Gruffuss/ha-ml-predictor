@@ -77,6 +77,7 @@ class StructuredFormatter(logging.Formatter):
                     "threadName",
                     "processName",
                     "process",
+                    "taskName",
                     "getMessage",
                 ]
             }
