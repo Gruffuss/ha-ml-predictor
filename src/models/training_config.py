@@ -29,7 +29,7 @@ class TrainingProfile(Enum):
     RESEARCH = "research"
     QUICK = "quick"
     COMPREHENSIVE = "comprehensive"
-    
+
     @classmethod
     def _missing_(cls, value):
         """Custom missing method to provide expected error message."""
@@ -37,6 +37,7 @@ class TrainingProfile(Enum):
         # For set_current_profile test, it expects "Training profile ... not available"
         # We'll determine context from the call stack
         import inspect
+
         frame = inspect.currentframe()
         try:
             # Look through multiple frames to find the calling method
@@ -54,16 +55,16 @@ class TrainingProfile(Enum):
                     current_frame = current_frame.f_back
                 except AttributeError:
                     break
-            
+
             if found_update_profile:
                 raise ValueError(f"Profile {value} not found")
             else:
                 raise ValueError(f"Training profile {value} not available")
         finally:
             del frame
-    
+
     @classmethod
-    def from_string(cls, value: str) -> 'TrainingProfile':
+    def from_string(cls, value: str) -> "TrainingProfile":
         """Create TrainingProfile from string with custom error message."""
         try:
             return cls(value)

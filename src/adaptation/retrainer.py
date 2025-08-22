@@ -14,7 +14,6 @@ import logging
 import threading
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
-import heapq
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -841,7 +840,9 @@ class AdaptiveRetrainer:
                         self._retraining_queue.remove(existing_request)
                         self._retraining_queue.append(request)
                         # Sort by priority (highest first) to maintain correct order
-                        self._retraining_queue.sort(key=lambda x: x.priority, reverse=True)
+                        self._retraining_queue.sort(
+                            key=lambda x: x.priority, reverse=True
+                        )
                         logger.info(
                             f"Updated existing retraining request with higher priority: {request.request_id}"
                         )

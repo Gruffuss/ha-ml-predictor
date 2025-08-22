@@ -55,6 +55,7 @@ class FeatureRecord:
             # Use consistent datetime comparison - both naive or both timezone-aware
             if self.extraction_time.tzinfo:
                 from datetime import timezone
+
                 now = datetime.now(timezone.utc)
             else:
                 # For test compatibility, try multiple approaches

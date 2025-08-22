@@ -7,7 +7,7 @@ providing detailed error context and actionable debugging information.
 
 from enum import Enum
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 
 class ErrorSeverity(Enum):
@@ -115,7 +115,7 @@ class ConfigValidationError(ConfigurationError):
                 message = f"Invalid configuration field '{field}': {value}"
             else:
                 message = "Configuration validation failed"
-        
+
         context = {}
         if config_key:
             context["config_key"] = config_key
@@ -202,7 +202,7 @@ class HomeAssistantAuthenticationError(HomeAssistantError):
         message = f"Authentication failed for Home Assistant at {url}"
 
         context = {"url": url}
-        
+
         # Handle both string tokens and integer token lengths
         if isinstance(token_hint, str):
             # If token_hint is a string, truncate it
@@ -215,7 +215,7 @@ class HomeAssistantAuthenticationError(HomeAssistantError):
         else:
             # Fallback for other types
             context["token_hint"] = str(token_hint)
-            
+
         # Add helpful hint
         context["hint"] = "Check if token is valid and has required permissions"
 
@@ -408,7 +408,11 @@ class DatabaseIntegrityError(DatabaseError):
     """Raised when database integrity constraints are violated."""
 
     def __init__(
-        self, constraint: str, table_name: str, values: Optional[Dict[str, Any]] = None, cause: Optional[Exception] = None
+        self,
+        constraint: str,
+        table_name: str,
+        values: Optional[Dict[str, Any]] = None,
+        cause: Optional[Exception] = None,
     ):
         message = f"Database integrity error in table '{table_name}': {constraint}"
         context = {"constraint": constraint, "table": table_name}
@@ -448,7 +452,7 @@ class FeatureExtractionError(FeatureEngineeringError):
         else:
             message = f"Feature extraction failed: {feature_type}"
             context = {"feature_type": feature_type}
-        
+
         if time_range:
             context["time_range"] = time_range
 
@@ -501,10 +505,10 @@ class FeatureValidationError(FeatureEngineeringError):
     ):
         message = f"Feature validation failed for '{feature_name}': {validation_error}"
         context = {
-            "feature_name": feature_name, 
+            "feature_name": feature_name,
             "validation_error": validation_error,
             "validation_rule": validation_error,  # For backward compatibility
-            "actual_value": actual_value
+            "actual_value": actual_value,
         }
         if room_id:
             context["room_id"] = room_id
@@ -624,10 +628,10 @@ class InsufficientTrainingDataError(ModelError):
             )
         else:
             message = f"Insufficient training data for room {room_id}"
-            
+
         if model_type:
             message = f"Insufficient training data for {model_type} in room {room_id}"
-            
+
         context = {"room_id": room_id}
         if model_type is not None:
             context["model_type"] = model_type
@@ -641,7 +645,7 @@ class InsufficientTrainingDataError(ModelError):
             context["required_samples"] = required_samples
         if available_samples is not None:
             context["available_samples"] = available_samples
-            
+
         super().__init__(
             message=message,
             error_code="INSUFFICIENT_TRAINING_DATA_ERROR",
@@ -808,6 +812,7 @@ class DataValidationError(IntegrationError):
         severity: ErrorSeverity = ErrorSeverity.MEDIUM,
     ):
         # Primary signature: data_source, validation_errors
+        context: Dict[str, Union[str, Sequence[str], Dict[str, Any], None]]
         if validation_errors:
             message = f"Data validation failed for {data_source}: {'; '.join(validation_errors)}"
             context = {
@@ -822,7 +827,9 @@ class DataValidationError(IntegrationError):
             context = {
                 "data_type": data_type,
                 "validation_rule": validation_rule,
-                "actual_value": str(actual_value)[:100] if actual_value is not None else None,
+                "actual_value": (
+                    str(actual_value)[:100] if actual_value is not None else None
+                ),
             }
             if expected_value is not None:
                 context["expected_value"] = str(expected_value)[:100]
@@ -994,13 +1001,13 @@ class SystemError(OccupancyPredictionError):
             full_message = f"System error during {operation}: {message}"
         else:
             full_message = message
-            
+
         context = {}
         if component:
             context["component"] = component
         if operation:
             context["operation"] = operation
-            
+
         super().__init__(
             message=full_message,
             error_code="SYSTEM_ERROR",
@@ -1053,7 +1060,7 @@ class ServiceUnavailableError(SystemError):
         message = f"Service unavailable: {service_name}"
         if reason != "Service unavailable":
             message += f" - {reason}"
-            
+
         context = {"service_name": service_name}
         if endpoint:
             context["endpoint"] = endpoint
@@ -1082,12 +1089,12 @@ class MaintenanceModeError(SystemError):
     ):
         # Use end_time if provided, otherwise maintenance_until for backward compatibility
         end_time = end_time or maintenance_until
-        
+
         if component:
             message = f"System component in maintenance mode: {component}"
         else:
             message = "System in maintenance mode"
-            
+
         context = {}
         if component:
             context["component"] = component
@@ -1149,13 +1156,15 @@ class RateLimitExceededError(IntegrationError):
     ):
         if message is None:
             message = f"Rate limit exceeded for {service}: {limit} requests per {window_seconds}s"
-            
+
         error_context = context or {}
-        error_context.update({
-            "service": service,
-            "limit": limit,
-            "window_seconds": window_seconds,
-        })
+        error_context.update(
+            {
+                "service": service,
+                "limit": limit,
+                "window_seconds": window_seconds,
+            }
+        )
         if reset_time is not None:
             error_context["reset_time"] = reset_time
 

@@ -269,9 +269,9 @@ class WebSocketManager:
                 # Update metadata
                 if websocket in self.connection_metadata:
                     self.connection_metadata[websocket]["messages_sent"] += 1
-                    self.connection_metadata[websocket][
-                        "last_message_at"
-                    ] = datetime.now(timezone.utc)
+                    self.connection_metadata[websocket]["last_message_at"] = (
+                        datetime.now(timezone.utc)
+                    )
 
                 return True
             return False

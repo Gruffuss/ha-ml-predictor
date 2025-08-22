@@ -7,8 +7,8 @@ MLPRegressor for sequence-based occupancy predictions.
 
 from datetime import datetime, timedelta, timezone
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 import warnings
 
 import numpy as np
@@ -58,7 +58,9 @@ class LSTMPredictor(BasePredictor):
             "sequence_length": default_params.get("sequence_length", 50),
             "hidden_layers": hidden_layers,
             "hidden_units": default_params.get("hidden_units", 64),
-            "hidden_size": default_params.get("hidden_units", 64),  # Alias for test compatibility
+            "hidden_size": default_params.get(
+                "hidden_units", 64
+            ),  # Alias for test compatibility
             "lstm_units": default_params.get(
                 "lstm_units", default_params.get("hidden_units", 64)
             ),  # Alias for compatibility
@@ -113,23 +115,27 @@ class LSTMPredictor(BasePredictor):
 
             # Prepare sequence data with adaptive sequence length for small datasets
             original_sequence_length = self.sequence_length
-            
+
             # For small datasets, use much smaller sequence length
             if len(features) < 200:  # Small dataset threshold
                 # Use sequence length that allows at least 5 sequences with step=1
                 max_sequence_length = max(3, len(features) // 5)
-                adaptive_sequence_length = min(self.sequence_length, max_sequence_length)
+                adaptive_sequence_length = min(
+                    self.sequence_length, max_sequence_length
+                )
                 self.sequence_length = adaptive_sequence_length
                 # Also reduce step size for small datasets
                 self.sequence_step = 1
-                logger.info(f"Adapted sequence length from {original_sequence_length} to {self.sequence_length} for small dataset of {len(features)} samples")
-            
+                logger.info(
+                    f"Adapted sequence length from {original_sequence_length} to {self.sequence_length} for small dataset of {len(features)} samples"
+                )
+
             # Store the training sequence length for prediction consistency
             self.training_sequence_length = self.sequence_length
-            
+
             X_sequences, y_sequences = self._create_sequences(features, targets)
 
-            if len(X_sequences) < 2:  # Very minimal requirement for testing 
+            if len(X_sequences) < 2:  # Very minimal requirement for testing
                 raise ModelTrainingError(
                     model_type="lstm",
                     room_id=self.room_id,
@@ -249,7 +255,9 @@ class LSTMPredictor(BasePredictor):
                 training_time_seconds=training_time,
                 model_version=self.model_version,
                 training_samples=len(features),  # Report input samples, not sequences
-                validation_score=validation_score if validation_score is not None else training_score,
+                validation_score=(
+                    validation_score if validation_score is not None else training_score
+                ),
                 training_score=training_score,
                 training_metrics=training_metrics,
             )
@@ -272,7 +280,7 @@ class LSTMPredictor(BasePredictor):
                 success=False,
                 training_time_seconds=training_time,
                 model_version=self.model_version,
-                training_samples=len(features) if 'features' in locals() else 0,
+                training_samples=len(features) if "features" in locals() else 0,
                 error_message=error_msg,
             )
 
@@ -280,7 +288,7 @@ class LSTMPredictor(BasePredictor):
             raise ModelTrainingError(model_type="lstm", room_id=self.room_id, cause=e)
         finally:
             # Restore original sequence length and step
-            if 'original_sequence_length' in locals():
+            if "original_sequence_length" in locals():
                 self.sequence_length = original_sequence_length
                 self.sequence_step = 5  # Restore default step
 
@@ -311,8 +319,10 @@ class LSTMPredictor(BasePredictor):
             predictions = []
 
             # Use training sequence length for consistency
-            pred_sequence_length = getattr(self, 'training_sequence_length', self.sequence_length)
-            
+            pred_sequence_length = getattr(
+                self, "training_sequence_length", self.sequence_length
+            )
+
             for idx in range(len(features)):
                 # Create sequence from recent features
                 if idx >= pred_sequence_length - 1:
@@ -625,16 +635,16 @@ class LSTMPredictor(BasePredictor):
     def save_model(self, file_path: Union[str, Path]) -> bool:
         """
         Save the trained LSTM model with all components including scalers.
-        
+
         Args:
             file_path: Path to save the model
-        
+
         Returns:
             True if successful, False otherwise
         """
         try:
             import pickle
-            
+
             model_data = {
                 "model": self.model,
                 "feature_scaler": self.feature_scaler,
@@ -650,35 +660,35 @@ class LSTMPredictor(BasePredictor):
                     result.to_dict() for result in self.training_history
                 ],
                 "sequence_length": self.sequence_length,
-                "scaler_fitted": getattr(self, '_scaler_fitted', False),
+                "scaler_fitted": getattr(self, "_scaler_fitted", False),
             }
-            
+
             with open(file_path, "wb") as f:
                 pickle.dump(model_data, f)
-            
+
             logger.info(f"LSTM model saved to {file_path}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to save LSTM model: {e}")
             return False
-    
+
     def load_model(self, file_path: Union[str, Path]) -> bool:
         """
         Load a trained LSTM model with all components including scalers.
-        
+
         Args:
             file_path: Path to load the model from
-        
+
         Returns:
             True if successful, False otherwise
         """
         try:
             import pickle
-            
+
             with open(file_path, "rb") as f:
                 model_data = pickle.load(f)
-            
+
             self.model = model_data["model"]
             self.feature_scaler = model_data.get("feature_scaler", StandardScaler())
             self.target_scaler = model_data.get("target_scaler", MinMaxScaler())
@@ -691,17 +701,17 @@ class LSTMPredictor(BasePredictor):
             self.is_trained = model_data.get("is_trained", False)
             self.sequence_length = model_data.get("sequence_length", 10)
             self._scaler_fitted = model_data.get("scaler_fitted", False)
-            
+
             # Restore training history
             history_data = model_data.get("training_history", [])
             self.training_history = []
             for result_dict in history_data:
                 result = TrainingResult(**result_dict)
                 self.training_history.append(result)
-            
+
             logger.info(f"LSTM model loaded from {file_path}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to load LSTM model: {e}")
             return False

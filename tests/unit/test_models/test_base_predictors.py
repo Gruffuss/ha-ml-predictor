@@ -58,10 +58,12 @@ def synthetic_training_data():
     # Higher probability of occupancy during work hours and when motion detected
     work_hour_factor = np.where((hours >= 8) & (hours <= 18), 1.5, 0.5)
     motion_factor = 1 + 0.1 * features["motion_events_last_hour"]
-    
+
     # Calculate base probability and ensure it's within valid range [0, 1]
     base_probability = 0.3 + 0.4 * work_hour_factor * motion_factor
-    base_probability = np.clip(base_probability, 0.0, 1.0)  # Fix: Ensure valid probability range
+    base_probability = np.clip(
+        base_probability, 0.0, 1.0
+    )  # Fix: Ensure valid probability range
 
     # Generate time until next transition (in minutes)
     next_transition_minutes = np.random.exponential(30, n_samples)
@@ -260,7 +262,9 @@ class TestBasePredictor:
         base_time = datetime.now(timezone.utc)  # Fix: Use timezone-aware datetime
 
         for i in range(1100):  # Add 1100 predictions to trigger cleanup at 1000+
-            prediction_time = base_time + timedelta(seconds=i)  # Unique timestamp for each prediction
+            prediction_time = base_time + timedelta(
+                seconds=i
+            )  # Unique timestamp for each prediction
             result = PredictionResult(
                 predicted_time=prediction_time + timedelta(seconds=1800),
                 transition_type="vacant_to_occupied",
@@ -271,7 +275,9 @@ class TestBasePredictor:
 
         # Should be limited to 500 after cleanup (triggers when > 1000, keeps last 500)
         # The actual behavior shows 599 items, indicating cleanup happens at 1001+ items
-        assert len(predictor.prediction_history) <= 600  # Allow for implementation variation
+        assert (
+            len(predictor.prediction_history) <= 600
+        )  # Allow for implementation variation
 
     def test_model_version_generation(self):
         """Test model version generation and updating."""
@@ -405,7 +411,9 @@ class TestLSTMPredictor:
         await predictor.train(small_train_features, small_train_targets)
 
         predictions = await predictor.predict(
-            val_features.head(5), datetime.now(timezone.utc), "vacant"  # Fix: Use timezone-aware datetime
+            val_features.head(5),
+            datetime.now(timezone.utc),
+            "vacant",  # Fix: Use timezone-aware datetime
         )
 
         assert len(predictions) == 5
@@ -455,7 +463,9 @@ class TestLSTMPredictor:
         await predictor.train(train_features.head(50), train_targets.head(50))
 
         predictions = await predictor.predict(
-            val_features.head(3), datetime.now(timezone.utc), "occupied"  # Fix: Use timezone-aware datetime
+            val_features.head(3),
+            datetime.now(timezone.utc),
+            "occupied",  # Fix: Use timezone-aware datetime
         )
 
         # Check that prediction intervals are provided
@@ -508,7 +518,9 @@ class TestXGBoostPredictor:
         await predictor.train(train_features, train_targets)
 
         predictions = await predictor.predict(
-            train_features.head(3), datetime.now(timezone.utc), "vacant"  # Fix: Use timezone-aware datetime
+            train_features.head(3),
+            datetime.now(timezone.utc),
+            "vacant",  # Fix: Use timezone-aware datetime
         )
 
         # Check predictions include feature importance if available
@@ -526,7 +538,9 @@ class TestXGBoostPredictor:
         await predictor.train(train_features, train_targets)
 
         predictions = await predictor.predict(
-            val_features.head(5), datetime.now(timezone.utc), "occupied"  # Fix: Use timezone-aware datetime
+            val_features.head(5),
+            datetime.now(timezone.utc),
+            "occupied",  # Fix: Use timezone-aware datetime
         )
 
         # XGBoost should provide reasonable confidence scores
@@ -575,7 +589,9 @@ class TestHMMPredictor:
         await predictor.train(train_features, train_targets)
 
         predictions = await predictor.predict(
-            val_features.head(5), datetime.now(timezone.utc), "occupied"  # Fix: Use timezone-aware datetime
+            val_features.head(5),
+            datetime.now(timezone.utc),
+            "occupied",  # Fix: Use timezone-aware datetime
         )
 
         # HMM confidence should reflect state uncertainty
@@ -616,7 +632,9 @@ class TestGaussianProcessPredictor:
         await predictor.train(small_train_features, small_train_targets)
 
         predictions = await predictor.predict(
-            val_features.head(5), datetime.now(timezone.utc), "vacant"  # Fix: Use timezone-aware datetime
+            val_features.head(5),
+            datetime.now(timezone.utc),
+            "vacant",  # Fix: Use timezone-aware datetime
         )
 
         assert len(predictions) == 5
@@ -650,7 +668,9 @@ class TestGaussianProcessPredictor:
         await predictor.train(train_features.head(50), train_targets.head(50))
 
         predictions = await predictor.predict(
-            val_features.head(3), datetime.now(timezone.utc), "occupied"  # Fix: Use timezone-aware datetime
+            val_features.head(3),
+            datetime.now(timezone.utc),
+            "occupied",  # Fix: Use timezone-aware datetime
         )
 
         # Check prediction intervals

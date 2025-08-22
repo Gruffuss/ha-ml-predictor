@@ -7,8 +7,8 @@ tabular feature-based occupancy predictions with excellent interpretability.
 
 from datetime import datetime, timedelta, timezone
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -180,7 +180,7 @@ class XGBoostPredictor(BasePredictor):
             else:
                 # If no validation set, use training score as validation score
                 validation_score = training_score
-                validation_mae = training_mae  
+                validation_mae = training_mae
                 validation_rmse = training_rmse
 
             # Update model state
@@ -498,17 +498,23 @@ class XGBoostPredictor(BasePredictor):
 
             if extreme_feature_ratio > 0.3:  # More than 30% of features are extreme
                 base_confidence *= 0.9
-            
+
             # Add prediction-specific uncertainty based on feature variability
             # This creates more variation in confidence scores
-            feature_variance = np.var(feature_values) if len(feature_values) > 1 else 0.0
+            feature_variance = (
+                np.var(feature_values) if len(feature_values) > 1 else 0.0
+            )
             uncertainty_adjustment = np.clip(feature_variance * 0.1, -0.2, 0.2)
             base_confidence += uncertainty_adjustment
-            
+
             # Add prediction value-based variation
             # Normalize prediction to create variation
-            pred_normalized = np.clip(pred_value / 3600.0, 0.1, 12.0)  # Convert to hours, clip to reasonable range
-            pred_uncertainty = 0.1 * np.sin(pred_normalized * np.pi / 6.0)  # Varies with prediction value
+            pred_normalized = np.clip(
+                pred_value / 3600.0, 0.1, 12.0
+            )  # Convert to hours, clip to reasonable range
+            pred_uncertainty = 0.1 * np.sin(
+                pred_normalized * np.pi / 6.0
+            )  # Varies with prediction value
             base_confidence += pred_uncertainty
 
             return float(np.clip(base_confidence, 0.1, 0.95))
@@ -586,17 +592,16 @@ class XGBoostPredictor(BasePredictor):
     def save_model(self, file_path: Union[str, Path]) -> bool:
         """
         Save the trained XGBoost model with all components including feature scaler.
-        
+
         Args:
             file_path: Path to save the model
-        
+
         Returns:
             True if successful, False otherwise
         """
         try:
-            from pathlib import Path
             import pickle
-            
+
             model_data = {
                 "model": self.model,
                 "feature_scaler": self.feature_scaler,
@@ -611,36 +616,35 @@ class XGBoostPredictor(BasePredictor):
                     result.to_dict() for result in self.training_history
                 ],
                 "feature_importance_": self.feature_importance_,
-                "scaler_fitted": getattr(self, '_scaler_fitted', False),
+                "scaler_fitted": getattr(self, "_scaler_fitted", False),
             }
-            
+
             with open(file_path, "wb") as f:
                 pickle.dump(model_data, f)
-            
+
             logger.info(f"XGBoost model saved to {file_path}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to save XGBoost model: {e}")
             return False
-    
+
     def load_model(self, file_path: Union[str, Path]) -> bool:
         """
         Load a trained XGBoost model with all components including feature scaler.
-        
+
         Args:
             file_path: Path to load the model from
-        
+
         Returns:
             True if successful, False otherwise
         """
         try:
             import pickle
-            from pathlib import Path
-            
+
             with open(file_path, "rb") as f:
                 model_data = pickle.load(f)
-            
+
             self.model = model_data["model"]
             self.feature_scaler = model_data.get("feature_scaler", StandardScaler())
             self.model_type = ModelType(model_data["model_type"])
@@ -652,17 +656,17 @@ class XGBoostPredictor(BasePredictor):
             self.is_trained = model_data.get("is_trained", False)
             self.feature_importance_ = model_data.get("feature_importance_", {})
             self._scaler_fitted = model_data.get("scaler_fitted", False)
-            
+
             # Restore training history
             history_data = model_data.get("training_history", [])
             self.training_history = []
             for result_dict in history_data:
                 result = TrainingResult(**result_dict)
                 self.training_history.append(result)
-            
+
             logger.info(f"XGBoost model loaded from {file_path}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to load XGBoost model: {e}")
             return False

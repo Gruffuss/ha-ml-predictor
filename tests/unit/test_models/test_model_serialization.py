@@ -35,24 +35,27 @@ from src.models.ensemble import OccupancyEnsemble
 # Pickle-able mock classes for testing (must be at module level)
 class PickleableMockXGBModel:
     """Pickle-able mock XGBoost model for testing."""
+
     def __init__(self):
         self.n_estimators = 100
-        
+
     def predict(self, X):
         return np.random.random(len(X)) * 1000
 
 
 class PickleableOldMockModel:
     """Pickle-able mock model simulating older version."""
+
     def __init__(self):
         self.n_estimators = 50
-        
+
     def predict(self, X):
         return np.random.random(len(X)) * 800
 
 
 class PickleableMockModel:
     """Pickle-able mock model for ensemble testing."""
+
     def __init__(self, model_type, feature_names, room_id="test_room"):
         self.is_trained = True
         self.model_type = model_type
@@ -60,10 +63,10 @@ class PickleableMockModel:
         self.model_version = "v1.0"
         self.training_history = []
         self.room_id = room_id
-        
+
     def save_model(self, file_path):
         return True
-        
+
     def load_model(self, file_path):
         return True
 
@@ -413,7 +416,7 @@ class TestEnsembleModelSerialization:
         for model_name in ensemble.base_models.keys():
             mock_model = PickleableMockModel(
                 ModelType.XGBOOST if model_name == "xgboost" else ModelType.LSTM,
-                list(features.columns)
+                list(features.columns),
             )
             ensemble.base_models[model_name] = mock_model
 

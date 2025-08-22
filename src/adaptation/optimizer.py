@@ -544,7 +544,7 @@ class ModelOptimizer:
 
             except Exception as e:
                 logger.error(f"Error in objective function: {e}")
-                return float('inf')  # Infinite penalty for errors
+                return float("inf")  # Infinite penalty for errors
 
         return objective
 

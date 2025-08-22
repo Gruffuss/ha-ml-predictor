@@ -41,11 +41,11 @@ def mock_db_session():
     session.delete = Mock()  # delete is synchronous, not async
     session.add_all = Mock()  # add_all is synchronous, not async
     session.flush = AsyncMock()  # flush is async
-    
+
     # Configure async context manager behavior
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=None)
-    
+
     return session
 
 
@@ -761,7 +761,9 @@ class TestAccuracyMetricsRetrieval:
         self, prediction_validator, prediction_history
     ):
         """Test room-specific accuracy metrics retrieval."""
-        room_id = "history_room"  # Use the same room_id as in prediction_history fixture
+        room_id = (
+            "history_room"  # Use the same room_id as in prediction_history fixture
+        )
 
         with patch.object(
             prediction_validator,
@@ -975,13 +977,13 @@ class TestDatabaseIntegration:
         room_id = "db_room"
         predicted_time = datetime.now() + timedelta(minutes=30)
 
-        with patch(
-            "src.adaptation.validator.get_db_session"
-        ) as mock_get_session:
+        with patch("src.adaptation.validator.get_db_session") as mock_get_session:
             # Set up the mock to return an async context manager
-            mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_db_session)
+            mock_get_session.return_value.__aenter__ = AsyncMock(
+                return_value=mock_db_session
+            )
             mock_get_session.return_value.__aexit__ = AsyncMock(return_value=None)
-            
+
             await prediction_validator._store_prediction_to_db(
                 room_id=room_id,
                 predicted_time=predicted_time,
@@ -1001,12 +1003,13 @@ class TestDatabaseIntegration:
     ):
         """Test validation update in database."""
         from datetime import timezone
-        
+
         prediction_id = "db_pred_001"
         actual_time = datetime.now(timezone.utc)
-        
+
         # First add a prediction to the validator's memory
         from src.adaptation.validator import ValidationRecord, ValidationStatus
+
         record = ValidationRecord(
             prediction_id=prediction_id,
             room_id="test_room",
@@ -1015,12 +1018,12 @@ class TestDatabaseIntegration:
             predicted_time=actual_time - timedelta(minutes=30),
             transition_type="occupied",
             confidence_score=0.8,
-            status=ValidationStatus.PENDING
+            status=ValidationStatus.PENDING,
         )
-        
+
         # Add to validator's memory
         prediction_validator._validation_records[prediction_id] = record
-        
+
         # Mock the database prediction object
         mock_db_prediction = Mock()
         mock_db_prediction.id = prediction_id
@@ -1028,19 +1031,21 @@ class TestDatabaseIntegration:
         mock_db_prediction.accuracy_minutes = None  # Will be updated
         mock_db_prediction.is_accurate = None  # Will be updated
         mock_db_prediction.validation_timestamp = None  # Will be updated
-        
+
         # Mock the query result
         mock_result = Mock()
-        mock_result.scalar_one_or_none = Mock(return_value=mock_db_prediction)  # scalar_one_or_none is NOT async
+        mock_result.scalar_one_or_none = Mock(
+            return_value=mock_db_prediction
+        )  # scalar_one_or_none is NOT async
         mock_db_session.execute = AsyncMock(return_value=mock_result)
 
-        with patch(
-            "src.adaptation.validator.get_db_session"
-        ) as mock_get_session:
+        with patch("src.adaptation.validator.get_db_session") as mock_get_session:
             # Set up the mock to return an async context manager
-            mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_db_session)
+            mock_get_session.return_value.__aenter__ = AsyncMock(
+                return_value=mock_db_session
+            )
             mock_get_session.return_value.__aexit__ = AsyncMock(return_value=None)
-            
+
             await prediction_validator._update_validation_in_db(
                 prediction_id=prediction_id,
                 actual_time=actual_time,
@@ -1061,7 +1066,7 @@ class TestDatabaseIntegration:
 
         # Mock database query result with proper database prediction objects
         from datetime import timezone
-        
+
         mock_db_predictions = []
         base_time = datetime.now(timezone.utc)
         for i in range(3):
@@ -1083,25 +1088,25 @@ class TestDatabaseIntegration:
             mock_pred.prediction_interval_upper = None
             mock_pred.alternatives = []
             mock_db_predictions.append(mock_pred)
-        
+
         mock_result = Mock()
         mock_result.scalars.return_value.all.return_value = mock_db_predictions
         mock_db_session.execute.return_value = mock_result
 
-        with patch(
-            "src.adaptation.validator.get_db_session"
-        ) as mock_get_session:
+        with patch("src.adaptation.validator.get_db_session") as mock_get_session:
             # Set up the mock to return an async context manager
-            mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_db_session)
+            mock_get_session.return_value.__aenter__ = AsyncMock(
+                return_value=mock_db_session
+            )
             mock_get_session.return_value.__aexit__ = AsyncMock(return_value=None)
-            
+
             predictions = await prediction_validator._get_predictions_from_db(
                 room_id=room_id, hours_back=hours_back
             )
 
             # Verify retrieval - should return ValidationRecord objects
             assert len(predictions) == 3
-            assert all(hasattr(pred, 'prediction_id') for pred in predictions)
+            assert all(hasattr(pred, "prediction_id") for pred in predictions)
             mock_db_session.execute.assert_called()
 
     @pytest.mark.asyncio
@@ -1110,13 +1115,13 @@ class TestDatabaseIntegration:
         # Mock database error
         mock_db_session.commit.side_effect = Exception("Database connection error")
 
-        with patch(
-            "src.adaptation.validator.get_db_session"
-        ) as mock_get_session:
+        with patch("src.adaptation.validator.get_db_session") as mock_get_session:
             # Set up the mock to return an async context manager
-            mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_db_session)
+            mock_get_session.return_value.__aenter__ = AsyncMock(
+                return_value=mock_db_session
+            )
             mock_get_session.return_value.__aexit__ = AsyncMock(return_value=None)
-            
+
             # Should handle database errors gracefully
             try:
                 await prediction_validator._store_prediction_to_db(
@@ -1167,7 +1172,7 @@ class TestCleanupAndMaintenance:
     async def test_validation_history_cleanup(self, prediction_validator):
         """Test cleanup of old validation history."""
         from datetime import timezone
-        
+
         # Add old validation records
         old_records = []
         for i in range(10):
@@ -1190,7 +1195,7 @@ class TestCleanupAndMaintenance:
 
         # Should remove old records
         from datetime import timezone
-        
+
         remaining_records = [
             r
             for r in prediction_validator._validation_history

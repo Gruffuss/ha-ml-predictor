@@ -219,8 +219,8 @@ class EnhancedMQTTIntegrationManager:
             # Update base MQTT stats if available
             if hasattr(self.base_mqtt_manager, "stats"):
                 self.base_mqtt_manager.stats.predictions_published += 1
-                self.base_mqtt_manager.stats.last_prediction_published = (
-                    datetime.now(timezone.utc)
+                self.base_mqtt_manager.stats.last_prediction_published = datetime.now(
+                    timezone.utc
                 )
 
             logger.debug(

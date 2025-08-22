@@ -723,7 +723,7 @@ class PredictionValidator:
             memory_records = self._get_filtered_records(
                 room_id, model_type, hours_back, start_time, end_time
             )
-            
+
             # Also get records from database for comprehensive analysis
             try:
                 # For the database query, don't apply room/model filters here
@@ -731,7 +731,7 @@ class PredictionValidator:
                 db_records = await self._get_predictions_from_db(
                     room_id=room_id, model_type=model_type, hours_back=hours_back
                 )
-                
+
                 # Combine and deduplicate records
                 all_records = memory_records + db_records
                 # Remove duplicates based on prediction_id
@@ -741,13 +741,15 @@ class PredictionValidator:
                     if record.prediction_id not in seen_ids:
                         combined_records.append(record)
                         seen_ids.add(record.prediction_id)
-                        
+
                 # The database records are already filtered by _get_predictions_from_db
                 # No need to filter again here, just use the combined records
                 records = combined_records
-                        
+
             except Exception as db_error:
-                logger.debug(f"Database records unavailable, using memory only: {db_error}")
+                logger.debug(
+                    f"Database records unavailable, using memory only: {db_error}"
+                )
                 # Memory records are already filtered by _get_filtered_records
                 records = memory_records
 
@@ -761,7 +763,7 @@ class PredictionValidator:
                         continue
                     filtered_records.append(record)
                 records = filtered_records
-            
+
             # Calculate metrics
             metrics = self._calculate_metrics_from_records(records, hours_back)
 
@@ -1074,9 +1076,8 @@ class PredictionValidator:
             try:
                 async with get_db_session() as session:
                     # Delete old predictions from database
-                    delete_query = (
-                        select(Prediction)
-                        .where(Prediction.prediction_time < cutoff_time)
+                    delete_query = select(Prediction).where(
+                        Prediction.prediction_time < cutoff_time
                     )
                     result = await session.execute(delete_query)
                     old_predictions = result.scalars().all()
@@ -1094,7 +1095,9 @@ class PredictionValidator:
                     return memory_cleaned + db_cleaned
 
             except Exception as db_error:
-                logger.warning(f"Database cleanup failed, memory cleanup only: {db_error}")
+                logger.warning(
+                    f"Database cleanup failed, memory cleanup only: {db_error}"
+                )
                 return memory_cleaned
 
         except Exception as e:
@@ -1167,7 +1170,9 @@ class PredictionValidator:
 
                     await self._update_predictions_in_db([existing_record])
                 else:
-                    logger.warning(f"Prediction {prediction_id} not found for validation update")
+                    logger.warning(
+                        f"Prediction {prediction_id} not found for validation update"
+                    )
             else:
                 raise ValueError(
                     "Either validation_record or prediction_id with actual_time must be provided"
@@ -1439,16 +1444,16 @@ class PredictionValidator:
                 records = []
                 for pred in db_predictions:
                     # Handle both field names for transition times
-                    predicted_transition_time = (
-                        getattr(pred, 'predicted_transition_time', None) or 
-                        getattr(pred, 'predicted_time', None)
+                    predicted_transition_time = getattr(
+                        pred, "predicted_transition_time", None
+                    ) or getattr(pred, "predicted_time", None)
+                    actual_transition_time = getattr(
+                        pred, "actual_transition_time", None
+                    ) or getattr(pred, "actual_time", None)
+                    error_minutes = getattr(pred, "accuracy_minutes", None) or getattr(
+                        pred, "error_minutes", None
                     )
-                    actual_transition_time = (
-                        getattr(pred, 'actual_transition_time', None) or 
-                        getattr(pred, 'actual_time', None)
-                    )
-                    error_minutes = getattr(pred, 'accuracy_minutes', None) or getattr(pred, 'error_minutes', None)
-                    
+
                     # Determine validation status
                     if actual_transition_time is not None:
                         status = ValidationStatus.VALIDATED
@@ -1456,8 +1461,9 @@ class PredictionValidator:
                     else:
                         # Check if expired
                         if (
-                            predicted_transition_time and
-                            predicted_transition_time < datetime.now(UTC) - self.max_validation_delay
+                            predicted_transition_time
+                            and predicted_transition_time
+                            < datetime.now(UTC) - self.max_validation_delay
                         ):
                             status = ValidationStatus.EXPIRED
                         else:
@@ -1651,7 +1657,9 @@ class PredictionValidator:
 
                 # Check if transition types match - more flexible matching
                 # Allow matching "occupied" with "vacant_to_occupied" etc.
-                if not self._transition_types_match(record.transition_type, transition_type):
+                if not self._transition_types_match(
+                    record.transition_type, transition_type
+                ):
                     continue
 
                 # Check if within time window
@@ -1664,18 +1672,18 @@ class PredictionValidator:
     def _transition_types_match(self, recorded_type: str, validation_type: str) -> bool:
         """
         Check if transition types match with flexible rules.
-        
+
         Args:
             recorded_type: Transition type when prediction was recorded
             validation_type: Transition type during validation
-            
+
         Returns:
             True if types should be considered matching
         """
         # Exact match
         if recorded_type == validation_type:
             return True
-            
+
         # Flexible matching rules
         type_mappings = {
             "occupied": ["vacant_to_occupied", "occupied", "enter"],
@@ -1685,21 +1693,21 @@ class PredictionValidator:
             "enter": ["occupied", "vacant_to_occupied"],
             "exit": ["vacant", "occupied_to_vacant"],
         }
-        
+
         # Check if validation_type is in the allowed mappings for recorded_type
         allowed_types = type_mappings.get(recorded_type, [])
         if validation_type in allowed_types:
             return True
-            
+
         # Check reverse mapping
         allowed_types = type_mappings.get(validation_type, [])
         if recorded_type in allowed_types:
             return True
-            
+
         # If no specific mapping, allow "unknown" to match anything
         if recorded_type == "unknown" or validation_type == "unknown":
             return True
-            
+
         return False
 
     def _get_filtered_records(

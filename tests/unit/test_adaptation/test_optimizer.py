@@ -71,7 +71,10 @@ def mock_drift_detector():
         return_value=DriftMetrics(
             room_id="test_room",
             detection_time=current_time,
-            baseline_period=(current_time - timedelta(days=7), current_time - timedelta(days=1)),
+            baseline_period=(
+                current_time - timedelta(days=7),
+                current_time - timedelta(days=1),
+            ),
             current_period=(current_time - timedelta(days=1), current_time),
             overall_drift_score=0.15,
             drift_severity=DriftSeverity.LOW,

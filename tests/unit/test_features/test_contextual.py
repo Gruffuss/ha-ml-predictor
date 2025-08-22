@@ -318,7 +318,9 @@ class TestContextualFeatureExtractor:
             state.occupancy_confidence = 0.85
             room_states.append(state)
 
-        features = extractor._extract_multi_room_features(events, room_states, target_time)
+        features = extractor._extract_multi_room_features(
+            events, room_states, target_time
+        )
 
         # Should detect correlation between living_room and kitchen
         assert features["active_rooms_count"] > 1.0
@@ -477,7 +479,9 @@ class TestContextualFeatureExtractor:
             state.occupancy_confidence = 0.9
             room_states.append(state)
 
-        features_concentrated = extractor._extract_multi_room_features([], room_states, base_time)
+        features_concentrated = extractor._extract_multi_room_features(
+            [], room_states, base_time
+        )
 
         room_states.clear()
 
@@ -495,7 +499,9 @@ class TestContextualFeatureExtractor:
             state.occupancy_confidence = 0.9
             room_states.append(state)
 
-        features_spread = extractor._extract_multi_room_features([], room_states, base_time)
+        features_spread = extractor._extract_multi_room_features(
+            [], room_states, base_time
+        )
 
         # Spread scenario should have higher spread score
         assert (
@@ -698,7 +704,7 @@ class TestContextualFeatureExtractorIntegration:
         bathroom_door.state = "open"
         bathroom_door.room_id = "bathroom"
         events.append(bathroom_door)
-        
+
         # Add door closing to create a transition
         bathroom_door_close = Mock(spec=SensorEvent)
         bathroom_door_close.timestamp = base_time + timedelta(minutes=15)
@@ -785,7 +791,7 @@ class TestContextualFeatureExtractorIntegration:
                 door_event_start.state = "closed"
                 door_event_start.room_id = "living_room"
                 events.append(door_event_start)
-                
+
                 # Open early and stay open (45 minutes out of 55 total)
                 door_event_open = Mock(spec=SensorEvent)
                 door_event_open.timestamp = target_time - timedelta(minutes=50)
@@ -794,7 +800,7 @@ class TestContextualFeatureExtractorIntegration:
                 door_event_open.state = "open"
                 door_event_open.room_id = "living_room"
                 events.append(door_event_open)
-                
+
                 # Close briefly near the end to create a measurable open duration
                 door_event_close = Mock(spec=SensorEvent)
                 door_event_close.timestamp = target_time - timedelta(minutes=5)
@@ -812,7 +818,7 @@ class TestContextualFeatureExtractorIntegration:
                 door_event_start.state = "closed"
                 door_event_start.room_id = "living_room"
                 events.append(door_event_start)
-                
+
                 door_event_end = Mock(spec=SensorEvent)
                 door_event_end.timestamp = target_time - timedelta(minutes=5)
                 door_event_end.sensor_id = "sensor.door"
@@ -890,7 +896,9 @@ class TestContextualFeatureExtractorIntegration:
             state.occupancy_confidence = 0.8
             room_states.append(state)
 
-        features = extractor._extract_multi_room_features(events, room_states, target_time)
+        features = extractor._extract_multi_room_features(
+            events, room_states, target_time
+        )
 
         # Should detect complex correlation patterns
         assert features["active_rooms_count"] > 1.0  # Multiple room transitions
@@ -1044,7 +1052,9 @@ class TestContextualFeatureExtractorEdgeCases:
         # Should handle rapid changes correctly
         assert isinstance(features, dict)
         assert features["door_transition_count"] == 19.0  # 19 transitions
-        assert abs(features["door_open_ratio"] - 0.5) < 0.1  # Approximately half open, half closed
+        assert (
+            abs(features["door_open_ratio"] - 0.5) < 0.1
+        )  # Approximately half open, half closed
 
     def test_long_time_gaps(self, extractor, target_time):
         """Test handling of large time gaps between sensor readings."""
@@ -1091,7 +1101,9 @@ class TestContextualFeatureExtractorEdgeCases:
             state.occupancy_confidence = 0.8
             room_states.append(state)
 
-        features = extractor._extract_multi_room_features(events, room_states, target_time)
+        features = extractor._extract_multi_room_features(
+            events, room_states, target_time
+        )
 
         # Should handle single room gracefully
         assert features["active_rooms_count"] == 1.0  # Only one room

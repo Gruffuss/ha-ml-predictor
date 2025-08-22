@@ -8,8 +8,8 @@ state transitions.
 
 from datetime import datetime, timedelta, timezone
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
 import warnings
 
 import numpy as np
@@ -1045,16 +1045,16 @@ class GaussianProcessPredictor(BasePredictor):
     def save_model(self, file_path: Union[str, Path]) -> bool:
         """
         Save the trained GP model with all components including feature scaler.
-        
+
         Args:
             file_path: Path to save the model
-        
+
         Returns:
             True if successful, False otherwise
         """
         try:
             import pickle
-            
+
             model_data = {
                 "model": self.gp_model,
                 "feature_scaler": self.feature_scaler,
@@ -1070,35 +1070,35 @@ class GaussianProcessPredictor(BasePredictor):
                 ],
                 "kernel_type": self.kernel_type,
                 "optimization_restarts": self.optimization_restarts,
-                "scaler_fitted": getattr(self, '_scaler_fitted', False),
+                "scaler_fitted": getattr(self, "_scaler_fitted", False),
             }
-            
+
             with open(file_path, "wb") as f:
                 pickle.dump(model_data, f)
-            
+
             logger.info(f"GP model saved to {file_path}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to save GP model: {e}")
             return False
-    
+
     def load_model(self, file_path: Union[str, Path]) -> bool:
         """
         Load a trained GP model with all components including feature scaler.
-        
+
         Args:
             file_path: Path to load the model from
-        
+
         Returns:
             True if successful, False otherwise
         """
         try:
             import pickle
-            
+
             with open(file_path, "rb") as f:
                 model_data = pickle.load(f)
-            
+
             self.gp_model = model_data["model"]
             self.feature_scaler = model_data.get("feature_scaler", StandardScaler())
             self.model_type = ModelType(model_data["model_type"])
@@ -1111,17 +1111,17 @@ class GaussianProcessPredictor(BasePredictor):
             self.kernel_type = model_data.get("kernel_type", "rbf")
             self.optimization_restarts = model_data.get("optimization_restarts", 0)
             self._scaler_fitted = model_data.get("scaler_fitted", False)
-            
+
             # Restore training history
             history_data = model_data.get("training_history", [])
             self.training_history = []
             for result_dict in history_data:
                 result = TrainingResult(**result_dict)
                 self.training_history.append(result)
-            
+
             logger.info(f"GP model loaded from {file_path}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to load GP model: {e}")
             return False

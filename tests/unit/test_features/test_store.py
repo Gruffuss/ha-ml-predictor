@@ -513,7 +513,9 @@ class TestFeatureStore:
             assert len(results) == 2
             assert results[0] == {"success": 1.0}
             assert isinstance(results[1], dict)  # Should be default features
-            assert results[1] == {"default_feature": 0.0}  # Should be default features dict
+            assert results[1] == {
+                "default_feature": 0.0
+            }  # Should be default features dict
 
     @pytest.mark.asyncio
     async def test_compute_training_data(self, store):

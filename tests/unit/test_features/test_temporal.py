@@ -285,8 +285,12 @@ class TestTemporalFeatureExtractor:
         # With timezone_offset=-8, local time becomes 12 + (-8) = 4:00
         # At 4:00, hour angle should be 2π * 4 / 24 = π/3 (60 degrees)
         local_hour = 4  # 12 + (-8)
-        expected_hour_sin = math.sin(2 * math.pi * local_hour / 24)  # sin(π/3) = √3/2 ≈ 0.866
-        expected_hour_cos = math.cos(2 * math.pi * local_hour / 24)  # cos(π/3) = 1/2 = 0.5
+        expected_hour_sin = math.sin(
+            2 * math.pi * local_hour / 24
+        )  # sin(π/3) = √3/2 ≈ 0.866
+        expected_hour_cos = math.cos(
+            2 * math.pi * local_hour / 24
+        )  # cos(π/3) = 1/2 = 0.5
 
         assert abs(features["hour_sin"] - expected_hour_sin) < 0.0001
         assert abs(features["hour_cos"] - expected_hour_cos) < 0.0001

@@ -20,8 +20,8 @@ import uuid
 import numpy as np
 import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-from sklearn.model_selection import TimeSeriesSplit
 
+from ..core.config import get_config
 from ..core.constants import ModelType
 from ..core.exceptions import (
     ErrorSeverity,
@@ -29,7 +29,6 @@ from ..core.exceptions import (
     ModelTrainingError,
     OccupancyPredictionError,
 )
-from ..core.config import get_config
 from ..features.engineering import FeatureEngineeringEngine
 from ..features.store import FeatureStore
 from .base.predictor import BasePredictor, TrainingResult
@@ -636,7 +635,7 @@ class ModelTrainingPipeline:
             self._training_stats["failed_pipelines"] += 1
 
             logger.error(f"Training pipeline {pipeline_id} failed: {e}")
-            
+
             # Preserve specific error types for test validation
             if isinstance(e, (InsufficientTrainingDataError, ModelTrainingError)):
                 raise ModelTrainingError("ensemble", room_id, cause=e)
@@ -743,7 +742,7 @@ class ModelTrainingPipeline:
                     latest_timestamp = latest_timestamp.tz_localize(UTC)
                 elif latest_timestamp.tz != UTC:
                     latest_timestamp = latest_timestamp.tz_convert(UTC)
-                
+
                 data_freshness_ok = (datetime.now(UTC) - latest_timestamp) <= timedelta(
                     hours=24
                 )
@@ -1017,11 +1016,11 @@ class ModelTrainingPipeline:
         train_features = features_df.iloc[:train_size]
         train_targets = targets_df.iloc[:train_size]
 
-        val_features = features_df.iloc[train_size:train_size + val_size]
-        val_targets = targets_df.iloc[train_size:train_size + val_size]
+        val_features = features_df.iloc[train_size : train_size + val_size]
+        val_targets = targets_df.iloc[train_size : train_size + val_size]
 
-        test_features = features_df.iloc[train_size + val_size:]
-        test_targets = targets_df.iloc[train_size + val_size:]
+        test_features = features_df.iloc[train_size + val_size :]
+        test_targets = targets_df.iloc[train_size + val_size :]
 
         # Update progress
         progress.training_samples = len(train_features)
@@ -1248,13 +1247,13 @@ class ModelTrainingPipeline:
 
             # Only raise error if we were trying to train ensemble or multiple models
             # If training specific model type that's not implemented, return empty dict
-            if not trained_models and (target_model_type is None or target_model_type == "ensemble"):
+            if not trained_models and (
+                target_model_type is None or target_model_type == "ensemble"
+            ):
                 # Create a custom exception with the expected message for the test
                 error = Exception("No models were successfully trained")
                 raise ModelTrainingError(
-                    model_type="ensemble",
-                    room_id=room_id,
-                    cause=error
+                    model_type="ensemble", room_id=room_id, cause=error
                 )
 
             logger.info(
@@ -1514,11 +1513,13 @@ class ModelTrainingPipeline:
                 logger.warning(f"Failed to pickle model (likely a test mock): {e}")
                 # Create a placeholder file for tests
                 with open(model_file, "wb") as f:
-                    pickle.dump({"model_type": "test_mock", "version": model_version}, f)
+                    pickle.dump(
+                        {"model_type": "test_mock", "version": model_version}, f
+                    )
 
             # Import json for metadata serialization
             import json
-            
+
             # Save model metadata
             def safe_extract_attr(obj, attr_name, default=None):
                 """Safely extract attribute from object, handling test mocks."""
@@ -1529,13 +1530,17 @@ class ModelTrainingPipeline:
                     return attr
                 except (TypeError, AttributeError, ValueError):
                     return default
-            
+
             # Extract model type safely
             try:
-                model_type = model.model_type.value if hasattr(model, "model_type") else model_name
+                model_type = (
+                    model.model_type.value
+                    if hasattr(model, "model_type")
+                    else model_name
+                )
             except (AttributeError, TypeError):
                 model_type = model_name
-            
+
             metadata = {
                 "room_id": room_id,
                 "model_name": model_name,
@@ -1555,7 +1560,9 @@ class ModelTrainingPipeline:
                 with open(metadata_file, "w") as f:
                     json.dump(metadata, f, indent=2)
             except (TypeError, ValueError) as e:
-                logger.warning(f"Failed to save metadata as JSON (likely test mock): {e}")
+                logger.warning(
+                    f"Failed to save metadata as JSON (likely test mock): {e}"
+                )
                 # Create a simplified metadata for tests
                 simple_metadata = {
                     "room_id": room_id,

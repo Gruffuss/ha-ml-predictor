@@ -6,8 +6,8 @@ all adaptation components, integration workflows, and real-time monitoring.
 """
 
 import asyncio
-import os
 from datetime import UTC, datetime, timedelta
+import os
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -872,28 +872,28 @@ class TestPerformanceAndConcurrency:
         # In test environment, background tasks are disabled by default
         # Check if we're in test mode (background tasks disabled)
         test_mode = os.getenv("DISABLE_BACKGROUND_TASKS") is not None
-        
+
         if test_mode:
             # In test mode, no background tasks should be running
             initial_task_count = len(tracking_manager._background_tasks)
             assert initial_task_count == 0
-            
+
             # Test enabling background tasks by temporarily removing the env var
             # and restarting tracking
             original_env = os.environ.get("DISABLE_BACKGROUND_TASKS")
             if "DISABLE_BACKGROUND_TASKS" in os.environ:
                 del os.environ["DISABLE_BACKGROUND_TASKS"]
-            
+
             try:
                 await tracking_manager.stop_tracking()
                 await tracking_manager.start_tracking()
                 # Now background tasks should be running
                 assert len(tracking_manager._background_tasks) > 0
-                
+
                 # Test stopping tracking cleans up tasks
                 await tracking_manager.stop_tracking()
                 assert len(tracking_manager._background_tasks) == 0
-                
+
                 # Test restarting tracking creates tasks again
                 await tracking_manager.start_tracking()
                 assert len(tracking_manager._background_tasks) > 0

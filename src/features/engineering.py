@@ -48,10 +48,10 @@ class FeatureEngineeringEngine:
         """
         # Store config - use global config as fallback if None provided
         self.config = config or get_config()
-        
+
         # Track if original config was None for validation testing
         self._original_config_was_none = config is None
-        
+
         # Use the resolved config for operations
         self._operational_config = self.config
         self.enable_parallel = enable_parallel
@@ -161,6 +161,7 @@ class FeatureEngineeringEngine:
                     room_config,
                     feature_types,
                     lookback_hours,
+                    room_id,
                 )
             else:
                 features = await self._extract_features_sequential(
@@ -282,6 +283,7 @@ class FeatureEngineeringEngine:
         room_config: Optional[RoomConfig],
         feature_types: List[str],
         lookback_hours: int,
+        room_id: str,
     ) -> Dict[str, float]:
         """Extract features using parallel processing."""
         loop = asyncio.get_event_loop()
@@ -332,7 +334,7 @@ class FeatureEngineeringEngine:
         # Combine results
         combined_features = {}
         failed_extractors = []
-        
+
         for i, (feature_type, _) in enumerate(tasks):
             result = results[i]
             if isinstance(result, Exception):
@@ -346,20 +348,23 @@ class FeatureEngineeringEngine:
             combined_features.update(prefixed_features)
 
             self.stats["feature_counts"][feature_type] += len(result)
-            
+
         # If all extractors failed, raise an exception
         if len(failed_extractors) == len(tasks) and len(combined_features) == 0:
             from ..core.exceptions import FeatureExtractionError
+
             raise FeatureExtractionError(
                 feature_type="all",
                 room_id=room_id,
                 cause=Exception(f"All extractors failed: {failed_extractors}"),
             )
-            
+
         # Add metadata about failed extractors
         if failed_extractors:
             combined_features["_failed_extractors"] = len(failed_extractors)
-            combined_features["_successful_extractors"] = len(tasks) - len(failed_extractors)
+            combined_features["_successful_extractors"] = len(tasks) - len(
+                failed_extractors
+            )
 
         return combined_features
 
@@ -582,7 +587,7 @@ class FeatureEngineeringEngine:
             validation_results["errors"].append("No system configuration provided")
             validation_results["valid"] = False
             return validation_results
-            
+
         # Check if configuration is available
         if not self.config:
             validation_results["errors"].append("No system configuration available")

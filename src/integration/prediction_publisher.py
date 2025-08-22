@@ -182,7 +182,9 @@ class PredictionPublisher:
                         "confidence": float(alt_confidence),
                         "time_until_seconds": max(
                             0,
-                            int((alt_time - datetime.now(timezone.utc)).total_seconds()),
+                            int(
+                                (alt_time - datetime.now(timezone.utc)).total_seconds()
+                            ),
                         ),
                     }
                 )

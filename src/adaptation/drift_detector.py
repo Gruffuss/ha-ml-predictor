@@ -44,7 +44,7 @@ class DriftSeverity(Enum):
     MEDIUM = "medium"  # Clear drift but manageable
     HIGH = "high"  # Significant drift requiring attention
     CRITICAL = "critical"  # Severe drift requiring immediate action
-    
+
     # Legacy aliases for backward compatibility
     MINOR = "low"  # Maps to LOW
     MODERATE = "medium"  # Maps to MEDIUM
