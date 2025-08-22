@@ -9,21 +9,22 @@ This module provides sophisticated pattern detection capabilities for:
 - Statistical validation of sensor patterns
 """
 
-import asyncio
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 import logging
 import math
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Set
 
 import statistics
 
 try:
     import numpy as np
     from scipy import stats
-    from sklearn.cluster import DBSCAN
-    from sklearn.preprocessing import StandardScaler
+
+    # Sklearn imports available but not used in current implementation
+    # from sklearn.cluster import DBSCAN
+    # from sklearn.preprocessing import StandardScaler
 
     SCIPY_AVAILABLE = True
     SKLEARN_AVAILABLE = True
@@ -48,22 +49,19 @@ except ImportError:
 
     stats = MockStats()
 
-from ...core.config import RoomConfig, get_config
+# RoomConfig and get_config available for future use
+# from ...core.config import RoomConfig, get_config
 from ...core.constants import (
-    CAT_MOVEMENT_PATTERNS,
-    HUMAN_MOVEMENT_PATTERNS,
-    MAX_SEQUENCE_GAP,
-    MIN_EVENT_SEPARATION,
     SensorState,
     SensorType,
 )
 from ...core.exceptions import (
-    DataValidationError,
     ErrorSeverity,
-    FeatureExtractionError,
 )
-from ..storage.models import SensorEvent
-from .event_validator import ValidationError, ValidationResult
+
+# SensorEvent available for future use
+# from ..storage.models import SensorEvent
+from .event_validator import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -408,7 +406,8 @@ class CorruptionDetector:
         """Detect state value corruption."""
         errors = []
 
-        valid_states = {state.value for state in SensorState}
+        # Valid states check available for future validation
+        # valid_states = {state.value for state in SensorState}
 
         for i, event in enumerate(events):
             if "state" in event and event["state"] is not None:
@@ -496,16 +495,16 @@ class CorruptionDetector:
         errors = []
 
         for i, event in enumerate(events):
-            for field, value in event.items():
+            for field_name, value in event.items():
                 if isinstance(value, str) and value:
                     # Check for common encoding issues
                     if "�" in value:  # Replacement character indicates encoding issues
                         errors.append(
                             ValidationError(
                                 rule_id="COR008",
-                                field=field,
+                                field=field_name,
                                 value=value[:50],
-                                message=f"Encoding corruption detected in {field} at event {i}",
+                                message=f"Encoding corruption detected in {field_name} at event {i}",
                                 severity=ErrorSeverity.MEDIUM,
                                 suggestion="Fix character encoding in data pipeline",
                                 context={"event_index": i},
@@ -519,9 +518,9 @@ class CorruptionDetector:
                         errors.append(
                             ValidationError(
                                 rule_id="COR009",
-                                field=field,
+                                field=field_name,
                                 value=repr(value[:50]),
-                                message=f"Unicode encoding error in {field} at event {i}",
+                                message=f"Unicode encoding error in {field_name} at event {i}",
                                 severity=ErrorSeverity.HIGH,
                                 suggestion="Ensure consistent UTF-8 encoding",
                                 context={"event_index": i},
@@ -706,7 +705,7 @@ class RealTimeQualityMonitor:
 
         if len(timestamps) > 1:
             ordered_count = 0
-            sorted_timestamps = sorted(timestamps)
+            # sorted_timestamps = sorted(timestamps)  # Available for future use
             for i, ts in enumerate(timestamps):
                 if i == 0 or ts >= timestamps[i - 1]:
                     ordered_count += 1

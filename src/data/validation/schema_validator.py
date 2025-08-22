@@ -9,9 +9,13 @@ This module provides robust schema validation for:
 - Version compatibility validation
 """
 
-import asyncio
+# asyncio available for future async operations
+# import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
+
+# timezone available for future use
+# from datetime import timezone
 import json
 import logging
 import re
@@ -19,10 +23,9 @@ from typing import Any, Callable, Dict, List, Optional, Set, Union
 import uuid
 
 try:
-    from jsonschema import (
+    from jsonschema import (  # validate,  # Available for future use
         Draft7Validator,
         ValidationError as JsonSchemaValidationError,
-        validate,
     )
 
     JSONSCHEMA_AVAILABLE = True
@@ -44,14 +47,14 @@ except ImportError:
 from sqlalchemy import inspect, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...core.config import RoomConfig, SystemConfig, get_config
+# RoomConfig, SystemConfig, and get_config available for future use
+# from ...core.config import RoomConfig, SystemConfig, get_config
 from ...core.constants import SensorState, SensorType
 from ...core.exceptions import (
-    ConfigurationError,
-    DatabaseError,
-    DataValidationError,
     ErrorSeverity,
 )
+
+# ConfigurationError, DatabaseError, DataValidationError available for future use
 from .event_validator import ValidationError, ValidationResult
 
 logger = logging.getLogger(__name__)

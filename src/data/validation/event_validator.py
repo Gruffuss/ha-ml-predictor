@@ -12,34 +12,27 @@ This module provides comprehensive validation for sensor events including:
 import asyncio
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 import hashlib
 import logging
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional
 import uuid
 
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...core.config import RoomConfig, SystemConfig, get_config
+from ...core.config import SystemConfig, get_config
 from ...core.constants import (
-    ABSENCE_STATES,
-    INVALID_STATES,
-    MAX_SEQUENCE_GAP,
     MIN_EVENT_SEPARATION,
     PRESENCE_STATES,
     SensorState,
     SensorType,
 )
 from ...core.exceptions import (
-    APISecurityError,
-    ConfigurationError,
-    DatabaseError,
-    DataValidationError,
     ErrorSeverity,
 )
-from ..storage.models import RoomState, SensorEvent
+from ..storage.models import RoomState
 
 logger = logging.getLogger(__name__)
 
@@ -340,27 +333,27 @@ class SchemaValidator:
 
         # Required fields validation
         required_fields = ["room_id", "sensor_id", "sensor_type", "state", "timestamp"]
-        for field in required_fields:
-            if field not in event_data:
+        for field_name in required_fields:
+            if field_name not in event_data:
                 errors.append(
                     ValidationError(
                         rule_id="SCH001",
-                        field=field,
+                        field=field_name,
                         value=None,
-                        message=f"Required field '{field}' is missing",
+                        message=f"Required field '{field_name}' is missing",
                         severity=ErrorSeverity.CRITICAL,
-                        suggestion=f"Provide a valid {field} value",
+                        suggestion=f"Provide a valid {field_name} value",
                     )
                 )
-            elif event_data[field] is None:
+            elif event_data[field_name] is None:
                 errors.append(
                     ValidationError(
                         rule_id="SCH002",
-                        field=field,
+                        field=field_name,
                         value=None,
-                        message=f"Required field '{field}' cannot be null",
+                        message=f"Required field '{field_name}' cannot be null",
                         severity=ErrorSeverity.CRITICAL,
-                        suggestion=f"Provide a valid {field} value",
+                        suggestion=f"Provide a valid {field_name} value",
                     )
                 )
 
