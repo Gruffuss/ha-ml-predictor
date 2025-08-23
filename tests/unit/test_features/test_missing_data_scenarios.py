@@ -3,7 +3,7 @@ Comprehensive tests for feature extraction with missing and incomplete data.
 
 This test suite validates robustness of feature engineering when dealing with:
 - Missing sensor data
-- Incomplete sequences 
+- Incomplete sequences
 - Malformed events
 - Sensor failures
 - Data quality issues

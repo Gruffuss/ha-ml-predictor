@@ -365,7 +365,7 @@ class LSTMPredictor(BasePredictor):
 
                 # Calculate predicted transition time
                 predicted_time = prediction_time + timedelta(
-                    seconds=time_until_transition
+                    seconds=float(time_until_transition)
                 )
 
                 # Determine transition type based on current state
@@ -721,3 +721,141 @@ class LSTMPredictor(BasePredictor):
         except Exception as e:
             logger.error(f"Failed to load LSTM model: {e}")
             return False
+
+    async def incremental_update(
+        self,
+        features: pd.DataFrame,
+        targets: pd.DataFrame,
+        learning_rate: float = 0.01,
+    ) -> TrainingResult:
+        """
+        Perform incremental update of the LSTM model.
+
+        For MLPRegressor, this performs a partial_fit if available,
+        or retrains with combined old and new data.
+
+        Args:
+            features: New training feature matrix
+            targets: New training target values
+            learning_rate: Learning rate for incremental updates
+
+        Returns:
+            TrainingResult with incremental update statistics
+        """
+        start_time = datetime.now(timezone.utc)
+
+        try:
+            logger.info(f"Starting incremental update for LSTM model {self.room_id}")
+
+            if not self.is_trained:
+                logger.warning(
+                    "Model not trained yet, performing full training instead"
+                )
+                return await self.train(features, targets)
+
+            if len(features) < 5:
+                raise ModelTrainingError(
+                    model_type="lstm",
+                    room_id=self.room_id or "unknown",
+                    cause=ValueError(
+                        f"Insufficient data for incremental update: only {len(features)} samples"
+                    ),
+                )
+
+            # Create sequences from new data
+            sequences_X, sequences_y = self._create_sequences(features, targets)
+
+            if len(sequences_X) == 0:
+                raise ModelTrainingError(
+                    model_type="lstm",
+                    room_id=self.room_id or "unknown",
+                    cause=ValueError("No sequences could be created from new data"),
+                )
+
+            # Scale the new sequences
+            X_scaled = self.feature_scaler.transform(sequences_X)
+            y_scaled = self.target_scaler.transform(
+                np.array(sequences_y).reshape(-1, 1)
+            ).ravel()
+
+            # MLPRegressor doesn't have partial_fit, so we need to simulate incremental learning
+            # by retraining with a small subset of old data plus new data
+            if hasattr(self.model, "partial_fit"):
+                # If partial_fit is available (it's not for MLPRegressor but checking anyway)
+                self.model.partial_fit(X_scaled, y_scaled)
+            else:
+                # Simulate incremental learning by adjusting learning rate and doing few epochs
+                # Create a new model with warm start if possible
+                current_params = self.model.get_params()
+                current_params["learning_rate_init"] = learning_rate
+                current_params["max_iter"] = 10  # Few iterations for incremental update
+                current_params["warm_start"] = True
+
+                # Retrain on new data only with adjusted parameters
+                self.model.set_params(**current_params)
+                self.model.fit(X_scaled, y_scaled)
+
+            # Calculate performance on new data
+            predictions = self.model.predict(X_scaled)
+            from sklearn.metrics import mean_absolute_error, r2_score
+
+            y_true_original = self.target_scaler.inverse_transform(
+                y_scaled.reshape(-1, 1)
+            ).ravel()
+            y_pred_original = self.target_scaler.inverse_transform(
+                predictions.reshape(-1, 1)
+            ).ravel()
+
+            training_mae = (
+                mean_absolute_error(y_true_original, y_pred_original) / 60
+            )  # Convert to minutes
+            training_score = r2_score(y_true_original, y_pred_original)
+
+            # Update model version for incremental update
+            import time
+
+            self.model_version = f"{self.model_version}_inc_{int(time.time())}"
+
+            training_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+
+            result = TrainingResult(
+                success=True,
+                training_time_seconds=training_time,
+                model_version=self.model_version,
+                training_samples=len(sequences_X),
+                training_score=training_score,
+                training_metrics={
+                    "update_type": "incremental",
+                    "incremental_mae_minutes": training_mae,
+                    "incremental_r2": training_score,
+                    "learning_rate": learning_rate,
+                    "sequences_processed": len(sequences_X),
+                },
+            )
+
+            self.training_history.append(result)
+
+            logger.info(
+                f"Incremental update completed in {training_time:.2f}s: "
+                f"R²={training_score:.4f}, MAE={training_mae:.2f}min"
+            )
+
+            return result
+
+        except Exception as e:
+            training_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+            error_msg = f"Incremental update failed: {str(e)}"
+            logger.error(error_msg)
+
+            result = TrainingResult(
+                success=False,
+                training_time_seconds=training_time,
+                model_version=self.model_version,
+                training_samples=0,
+                error_message=error_msg,
+            )
+
+            self.training_history.append(result)
+            raise ModelTrainingError(
+                model_type="lstm", room_id=self.room_id or "unknown", cause=e
+            )

@@ -210,6 +210,8 @@ class TestSchemaValidator:
             prediction=MagicMock(),
             features=MagicMock(),
             logging=MagicMock(),
+            tracking=MagicMock(),
+            api=MagicMock(),
             rooms={
                 "living_room": RoomConfig(
                     room_id="living_room",

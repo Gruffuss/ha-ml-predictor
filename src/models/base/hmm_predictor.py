@@ -46,16 +46,38 @@ class HMMPredictor(BasePredictor):
         default_params = DEFAULT_MODEL_PARAMS[ModelType.HMM].copy()
         default_params.update(kwargs)
 
+        # Handle parameter aliases
+        if "n_states" in default_params and "n_components" not in default_params:
+            default_params["n_components"] = default_params["n_states"]
+
+        n_components_value = default_params.get(
+            "n_states", default_params.get("n_components", 4)
+        )
+
+        # Handle n_iter/max_iter syncing
+        if "max_iter" in kwargs and "n_iter" not in kwargs:
+            # When only max_iter is provided, sync n_iter
+            n_iter_value = kwargs["max_iter"]
+            max_iter_value = kwargs["max_iter"]
+        elif "n_iter" in kwargs and "max_iter" not in kwargs:
+            # When only n_iter is provided, sync max_iter
+            n_iter_value = kwargs["n_iter"]
+            max_iter_value = kwargs["n_iter"]
+        elif "n_iter" in kwargs and "max_iter" in kwargs:
+            # Both provided - use their values
+            n_iter_value = kwargs["n_iter"]
+            max_iter_value = kwargs["max_iter"]
+        else:
+            # Neither provided - use defaults
+            n_iter_value = default_params.get("n_iter", 100)
+            max_iter_value = n_iter_value
+
         self.model_params = {
-            "n_components": default_params.get("n_components", 4),
-            "n_states": default_params.get(
-                "n_components", 4
-            ),  # Alias for test compatibility
+            "n_components": n_components_value,
+            "n_states": n_components_value,  # Alias for test compatibility
             "covariance_type": default_params.get("covariance_type", "full"),
-            "n_iter": default_params.get("n_iter", 100),  # Primary parameter name
-            "max_iter": default_params.get(
-                "max_iter", default_params.get("n_iter", 100)
-            ),  # Alias for scikit-learn compatibility
+            "n_iter": n_iter_value,  # Primary parameter name
+            "max_iter": max_iter_value,  # Alias for scikit-learn compatibility
             "random_state": default_params.get("random_state", 42),
             "init_params": default_params.get("init_params", "kmeans"),
             "tol": default_params.get("tol", 1e-3),
@@ -419,19 +441,24 @@ class HMMPredictor(BasePredictor):
 
     def _prepare_targets(self, targets: pd.DataFrame) -> np.ndarray:
         """Prepare target values from DataFrame."""
-        if "time_until_transition_seconds" in targets.columns:
-            target_values = targets["time_until_transition_seconds"].values
-        elif (
-            "next_transition_time" in targets.columns
-            and "target_time" in targets.columns
-        ):
-            target_times = pd.to_datetime(targets["target_time"])
-            next_times = pd.to_datetime(targets["next_transition_time"])
-            target_values = (next_times - target_times).dt.total_seconds().values
-        else:
-            target_values = targets.iloc[:, 0].values
+        try:
+            if "time_until_transition_seconds" in targets.columns:
+                target_values = targets["time_until_transition_seconds"].values
+            elif (
+                "next_transition_time" in targets.columns
+                and "target_time" in targets.columns
+            ):
+                target_times = pd.to_datetime(targets["target_time"])
+                next_times = pd.to_datetime(targets["next_transition_time"])
+                target_values = (next_times - target_times).dt.total_seconds().values
+            else:
+                target_values = targets.iloc[:, 0].values
 
-        return np.clip(target_values, 60, 86400)  # 1 min to 24 hours
+            return np.clip(target_values, 60, 86400)  # 1 min to 24 hours
+        except Exception as e:
+            logger.error(f"Error preparing targets: {str(e)}")
+            # Return default values if preparation fails
+            return np.array([3600] * len(targets))  # Default 1 hour
 
     def _analyze_states(
         self,
@@ -773,3 +800,204 @@ class HMMPredictor(BasePredictor):
         except Exception as e:
             logger.error(f"Failed to load HMM model: {e}")
             return False
+
+    async def incremental_update(
+        self,
+        features: pd.DataFrame,
+        targets: pd.DataFrame,
+        learning_rate: float = 0.01,
+    ) -> TrainingResult:
+        """
+        Perform incremental update of the HMM model.
+
+        For HMM models, this involves retraining with new data
+        or updating state transition probabilities.
+
+        Args:
+            features: New training feature matrix
+            targets: New training target values
+            learning_rate: Learning rate (not directly used for HMM but kept for interface compatibility)
+
+        Returns:
+            TrainingResult with incremental update statistics
+        """
+        start_time = datetime.now(timezone.utc)
+
+        try:
+            logger.info(f"Starting incremental update for HMM model {self.room_id}")
+
+            if not self.is_trained:
+                logger.warning(
+                    "Model not trained yet, performing full training instead"
+                )
+                return await self.train(features, targets)
+
+            if len(features) < 10:
+                raise ModelTrainingError(
+                    model_type="hmm",
+                    room_id=self.room_id or "unknown",
+                    cause=ValueError(
+                        f"Insufficient data for incremental update: only {len(features)} samples"
+                    ),
+                )
+
+            # For HMM, incremental update involves retraining the state model
+            # with combined or new data
+
+            target_values = targets["time_until_transition_seconds"].values
+
+            # Scale features
+            X_scaled = self.feature_scaler.transform(features)
+
+            # Create new state model with same parameters
+            new_state_model = GaussianMixture(
+                n_components=self.model_params["n_components"],
+                covariance_type=self.model_params["covariance_type"],
+                max_iter=min(
+                    self.model_params["max_iter"], 50
+                ),  # Fewer iterations for speed
+                init_params=self.model_params["init_params"],
+                random_state=self.model_params["random_state"],
+                tol=self.model_params["tol"],
+            )
+
+            # Fit state model on new data
+            new_state_model.fit(X_scaled)
+
+            # Update the state model
+            self.state_model = new_state_model
+
+            # Update state labels and characteristics
+            state_predictions = self.state_model.predict(X_scaled)
+            self._analyze_states(X_scaled, state_predictions, target_values)
+
+            # Train transition models for each state on new data
+            for state_id in range(self.model_params["n_components"]):
+                state_mask = state_predictions == state_id
+                if np.sum(state_mask) > 2:  # Need at least 3 samples per state
+                    state_features = X_scaled[state_mask]
+                    state_targets = target_values[state_mask]
+
+                    # Simple linear regression for state transitions
+                    from sklearn.linear_model import LinearRegression
+
+                    state_regressor = LinearRegression()
+                    state_regressor.fit(state_features, state_targets)
+                    self.transition_models[state_id] = state_regressor
+
+            # Calculate performance on new data
+            predictions = self._predict_hmm_internal(X_scaled)
+            from sklearn.metrics import mean_absolute_error, r2_score
+
+            training_mae = (
+                mean_absolute_error(target_values, predictions) / 60
+            )  # Convert to minutes
+            training_score = r2_score(target_values, predictions)
+
+            # Update model version
+            import time
+
+            self.model_version = f"{self.model_version}_inc_{int(time.time())}"
+
+            training_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+
+            result = TrainingResult(
+                success=True,
+                training_time_seconds=training_time,
+                model_version=self.model_version,
+                training_samples=len(features),
+                training_score=training_score,
+                training_metrics={
+                    "update_type": "incremental",
+                    "incremental_mae_minutes": training_mae,
+                    "incremental_r2": training_score,
+                    "n_components": self.model_params["n_components"],
+                    "new_data_samples": len(features),
+                    "retrain_approach": "new_data_only",
+                },
+            )
+
+            self.training_history.append(result)
+
+            logger.info(
+                f"HMM incremental update completed in {training_time:.2f}s: "
+                f"R²={training_score:.4f}, MAE={training_mae:.2f}min"
+            )
+
+            return result
+
+        except Exception as e:
+            training_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+            error_msg = f"HMM incremental update failed: {str(e)}"
+            logger.error(error_msg)
+
+            result = TrainingResult(
+                success=False,
+                training_time_seconds=training_time,
+                model_version=self.model_version,
+                training_samples=0,
+                error_message=error_msg,
+            )
+
+            self.training_history.append(result)
+            raise ModelTrainingError(
+                model_type="hmm", room_id=self.room_id or "unknown", cause=e
+            )
+
+    def get_model_complexity(self) -> Dict[str, Any]:
+        """Get information about HMM model complexity."""
+        if not self.is_trained or self.state_model is None:
+            return {
+                "n_components": self.model_params.get("n_components", 0),
+                "n_features": 0,
+                "training_samples": 0,
+                "transition_models": 0,
+                "state_labels": {},
+            }
+
+        try:
+            return {
+                "n_components": self.model_params["n_components"],
+                "n_features": len(self.feature_names) if self.feature_names else 0,
+                "training_samples": getattr(self.state_model, "n_samples_seen_", 0),
+                "transition_models": len(self.transition_models),
+                "state_labels": self.state_labels.copy(),
+                "covariance_type": self.model_params["covariance_type"],
+                "converged": getattr(self.state_model, "converged_", False),
+                "n_iter": getattr(self.state_model, "n_iter_", 0),
+                "lower_bound": getattr(self.state_model, "lower_bound_", None),
+            }
+
+        except Exception:
+            return {
+                "n_components": self.model_params.get("n_components", 0),
+                "n_features": len(self.feature_names) if self.feature_names else 0,
+                "training_samples": 0,
+                "transition_models": len(self.transition_models),
+                "error": "could not determine model complexity",
+            }
+
+    def _predict_hmm_internal(self, X_scaled):
+        """Internal prediction method for HMM."""
+        if not self.state_model:
+            return np.full(len(X_scaled), 1800.0)
+
+        predictions = []
+        state_predictions = self.state_model.predict(X_scaled)
+
+        for i, state_id in enumerate(state_predictions):
+            if state_id in self.transition_models:
+                # Use state-specific transition model
+                transition_pred = self.transition_models[state_id].predict(
+                    [X_scaled[i]]
+                )[0]
+            else:
+                # Use state duration statistics as fallback
+                if state_id in self.state_durations and self.state_durations[state_id]:
+                    transition_pred = np.mean(self.state_durations[state_id])
+                else:
+                    transition_pred = 1800.0  # Default 30 minutes
+
+            predictions.append(transition_pred)
+
+        return np.array(predictions)

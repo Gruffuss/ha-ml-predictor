@@ -612,6 +612,43 @@ class TestConstantValidationInIntegrationScenarios:
                     ],
                     "primary_key": ["id"],
                 }
+            elif table_key == "room_states":
+                schema_definitions[table_name] = {
+                    "columns": [
+                        "id",
+                        "room_id",
+                        "timestamp",
+                        "is_occupied",
+                        "occupancy_confidence",
+                        "occupant_type",
+                        "state_duration",
+                        "transition_trigger",
+                        "created_at",
+                    ],
+                    "primary_key": ["id", "timestamp"],
+                    "indexes": [
+                        f"idx_{table_name}_room_time",
+                        f"idx_{table_name}_occupancy_time",
+                    ],
+                }
+            elif table_key == "feature_store":
+                schema_definitions[table_name] = {
+                    "columns": [
+                        "id",
+                        "room_id",
+                        "timestamp",
+                        "feature_type",
+                        "feature_name",
+                        "feature_value",
+                        "computation_time",
+                        "version",
+                    ],
+                    "primary_key": ["id"],
+                    "indexes": [
+                        f"idx_{table_name}_room_time_type",
+                        f"idx_{table_name}_feature_name",
+                    ],
+                }
 
         # Verify schemas created for all tables
         for table_name in DB_TABLES.values():
@@ -764,7 +801,7 @@ class TestConstantValidationPerformance:
 
         # Should be very fast (< 0.01 seconds for 1000 lookups)
         assert lookup_time < 0.01
-        assert len(valid_states) == 800  # 4 valid * 200 iterations
+        assert len(valid_states) == 1000  # 5 valid * 200 iterations
 
     def test_constant_list_iteration_performance(self):
         """Test performance of iterating over constant lists."""

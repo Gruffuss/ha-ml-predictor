@@ -431,24 +431,24 @@ class HAMockHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            
+
             # Return mock states
             states = json.loads(os.environ.get("HA_CONFIG", "{}")).get("entities", [])
             self.wfile.write(json.dumps(states).encode())
-            
+
         elif self.path.startswith("/api/history"):
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            
+
             # Return mock history
             history = json.loads(os.environ.get("HA_CONFIG", "{}")).get("history", {})
             self.wfile.write(json.dumps(history).encode())
-            
+
         else:
             self.send_response(404)
             self.end_headers()
-    
+
     def do_POST(self):
         self.send_response(200)
         self.send_header("Content-Type", "application/json")

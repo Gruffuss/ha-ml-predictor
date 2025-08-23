@@ -3,7 +3,7 @@ Advanced feature store cache invalidation and memory efficiency tests.
 
 This test suite validates:
 - Complex cache invalidation scenarios
-- Memory-efficient cache operations  
+- Memory-efficient cache operations
 - Cache coherence under concurrent access
 - Cache performance optimization
 - Advanced cache eviction strategies

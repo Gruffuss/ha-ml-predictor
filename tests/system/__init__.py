@@ -7,7 +7,7 @@ recovery, resource management, and system stability.
 
 Test Modules:
 - test_orchestration_failure_recovery: Component isolation and failure cascading
-- test_resource_constraints: Memory, CPU, and connection limit testing  
+- test_resource_constraints: Memory, CPU, and connection limit testing
 - test_lifecycle_management: Startup sequence and graceful shutdown testing
 - test_long_running_stability: Extended runtime and memory leak detection
 - test_error_propagation: Cross-component error handling validation
@@ -20,13 +20,13 @@ Test Categories:
 Usage:
     # Run all system tests
     pytest tests/system/
-    
+
     # Run specific test category
     pytest tests/system/ -m "system and not slow"
-    
+
     # Run long-running stability tests
     pytest tests/system/ -m "slow"
-    
+
     # Run with verbose output
     pytest tests/system/ -v --tb=short
 """

@@ -17,50 +17,50 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 def main():
     print("Integration Test Suite - Core System Assessment")
     print("=" * 60)
-    
+
     test_results = []
-    
+
     try:
         # Test 1: Import Test
         print("\nTest 1: Import Test")
         print("-" * 30)
-        
+
         from src.core.config import ConfigLoader, SystemConfig
         from src.core.constants import SensorType, SensorState
         from src.core.exceptions import ModelTrainingError, PredictionError
         print("Core system imports successful")
-        
+
         from src.data.storage.models import SensorEvent, RoomState
         from src.data.storage.database import DatabaseManager
         print("Data layer imports successful")
-        
+
         from src.features.temporal import TemporalFeatureExtractor
         from src.features.sequential import SequentialFeatureExtractor
         from src.features.contextual import ContextualFeatureExtractor
         from src.features.engineering import FeatureEngineer
         print("Feature engineering imports successful")
-        
+
         try:
             from src.models.ensemble import OccupancyEnsemble
             print("Ensemble model imports successful")
-            
+
             from src.models.base.hmm_predictor import HMMPredictor
             print("HMM predictor imports successful")
-            
+
             from src.models.base.lstm_predictor import LSTMPredictor
             from src.models.base.xgboost_predictor import XGBoostPredictor
             from src.models.base.gp_predictor import GaussianProcessPredictor
             print("All base model imports successful")
         except Exception as e:
             print(f"Some model import issues: {e}")
-        
+
         from src.adaptation.validator import PredictionValidator
         from src.adaptation.drift_detector import ConceptDriftDetector
         print("Adaptation system imports successful")
-        
+
         print("PASS: Import Test PASSED")
         test_results.append("Import Test: PASSED")
-        
+
     except Exception as e:
         print(f"FAIL: Import Test FAILED - {e}")
         test_results.append("Import Test: FAILED")
@@ -69,22 +69,22 @@ def main():
         # Test 2: Configuration Test
         print("\nTest 2: Configuration Test")
         print("-" * 30)
-        
+
         config_loader = ConfigLoader()
         config = config_loader.load_config()
         print(f"Configuration loaded successfully")
         print(f"   - Rooms configured: {len(config.rooms)}")
         print(f"   - Database config: {config.database.connection_string[:20]}...")
         print(f"   - HA config: {config.home_assistant.url}")
-        
+
         if config.rooms:
             room_id = list(config.rooms.keys())[0]
             room_config = config.rooms[room_id]
             print(f"   - Sample room {room_id}: {len(room_config.sensors)} sensors")
-        
+
         print("PASS: Configuration Test PASSED")
         test_results.append("Configuration Test: PASSED")
-        
+
     except Exception as e:
         print(f"FAIL: Configuration Test FAILED - {e}")
         test_results.append("Configuration Test: FAILED")
@@ -93,11 +93,11 @@ def main():
         # Test 3: Feature Pipeline Test
         print("\nTest 3: Feature Pipeline Test")
         print("-" * 30)
-        
+
         # Create sample events
         events = []
         base_time = datetime.now() - timedelta(hours=2)
-        
+
         for i in range(10):
             event = SensorEvent(
                 room_id="living_room",
@@ -110,13 +110,13 @@ def main():
                 is_human_triggered=True
             )
             events.append(event)
-        
+
         print(f"Created {len(events)} sample events")
-        
+
         # Test individual feature extractors
         temporal_extractor = TemporalFeatureExtractor(config)
         temporal_features = temporal_extractor.extract_features(events, datetime.now())
-        
+
         if temporal_features:
             print(f"Temporal features work: {len(temporal_features)} features")
             print(f"   - Sample features: {list(temporal_features.keys())[:3]}")
@@ -125,7 +125,7 @@ def main():
         else:
             print("FAIL: Feature Pipeline Test FAILED")
             test_results.append("Feature Pipeline Test: FAILED")
-            
+
     except Exception as e:
         print(f"FAIL: Feature Pipeline Test FAILED - {e}")
         test_results.append("Feature Pipeline Test: FAILED")
@@ -134,21 +134,21 @@ def main():
         # Test 4: Ensemble Test
         print("\nTest 4: Ensemble Prediction Test")
         print("-" * 30)
-        
+
         if config.rooms:
             room_id = list(config.rooms.keys())[0]
-            
+
             # Test HMM predictor specifically (this passed most tests)
             hmm_predictor = HMMPredictor(room_id=room_id, n_states=3)
             print("HMM predictor can be created")
-            
+
             # Test ensemble initialization
             ensemble = OccupancyEnsemble(room_id=room_id, config=config.prediction)
             print("Ensemble initialized")
-            
+
             print("PASS: Ensemble Prediction Test PASSED (degraded mode)")
             test_results.append("Ensemble Prediction Test: PASSED")
-            
+
     except Exception as e:
         print(f"FAIL: Ensemble Prediction Test FAILED - {e}")
         test_results.append("Ensemble Prediction Test: FAILED")
@@ -157,26 +157,26 @@ def main():
         # Test 5: Validation System Test
         print("\nTest 5: Validation System Test")
         print("-" * 30)
-        
+
         validator = PredictionValidator(accuracy_threshold=config.prediction.accuracy_threshold_minutes)
         print("Prediction validator initialized")
-        
+
         # Test prediction recording
         test_room_id = "test_room"
         predicted_time = datetime.now() + timedelta(minutes=30)
         confidence = 0.85
-        
+
         validator.record_prediction(test_room_id, predicted_time, confidence)
         print("Prediction recorded successfully")
-        
+
         # Test validation
         actual_time = predicted_time + timedelta(minutes=5)
         accuracy = validator.validate_prediction(test_room_id, actual_time)
         print(f"Prediction validated: {accuracy:.2f} minutes error")
-        
+
         print("PASS: Validation System Test PASSED")
         test_results.append("Validation System Test: PASSED")
-        
+
     except Exception as e:
         print(f"FAIL: Validation System Test FAILED - {e}")
         test_results.append("Validation System Test: FAILED")
@@ -205,14 +205,14 @@ def main():
     if core_working and prediction_working:
         print("   CORE PREDICTION PIPELINE: FUNCTIONAL")
         print("   SYSTEM STATUS: WORKING INTEGRATED SYSTEM")
-        
+
         if validation_working:
             print("   ADAPTATION SYSTEM: FUNCTIONAL")
             assessment = "PRODUCTION-READY WITH DEGRADED BASE MODELS"
         else:
             print("   ADAPTATION SYSTEM: LIMITED")
             assessment = "FUNCTIONAL FOR BASIC PREDICTIONS"
-            
+
     elif core_working:
         print("   CORE PREDICTION PIPELINE: PARTIAL")
         print("   SYSTEM STATUS: LIMITED FUNCTIONALITY")

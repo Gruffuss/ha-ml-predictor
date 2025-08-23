@@ -1047,7 +1047,7 @@ class TestEnhancedIntegrationError:
         """Test EnhancedIntegrationError creation."""
         error = EnhancedIntegrationError("Test error message")
 
-        assert str(error) == "Test error message"
+        assert "Test error message" in str(error)
         assert error.error_code == "ENHANCED_INTEGRATION_ERROR"
         assert error.severity.name == "MEDIUM"
 

@@ -1,7 +1,7 @@
 """
 Comprehensive tests for src/adaptation/monitoring_enhanced_tracking.py.
 
-Tests the MonitoringEnhancedTrackingManager wrapper and factory functions 
+Tests the MonitoringEnhancedTrackingManager wrapper and factory functions
 for complete coverage of monitoring integration capabilities.
 """
 

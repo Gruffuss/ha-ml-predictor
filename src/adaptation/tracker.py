@@ -1561,9 +1561,10 @@ class AccuracyTrackingError(OccupancyPredictionError):
     """Raised when accuracy tracking operations fail."""
 
     def __init__(self, message: str, **kwargs):
+        severity = kwargs.pop("severity", ErrorSeverity.MEDIUM)
         super().__init__(
             message=message,
             error_code="ACCURACY_TRACKING_ERROR",
-            severity=kwargs.get("severity", ErrorSeverity.MEDIUM),
+            severity=severity,
             **kwargs,
         )

@@ -38,7 +38,7 @@ def test_models_imports():
     """Test models module imports."""
     try:
         from src.models.base import BasePredictor, PredictionResult, TrainingResult
-        print("PASS: Models imports successful") 
+        print("PASS: Models imports successful")
         return True
     except ImportError as e:
         print(f"FAIL: Models import failed: {e}")
@@ -70,24 +70,24 @@ def main():
     """Run all import tests."""
     print("Testing critical imports...")
     print("=" * 50)
-    
+
     tests = [
         test_core_imports,
-        test_adaptation_imports, 
+        test_adaptation_imports,
         test_models_imports,
         test_cryptography_import,
         test_pytest_plugins,
     ]
-    
+
     results = []
     for test in tests:
         results.append(test())
-    
+
     print("=" * 50)
     passed = sum(results)
     total = len(results)
     print(f"Import tests: {passed}/{total} passed")
-    
+
     if passed == total:
         print("SUCCESS: All imports working correctly!")
         return 0

@@ -2,7 +2,7 @@
 """
 Sprint 4 Task 6 Validation Script - Model Optimization Engine
 
-This script validates that the ModelOptimizer is properly integrated with 
+This script validates that the ModelOptimizer is properly integrated with
 the AdaptiveRetrainer and can automatically optimize model parameters during retraining.
 """
 

@@ -185,7 +185,7 @@ class DatabaseSetup:
                 logger.info(f"Creating user: {self.setup_config['username']}")
                 await conn.execute(
                     f"""
-                    CREATE USER {self.setup_config['username']} 
+                    CREATE USER {self.setup_config['username']}
                     WITH PASSWORD '{self.setup_config['password']}'
                 """
                 )
@@ -195,7 +195,7 @@ class DatabaseSetup:
             # Grant privileges
             await conn.execute(
                 f"""
-                GRANT ALL PRIVILEGES ON DATABASE {self.setup_config['database_name']} 
+                GRANT ALL PRIVILEGES ON DATABASE {self.setup_config['database_name']}
                 TO {self.setup_config['username']}
             """
             )
@@ -409,7 +409,7 @@ class DatabaseSetup:
                 for table in tables_to_check:
                     result = await session.execute(
                         f"""
-                        SELECT COUNT(*) FROM information_schema.tables 
+                        SELECT COUNT(*) FROM information_schema.tables
                         WHERE table_name = '{table}'
                     """
                     )
@@ -422,7 +422,7 @@ class DatabaseSetup:
                 try:
                     result = await session.execute(
                         """
-                        SELECT * FROM timescaledb_information.hypertables 
+                        SELECT * FROM timescaledb_information.hypertables
                         WHERE hypertable_name = 'sensor_events'
                     """
                     )
@@ -451,7 +451,7 @@ class DatabaseSetup:
                 # Clean up test data
                 await session.execute(
                     """
-                    DELETE FROM sensor_events 
+                    DELETE FROM sensor_events
                     WHERE room_id = 'test_room' AND sensor_id = 'test_sensor'
                 """
                 )

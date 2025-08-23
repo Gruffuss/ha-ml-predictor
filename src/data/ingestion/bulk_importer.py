@@ -886,11 +886,11 @@ class BulkImporter:
                 # Check for temporal consistency
                 temporal_check_query = text(
                     """
-                    SELECT room_id, 
+                    SELECT room_id,
                            COUNT(*) as total_events,
                            COUNT(CASE WHEN timestamp > created_at THEN 1 END) as future_timestamps,
                            COUNT(CASE WHEN state IS NULL OR state = '' THEN 1 END) as missing_states
-                    FROM sensor_events 
+                    FROM sensor_events
                     WHERE random() < :sample_rate
                     GROUP BY room_id
                 """

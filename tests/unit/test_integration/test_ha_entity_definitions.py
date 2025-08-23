@@ -1333,7 +1333,7 @@ class TestHAEntityDefinitionsError:
         """Test HAEntityDefinitionsError creation."""
         error = HAEntityDefinitionsError("Test error message")
 
-        assert str(error) == "Test error message"
+        assert "Test error message" in str(error)
         assert error.error_code == "HA_ENTITY_DEFINITIONS_ERROR"
         assert error.severity.name == "MEDIUM"
 

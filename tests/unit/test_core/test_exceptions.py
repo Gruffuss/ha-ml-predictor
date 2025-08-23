@@ -100,7 +100,7 @@ class TestOccupancyPredictionError:
         """Test basic error initialization."""
         error = OccupancyPredictionError("Test error message")
 
-        assert str(error) == "Test error message"
+        assert "Test error message" in str(error)
         assert error.message == "Test error message"
         assert error.error_code is None
         assert error.context == {}

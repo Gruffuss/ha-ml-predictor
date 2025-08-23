@@ -13,20 +13,20 @@ from collections import defaultdict
 def run_pytest():
     """Run pytest and capture output."""
     cmd = [
-        sys.executable, 
-        "-m", 
-        "pytest", 
-        "tests/", 
-        "-v", 
-        "--tb=short", 
+        sys.executable,
+        "-m",
+        "pytest",
+        "tests/",
+        "-v",
+        "--tb=short",
         "--color=no",
         "--durations=10",
         "--showlocals"
     ]
-    
+
     print("Running pytest command:", " ".join(cmd))
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=".")
-    
+
     return result.returncode, result.stdout, result.stderr
 
 def parse_test_results(stdout, stderr):
@@ -40,10 +40,10 @@ def parse_test_results(stdout, stderr):
         'durations': [],
         'warnings': []
     }
-    
+
     # Parse test results from stdout
     lines = stdout.split('\n')
-    
+
     for i, line in enumerate(lines):
         # Parse individual test results
         if '::' in line and ('PASSED' in line or 'FAILED' in line or 'SKIPPED' in line or 'ERROR' in line):
@@ -55,39 +55,39 @@ def parse_test_results(stdout, stderr):
                 results['skipped'].append(line.strip())
             elif 'ERROR' in line:
                 results['errors'].append(line.strip())
-        
+
         # Parse summary line
         if 'failed' in line and 'passed' in line and '=' in line:
             results['summary']['summary_line'] = line.strip()
-        
+
         # Parse durations
         if 'slowest durations' in line.lower():
             # Look for next lines with durations
             for j in range(i+1, min(i+15, len(lines))):
                 if re.match(r'^\d+\.\d+s', lines[j]):
                     results['durations'].append(lines[j].strip())
-        
+
         # Parse warnings
         if 'warning' in line.lower() and ('pytest' in line.lower() or 'deprecation' in line.lower()):
             results['warnings'].append(line.strip())
-    
+
     return results
 
 def extract_failure_details(stdout, stderr):
     """Extract detailed failure information."""
     failure_details = []
-    
+
     # Split output into sections
     lines = stdout.split('\n')
-    
+
     current_failure = None
     collecting_failure = False
-    
+
     for line in lines:
         if line.startswith('FAILURES'):
             collecting_failure = True
             continue
-        
+
         if collecting_failure:
             if line.startswith('='):
                 if current_failure:
@@ -111,21 +111,21 @@ def extract_failure_details(stdout, stderr):
                         current_failure['locals'].append(line.strip())
                     else:
                         current_failure['traceback'].append(line.strip())
-    
+
     if current_failure:
         failure_details.append(current_failure)
-    
+
     return failure_details
 
 def categorize_errors(failure_details):
     """Categorize errors by type."""
     categories = defaultdict(list)
-    
+
     for failure in failure_details:
         test_name = failure.get('test_name', '')
         assertion = failure.get('assertion', '')
         traceback = ' '.join(failure.get('traceback', []))
-        
+
         # Categorize based on error patterns
         if 'ImportError' in assertion or 'ModuleNotFoundError' in assertion:
             categories['Import Errors'].append(failure)
@@ -145,13 +145,13 @@ def categorize_errors(failure_details):
             categories['Model Errors'].append(failure)
         else:
             categories['Other Errors'].append(failure)
-    
+
     return categories
 
 def generate_recommendations(categories):
     """Generate recommendations based on error categories."""
     recommendations = []
-    
+
     for category, failures in categories.items():
         if category == 'Import Errors':
             recommendations.append(
@@ -182,23 +182,23 @@ def generate_recommendations(categories):
             recommendations.append(
                 f"• {category} ({len(failures)} tests): Review individual error messages for specific fixes."
             )
-    
+
     return recommendations
 
 def create_error_report(return_code, stdout, stderr, results, failure_details, categories):
     """Create comprehensive error report."""
     report = []
-    
+
     # Header
     report.append("# PYTEST ERROR REPORT")
     report.append(f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     report.append(f"Working Directory: {Path.cwd()}")
     report.append("")
-    
+
     # Executive Summary
     report.append("## EXECUTIVE SUMMARY")
     report.append("")
-    
+
     total_tests = len(results['passed']) + len(results['failed']) + len(results['skipped']) + len(results['errors'])
     report.append(f"**Total Tests:** {total_tests}")
     report.append(f"**Passed:** {len(results['passed'])}")
@@ -206,24 +206,24 @@ def create_error_report(return_code, stdout, stderr, results, failure_details, c
     report.append(f"**Errors:** {len(results['errors'])}")
     report.append(f"**Skipped:** {len(results['skipped'])}")
     report.append("")
-    
+
     if return_code == 0:
         report.append("🟢 **Status:** ALL TESTS PASSED")
     else:
         report.append("🔴 **Status:** TESTS FAILED")
-    
+
     report.append("")
-    
+
     # Summary Statistics
     if results.get('summary', {}).get('summary_line'):
         report.append(f"**pytest Summary:** {results['summary']['summary_line']}")
         report.append("")
-    
+
     # Error Categories
     if categories:
         report.append("## ERROR ANALYSIS BY CATEGORY")
         report.append("")
-        
+
         for category, failures in categories.items():
             report.append(f"### {category} ({len(failures)} tests)")
             report.append("")
@@ -233,7 +233,7 @@ def create_error_report(return_code, stdout, stderr, results, failure_details, c
                 if failure.get('assertion'):
                     report.append(f"  - Error: `{failure['assertion']}`")
                 report.append("")
-    
+
     # Recommendations
     if categories:
         report.append("## RECOMMENDATIONS")
@@ -242,23 +242,23 @@ def create_error_report(return_code, stdout, stderr, results, failure_details, c
         for rec in recommendations:
             report.append(rec)
         report.append("")
-    
+
     # Detailed Failure Analysis
     if failure_details:
         report.append("## DETAILED FAILURE ANALYSIS")
         report.append("")
-        
+
         for i, failure in enumerate(failure_details, 1):
             report.append(f"### Failure #{i}: {failure.get('test_name', 'Unknown')}")
             report.append("")
-            
+
             if failure.get('assertion'):
                 report.append("**Error Message:**")
                 report.append(f"```")
                 report.append(failure['assertion'])
                 report.append("```")
                 report.append("")
-            
+
             if failure.get('traceback'):
                 report.append("**Traceback:**")
                 report.append("```")
@@ -267,7 +267,7 @@ def create_error_report(return_code, stdout, stderr, results, failure_details, c
                         report.append(line)
                 report.append("```")
                 report.append("")
-            
+
             if failure.get('locals'):
                 report.append("**Local Variables:**")
                 report.append("```")
@@ -275,7 +275,7 @@ def create_error_report(return_code, stdout, stderr, results, failure_details, c
                     report.append(local)
                 report.append("```")
                 report.append("")
-    
+
     # Performance Analysis
     if results.get('durations'):
         report.append("## PERFORMANCE ANALYSIS")
@@ -284,7 +284,7 @@ def create_error_report(return_code, stdout, stderr, results, failure_details, c
         for duration in results['durations'][:10]:
             report.append(f"- {duration}")
         report.append("")
-    
+
     # Warnings
     if results.get('warnings'):
         report.append("## WARNINGS")
@@ -292,7 +292,7 @@ def create_error_report(return_code, stdout, stderr, results, failure_details, c
         for warning in results['warnings'][:10]:
             report.append(f"- {warning}")
         report.append("")
-    
+
     # Full pytest Output
     report.append("## FULL PYTEST OUTPUT")
     report.append("")
@@ -307,7 +307,7 @@ def create_error_report(return_code, stdout, stderr, results, failure_details, c
         report.append(stdout)
     report.append("```")
     report.append("")
-    
+
     if stderr.strip():
         report.append("### STDERR")
         report.append("```")
@@ -319,7 +319,7 @@ def create_error_report(return_code, stdout, stderr, results, failure_details, c
             report.append(stderr)
         report.append("```")
         report.append("")
-    
+
     # Next Steps
     report.append("## NEXT STEPS")
     report.append("")
@@ -329,34 +329,34 @@ def create_error_report(return_code, stdout, stderr, results, failure_details, c
     report.append("4. **Update Test Fixtures**: Fix any broken test setup code")
     report.append("5. **Run Specific Tests**: Use `pytest tests/path/to/specific_test.py -v` for targeted debugging")
     report.append("")
-    
+
     return '\n'.join(report)
 
 def main():
     """Main function to run tests and generate report."""
     print("Starting pytest execution...")
-    
+
     return_code, stdout, stderr = run_pytest()
-    
+
     print(f"pytest finished with return code: {return_code}")
-    
+
     # Parse results
     results = parse_test_results(stdout, stderr)
     failure_details = extract_failure_details(stdout, stderr)
     categories = categorize_errors(failure_details)
-    
+
     # Generate report
     report = create_error_report(return_code, stdout, stderr, results, failure_details, categories)
-    
+
     # Write report to file
     report_file = Path("PYTEST_ERROR_REPORT.md")
     with open(report_file, 'w', encoding='utf-8') as f:
         f.write(report)
-    
+
     print(f"\n{'='*60}")
     print(f"ERROR REPORT GENERATED: {report_file.absolute()}")
     print(f"{'='*60}")
-    
+
     # Print summary to console
     total_tests = len(results['passed']) + len(results['failed']) + len(results['skipped']) + len(results['errors'])
     print(f"Total tests: {total_tests}")
@@ -364,12 +364,12 @@ def main():
     print(f"Failed: {len(results['failed'])}")
     print(f"Errors: {len(results['errors'])}")
     print(f"Skipped: {len(results['skipped'])}")
-    
+
     if categories:
         print(f"\nError categories found:")
         for category, failures in categories.items():
             print(f"  - {category}: {len(failures)} tests")
-    
+
     return return_code
 
 if __name__ == "__main__":

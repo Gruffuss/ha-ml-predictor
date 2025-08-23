@@ -6,7 +6,7 @@ WebSocket API for real-time predictions, system status, and alerts.
 
 Usage:
     python websocket_api_client.py --api-key YOUR_API_KEY --host localhost --port 8766
-    
+
 Features demonstrated:
 - Authentication with API key
 - Subscription to different endpoints

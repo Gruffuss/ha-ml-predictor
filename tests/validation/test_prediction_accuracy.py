@@ -285,7 +285,6 @@ class TestPredictionValidatorAccuracy:
     def sample_prediction(self):
         """Create sample prediction result."""
         return PredictionResult(
-            room_id="living_room",
             predicted_time=datetime(2024, 1, 15, 14, 30, 0),
             transition_type="occupied",
             confidence_score=0.85,
@@ -375,7 +374,6 @@ class TestPredictionValidatorAccuracy:
             predictions = []
             for i in range(5):
                 prediction = PredictionResult(
-                    room_id="bedroom",
                     predicted_time=datetime(2024, 1, 15, 14, 30 + i, 0),
                     transition_type="occupied",
                     confidence_score=0.8 + i * 0.02,
@@ -414,7 +412,6 @@ class TestPredictionValidatorAccuracy:
 
             for i, offset_minutes in enumerate([-30, -10, 0, 10, 30]):
                 prediction = PredictionResult(
-                    room_id="kitchen",
                     predicted_time=base_time + timedelta(minutes=offset_minutes),
                     transition_type="occupied",
                     confidence_score=0.8,
@@ -443,7 +440,6 @@ class TestPredictionValidatorAccuracy:
         with patch("src.adaptation.validator.get_db_session"):
             # Create predictions for different transition types
             occupied_prediction = PredictionResult(
-                room_id="office",
                 predicted_time=datetime(2024, 1, 15, 14, 30, 0),
                 transition_type="occupied",
                 confidence_score=0.8,
@@ -452,7 +448,6 @@ class TestPredictionValidatorAccuracy:
             )
 
             vacant_prediction = PredictionResult(
-                room_id="office",
                 predicted_time=datetime(2024, 1, 15, 14, 30, 0),
                 transition_type="vacant",
                 confidence_score=0.75,
@@ -484,7 +479,6 @@ class TestPredictionValidatorAccuracy:
         with patch("src.adaptation.validator.get_db_session"):
             # Create prediction
             prediction = PredictionResult(
-                room_id="bathroom",
                 predicted_time=datetime(2024, 1, 15, 14, 30, 0),
                 transition_type="occupied",
                 confidence_score=0.9,
@@ -612,7 +606,6 @@ class TestAccuracyValidationEdgeCases:
         with patch("src.adaptation.validator.get_db_session"):
             # Create prediction with different transition type
             prediction = PredictionResult(
-                room_id="garage",
                 predicted_time=datetime(2024, 1, 15, 14, 30, 0),
                 transition_type="vacant",
                 confidence_score=0.8,
@@ -643,7 +636,6 @@ class TestAccuracyValidationEdgeCases:
             # Create more predictions than memory limit
             for i in range(10):
                 prediction = PredictionResult(
-                    room_id=f"room_{i}",
                     predicted_time=datetime(2024, 1, 15, 14, 30 + i, 0),
                     transition_type="occupied",
                     confidence_score=0.8,

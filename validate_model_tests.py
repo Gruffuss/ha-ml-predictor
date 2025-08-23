@@ -26,20 +26,20 @@ def analyze_test_file(file_path: Path) -> Dict[str, any]:
             content = f.read()
     except Exception:
         return {}
-    
+
     # Count test classes and methods
     test_classes = len(re.findall(r'class Test\w+', content))
     test_methods = len(re.findall(r'def test_\w+', content))
     async_tests = len(re.findall(r'@pytest.mark.asyncio', content))
     fixtures = len(re.findall(r'@pytest.fixture', content))
-    
+
     # Count assertions
     assertions = len(re.findall(r'assert ', content))
-    
+
     # Look for specific testing patterns
     mock_usage = len(re.findall(r'Mock|mock|patch', content))
     parametrize = len(re.findall(r'@pytest.mark.parametrize', content))
-    
+
     return {
         'lines': count_lines_in_file(file_path),
         'test_classes': test_classes,
@@ -58,7 +58,7 @@ def get_tested_functionality(file_path: Path, model_name: str) -> List[str]:
             content = f.read()
     except Exception:
         return []
-    
+
     # Define functionality patterns for each model type
     functionality_patterns = {
         'gp_predictor': [
@@ -77,7 +77,7 @@ def get_tested_functionality(file_path: Path, model_name: str) -> List[str]:
             'utility methods', 'abstract methods', 'edge cases'
         ]
     }
-    
+
     found_functionality = []
     if model_name in functionality_patterns:
         for func in functionality_patterns[model_name]:
@@ -87,12 +87,12 @@ def get_tested_functionality(file_path: Path, model_name: str) -> List[str]:
                 f'test_.*{func.replace(" ", "_").lower()}',
                 func.replace(" ", "_").lower()
             ]
-            
+
             for pattern in patterns:
                 if re.search(pattern, content, re.IGNORECASE):
                     found_functionality.append(func)
                     break
-    
+
     return found_functionality
 
 def main():
@@ -100,14 +100,14 @@ def main():
     print("=" * 80)
     print("ML MODEL UNIT TESTS VALIDATION REPORT")
     print("=" * 80)
-    
+
     # Define the test files to analyze
     test_files = [
         ('GP Predictor', 'tests/unit/test_models/test_gp_predictor.py', 'gp_predictor'),
         ('HMM Predictor', 'tests/unit/test_models/test_hmm_predictor.py', 'hmm_predictor'),
         ('Base Predictor', 'tests/unit/test_models/test_base_predictor.py', 'base_predictor'),
     ]
-    
+
     total_stats = {
         'lines': 0,
         'test_classes': 0,
@@ -118,27 +118,27 @@ def main():
         'mock_usage': 0,
         'parametrize': 0,
     }
-    
+
     for model_name, file_path, model_key in test_files:
         print(f"\n{model_name} Tests:")
         print("-" * 50)
-        
+
         full_path = Path(file_path)
         if not full_path.exists():
             print(f"❌ Test file not found: {file_path}")
             continue
-            
+
         # Analyze the test file
         stats = analyze_test_file(full_path)
-        
+
         if not stats:
             print(f"❌ Could not analyze test file: {file_path}")
             continue
-            
+
         # Update totals
         for key, value in stats.items():
             total_stats[key] += value
-        
+
         # Display statistics
         print(f"Lines of Code:       {stats['lines']:,}")
         print(f"Test Classes:        {stats['test_classes']}")
@@ -148,51 +148,51 @@ def main():
         print(f"Assertions:          {stats['assertions']:,}")
         print(f"Mock Usage:          {stats['mock_usage']}")
         print(f"Parametrized:        {stats['parametrize']}")
-        
+
         # Get functionality coverage
         functionality = get_tested_functionality(full_path, model_key)
         print(f"\nFunctionality Coverage ({len(functionality)} areas):")
         for func in functionality:
             print(f"   * {func.title()}")
-        
+
         # Determine test quality rating
         quality_score = 0
         if stats['test_methods'] >= 20:
             quality_score += 2
         elif stats['test_methods'] >= 10:
             quality_score += 1
-            
+
         if stats['assertions'] >= 100:
             quality_score += 2
         elif stats['assertions'] >= 50:
             quality_score += 1
-            
+
         if stats['async_tests'] >= 5:
             quality_score += 1
-            
+
         if stats['fixtures'] >= 5:
             quality_score += 1
-            
+
         if len(functionality) >= 7:
             quality_score += 2
         elif len(functionality) >= 5:
             quality_score += 1
-        
+
         if stats['mock_usage'] >= 10:
             quality_score += 1
-        
+
         quality_ratings = {
             8: "Excellent (Production-Grade)",
             6: "Very Good",
-            4: "Good", 
+            4: "Good",
             2: "Basic",
             0: "Inadequate"
         }
-        
+
         rating_key = min(quality_ratings.keys(), key=lambda x: abs(x - quality_score))
         rating = quality_ratings[rating_key]
         print(f"\nTest Quality: {rating} (Score: {quality_score}/8)")
-    
+
     # Summary
     print(f"\n{'='*80}")
     print("SUMMARY STATISTICS")
@@ -204,21 +204,21 @@ def main():
     print(f"Total Fixtures:       {total_stats['fixtures']}")
     print(f"Total Assertions:     {total_stats['assertions']:,}")
     print(f"Total Mock Usage:     {total_stats['mock_usage']}")
-    
+
     # Overall assessment
     print(f"\nOVERALL ASSESSMENT:")
-    
+
     if total_stats['test_methods'] >= 100 and total_stats['assertions'] >= 500:
         assessment = "COMPREHENSIVE - Production-grade ML model test coverage"
     elif total_stats['test_methods'] >= 50 and total_stats['assertions'] >= 250:
-        assessment = "EXTENSIVE - Very good ML model test coverage" 
+        assessment = "EXTENSIVE - Very good ML model test coverage"
     elif total_stats['test_methods'] >= 20 and total_stats['assertions'] >= 100:
         assessment = "ADEQUATE - Basic ML model test coverage"
     else:
         assessment = "INSUFFICIENT - More tests needed"
-    
+
     print(assessment)
-    
+
     print(f"\nVALIDATION COMPLETE")
     print("   All three core ML model modules have comprehensive unit tests.")
     print("   Tests cover initialization, training, prediction, serialization, and edge cases.")

@@ -240,13 +240,13 @@ async def example_advanced_queries():
             # Get sensor activity summary
             result = await db_manager.execute_query(
                 """
-                SELECT 
+                SELECT
                     room_id,
                     sensor_type,
                     COUNT(*) as event_count,
                     COUNT(DISTINCT sensor_id) as sensor_count,
                     MAX(timestamp) as last_activity
-                FROM sensor_events 
+                FROM sensor_events
                 WHERE timestamp > NOW() - INTERVAL '24 hours'
                 GROUP BY room_id, sensor_type
                 ORDER BY event_count DESC

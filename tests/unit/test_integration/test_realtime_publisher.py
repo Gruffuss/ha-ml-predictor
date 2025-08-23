@@ -490,7 +490,13 @@ class TestRealtimePublishingSystem:
         """Create mock prediction publisher."""
         publisher = AsyncMock()
         publisher.publish_prediction = AsyncMock(
-            return_value=MQTTPublishResult(success=True, error_message=None)
+            return_value=MQTTPublishResult(
+                success=True,
+                topic="test/topic",
+                payload_size=100,
+                publish_time=datetime.now(timezone.utc),
+                error_message=None,
+            )
         )
         return publisher
 
@@ -625,7 +631,11 @@ class TestRealtimePublishingSystem:
         # Make MQTT publisher fail
         mock_prediction_publisher.publish_prediction = AsyncMock(
             return_value=MQTTPublishResult(
-                success=False, error_message="MQTT connection failed"
+                success=False,
+                topic="test/topic",
+                payload_size=100,
+                publish_time=datetime.now(timezone.utc),
+                error_message="MQTT connection failed",
             )
         )
 

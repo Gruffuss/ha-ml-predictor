@@ -362,10 +362,10 @@ async def demonstrate_client_connections():
     import asyncio
     import websockets
     import json
-    
+
     async def websocket_client():
         uri = "ws://localhost:8000/realtime/predictions"
-        
+
         async with websockets.connect(uri) as websocket:
             # Subscribe to a specific room
             subscription = {
@@ -373,12 +373,12 @@ async def demonstrate_client_connections():
                 "room_id": "living_room"
             }
             await websocket.send(json.dumps(subscription))
-            
+
             # Listen for predictions
             async for message in websocket:
                 data = json.loads(message)
                 print(f"Received prediction: {data}")
-    
+
     asyncio.run(websocket_client())
     """
 
@@ -387,10 +387,10 @@ async def demonstrate_client_connections():
     # Server-Sent Events Client Example
     import requests
     import json
-    
+
     def sse_client():
         url = "http://localhost:8000/realtime/events"
-        
+
         with requests.get(url, stream=True) as response:
             for line in response.iter_lines():
                 if line:
@@ -398,7 +398,7 @@ async def demonstrate_client_connections():
                     if line.startswith('data: '):
                         data = json.loads(line[6:])
                         print(f"Received event: {data}")
-    
+
     sse_client()
     """
 

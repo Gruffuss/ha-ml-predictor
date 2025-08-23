@@ -136,6 +136,11 @@ class DatabaseManager:
 
         self.engine = create_async_engine(**engine_kwargs)
 
+        # Initialize compatibility manager for database dialect handling
+        from .dialect_utils import CompatibilityManager
+
+        CompatibilityManager.initialize(self.engine)
+
         # Add connection event listeners
         self._setup_connection_events()
 

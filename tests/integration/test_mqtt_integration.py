@@ -6,7 +6,7 @@ with real broker connections, network failure simulation, and recovery testing.
 
 Focus Areas:
 - Real MQTT broker integration using test containers
-- Connection failure and recovery scenarios  
+- Connection failure and recovery scenarios
 - High-throughput message publishing under load
 - Network partition and reconnection handling
 - Message queuing and delivery guarantees

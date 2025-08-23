@@ -1125,3 +1125,58 @@ class GaussianProcessPredictor(BasePredictor):
         except Exception as e:
             logger.error(f"Failed to load GP model: {e}")
             return False
+
+    def get_model_complexity(self) -> Dict[str, Any]:
+        """Get information about GP model complexity."""
+        if not self.is_trained or self.model is None:
+            return {
+                "kernel_type": self.model_params.get("kernel_type", "unknown"),
+                "n_features": 0,
+                "training_samples": 0,
+                "hyperparameters": 0,
+                "kernel_parameters": {},
+            }
+
+        try:
+            # Get kernel information
+            kernel_params = {}
+            if hasattr(self.model, "kernel_") and self.model.kernel_ is not None:
+                try:
+                    kernel_params = self.model.kernel_.get_params()
+                except Exception as e:
+                    kernel_params = {
+                        "error": f"could not retrieve kernel parameters: {e}"
+                    }
+
+            # Count hyperparameters
+            n_hyperparams = len(kernel_params)
+            if hasattr(self.model, "alpha"):
+                n_hyperparams += 1
+
+            return {
+                "kernel_type": self.model_params.get("kernel_type", "unknown"),
+                "n_features": len(self.feature_names) if self.feature_names else 0,
+                "training_samples": (
+                    getattr(self.model, "X_train_", np.array([])).shape[0]
+                    if hasattr(self.model, "X_train_")
+                    else 0
+                ),
+                "hyperparameters": n_hyperparams,
+                "kernel_parameters": kernel_params,
+                "alpha": getattr(
+                    self.model, "alpha", self.model_params.get("alpha", 0)
+                ),
+                "log_marginal_likelihood": getattr(
+                    self.model, "log_marginal_likelihood_value_", None
+                ),
+            }
+
+        except Exception:
+            return {
+                "kernel_type": self.model_params.get("kernel_type", "unknown"),
+                "n_features": len(self.feature_names) if self.feature_names else 0,
+                "training_samples": 0,
+                "hyperparameters": 0,
+                "kernel_parameters": {},
+                "error": "could not determine model complexity",
+            }

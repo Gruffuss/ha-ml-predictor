@@ -249,6 +249,246 @@ class RetrainingProgress:
             )
 
 
+@dataclass
+class RetrainingHistory:
+    """
+    Historical tracking of retraining operations for analytics and optimization.
+
+    Provides comprehensive tracking of all retraining activities, performance trends,
+    and statistical analysis for system optimization.
+    """
+
+    room_id: str
+    model_type: ModelType
+
+    # Historical records
+    completed_retrainings: List[RetrainingRequest] = field(default_factory=list)
+    failed_retrainings: List[RetrainingRequest] = field(default_factory=list)
+    performance_timeline: List[Dict[str, Any]] = field(default_factory=list)
+
+    # Aggregate statistics
+    total_retrainings: int = 0
+    successful_retrainings: int = 0
+    failed_retrainings_count: int = 0
+    average_training_time_seconds: float = 0.0
+    average_improvement: float = 0.0
+
+    # Performance tracking
+    best_achieved_accuracy: float = 0.0
+    worst_achieved_accuracy: float = 100.0
+    accuracy_trend_direction: str = "stable"  # "improving", "degrading", "stable"
+
+    # Trigger analysis
+    trigger_frequency: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    most_common_trigger: Optional[RetrainingTrigger] = None
+
+    # Strategy effectiveness
+    strategy_success_rates: Dict[str, float] = field(default_factory=dict)
+    best_performing_strategy: Optional[str] = None
+
+    # Time-based patterns
+    created_time: datetime = field(default_factory=lambda: datetime.now(UTC))
+    last_updated: datetime = field(default_factory=lambda: datetime.now(UTC))
+    last_retraining_time: Optional[datetime] = None
+
+    def add_retraining_record(self, request: RetrainingRequest) -> None:
+        """Add a completed retraining request to history."""
+        try:
+            if request.status == RetrainingStatus.COMPLETED:
+                self.completed_retrainings.append(request)
+                self.successful_retrainings += 1
+
+                # Update performance metrics
+                if request.training_result and request.training_result.training_score:
+                    score = request.training_result.training_score
+                    self.best_achieved_accuracy = max(
+                        self.best_achieved_accuracy, score
+                    )
+                    self.worst_achieved_accuracy = min(
+                        self.worst_achieved_accuracy, score
+                    )
+
+                    # Add to performance timeline
+                    self.performance_timeline.append(
+                        {
+                            "timestamp": request.completed_time or datetime.now(UTC),
+                            "accuracy": score,
+                            "trigger": request.trigger.value,
+                            "strategy": request.strategy.value,
+                            "training_time": request.training_result.training_time_seconds,
+                            "improvement": request.performance_improvement or {},
+                        }
+                    )
+
+                # Update training time average
+                if (
+                    request.training_result
+                    and request.training_result.training_time_seconds
+                ):
+                    total_time = self.average_training_time_seconds * (
+                        self.successful_retrainings - 1
+                    )
+                    total_time += request.training_result.training_time_seconds
+                    self.average_training_time_seconds = (
+                        total_time / self.successful_retrainings
+                    )
+
+            elif request.status == RetrainingStatus.FAILED:
+                self.failed_retrainings.append(request)
+                self.failed_retrainings_count += 1
+
+            # Update trigger frequency
+            self.trigger_frequency[request.trigger.value] += 1
+            self.most_common_trigger = RetrainingTrigger(
+                max(self.trigger_frequency.items(), key=lambda x: x[1])[0]
+            )
+
+            # Update strategy success rates
+            strategy_name = request.strategy.value
+            if strategy_name not in self.strategy_success_rates:
+                self.strategy_success_rates[strategy_name] = 0.0
+
+            strategy_requests = [
+                r
+                for r in self.completed_retrainings + self.failed_retrainings
+                if r.strategy.value == strategy_name
+            ]
+            strategy_successes = [
+                r for r in strategy_requests if r.status == RetrainingStatus.COMPLETED
+            ]
+
+            if strategy_requests:
+                self.strategy_success_rates[strategy_name] = (
+                    len(strategy_successes) / len(strategy_requests) * 100
+                )
+
+            # Find best performing strategy
+            if self.strategy_success_rates:
+                self.best_performing_strategy = max(
+                    self.strategy_success_rates.items(), key=lambda x: x[1]
+                )[0]
+
+            # Update totals and timestamps
+            self.total_retrainings += 1
+            self.last_updated = datetime.now(UTC)
+            self.last_retraining_time = request.completed_time or datetime.now(UTC)
+
+            # Analyze accuracy trend
+            self._analyze_accuracy_trend()
+
+        except Exception as e:
+            logger.error(f"Error adding retraining record to history: {e}")
+
+    def _analyze_accuracy_trend(self) -> None:
+        """Analyze accuracy trend over recent retrainings."""
+        try:
+            if len(self.performance_timeline) < 3:
+                self.accuracy_trend_direction = "insufficient_data"
+                return
+
+            # Get recent accuracy scores
+            recent_scores = [
+                entry["accuracy"] for entry in self.performance_timeline[-5:]
+            ]
+
+            # Simple trend analysis using linear regression
+            if len(recent_scores) >= 3:
+                x = np.arange(len(recent_scores))
+                slope = np.polyfit(x, recent_scores, 1)[0]
+
+                if slope > 0.01:  # Improving if slope > 1% per retraining
+                    self.accuracy_trend_direction = "improving"
+                elif slope < -0.01:  # Degrading if slope < -1% per retraining
+                    self.accuracy_trend_direction = "degrading"
+                else:
+                    self.accuracy_trend_direction = "stable"
+
+        except Exception as e:
+            logger.error(f"Error analyzing accuracy trend: {e}")
+            self.accuracy_trend_direction = "unknown"
+
+    def get_success_rate(self) -> float:
+        """Get overall retraining success rate as percentage."""
+        if self.total_retrainings == 0:
+            return 0.0
+        return (self.successful_retrainings / self.total_retrainings) * 100
+
+    def get_recent_performance(self, days: int = 30) -> Dict[str, Any]:
+        """Get performance statistics for recent retrainings."""
+        try:
+            cutoff_time = datetime.now(UTC) - timedelta(days=days)
+
+            recent_entries = [
+                entry
+                for entry in self.performance_timeline
+                if entry["timestamp"] > cutoff_time
+            ]
+
+            if not recent_entries:
+                return {
+                    "period_days": days,
+                    "retrainings": 0,
+                    "message": "No recent data",
+                }
+
+            accuracies = [entry["accuracy"] for entry in recent_entries]
+            training_times = [entry["training_time"] for entry in recent_entries]
+
+            return {
+                "period_days": days,
+                "retrainings": len(recent_entries),
+                "average_accuracy": np.mean(accuracies),
+                "accuracy_std": np.std(accuracies),
+                "min_accuracy": np.min(accuracies),
+                "max_accuracy": np.max(accuracies),
+                "average_training_time": np.mean(training_times),
+                "total_training_time": np.sum(training_times),
+                "trend": self.accuracy_trend_direction,
+            }
+
+        except Exception as e:
+            logger.error(f"Error calculating recent performance: {e}")
+            return {"error": str(e)}
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert history to dictionary for serialization."""
+        return {
+            "room_id": self.room_id,
+            "model_type": (
+                self.model_type.value
+                if isinstance(self.model_type, ModelType)
+                else str(self.model_type)
+            ),
+            "total_retrainings": self.total_retrainings,
+            "successful_retrainings": self.successful_retrainings,
+            "failed_retrainings": self.failed_retrainings_count,
+            "success_rate_percent": self.get_success_rate(),
+            "average_training_time_seconds": self.average_training_time_seconds,
+            "average_improvement": self.average_improvement,
+            "best_achieved_accuracy": self.best_achieved_accuracy,
+            "worst_achieved_accuracy": self.worst_achieved_accuracy,
+            "accuracy_trend_direction": self.accuracy_trend_direction,
+            "trigger_frequency": dict(self.trigger_frequency),
+            "most_common_trigger": (
+                self.most_common_trigger.value if self.most_common_trigger else None
+            ),
+            "strategy_success_rates": dict(self.strategy_success_rates),
+            "best_performing_strategy": self.best_performing_strategy,
+            "created_time": (
+                self.created_time.isoformat() if self.created_time else None
+            ),
+            "last_updated": (
+                self.last_updated.isoformat() if self.last_updated else None
+            ),
+            "last_retraining_time": (
+                self.last_retraining_time.isoformat()
+                if self.last_retraining_time
+                else None
+            ),
+            "performance_timeline_entries": len(self.performance_timeline),
+        }
+
+
 class AdaptiveRetrainer:
     """
     Intelligent adaptive retraining system integrated with TrackingManager.

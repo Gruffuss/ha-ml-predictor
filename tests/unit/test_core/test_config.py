@@ -1171,15 +1171,15 @@ home_assistant: &ha
       deeper: &ref3
         deepest_ref: *ref2
         back_to_ha: *ha
-        
+
 database:
   connection_string: "postgresql://test"
   ha_config: *ha
-  
+
 mqtt:
   broker: "test"
   config_ref: *ref3
-  
+
 prediction: {}
 features: {}
 logging: {}
@@ -1287,7 +1287,7 @@ logging: {}
 home_assistant:
   url: "http://test:8123"
   token: "test_token"
-  
+
 # Attempt to execute Python code (should not execute)
 database: !!python/object/apply:os.system ["echo 'this should not execute'"]
 

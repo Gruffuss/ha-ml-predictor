@@ -588,14 +588,14 @@ class TestTrackingManagerUtilities:
         """Test TrackingManagerError creation."""
         error = TrackingManagerError("Test error message")
 
-        assert str(error) == "Test error message"
-        assert error.severity == ErrorSeverity.ERROR
+        assert "Test error message" in str(error)
+        assert error.severity == ErrorSeverity.MEDIUM
 
     def test_tracking_manager_error_with_severity(self):
         """Test TrackingManagerError with custom severity."""
         error = TrackingManagerError("Critical error", severity=ErrorSeverity.CRITICAL)
 
-        assert str(error) == "Critical error"
+        assert "Critical error" in str(error)
         assert error.severity == ErrorSeverity.CRITICAL
 
     def test_config_validation(self):

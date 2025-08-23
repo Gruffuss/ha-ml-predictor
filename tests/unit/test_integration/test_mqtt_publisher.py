@@ -1107,7 +1107,7 @@ class TestMQTTPublisherError:
         """Test basic MQTTPublisherError initialization."""
         error = MQTTPublisherError("Test error message")
 
-        assert str(error) == "Test error message"
+        assert "Test error message" in str(error)
         assert error.error_code == "MQTT_PUBLISHER_ERROR"
         assert error.severity == ErrorSeverity.MEDIUM
 

@@ -61,6 +61,142 @@ class OptimizationObjective(Enum):
     COMPOSITE = "composite"  # Multi-objective optimization
 
 
+class OptimizationStatus(Enum):
+    """Status of optimization operations."""
+
+    PENDING = "pending"  # Optimization queued but not started
+    INITIALIZING = "initializing"  # Setting up optimization
+    RUNNING = "running"  # Optimization in progress
+    COMPLETED = "completed"  # Optimization finished successfully
+    FAILED = "failed"  # Optimization failed
+    CANCELLED = "cancelled"  # Optimization cancelled by user
+    TIMEOUT = "timeout"  # Optimization exceeded time limit
+
+
+class HyperparameterSpace:
+    """
+    Defines the hyperparameter search space for optimization.
+
+    Supports continuous ranges (tuples), discrete choices (lists), and mixed parameter types.
+    """
+
+    def __init__(self, **parameters):
+        """
+        Initialize hyperparameter space.
+
+        Args:
+            **parameters: Keyword arguments defining parameter spaces.
+                        Tuples define continuous ranges: (min, max)
+                        Lists define discrete choices: [choice1, choice2, ...]
+
+        Example:
+            space = HyperparameterSpace(
+                learning_rate=(0.001, 0.1),
+                batch_size=[16, 32, 64, 128],
+                dropout_rate=(0.0, 0.5)
+            )
+        """
+        self.parameters = parameters
+        self._validate_parameters()
+
+    def _validate_parameters(self):
+        """Validate parameter definitions."""
+        for name, space in self.parameters.items():
+            if isinstance(space, (tuple, list)):
+                if isinstance(space, tuple):
+                    if len(space) != 2:
+                        raise ValueError(
+                            f"Continuous parameter '{name}' must be a 2-tuple (min, max)"
+                        )
+                    if space[0] >= space[1]:
+                        raise ValueError(
+                            f"Continuous parameter '{name}' min must be < max"
+                        )
+                elif isinstance(space, list):
+                    if len(space) == 0:
+                        raise ValueError(
+                            f"Discrete parameter '{name}' must have at least one choice"
+                        )
+            else:
+                raise ValueError(
+                    f"Parameter '{name}' must be a tuple (continuous) or list (discrete)"
+                )
+
+    def get_parameter_names(self) -> List[str]:
+        """Get list of parameter names."""
+        return list(self.parameters.keys())
+
+    def is_continuous(self, parameter_name: str) -> bool:
+        """Check if a parameter is continuous (tuple) or discrete (list)."""
+        if parameter_name not in self.parameters:
+            raise ValueError(f"Parameter '{parameter_name}' not found in space")
+        return isinstance(self.parameters[parameter_name], tuple)
+
+    def get_bounds(self, parameter_name: str) -> tuple:
+        """Get bounds for a continuous parameter."""
+        if parameter_name not in self.parameters:
+            raise ValueError(f"Parameter '{parameter_name}' not found in space")
+        param_space = self.parameters[parameter_name]
+        if isinstance(param_space, tuple):
+            return param_space
+        else:
+            raise ValueError(
+                f"Parameter '{parameter_name}' is discrete, not continuous"
+            )
+
+    def get_choices(self, parameter_name: str) -> List[Any]:
+        """Get choices for a discrete parameter."""
+        if parameter_name not in self.parameters:
+            raise ValueError(f"Parameter '{parameter_name}' not found in space")
+        param_space = self.parameters[parameter_name]
+        if isinstance(param_space, list):
+            return param_space
+        else:
+            raise ValueError(
+                f"Parameter '{parameter_name}' is continuous, not discrete"
+            )
+
+    def sample(self, n_samples: int = 1) -> List[Dict[str, Any]]:
+        """
+        Sample random parameter combinations from the space.
+
+        Args:
+            n_samples: Number of parameter combinations to sample
+
+        Returns:
+            List of parameter dictionaries
+        """
+        samples = []
+        for _ in range(n_samples):
+            sample = {}
+            for name, space in self.parameters.items():
+                if isinstance(space, tuple):
+                    # Continuous parameter - uniform sampling
+                    sample[name] = np.random.uniform(space[0], space[1])
+                elif isinstance(space, list):
+                    # Discrete parameter - random choice
+                    sample[name] = np.random.choice(space)
+            samples.append(sample)
+        return samples
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for serialization."""
+        return {
+            "parameters": self.parameters.copy(),
+            "parameter_count": len(self.parameters),
+            "continuous_parameters": [
+                name
+                for name, space in self.parameters.items()
+                if isinstance(space, tuple)
+            ],
+            "discrete_parameters": [
+                name
+                for name, space in self.parameters.items()
+                if isinstance(space, list)
+            ],
+        }
+
+
 @dataclass
 class OptimizationResult:
     """Result of hyperparameter optimization."""
@@ -75,6 +211,7 @@ class OptimizationResult:
     total_evaluations: int
     convergence_achieved: bool
     optimization_history: List[Dict[str, Any]] = field(default_factory=list)
+    trials_completed: int = 0  # Number of optimization trials completed
 
     # Performance metrics
     validation_score: Optional[float] = None
@@ -98,6 +235,7 @@ class OptimizationResult:
             "improvement_over_default": self.improvement_over_default,
             "total_evaluations": self.total_evaluations,
             "convergence_achieved": self.convergence_achieved,
+            "trials_completed": self.trials_completed,
             "validation_score": self.validation_score,
             "training_score": self.training_score,
             "cross_validation_scores": self.cross_validation_scores,
@@ -328,6 +466,7 @@ class ModelOptimizer:
                 improvement_over_default=0.0,
                 total_evaluations=0,
                 convergence_achieved=False,
+                trials_completed=0,
                 error_message=str(e),
             )
 
@@ -600,6 +739,7 @@ class ModelOptimizer:
                 improvement_over_default=0.0,
                 total_evaluations=0,
                 convergence_achieved=False,
+                trials_completed=0,
                 error_message=str(e),
             )
 
@@ -644,6 +784,7 @@ class ModelOptimizer:
                     improvement_over_default=0.0,
                     total_evaluations=0,
                     convergence_achieved=True,
+                    trials_completed=0,
                     error_message="No optimization dimensions available",
                 )
 
@@ -704,6 +845,7 @@ class ModelOptimizer:
                     improvement_over_default=improvement,  # Will be -inf
                     total_evaluations=evaluations,
                     convergence_achieved=False,
+                    trials_completed=evaluations,
                     error_message="All optimization attempts failed",
                 )
 
@@ -715,6 +857,7 @@ class ModelOptimizer:
                 improvement_over_default=improvement,
                 total_evaluations=evaluations,
                 convergence_achieved=True,  # Simplified
+                trials_completed=evaluations,
                 validation_score=best_score,
             )
 
@@ -779,6 +922,7 @@ class ModelOptimizer:
                     improvement_over_default=improvement,  # Will be -inf
                     total_evaluations=evaluations,
                     convergence_achieved=False,
+                    trials_completed=evaluations,
                     error_message="All optimization attempts failed",
                 )
 
@@ -790,6 +934,7 @@ class ModelOptimizer:
                 improvement_over_default=improvement,
                 total_evaluations=evaluations,
                 convergence_achieved=True,
+                trials_completed=evaluations,
                 validation_score=best_score,
             )
 
@@ -803,6 +948,7 @@ class ModelOptimizer:
                 improvement_over_default=0.0,
                 total_evaluations=0,
                 convergence_achieved=False,
+                trials_completed=0,
                 error_message=str(e),
             )
 
@@ -856,6 +1002,7 @@ class ModelOptimizer:
                     improvement_over_default=improvement,  # Will be -inf
                     total_evaluations=evaluations,
                     convergence_achieved=False,
+                    trials_completed=evaluations,
                     error_message="All optimization attempts failed",
                 )
 
@@ -867,6 +1014,7 @@ class ModelOptimizer:
                 improvement_over_default=improvement,
                 total_evaluations=evaluations,
                 convergence_achieved=True,
+                trials_completed=evaluations,
                 validation_score=best_score,
             )
 
@@ -880,6 +1028,7 @@ class ModelOptimizer:
                 improvement_over_default=0.0,
                 total_evaluations=0,
                 convergence_achieved=False,
+                trials_completed=0,
                 error_message=str(e),
             )
 
@@ -942,6 +1091,7 @@ class ModelOptimizer:
                 improvement_over_default=0.0,
                 total_evaluations=0,
                 convergence_achieved=False,
+                trials_completed=0,
                 error_message=str(e),
             )
 
@@ -955,6 +1105,7 @@ class ModelOptimizer:
             improvement_over_default=0.0,
             total_evaluations=0,
             convergence_achieved=True,
+            trials_completed=0,
             validation_score=0.7,
         )
 
@@ -1149,6 +1300,65 @@ class ModelOptimizer:
         except Exception as e:
             logger.error(f"Error getting baseline performance: {e}")
             return 0.7  # Return reasonable default
+
+    def _generate_hyperparameter_combinations(
+        self, param_space: HyperparameterSpace, max_combinations: int = 100
+    ) -> List[Dict[str, Any]]:
+        """
+        Generate hyperparameter combinations from the parameter space.
+
+        Args:
+            param_space: HyperparameterSpace defining the search space
+            max_combinations: Maximum number of combinations to generate
+
+        Returns:
+            List of parameter dictionaries
+        """
+        try:
+            logger.debug(
+                f"Generating hyperparameter combinations (max: {max_combinations})"
+            )
+
+            if not param_space.parameters:
+                logger.warning("Empty parameter space provided")
+                return [{}]
+
+            # For grid search, generate all combinations
+            if self.config.strategy == OptimizationStrategy.GRID_SEARCH:
+                param_grid = {}
+                for name in param_space.get_parameter_names():
+                    if param_space.is_continuous(name):
+                        # Create discrete grid for continuous parameters
+                        min_val, max_val = param_space.get_bounds(name)
+                        param_grid[name] = np.linspace(min_val, max_val, 5).tolist()
+                    else:
+                        # Use all choices for discrete parameters
+                        param_grid[name] = param_space.get_choices(name)
+
+                # Generate all combinations
+                from itertools import product
+
+                names = list(param_grid.keys())
+                values = list(param_grid.values())
+                combinations = []
+
+                for combo in product(*values):
+                    combinations.append(dict(zip(names, combo)))
+                    if len(combinations) >= max_combinations:
+                        break
+
+                logger.debug(f"Generated {len(combinations)} grid combinations")
+                return combinations[:max_combinations]
+
+            else:
+                # For random search or other strategies, sample randomly
+                combinations = param_space.sample(n_samples=max_combinations)
+                logger.debug(f"Generated {len(combinations)} random combinations")
+                return combinations
+
+        except Exception as e:
+            logger.error(f"Error generating hyperparameter combinations: {e}")
+            return [{}]
 
     def _update_performance_history(
         self, model_key: str, performance_score: float

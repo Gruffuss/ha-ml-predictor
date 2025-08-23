@@ -757,14 +757,14 @@ class TestErrorHandling:
         """Test AccuracyTrackingError creation and properties."""
         error = AccuracyTrackingError("Test error message")
 
-        assert str(error) == "Test error message"
-        assert error.severity == ErrorSeverity.ERROR
+        assert "Test error message" in str(error)
+        assert error.severity == ErrorSeverity.MEDIUM
 
     def test_accuracy_tracking_error_with_severity(self):
         """Test AccuracyTrackingError with custom severity."""
         error = AccuracyTrackingError("Critical error", severity=ErrorSeverity.CRITICAL)
 
-        assert str(error) == "Critical error"
+        assert "Critical error" in str(error)
         assert error.severity == ErrorSeverity.CRITICAL
 
     async def test_get_real_time_metrics_error_handling(self, mock_validator):

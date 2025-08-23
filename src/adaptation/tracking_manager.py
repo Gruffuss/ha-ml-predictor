@@ -941,8 +941,8 @@ class TrackingManager:
                 # Use cutoff_time in database query for recent state changes
                 query = """
                     SELECT DISTINCT room_id, MAX(timestamp) as last_change
-                    FROM sensor_events 
-                    WHERE timestamp >= %s 
+                    FROM sensor_events
+                    WHERE timestamp >= %s
                     AND state != previous_state
                     GROUP BY room_id
                     ORDER BY last_change DESC
@@ -2306,9 +2306,10 @@ class TrackingManagerError(OccupancyPredictionError):
     """Raised when tracking manager operations fail."""
 
     def __init__(self, message: str, **kwargs):
+        severity = kwargs.pop("severity", ErrorSeverity.MEDIUM)
         super().__init__(
             message=message,
             error_code="TRACKING_MANAGER_ERROR",
-            severity=kwargs.get("severity", ErrorSeverity.MEDIUM),
+            severity=severity,
             **kwargs,
         )

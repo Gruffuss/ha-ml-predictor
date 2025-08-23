@@ -1,8 +1,8 @@
 """
 Production Health Monitoring & Metrics Collection for Home Assistant ML Predictor.
 
-Provides comprehensive system observability with automated health checks, 
-resource monitoring, database connection monitoring, MQTT/API endpoint monitoring, 
+Provides comprehensive system observability with automated health checks,
+resource monitoring, database connection monitoring, MQTT/API endpoint monitoring,
 and automated incident response capabilities.
 """
 

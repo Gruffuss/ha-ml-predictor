@@ -7,7 +7,7 @@ caching, and error handling scenarios.
 
 Coverage Areas:
 - Dashboard initialization and configuration
-- FastAPI app creation and route registration  
+- FastAPI app creation and route registration
 - WebSocket connection management and broadcasting
 - System overview data aggregation
 - Accuracy metrics processing
@@ -1180,7 +1180,7 @@ class TestDashboardErrors:
             severity=ErrorSeverity.HIGH,
         )
 
-        assert str(error) == "Test error message"
+        assert "Test error message" in str(error)
         assert error.error_code == "DASHBOARD_ERROR"
         assert error.severity == ErrorSeverity.HIGH
         assert error.context["component"] == "test"

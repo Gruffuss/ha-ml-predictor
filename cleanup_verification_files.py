@@ -7,7 +7,7 @@ import os
 
 files_to_remove = [
     "test_category2_verification.py",
-    "run_db_test.py", 
+    "run_db_test.py",
     "run_quality_pipeline.py",
     "check_specific_files.py",
     "cleanup_verification_files.py"

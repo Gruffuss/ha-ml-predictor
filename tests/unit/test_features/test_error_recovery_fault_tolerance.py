@@ -3,7 +3,7 @@ Comprehensive error recovery and fault tolerance tests for feature engineering.
 
 This test suite validates system resilience under:
 - Component failures and recovery
-- Resource exhaustion scenarios  
+- Resource exhaustion scenarios
 - Network and database failures
 - Graceful degradation patterns
 - Circuit breaker implementations

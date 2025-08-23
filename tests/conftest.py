@@ -12,6 +12,8 @@ import tempfile
 from typing import Any, Dict, List, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import numpy as np
+import pandas as pd
 import pytest
 import pytest_asyncio
 
@@ -647,3 +649,204 @@ def create_test_sensor_event(
         confidence_score=0.8,
         created_at=datetime.now(timezone.utc),
     )
+
+
+# Missing fixtures for production-grade test infrastructure
+
+
+@pytest.fixture
+def mock_validator():
+    """Create mock prediction validator for AccuracyTracker tests."""
+    from src.adaptation.validator import PredictionValidator
+
+    validator = AsyncMock(spec=PredictionValidator)
+    validator._lock = AsyncMock()
+    validator._validation_records = {}
+    validator._pending_predictions = {}
+    validator.record_prediction = AsyncMock()
+    validator.validate_prediction = AsyncMock()
+
+    # Mock get_accuracy_metrics with realistic data
+    validator.get_accuracy_metrics = AsyncMock(
+        return_value={
+            "mean_error_minutes": 12.5,
+            "median_error_minutes": 8.0,
+            "accuracy_within_threshold": 0.82,
+            "total_predictions": 150,
+            "validated_predictions": 128,
+            "confidence_score": 0.75,
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "time_range": {
+                "start": (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat(),
+                "end": datetime.now(timezone.utc).isoformat(),
+            },
+        }
+    )
+
+    return validator
+
+
+@pytest.fixture
+def sample_training_data():
+    """Create realistic sample training data for ML model tests."""
+    np.random.seed(42)  # Ensure reproducible test data
+
+    # Generate 1000 samples with realistic occupancy prediction features
+    n_samples = 1000
+
+    # Temporal features
+    features = pd.DataFrame(
+        {
+            # Time-based features
+            "time_since_last_change": np.random.exponential(300, n_samples),  # seconds
+            "current_state_duration": np.random.exponential(600, n_samples),  # seconds
+            "hour_sin": np.sin(2 * np.pi * np.random.rand(n_samples)),
+            "hour_cos": np.cos(2 * np.pi * np.random.rand(n_samples)),
+            "day_sin": np.sin(2 * np.pi * np.random.rand(n_samples) / 7),
+            "day_cos": np.cos(2 * np.pi * np.random.rand(n_samples) / 7),
+            "is_weekend": np.random.choice([0, 1], n_samples, p=[0.7, 0.3]),
+            # Sequential features
+            "movement_velocity": np.random.gamma(2, 0.5, n_samples),
+            "room_transition_pattern": np.random.randint(0, 10, n_samples),
+            "trigger_sequence_score": np.random.beta(2, 3, n_samples),
+            # Contextual features
+            "temperature": np.random.normal(22, 3, n_samples),
+            "humidity": np.random.normal(45, 10, n_samples),
+            "light_level": np.random.exponential(100, n_samples),
+            "other_rooms_occupied": np.random.randint(0, 4, n_samples),
+            # Historical patterns
+            "historical_pattern_similarity": np.random.beta(3, 2, n_samples),
+            "occupancy_trend": np.random.normal(0, 1, n_samples),
+        }
+    )
+
+    # Target variable: time until next transition (in seconds)
+    # Use realistic distribution - exponential with some correlation to features
+    base_time = np.random.exponential(1800, n_samples)  # 30 min average
+
+    # Add feature-based variation
+    time_adjustment = (
+        features["time_since_last_change"] * 0.1
+        + features["current_state_duration"] * 0.05
+        + features["is_weekend"] * 300  # Weekend effect
+        + features["historical_pattern_similarity"] * 600  # Pattern effect
+    )
+
+    targets = pd.DataFrame(
+        {
+            "time_until_transition_seconds": np.maximum(
+                60, base_time + time_adjustment
+            )  # Min 1 minute
+        }
+    )
+
+    return features, targets
+
+
+@pytest.fixture
+def large_sample_training_data():
+    """Create larger realistic training dataset for comprehensive tests."""
+    np.random.seed(42)
+    n_samples = 5000  # Large dataset for robust testing
+
+    # Generate time series with realistic patterns
+    time_index = pd.date_range(
+        start=datetime.now(timezone.utc) - timedelta(days=30),
+        periods=n_samples,
+        freq="5min",
+    )
+
+    features = pd.DataFrame(
+        {
+            "timestamp": time_index,
+            "time_since_last_change": np.random.exponential(450, n_samples),
+            "current_state_duration": np.random.exponential(900, n_samples),
+            "hour_sin": np.sin(2 * np.pi * time_index.hour / 24),
+            "hour_cos": np.cos(2 * np.pi * time_index.hour / 24),
+            "day_sin": np.sin(2 * np.pi * time_index.dayofweek / 7),
+            "day_cos": np.cos(2 * np.pi * time_index.dayofweek / 7),
+            "is_weekend": (time_index.dayofweek >= 5).astype(int),
+            "movement_velocity": np.random.gamma(2.5, 0.6, n_samples),
+            "room_transition_pattern": np.random.randint(0, 12, n_samples),
+            "temperature": 20
+            + 5 * np.sin(2 * np.pi * time_index.hour / 24)
+            + np.random.normal(0, 1, n_samples),
+            "humidity": 50 + np.random.normal(0, 8, n_samples),
+            "light_level": np.maximum(
+                0,
+                80
+                + 70 * np.sin(2 * np.pi * time_index.hour / 24)
+                + np.random.normal(0, 15, n_samples),
+            ),
+            "other_rooms_occupied": np.random.poisson(1.2, n_samples),
+            "historical_pattern_similarity": np.random.beta(2.5, 2, n_samples),
+            "occupancy_trend": np.random.normal(0, 0.8, n_samples),
+        }
+    )
+
+    # More sophisticated target generation with daily patterns
+    hour_effect = 300 * np.sin(2 * np.pi * (time_index.hour - 6) / 24)  # Peak at noon
+    weekend_effect = features["is_weekend"] * 600  # Longer weekend transitions
+    pattern_effect = features["historical_pattern_similarity"] * 800
+
+    base_transition_time = np.random.exponential(1200, n_samples)  # 20 min average
+    targets = pd.DataFrame(
+        {
+            "time_until_transition_seconds": np.maximum(
+                30, base_transition_time + hour_effect + weekend_effect + pattern_effect
+            )
+        }
+    )
+
+    return features, targets
+
+
+@pytest.fixture
+def sample_room_states_data():
+    """Create sample room states data for database tests."""
+    base_time = datetime.now(timezone.utc) - timedelta(hours=2)
+
+    room_states = []
+    for i in range(800):  # Generate 800 records to match test expectations
+        room_state = RoomState(
+            id=None,  # Let autoincrement handle this
+            room_id=f"room_{i % 4}",  # 4 different rooms
+            timestamp=base_time + timedelta(minutes=i * 2),
+            is_occupied=(i % 3 != 0),  # 2/3 occupied, 1/3 vacant
+            occupancy_confidence=0.6 + (i % 10) * 0.04,  # 0.6 to 0.96
+            occupant_type="human" if i % 10 < 8 else "cat",
+            state_duration=180 + (i % 20) * 30,  # 3-13 minutes
+            transition_trigger=f"binary_sensor.room_{i % 4}_motion_{i % 3}",
+        )
+        room_states.append(room_state)
+
+    return room_states
+
+
+@pytest.fixture
+def sample_prediction_validation_data():
+    """Create sample prediction validation data for accuracy tests."""
+    base_time = datetime.now(timezone.utc) - timedelta(hours=1)
+
+    validation_data = []
+    for i in range(44):  # Generate 44 records to match test expectations
+        # Create realistic prediction validation records
+        predicted_time = base_time + timedelta(minutes=i * 5)
+        actual_time = predicted_time + timedelta(
+            minutes=np.random.normal(0, 8)
+        )  # Some error
+
+        validation_record = {
+            "room_id": f"test_room_{i % 3}",
+            "predicted_time": predicted_time,
+            "actual_time": actual_time,
+            "confidence": 0.5 + (i % 10) * 0.05,  # 0.5 to 0.95
+            "error_minutes": abs((actual_time - predicted_time).total_seconds() / 60),
+            "within_threshold": abs((actual_time - predicted_time).total_seconds() / 60)
+            <= 15,
+            "prediction_id": f"pred_{i:04d}",
+            "model_type": ["lstm", "xgboost", "hmm", "gp"][i % 4],
+        }
+        validation_data.append(validation_record)
+
+    return validation_data

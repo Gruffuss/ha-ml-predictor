@@ -331,14 +331,20 @@ class SensorEvent(Base):
         }
 
         if include_statistics and row.total_events > 0:
-            # Additional statistical queries using advanced SQL functions
+            # Additional statistical queries using database-agnostic functions
+            from .dialect_utils import (
+                extract_epoch_interval,
+                percentile_cont,
+                stddev_samp,
+            )
+
             stats_query = select(
-                sql_func.percentile_cont(0.5)
-                .within_group(cls.confidence_score.desc())
-                .label("median_confidence"),
-                sql_func.stddev_samp(cls.confidence_score).label("confidence_stddev"),
-                sql_func.extract(
-                    "epoch", sql_func.max(cls.timestamp) - sql_func.min(cls.timestamp)
+                percentile_cont(0.5, cls.confidence_score, order_desc=True).label(
+                    "median_confidence"
+                ),
+                stddev_samp(cls.confidence_score).label("confidence_stddev"),
+                extract_epoch_interval(
+                    sql_func.min(cls.timestamp), sql_func.max(cls.timestamp)
                 ).label("time_span_seconds"),
             ).where(
                 and_(
@@ -762,24 +768,21 @@ class RoomState(Base):
             Dictionary with precision metrics
         """
         # Use precise decimal calculations for confidence metrics
+        # Import database-agnostic functions
+        from .dialect_utils import percentile_cont, stddev_samp
+
         precision_query = select(
             sql_func.count().label("total_states"),
             sql_func.count()
             .filter(cls.occupancy_confidence >= precision_threshold)
             .label("high_confidence_states"),
             sql_func.avg(cls.occupancy_confidence).label("avg_confidence"),
-            sql_func.stddev_samp(cls.occupancy_confidence).label("confidence_stddev"),
+            stddev_samp(cls.occupancy_confidence).label("confidence_stddev"),
             sql_func.min(cls.occupancy_confidence).label("min_confidence"),
             sql_func.max(cls.occupancy_confidence).label("max_confidence"),
-            sql_func.percentile_cont(0.25)
-            .within_group(cls.occupancy_confidence.asc())
-            .label("q1_confidence"),
-            sql_func.percentile_cont(0.5)
-            .within_group(cls.occupancy_confidence.asc())
-            .label("median_confidence"),
-            sql_func.percentile_cont(0.75)
-            .within_group(cls.occupancy_confidence.asc())
-            .label("q3_confidence"),
+            percentile_cont(0.25, cls.occupancy_confidence).label("q1_confidence"),
+            percentile_cont(0.5, cls.occupancy_confidence).label("median_confidence"),
+            percentile_cont(0.75, cls.occupancy_confidence).label("q3_confidence"),
         ).where(cls.room_id == room_id)
 
         result = await session.execute(precision_query)

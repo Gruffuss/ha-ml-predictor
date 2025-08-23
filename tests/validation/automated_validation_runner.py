@@ -481,9 +481,9 @@ class AutomatedValidationRunner:
             "failed_runs": failed_runs,
             "success_rate_percentage": (successful_runs / max(1, total_runs)) * 100,
             "average_run_duration_seconds": average_duration,
-            "framework_status": (await self.framework.get_system_health_status())[
-                "framework_status"
-            ],
+            "framework_status": (await self.framework.get_system_health_status()).get(
+                "framework_status", "unknown"
+            ),
         }
 
     # Private Methods
