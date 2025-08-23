@@ -62,6 +62,8 @@ def schema_validator():
         prediction=MagicMock(),
         features=MagicMock(),
         logging=MagicMock(),
+        tracking=MagicMock(),
+        api=MagicMock(),
         rooms={
             "room_1": RoomConfig(room_id="room_1", name="Living Room"),
             "room_2": RoomConfig(room_id="room_2", name="Bedroom"),
@@ -95,6 +97,8 @@ def comprehensive_validator(mock_db_session):
             prediction=MagicMock(),
             features=MagicMock(),
             logging=MagicMock(),
+            tracking=MagicMock(),
+            api=MagicMock(),
             rooms={
                 "room_1": RoomConfig(room_id="room_1", name="Living Room"),
                 "room_2": RoomConfig(room_id="room_2", name="Bedroom"),

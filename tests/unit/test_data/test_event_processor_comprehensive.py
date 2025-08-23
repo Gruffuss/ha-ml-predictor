@@ -98,6 +98,8 @@ def comprehensive_system_config():
         prediction=Mock(),
         features=Mock(),
         logging=Mock(),
+        tracking=Mock(),
+        api=Mock(),
         rooms=rooms,
     )
 

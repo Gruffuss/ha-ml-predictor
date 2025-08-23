@@ -157,8 +157,8 @@ class TestHATrackingBridge:
         """Create sample prediction result for testing."""
         return PredictionResult(
             predicted_time=datetime.now() + timedelta(minutes=25),
-            confidence=0.87,
-            prediction_type="next_vacant",
+            confidence_score=0.87,
+            transition_type="next_vacant",
             model_metadata={"model": "ensemble", "accuracy": 0.89},
         )
 
@@ -989,8 +989,8 @@ class TestIntegrationScenarios:
         # Simulate prediction events
         prediction_result = PredictionResult(
             predicted_time=datetime.now() + timedelta(minutes=18),
-            confidence=0.91,
-            prediction_type="next_occupied",
+            confidence_score=0.91,
+            transition_type="next_occupied",
         )
 
         await bridge.handle_prediction_made("living_room", prediction_result)
@@ -1029,8 +1029,8 @@ class TestIntegrationScenarios:
         # First prediction should handle error gracefully
         prediction = PredictionResult(
             predicted_time=datetime.now() + timedelta(minutes=10),
-            confidence=0.85,
-            prediction_type="next_vacant",
+            confidence_score=0.85,
+            transition_type="next_vacant",
         )
 
         await bridge.handle_prediction_made("error_room", prediction)
@@ -1053,8 +1053,8 @@ class TestIntegrationScenarios:
         rooms = [f"room_{i}" for i in range(20)]
         prediction = PredictionResult(
             predicted_time=datetime.now() + timedelta(minutes=15),
-            confidence=0.88,
-            prediction_type="next_occupied",
+            confidence_score=0.88,
+            transition_type="next_occupied",
         )
 
         # Create many concurrent tasks

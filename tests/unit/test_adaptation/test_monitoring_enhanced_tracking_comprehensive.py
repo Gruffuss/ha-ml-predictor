@@ -118,9 +118,9 @@ class TestMonitoringEnhancedTrackingManager:
         """Create sample prediction result."""
         return PredictionResult(
             predicted_time=datetime.now() + timedelta(minutes=15),
-            confidence=0.85,
-            prediction_type="next_occupied",
-            model_metadata={"model": "ensemble", "version": "1.0"},
+            confidence_score=0.85,
+            transition_type="next_occupied",
+            prediction_metadata={"model": "ensemble", "version": "1.0"},
         )
 
     # Initialization and Setup Tests

@@ -585,6 +585,12 @@ def pytest_configure(config):
         "markers", "ha_client: mark test as requiring Home Assistant client"
     )
     config.addinivalue_line("markers", "slow: mark test as slow running")
+    config.addinivalue_line("markers", "smoke: mark test as a smoke test")
+    config.addinivalue_line("markers", "performance: mark test as performance test")
+    config.addinivalue_line(
+        "markers", "container: mark test as requiring Docker containers"
+    )
+    config.addinivalue_line("markers", "network: mark test as requiring network access")
 
 
 # Helper functions for tests

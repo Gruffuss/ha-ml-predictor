@@ -35,7 +35,11 @@ import weakref
 from fastapi.testclient import TestClient
 import psutil
 import pytest
-import resource
+
+# Skip tests if resource module is not available (Unix only)
+resource = pytest.importorskip(
+    "resource", reason="resource module not available on Windows"
+)
 
 from src.core.config import MQTTConfig, RoomConfig
 from src.integration.api_server import create_app, set_tracking_manager

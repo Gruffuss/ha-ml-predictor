@@ -18,7 +18,7 @@ from src.adaptation.drift_detector import (
     DriftMetrics,
     DriftSeverity,
 )
-from src.adaptation.retrainer import AdaptiveRetrainer, RetrainerError
+from src.adaptation.retrainer import AdaptiveRetrainer, RetrainingError
 from src.adaptation.tracker import AccuracyTracker, AlertSeverity
 from src.adaptation.tracking_manager import (
     TrackingConfig,
@@ -26,7 +26,7 @@ from src.adaptation.tracking_manager import (
     TrackingManagerError,
 )
 from src.adaptation.validator import AccuracyMetrics, PredictionValidator
-from src.core.constants import ModelType, RoomId
+from src.core.constants import ModelType
 from src.core.exceptions import ErrorSeverity
 from src.data.storage.database import DatabaseManager
 from src.integration.mqtt_publisher import MQTTPublisher

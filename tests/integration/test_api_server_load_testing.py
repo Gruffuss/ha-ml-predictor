@@ -30,8 +30,10 @@ import uuid
 
 from fastapi.testclient import TestClient
 import httpx
-import jwt
 import pytest
+
+# Skip tests if JWT module is not available
+jwt = pytest.importorskip("jwt", reason="PyJWT package not installed")
 
 from src.core.config import APIConfig, get_config
 from src.core.exceptions import (

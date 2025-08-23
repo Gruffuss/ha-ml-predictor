@@ -1168,7 +1168,7 @@ class TestWebSocketAPIIntegration:
         # Create mock prediction result
         prediction_result = PredictionResult(
             predicted_time=datetime.utcnow() + timedelta(minutes=30),
-            confidence=0.85,
+            confidence_score=0.85,
             transition_type="occupied_to_vacant",
             model_type="ensemble",
             model_version="1.0.0",

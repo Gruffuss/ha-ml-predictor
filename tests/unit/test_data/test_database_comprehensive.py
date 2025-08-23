@@ -50,15 +50,15 @@ class TestDatabaseConfig:
             connection_string="postgresql+asyncpg://user:pass@localhost/db",
             pool_size=15,
             max_overflow=25,
-            query_timeout=180,
-            connection_timeout=45,
+            pool_timeout=45,
+            pool_recycle=180,
         )
 
         assert config.connection_string == "postgresql+asyncpg://user:pass@localhost/db"
         assert config.pool_size == 15
         assert config.max_overflow == 25
-        assert config.query_timeout == 180
-        assert config.connection_timeout == 45
+        assert config.pool_timeout == 45
+        assert config.pool_recycle == 180
 
     def test_database_config_defaults(self):
         """Test DatabaseConfig with default values."""

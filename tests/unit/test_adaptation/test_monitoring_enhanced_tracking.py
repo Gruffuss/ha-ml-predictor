@@ -88,10 +88,10 @@ class TestMonitoringEnhancedTrackingManager:
     def prediction_result(self):
         """Create sample prediction result."""
         return PredictionResult(
-            prediction_type="next_occupied",
+            transition_type="next_occupied",
             predicted_time=datetime.now(timezone.utc),
-            confidence=0.85,
-            metadata={"model_used": "ensemble"},
+            confidence_score=0.85,
+            prediction_metadata={"model_used": "ensemble"},
         )
 
     @pytest.fixture
@@ -166,10 +166,10 @@ class TestMonitoringEnhancedTrackingManager:
     ):
         """Test prediction recording without confidence value."""
         prediction_result = PredictionResult(
-            prediction_type="next_vacant",
+            transition_type="next_vacant",
             predicted_time=datetime.now(timezone.utc),
-            confidence=None,
-            metadata={},
+            confidence_score=0.0,
+            prediction_metadata={},
         )
 
         await enhanced_manager._monitored_record_prediction(
@@ -732,10 +732,10 @@ class TestPerformanceAndStress:
         predictions = []
         for i in range(100):
             prediction = PredictionResult(
-                prediction_type="next_occupied",
+                transition_type="next_occupied",
                 predicted_time=datetime.now(timezone.utc),
-                confidence=0.8 + (i % 20) / 100,
-                metadata={"batch": i},
+                confidence_score=0.8 + (i % 20) / 100,
+                prediction_metadata={"batch": i},
             )
             predictions.append(prediction)
 

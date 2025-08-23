@@ -58,12 +58,13 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.slow)
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+# Remove deprecated event_loop fixture - pytest-asyncio handles this automatically
+# @pytest.fixture(scope="session")
+# def event_loop():
+#     """Create an instance of the default event loop for the test session."""
+#     loop = asyncio.get_event_loop_policy().new_event_loop()
+#     yield loop
+#     loop.close()
 
 
 @pytest.fixture(autouse=True)
@@ -359,12 +360,12 @@ def network_condition_simulator():
     return NetworkConditionSimulator()
 
 
-# Custom pytest markers for test categorization
-pytest.mark.integration = pytest.mark.mark("integration")
-pytest.mark.performance = pytest.mark.mark("performance")
-pytest.mark.container = pytest.mark.mark("container")
-pytest.mark.slow = pytest.mark.mark("slow")
-pytest.mark.network = pytest.mark.mark("network")
+# Custom pytest markers for test categorization (fixed marker definitions)
+pytest.mark.integration = pytest.mark.integration
+pytest.mark.performance = pytest.mark.performance
+pytest.mark.container = pytest.mark.container
+pytest.mark.slow = pytest.mark.slow
+pytest.mark.network = pytest.mark.network
 
 
 def pytest_runtest_setup(item):
@@ -410,19 +411,60 @@ def pytest_sessionfinish(session, exitstatus):
     gc.collect()
 
 
-# Test timeout configuration
+# Test timeout configuration - Cross-platform implementation
 @pytest.fixture(autouse=True)
 def test_timeout():
-    """Apply reasonable timeouts to all integration tests."""
-    import signal
+    """Apply reasonable timeouts to all integration tests (cross-platform)."""
+    import threading
+    import time
 
-    def timeout_handler(signum, frame):
-        raise TimeoutError("Test timed out")
+    import platform
 
-    # Set 5 minute timeout for all integration tests
-    signal.signal(signal.SIGALRM, timeout_handler)
-    signal.alarm(300)  # 5 minutes
+    timeout_occurred = False
+    timer_thread = None
+
+    def timeout_handler():
+        nonlocal timeout_occurred
+        timeout_occurred = True
+        logging.error("Test timeout occurred after 5 minutes")
+
+    # Use cross-platform timer approach instead of Unix signals
+    if platform.system() != "Windows":
+        # On Unix systems, we can still use signals if available
+        try:
+            import signal
+
+            def signal_handler(signum, frame):
+                raise TimeoutError("Test timed out after 5 minutes")
+
+            signal.signal(signal.SIGALRM, signal_handler)
+            signal.alarm(300)  # 5 minutes
+        except (AttributeError, ImportError):
+            # Fallback to threading timer
+            timer_thread = threading.Timer(300.0, timeout_handler)
+            timer_thread.daemon = True
+            timer_thread.start()
+    else:
+        # Windows - use threading timer
+        timer_thread = threading.Timer(300.0, timeout_handler)
+        timer_thread.daemon = True
+        timer_thread.start()
 
     yield
 
-    signal.alarm(0)  # Disable timeout
+    # Clean up timeout
+    if platform.system() != "Windows":
+        try:
+            import signal
+
+            signal.alarm(0)
+        except (AttributeError, ImportError):
+            if timer_thread and timer_thread.is_alive():
+                timer_thread.cancel()
+    else:
+        if timer_thread and timer_thread.is_alive():
+            timer_thread.cancel()
+
+    # Check if timeout occurred
+    if timeout_occurred:
+        pytest.fail("Test exceeded 5 minute timeout")

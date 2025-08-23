@@ -107,10 +107,10 @@ class TestHATrackingBridge:
     def prediction_result(self):
         """Create sample prediction result."""
         return PredictionResult(
-            prediction_type="next_occupied",
+            transition_type="next_occupied",
             predicted_time=datetime.now(timezone.utc),
-            confidence=0.87,
-            metadata={"model_used": "ensemble", "features_count": 45},
+            confidence_score=0.87,
+            prediction_metadata={"model_used": "ensemble", "features_count": 45},
         )
 
     @pytest.fixture
@@ -837,10 +837,10 @@ class TestIntegrationWorkflows:
         )
 
         prediction_result = PredictionResult(
-            prediction_type="next_vacant",
+            transition_type="next_vacant",
             predicted_time=datetime.now(timezone.utc),
-            confidence=0.8,
-            metadata={},
+            confidence_score=0.8,
+            prediction_metadata={},
         )
 
         # Should handle error gracefully
@@ -877,10 +877,10 @@ class TestPerformanceAndScalability:
         prediction_results = []
         for i in range(100):
             result = PredictionResult(
-                prediction_type="next_occupied" if i % 2 == 0 else "next_vacant",
+                transition_type="next_occupied" if i % 2 == 0 else "next_vacant",
                 predicted_time=datetime.now(timezone.utc),
-                confidence=0.7 + (i % 30) / 100,
-                metadata={"batch_id": i},
+                confidence_score=0.7 + (i % 30) / 100,
+                prediction_metadata={"batch_id": i},
             )
             prediction_results.append(result)
 
@@ -931,10 +931,10 @@ class TestPerformanceAndScalability:
         """Test concurrent handling of different event types."""
         # Create various events
         prediction_result = PredictionResult(
-            prediction_type="next_occupied",
+            transition_type="next_occupied",
             predicted_time=datetime.now(timezone.utc),
-            confidence=0.85,
-            metadata={},
+            confidence_score=0.85,
+            prediction_metadata={},
         )
 
         alert = Mock()
@@ -971,10 +971,10 @@ class TestPerformanceAndScalability:
         """Test memory efficiency with large datasets."""
         # Create prediction result for testing
         prediction_result = PredictionResult(
-            prediction_type="next_occupied",
+            transition_type="next_occupied",
             predicted_time=datetime.now(timezone.utc),
-            confidence=0.85,
-            metadata={},
+            confidence_score=0.85,
+            prediction_metadata={},
         )
 
         # Simulate large system status
