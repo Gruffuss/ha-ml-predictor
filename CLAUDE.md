@@ -58,6 +58,56 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Remember: You are the technical leader. Agents work FOR you, not WITH you. Set high standards and enforce them rigorously.**
 
+## 🚨 CRITICAL: Agent Validation Requirements - LEARNED FROM FAILURE
+
+**NEVER MAKE ASSUMPTIONS ABOUT AGENT BEHAVIOR. This has caused massive system failures.**
+
+### MANDATORY Agent Instructions - NO EXCEPTIONS:
+
+#### **BEFORE ANY AGENT WRITES CODE OR TESTS:**
+1. **READ THE ACTUAL SOURCE CODE FIRST** 
+   - Agents must analyze existing implementations, not ideal interfaces
+   - Must understand real class constructors, methods, and attributes
+   - Must validate that referenced functionality actually exists
+
+2. **VALIDATE AGAINST EXISTING IMPLEMENTATIONS**
+   - Tests must match reality, not planned or documented interfaces  
+   - Every test call must target actual implemented functionality
+   - No creating tests for non-existent methods or classes
+
+3. **IMPLEMENTATION ALIGNMENT IS CRITICAL**
+   - Focus on matching current implementation, not comprehensive ideals
+   - Agents must prove their code works against real system
+   - Evidence-based validation required, not trust-based reports
+
+### Agent Instruction Template - USE THIS EXACT FORMAT:
+
+```
+MANDATORY VALIDATION REQUIREMENTS:
+1. READ source file [specific file path] COMPLETELY before writing any code
+2. ANALYZE actual class constructors, method signatures, and attributes  
+3. VALIDATE every test/code line targets real implemented functionality
+4. VERIFY your code runs successfully against current implementation
+5. PROVIDE EVIDENCE that your implementation works (test output, execution proof)
+
+FAILURE TO FOLLOW THESE STEPS WILL RESULT IN MASSIVE SYSTEM FAILURES.
+Only create tests/code for interfaces that actually exist in the codebase.
+```
+
+### What Caused Previous Failures:
+- ❌ **ASSUMPTION**: Agents would naturally validate against implementation
+- ❌ **VAGUE INSTRUCTIONS**: "Create comprehensive tests" without validation requirements  
+- ❌ **TRUSTED REPORTS**: Accepted agent success claims without evidence
+- ❌ **IDEALIZED INTERFACES**: Agents created tests for planned, not actual interfaces
+
+### What Must Happen Now:
+- ✅ **EXPLICIT VALIDATION**: Every agent must read source code first
+- ✅ **IMPLEMENTATION-FIRST**: Match real code, not documentation
+- ✅ **EVIDENCE REQUIRED**: Agents must prove their work functions
+- ✅ **ASSUMPTION-FREE**: Never assume agent behavior, always specify exactly
+
+**THIS FAILURE PATTERN MUST NEVER BE REPEATED. These instructions are based on painful lessons learned from 370+ test failures caused by implementation-test misalignment.**
+
 ### MANDATORY: Code Quality Pipeline After Every Agent Change
 **After ANY agent makes code changes, you MUST immediately run:**
 
