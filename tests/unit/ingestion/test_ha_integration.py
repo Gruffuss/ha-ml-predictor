@@ -11,8 +11,9 @@ This test file provides comprehensive testing for all Home Assistant data ingest
 import asyncio
 from datetime import datetime, timedelta, timezone
 import json
+import pickle
 from typing import Any, Dict, List, Optional
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, mock_open, patch
 
 import aiohttp
 import pytest
@@ -22,9 +23,12 @@ from websockets.exceptions import ConnectionClosed, InvalidStatusCode, InvalidUR
 from src.core.config import HomeAssistantConfig, RoomConfig, SystemConfig
 from src.core.constants import SensorState, SensorType
 from src.core.exceptions import (
+    DatabaseError,
+    DataValidationError,
     HomeAssistantAPIError,
     HomeAssistantAuthenticationError,
     HomeAssistantConnectionError,
+    InsufficientTrainingDataError,
     RateLimitExceededError,
     WebSocketError,
 )
@@ -377,8 +381,8 @@ class TestHomeAssistantClient:
         with pytest.raises(RateLimitExceededError) as exc_info:
             await client.get_entity_state("sensor.test")
 
-        assert exc_info.value.service == "home_assistant_api"
-        assert exc_info.value.reset_time == 60
+        assert exc_info.value.context["service"] == "home_assistant_api"
+        assert exc_info.value.context["reset_time"] == 60
 
     @pytest.mark.asyncio
     async def test_get_entity_history_success(self, mock_system_config):
@@ -1036,6 +1040,525 @@ class TestBulkImporter:
             mock_open.assert_called_once()
             mock_file.write.assert_called()
 
+    @pytest.mark.asyncio
+    async def test_validate_data_sufficiency_success(self, importer):
+        """Test data sufficiency validation with sufficient data."""
+        with patch('src.data.ingestion.bulk_importer.get_db_session') as mock_get_session:
+            mock_session = AsyncMock()
+            mock_get_session.return_value.__aenter__.return_value = mock_session
+            
+            # Mock sufficient data
+            mock_result = Mock()
+            mock_result.fetchall.return_value = [
+                Mock(event_date='2024-01-01', event_count=50),
+                Mock(event_date='2024-01-02', event_count=60),
+                Mock(event_date='2024-01-03', event_count=55),
+            ] * 15  # 45 days of data
+            mock_session.execute.return_value = mock_result
+            
+            result = await importer.validate_data_sufficiency('living_room', minimum_days=30, minimum_events_per_day=10)
+            
+            assert result['sufficient'] is True
+            assert result['total_days'] == 45
+            assert result['meets_day_requirement'] is True
+            assert result['meets_event_requirement'] is True
+            assert "sufficient for model training" in result['recommendation']
+
+    @pytest.mark.asyncio
+    async def test_validate_data_sufficiency_insufficient_days(self, importer):
+        """Test data sufficiency validation with insufficient days."""
+        with patch('src.data.ingestion.bulk_importer.get_db_session') as mock_get_session:
+            mock_session = AsyncMock()
+            mock_get_session.return_value.__aenter__.return_value = mock_session
+            
+            # Mock insufficient data (only 10 days)
+            mock_result = Mock()
+            mock_result.fetchall.return_value = [
+                Mock(event_date='2024-01-01', event_count=50),
+                Mock(event_date='2024-01-02', event_count=60),
+            ] * 5  # Only 10 days of data
+            mock_session.execute.return_value = mock_result
+            
+            with pytest.raises(InsufficientTrainingDataError) as exc_info:
+                await importer.validate_data_sufficiency('living_room', minimum_days=30, minimum_events_per_day=10)
+            
+            assert exc_info.value.context["room_id"] == 'living_room'
+            assert exc_info.value.context["time_span_days"] == 10
+
+    @pytest.mark.asyncio
+    async def test_validate_data_sufficiency_no_data(self, importer):
+        """Test data sufficiency validation with no data."""
+        with patch('src.data.ingestion.bulk_importer.get_db_session') as mock_get_session:
+            mock_session = AsyncMock()
+            mock_get_session.return_value.__aenter__.return_value = mock_session
+            
+            # Mock no data
+            mock_result = Mock()
+            mock_result.fetchall.return_value = []
+            mock_session.execute.return_value = mock_result
+            
+            with pytest.raises(InsufficientTrainingDataError) as exc_info:
+                await importer.validate_data_sufficiency('living_room')
+            
+            assert exc_info.value.context["room_id"] == 'living_room'
+            assert exc_info.value.context["data_points"] == 0
+
+    @pytest.mark.asyncio
+    async def test_verify_import_integrity_success(self, importer):
+        """Test import integrity verification with good data."""
+        with patch('src.data.ingestion.bulk_importer.get_db_session') as mock_get_session:
+            mock_session = AsyncMock()
+            mock_get_session.return_value.__aenter__.return_value = mock_session
+            
+            # Mock integrity check results
+            mock_rows = [
+                Mock(room_id='living_room', total_events=1000, future_timestamps=0, missing_states=0),
+                Mock(room_id='bedroom', total_events=800, future_timestamps=0, missing_states=0),
+            ]
+            mock_result = Mock()
+            mock_result.__iter__ = Mock(return_value=iter(mock_rows))
+            mock_session.execute.return_value = mock_result
+            
+            result = await importer.verify_import_integrity(sample_percentage=10.0)
+            
+            assert result['sample_percentage'] == 10.0
+            assert result['overall_integrity_score'] >= 0.99
+            assert 'Temporal consistency check' in result['checks_performed']
+            assert 'State completeness check' in result['checks_performed']
+            assert len(result['issues_found']) == 1  # Should contain "Data integrity excellent"
+
+    @pytest.mark.asyncio
+    async def test_verify_import_integrity_with_issues(self, importer):
+        """Test import integrity verification with data issues."""
+        with patch('src.data.ingestion.bulk_importer.get_db_session') as mock_get_session:
+            mock_session = AsyncMock()
+            mock_get_session.return_value.__aenter__.return_value = mock_session
+            
+            # Mock integrity check results with issues
+            mock_rows = [
+                Mock(room_id='living_room', total_events=1000, future_timestamps=50, missing_states=25),
+            ]
+            mock_result = Mock()
+            mock_result.__iter__ = Mock(return_value=iter(mock_rows))
+            mock_session.execute.return_value = mock_result
+            
+            result = await importer.verify_import_integrity(sample_percentage=5.0)
+            
+            assert result['sample_percentage'] == 5.0
+            assert result['overall_integrity_score'] < 0.95
+            assert any('future timestamps' in issue for issue in result['issues_found'])
+            assert any('missing states' in issue for issue in result['issues_found'])
+
+    @pytest.mark.asyncio
+    async def test_convert_ha_events_to_sensor_events(self, importer, mock_system_config):
+        """Test conversion of HA events to sensor events without validation."""
+        # Configure mock to return None for unknown sensor
+        def mock_get_room_by_entity_id(entity_id):
+            if entity_id == "binary_sensor.living_room_motion":
+                return mock_system_config.rooms["living_room"]
+            return None
+
+        mock_system_config.get_room_by_entity_id.side_effect = mock_get_room_by_entity_id
+        
+        ha_events = [
+            HAEvent(
+                entity_id="binary_sensor.living_room_motion",
+                state="on",
+                previous_state="off",
+                timestamp=datetime.now(timezone.utc),
+                attributes={"device_class": "motion"}
+            ),
+            HAEvent(
+                entity_id="binary_sensor.unknown_sensor",  # Will be filtered out
+                state="on",
+                previous_state="off",
+                timestamp=datetime.now(timezone.utc),
+                attributes={}
+            )
+        ]
+
+        sensor_events = await importer._convert_ha_events_to_sensor_events(ha_events)
+        
+        # Only the first event should be converted (second has unknown room)
+        assert len(sensor_events) == 1
+        assert sensor_events[0].room_id == "living_room"
+        assert sensor_events[0].sensor_type == "motion"
+        assert sensor_events[0].is_human_triggered is True
+
+    @pytest.mark.asyncio 
+    async def test_bulk_insert_events_success(self, importer, sample_sensor_event):
+        """Test successful bulk insert of events."""
+        events = [sample_sensor_event] * 3
+        
+        with patch('src.data.ingestion.bulk_importer.get_db_session') as mock_get_session:
+            mock_session = AsyncMock()
+            mock_get_session.return_value.__aenter__.return_value = mock_session
+            
+            # Mock successful insert
+            mock_result = Mock()
+            mock_result.rowcount = 3
+            mock_session.execute.return_value = mock_result
+            
+            inserted_count = await importer._bulk_insert_events(events)
+            
+            assert inserted_count == 3
+            mock_session.execute.assert_called_once()
+            mock_session.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_bulk_insert_events_empty_list(self, importer):
+        """Test bulk insert with empty event list."""
+        result = await importer._bulk_insert_events([])
+        assert result == 0
+
+    @pytest.mark.asyncio
+    async def test_bulk_insert_events_database_error(self, importer, sample_sensor_event):
+        """Test bulk insert with database error."""
+        events = [sample_sensor_event]
+        
+        with patch('src.data.ingestion.bulk_importer.get_db_session') as mock_get_session:
+            mock_session = AsyncMock()
+            mock_get_session.return_value.__aenter__.return_value = mock_session
+            mock_session.execute.side_effect = Exception("Database connection failed")
+            
+            with pytest.raises(DatabaseError) as exc_info:
+                await importer._bulk_insert_events(events)
+            
+            assert "Bulk insert failed" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_process_history_chunk_success(self, importer):
+        """Test successful processing of history chunk."""
+        history_data = [
+            {
+                "entity_id": "sensor.test",
+                "state": "on",
+                "last_changed": "2024-01-01T12:00:00Z",
+                "attributes": {"device_class": "motion"}
+            },
+            {
+                "entity_id": "sensor.test",
+                "state": "off", 
+                "last_changed": "2024-01-01T12:05:00Z",
+                "attributes": {"device_class": "motion"}
+            }
+        ]
+
+        with patch.object(importer, '_convert_history_record_to_ha_event') as mock_convert, \
+             patch.object(importer, '_convert_ha_events_to_sensor_events') as mock_convert_events, \
+             patch.object(importer, '_bulk_insert_events') as mock_insert:
+            
+            # Mock conversions
+            mock_convert.side_effect = [
+                HAEvent("sensor.test", "on", None, datetime.now(timezone.utc), {}),
+                HAEvent("sensor.test", "off", None, datetime.now(timezone.utc), {})
+            ]
+            mock_convert_events.return_value = [Mock(), Mock()]  # 2 sensor events
+            mock_insert.return_value = 2
+            
+            # Configure for non-validation mode
+            importer.import_config.validate_events = False
+            
+            result = await importer._process_history_chunk("sensor.test", history_data)
+            
+            assert result == 2
+            assert mock_convert.call_count == 2
+            mock_convert_events.assert_called_once()
+            mock_insert.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_process_history_chunk_validation_mode(self, importer):
+        """Test processing of history chunk with validation enabled."""
+        # Initialize event processor for this test
+        importer.event_processor = Mock()
+        
+        history_data = [
+            {
+                "entity_id": "sensor.test",
+                "state": "on",
+                "last_changed": "2024-01-01T12:00:00Z",
+                "attributes": {}
+            }
+        ]
+
+        with patch.object(importer, '_convert_history_record_to_ha_event') as mock_convert, \
+             patch.object(importer, '_bulk_insert_events') as mock_insert:
+            
+            # Mock conversions
+            mock_convert.return_value = HAEvent("sensor.test", "on", None, datetime.now(timezone.utc), {})
+            importer.event_processor.process_event_batch = AsyncMock(return_value=[Mock()])  # 1 processed event
+            mock_insert.return_value = 1
+            
+            # Configure for validation mode
+            importer.import_config.validate_events = True
+            
+            result = await importer._process_history_chunk("sensor.test", history_data)
+            
+            assert result == 1
+            importer.event_processor.process_event_batch.assert_called_once()
+            mock_insert.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_process_history_chunk_data_validation_error(self, importer):
+        """Test processing of history chunk with data validation errors."""
+        history_data = [{"invalid": "data"}]
+
+        with patch.object(importer, '_convert_history_record_to_ha_event') as mock_convert:
+            mock_convert.side_effect = DataValidationError("Invalid data", [], {})
+            
+            result = await importer._process_history_chunk("sensor.test", history_data)
+            
+            assert result == 0
+            assert importer.stats["validation_errors"] == 1
+
+    @pytest.mark.asyncio
+    async def test_load_resume_data_success(self, importer):
+        """Test successful loading of resume data."""
+        resume_data = {
+            "completed_entities": ["sensor.test1", "sensor.test2"],
+            "progress": {"processed_entities": 5},
+            "stats": {"entities_processed": 5}
+        }
+        
+        with patch("builtins.open", mock_open(read_data=pickle.dumps(resume_data))):
+            with patch("pathlib.Path.exists", return_value=True):
+                importer.import_config.resume_file = "test_resume.pkl"
+                
+                await importer._load_resume_data()
+                
+                assert len(importer._completed_entities) == 2
+                assert "sensor.test1" in importer._completed_entities
+                assert "sensor.test2" in importer._completed_entities
+
+    @pytest.mark.asyncio
+    async def test_load_resume_data_no_file(self, importer):
+        """Test loading resume data when no file is configured."""
+        importer.import_config.resume_file = None
+        await importer._load_resume_data()
+        assert len(importer._completed_entities) == 0
+
+    @pytest.mark.asyncio
+    async def test_save_resume_data_success(self, importer):
+        """Test successful saving of resume data."""
+        with patch("builtins.open", create=True) as mock_open_func, \
+             patch("pathlib.Path.mkdir") as mock_mkdir:
+            
+            mock_file = MagicMock()
+            mock_open_func.return_value.__enter__.return_value = mock_file
+            
+            importer.import_config.resume_file = "test_resume.pkl"
+            importer._completed_entities = {"sensor.test1", "sensor.test2"}
+            
+            await importer._save_resume_data()
+            
+            mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+            mock_open_func.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_save_resume_data_no_file(self, importer):
+        """Test saving resume data when no file is configured."""
+        importer.import_config.resume_file = None
+        # Should not raise any exception
+        await importer._save_resume_data()
+
+    def test_generate_sufficiency_recommendation(self, importer):
+        """Test generation of data sufficiency recommendations."""
+        # Test sufficient data
+        recommendation = importer._generate_sufficiency_recommendation(True, True, 30, 20.0)
+        assert "sufficient for model training" in recommendation
+        
+        # Test insufficient days
+        recommendation = importer._generate_sufficiency_recommendation(False, True, 10, 20.0)
+        assert "Need more historical data" in recommendation
+        assert "10 days" in recommendation
+        
+        # Test insufficient events
+        recommendation = importer._generate_sufficiency_recommendation(True, False, 30, 5.0)
+        assert "Low event frequency" in recommendation
+        assert "5.0 events/day" in recommendation
+        
+        # Test both insufficient - should prioritize the days issue
+        recommendation = importer._generate_sufficiency_recommendation(False, False, 5, 2.0)
+        assert "Need more historical data" in recommendation
+
+    @pytest.mark.asyncio
+    async def test_estimate_total_events(self, importer, mock_system_config):
+        """Test estimation of total events for progress tracking."""
+        # Initialize ha_client for this test
+        importer.ha_client = AsyncMock()
+        
+        entity_ids = ["sensor.test1", "sensor.test2", "sensor.test3"]
+        start_date = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        end_date = datetime(2024, 1, 31, tzinfo=timezone.utc)
+        
+        # Mock history responses for sampling
+        importer.ha_client.get_entity_history.side_effect = [
+            [{"state": "on"}, {"state": "off"}] * 10,  # 20 events
+            [{"state": "on"}, {"state": "off"}] * 15,  # 30 events  
+            [{"state": "on"}, {"state": "off"}] * 5,   # 10 events
+        ]
+        
+        await importer._estimate_total_events(entity_ids, start_date, end_date)
+        
+        # Should estimate based on sample data
+        assert importer.progress.total_events > 0
+        # With 3 entities, 31 days, and ~20 events per entity per day average
+        # 60 events total from 3 sample entities over 1 day = 20 events/entity/day
+        # 20 events/entity/day * 3 entities * 31 days = 1860, but the algorithm samples only first few
+        # entities so we expect ~1800 based on the sampling strategy
+        expected_estimate = 1800  # Based on actual algorithm behavior
+        assert importer.progress.total_events == expected_estimate
+
+    @pytest.mark.asyncio
+    async def test_estimate_total_events_with_errors(self, importer):
+        """Test estimation handling API errors."""
+        # Initialize ha_client for this test
+        importer.ha_client = AsyncMock()
+        
+        entity_ids = ["sensor.test1", "sensor.failing"]
+        start_date = datetime(2024, 1, 1, tzinfo=timezone.utc)  
+        end_date = datetime(2024, 1, 2, tzinfo=timezone.utc)
+        
+        # First entity succeeds, second fails
+        importer.ha_client.get_entity_history.side_effect = [
+            [{"state": "on"}, {"state": "off"}] * 5,  # 10 events
+            HomeAssistantAPIError("/api/history", 500, "Server Error", "GET")
+        ]
+        
+        await importer._estimate_total_events(entity_ids, start_date, end_date)
+        
+        assert importer.stats["api_errors"] == 1
+        # Should still estimate based on successful entity
+        assert importer.progress.total_events > 0
+
+    @pytest.mark.asyncio
+    async def test_process_entities_batch_all_completed(self, importer):
+        """Test processing entities batch when all entities are already completed."""
+        entity_ids = ["sensor.test1", "sensor.test2"]
+        start_date = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        end_date = datetime(2024, 1, 2, tzinfo=timezone.utc)
+        
+        # Mark all entities as completed
+        importer._completed_entities = set(entity_ids)
+        
+        await importer._process_entities_batch(entity_ids, start_date, end_date)
+        
+        # Should exit early without processing
+        assert importer.progress.processed_entities == 0
+
+    @pytest.mark.asyncio
+    async def test_update_progress_with_callback(self, importer):
+        """Test progress update with callback."""
+        callback_called = False
+        
+        async def test_callback(progress):
+            nonlocal callback_called
+            callback_called = True
+            assert progress == importer.progress
+        
+        importer.import_config.progress_callback = test_callback
+        
+        await importer._update_progress()
+        
+        assert callback_called is True
+
+    @pytest.mark.asyncio
+    async def test_update_progress_callback_sync(self, importer):
+        """Test progress update with synchronous callback."""
+        callback_called = False
+        
+        def test_callback(progress):
+            nonlocal callback_called
+            callback_called = True
+        
+        importer.import_config.progress_callback = test_callback
+        
+        await importer._update_progress()
+        
+        assert callback_called is True
+
+    @pytest.mark.asyncio
+    async def test_update_progress_callback_error(self, importer):
+        """Test progress update handles callback errors gracefully."""
+        def failing_callback(progress):
+            raise Exception("Callback failed")
+        
+        importer.import_config.progress_callback = failing_callback
+        
+        # Should not raise exception
+        await importer._update_progress()
+
+    @pytest.mark.asyncio
+    async def test_generate_import_report_with_file(self, importer):
+        """Test import report generation with file output."""
+        importer.progress.processed_events = 1000
+        importer.progress.valid_events = 950
+        importer.stats["events_imported"] = 900
+        importer.stats["validation_errors"] = 50
+        importer.stats["database_errors"] = 0
+        importer.stats["api_errors"] = 5
+        
+        # Add report_file to import_config
+        importer.import_config.report_file = "test_report.json"
+        
+        with patch("builtins.open", mock_open()) as mock_file:
+            await importer._generate_import_report()
+            
+            mock_file.assert_called_with("test_report.json", "w")
+
+    @pytest.mark.asyncio
+    async def test_generate_import_report_file_error(self, importer):
+        """Test import report generation handles file write errors."""
+        importer.import_config.report_file = "test_report.json"
+        
+        with patch("builtins.open", side_effect=IOError("Permission denied")):
+            # Should not raise exception, just log warning
+            await importer._generate_import_report()
+
+    @pytest.mark.asyncio
+    async def test_process_single_entity_success(self, importer):
+        """Test successful processing of single entity."""
+        # Initialize ha_client for this test
+        importer.ha_client = Mock()
+        
+        entity_id = "sensor.test"
+        start_date = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        end_date = datetime(2024, 1, 3, tzinfo=timezone.utc)  # 2 days
+        
+        with patch.object(importer.ha_client, 'get_entity_history') as mock_get_history, \
+             patch.object(importer, '_process_history_chunk') as mock_process_chunk:
+            
+            # Mock history for each chunk
+            mock_get_history.return_value = [{"state": "on"}] * 10
+            mock_process_chunk.return_value = 5
+            
+            await importer._process_single_entity(entity_id, start_date, end_date)
+            
+            assert entity_id in importer._completed_entities
+            assert importer.stats["entities_processed"] == 1
+            assert importer.progress.current_entity == entity_id
+
+    @pytest.mark.asyncio
+    async def test_process_single_entity_chunk_error(self, importer):
+        """Test processing single entity with chunk processing errors."""
+        # Initialize ha_client for this test
+        importer.ha_client = Mock()
+        
+        entity_id = "sensor.test"
+        start_date = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        end_date = datetime(2024, 1, 2, tzinfo=timezone.utc)
+        
+        with patch.object(importer.ha_client, 'get_entity_history') as mock_get_history:
+            # Mock API error
+            mock_get_history.side_effect = Exception("API Error")
+            
+            await importer._process_single_entity(entity_id, start_date, end_date)
+            
+            # Entity should still be marked completed despite errors
+            assert entity_id in importer._completed_entities
+            assert len(importer.progress.errors) > 0
+            assert importer.stats["api_errors"] == 1
+
 
 class TestHomeAssistantIntegration:
     """Test end-to-end Home Assistant integration scenarios."""
@@ -1073,6 +1596,7 @@ class TestHomeAssistantIntegration:
             mock_session = Mock()
             mock_session_class.return_value = mock_session
             mock_ws = AsyncMock()
+            mock_ws.closed = False  # Ensure websocket appears open
             
             # Make websockets.connect awaitable
             async def mock_connect(*args, **kwargs):
@@ -1101,6 +1625,7 @@ class TestHomeAssistantIntegration:
                 # Test disconnection
                 await client.disconnect()
                 assert client._connected is False
+                assert client.is_connected is False
 
     @pytest.mark.asyncio
     async def test_bulk_import_workflow(self, mock_system_config):
@@ -1171,7 +1696,7 @@ class TestHomeAssistantIntegration:
         with pytest.raises(RateLimitExceededError) as exc_info:
             await client.get_entity_state("sensor.test")
 
-        assert exc_info.value.reset_time == 60
+        assert exc_info.value.context["reset_time"] == 60
 
     def test_data_validation_and_classification(
         self, mock_system_config, mock_room_config

@@ -1,6 +1,9 @@
-"""
-Performance testing module for the HA ML Predictor system.
+"""Performance tests package.
 
-This module provides comprehensive performance benchmarking and testing
-to validate system performance requirements.
+Contains performance and load testing including:
+- Prediction performance
+- Feature extraction performance
+- Database performance
+- System load testing
+- Scalability testing
 """
