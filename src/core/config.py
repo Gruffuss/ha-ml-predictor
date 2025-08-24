@@ -355,6 +355,10 @@ class RoomConfig:
             elif isinstance(obj, list):
                 for item in obj:
                     extract_ids(item)
+            elif isinstance(obj, str) and obj.startswith(
+                ("binary_sensor.", "sensor.")
+            ):
+                entity_ids.append(obj)
 
         extract_ids(self.sensors)
         return entity_ids

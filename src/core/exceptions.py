@@ -617,20 +617,34 @@ class InsufficientTrainingDataError(ModelError):
     ):
         # Create message based on available parameters
         if data_points is not None and minimum_required is not None:
-            message = (
-                f"Insufficient training data for room {room_id}: "
-                f"have {data_points}, need {minimum_required}"
-            )
+            base_message = f"have {data_points}, need {minimum_required}"
+            if model_type:
+                message = (
+                    f"Insufficient training data for {model_type} in room {room_id}: "
+                    f"{base_message}"
+                )
+            else:
+                message = (
+                    f"Insufficient training data for room {room_id}: "
+                    f"{base_message}"
+                )
         elif required_samples is not None and available_samples is not None:
-            message = (
-                f"Insufficient training data for room {room_id}: "
-                f"need {required_samples}, have {available_samples}"
-            )
+            base_message = f"need {required_samples}, have {available_samples}"
+            if model_type:
+                message = (
+                    f"Insufficient training data for {model_type} in room {room_id}: "
+                    f"{base_message}"
+                )
+            else:
+                message = (
+                    f"Insufficient training data for room {room_id}: "
+                    f"{base_message}"
+                )
         else:
-            message = f"Insufficient training data for room {room_id}"
-
-        if model_type:
-            message = f"Insufficient training data for {model_type} in room {room_id}"
+            if model_type:
+                message = f"Insufficient training data for {model_type} in room {room_id}"
+            else:
+                message = f"Insufficient training data for room {room_id}"
 
         context = {"room_id": room_id}
         if model_type is not None:
@@ -1269,16 +1283,16 @@ def validate_room_id(room_id: str) -> None:
     """
     if not room_id or not isinstance(room_id, str):
         raise DataValidationError(
-            data_type="room_id",
-            validation_rule="must be non-empty string",
-            actual_value=room_id,
+            data_source="room_id_validation",
+            validation_errors=["must be non-empty string"],
+            sample_data={"room_id": room_id},
         )
 
     if not re.match(r"^[a-zA-Z0-9_-]+$", room_id):
         raise DataValidationError(
-            data_type="room_id",
-            validation_rule="must contain only alphanumeric characters, underscores, and hyphens",
-            actual_value=room_id,
+            data_source="room_id_validation", 
+            validation_errors=["must contain only alphanumeric characters, underscores, and hyphens"],
+            sample_data={"room_id": room_id},
         )
 
 
@@ -1294,15 +1308,14 @@ def validate_entity_id(entity_id: str) -> None:
     """
     if not entity_id or not isinstance(entity_id, str):
         raise DataValidationError(
-            data_type="entity_id",
-            validation_rule="must be non-empty string",
-            actual_value=entity_id,
+            data_source="entity_id_validation",
+            validation_errors=["must be non-empty string"],
+            sample_data={"entity_id": entity_id},
         )
 
     if not re.match(r"^[a-z_]+\.[a-z0-9_]+$", entity_id):
         raise DataValidationError(
-            data_type="entity_id",
-            validation_rule="must follow Home Assistant format (domain.object_id)",
-            actual_value=entity_id,
-            expected_value="sensor.living_room_motion",
+            data_source="entity_id_validation",
+            validation_errors=["must follow Home Assistant format (domain.object_id)"],
+            sample_data={"entity_id": entity_id, "expected_format": "sensor.living_room_motion"},
         )
