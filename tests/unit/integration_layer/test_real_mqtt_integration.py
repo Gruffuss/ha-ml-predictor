@@ -103,7 +103,7 @@ class EmbeddedMQTTBroker:
                     break
                 # Simple message logging
                 self.messages.append({"timestamp": datetime.utcnow(), "data": data})
-        except:
+        except Exception:
             pass
         finally:
             client_sock.close()

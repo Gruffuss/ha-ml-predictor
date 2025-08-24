@@ -519,7 +519,9 @@ class TestRealGlobalDatabaseFunctions(RealDatabaseTestBase):
             def __init__(self):
                 self.database = real_database_config
 
-        mock_get_config = lambda: MockSystemConfig()
+        def mock_get_config():
+            return MockSystemConfig()
+
         src.data.storage.database.get_config = mock_get_config
 
         try:
