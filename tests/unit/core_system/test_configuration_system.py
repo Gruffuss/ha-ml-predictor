@@ -9,76 +9,77 @@ This test file consolidates testing for all configuration-related components
 as they are closely related and often tested together in real scenarios.
 """
 
+from datetime import datetime
 import os
+from pathlib import Path
 import re
 import tempfile
+from typing import Any, Dict
+from unittest.mock import MagicMock, Mock, call, mock_open, patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, mock_open, call
-from datetime import datetime
-from typing import Dict, Any
 
 # Import actual source code classes
 from src.core.config import (
-    HomeAssistantConfig,
+    APIConfig,
+    ConfigLoader,
     DatabaseConfig,
+    FeaturesConfig,
+    HomeAssistantConfig,
+    JWTConfig,
+    LoggingConfig,
     MQTTConfig,
     PredictionConfig,
-    FeaturesConfig,
-    LoggingConfig,
-    TrackingConfig,
-    JWTConfig,
-    APIConfig,
-    SensorConfig,
     RoomConfig,
+    SensorConfig,
     SystemConfig,
-    ConfigLoader,
+    TrackingConfig,
     get_config,
     reload_config,
 )
 from src.core.constants import (
-    SensorType,
-    SensorState,
+    ABSENCE_STATES,
+    API_ENDPOINTS,
+    CAT_MOVEMENT_PATTERNS,
+    CONTEXTUAL_FEATURE_NAMES,
+    DB_TABLES,
+    DEFAULT_CONFIDENCE_THRESHOLD,
+    DEFAULT_MODEL_PARAMS,
+    DOOR_CLOSED_STATES,
+    DOOR_OPEN_STATES,
+    HUMAN_MOVEMENT_PATTERNS,
+    INVALID_STATES,
+    MAX_SEQUENCE_GAP,
+    MIN_EVENT_SEPARATION,
+    MQTT_TOPICS,
+    PRESENCE_STATES,
+    SEQUENTIAL_FEATURE_NAMES,
+    TEMPORAL_FEATURE_NAMES,
     EventType,
     ModelType,
     PredictionType,
-    PRESENCE_STATES,
-    ABSENCE_STATES,
-    DOOR_OPEN_STATES,
-    DOOR_CLOSED_STATES,
-    INVALID_STATES,
-    MIN_EVENT_SEPARATION,
-    MAX_SEQUENCE_GAP,
-    DEFAULT_CONFIDENCE_THRESHOLD,
-    TEMPORAL_FEATURE_NAMES,
-    SEQUENTIAL_FEATURE_NAMES,
-    CONTEXTUAL_FEATURE_NAMES,
-    MQTT_TOPICS,
-    DB_TABLES,
-    API_ENDPOINTS,
-    DEFAULT_MODEL_PARAMS,
-    HUMAN_MOVEMENT_PATTERNS,
-    CAT_MOVEMENT_PATTERNS,
+    SensorState,
+    SensorType,
 )
 from src.core.exceptions import (
-    ErrorSeverity,
-    OccupancyPredictionError,
-    ConfigurationError,
     ConfigFileNotFoundError,
-    ConfigValidationError,
-    MissingConfigSectionError,
     ConfigParsingError,
-    HomeAssistantError,
-    HomeAssistantConnectionError,
-    HomeAssistantAuthenticationError,
+    ConfigurationError,
+    ConfigValidationError,
     DatabaseConnectionError,
     DatabaseQueryError,
-    FeatureValidationError,
-    InsufficientTrainingDataError,
     DataValidationError,
+    ErrorSeverity,
+    FeatureValidationError,
+    HomeAssistantAuthenticationError,
+    HomeAssistantConnectionError,
+    HomeAssistantError,
+    InsufficientTrainingDataError,
+    MissingConfigSectionError,
+    OccupancyPredictionError,
     RateLimitExceededError,
-    validate_room_id,
     validate_entity_id,
+    validate_room_id,
 )
 
 
@@ -191,7 +192,7 @@ class TestSystemConstants:
         assert SensorType.CLIMATE.value == "climate"
         assert SensorType.LIGHT.value == "light"
         assert SensorType.MOTION.value == "motion"
-        
+
         # Test all enum members exist
         expected_types = {"presence", "door", "climate", "light", "motion"}
         actual_types = {member.value for member in SensorType}
@@ -243,7 +244,7 @@ class TestSystemConstants:
         """Test door state constants contain correct values."""
         assert DOOR_OPEN_STATES == ["open", "on"]
         assert DOOR_CLOSED_STATES == ["closed", "off"]
-        
+
         assert SensorState.OPEN.value in DOOR_OPEN_STATES
         assert SensorState.ON.value in DOOR_OPEN_STATES
         assert SensorState.CLOSED.value in DOOR_CLOSED_STATES
@@ -278,12 +279,12 @@ class TestSystemConstants:
         ]
         assert TEMPORAL_FEATURE_NAMES == expected_temporal
         assert len(TEMPORAL_FEATURE_NAMES) == 10
-        
+
         # Test sequential features
         assert "room_transition_1gram" in SEQUENTIAL_FEATURE_NAMES
         assert "movement_velocity" in SEQUENTIAL_FEATURE_NAMES
         assert len(SEQUENTIAL_FEATURE_NAMES) == 6
-        
+
         # Test contextual features
         assert "temperature" in CONTEXTUAL_FEATURE_NAMES
         assert "humidity" in CONTEXTUAL_FEATURE_NAMES
@@ -295,7 +296,7 @@ class TestSystemConstants:
         assert "predictions" in MQTT_TOPICS
         assert "confidence" in MQTT_TOPICS
         assert "status" in MQTT_TOPICS
-        
+
         # Test format strings
         assert "{topic_prefix}" in MQTT_TOPICS["predictions"]
         assert "{room_id}" in MQTT_TOPICS["predictions"]
@@ -310,7 +311,7 @@ class TestSystemConstants:
             "feature_store",
         }
         assert set(DB_TABLES.keys()) == expected_tables
-        
+
         # Test actual table names
         assert DB_TABLES["sensor_events"] == "sensor_events"
         assert DB_TABLES["predictions"] == "predictions"
@@ -326,7 +327,7 @@ class TestSystemConstants:
             "sensors",
         }
         assert set(API_ENDPOINTS.keys()) == expected_endpoints
-        
+
         # Test endpoint format
         assert API_ENDPOINTS["predictions"] == "/api/predictions/{room_id}"
         assert API_ENDPOINTS["health"] == "/api/health"
@@ -334,21 +335,27 @@ class TestSystemConstants:
     def test_default_model_params_structure(self):
         """Test DEFAULT_MODEL_PARAMS structure is properly defined."""
         # Test all model types have parameters
-        for model_type in [ModelType.LSTM, ModelType.XGBOOST, ModelType.HMM, ModelType.GAUSSIAN_PROCESS, ModelType.ENSEMBLE]:
+        for model_type in [
+            ModelType.LSTM,
+            ModelType.XGBOOST,
+            ModelType.HMM,
+            ModelType.GAUSSIAN_PROCESS,
+            ModelType.ENSEMBLE,
+        ]:
             assert model_type in DEFAULT_MODEL_PARAMS
             assert isinstance(DEFAULT_MODEL_PARAMS[model_type], dict)
-        
+
         # Test specific parameters
         lstm_params = DEFAULT_MODEL_PARAMS[ModelType.LSTM]
         assert "sequence_length" in lstm_params
         assert "hidden_units" in lstm_params
         assert "dropout" in lstm_params
         assert lstm_params["sequence_length"] == 50
-        
+
         # Test aliases
         assert "lstm_units" in lstm_params  # Alias for hidden_units
         assert "dropout_rate" in lstm_params  # Alias for dropout
-        
+
         xgboost_params = DEFAULT_MODEL_PARAMS[ModelType.XGBOOST]
         assert "n_estimators" in xgboost_params
         assert "objective" in xgboost_params
@@ -362,16 +369,22 @@ class TestSystemConstants:
         assert "door_interaction_probability" in HUMAN_MOVEMENT_PATTERNS
         assert HUMAN_MOVEMENT_PATTERNS["min_duration_seconds"] == 30
         assert HUMAN_MOVEMENT_PATTERNS["max_velocity_ms"] == 2.0
-        
+
         # Test cat patterns
         assert "min_duration_seconds" in CAT_MOVEMENT_PATTERNS
         assert "max_velocity_ms" in CAT_MOVEMENT_PATTERNS
         assert CAT_MOVEMENT_PATTERNS["min_duration_seconds"] == 5
         assert CAT_MOVEMENT_PATTERNS["max_velocity_ms"] == 5.0
-        
+
         # Test differences between human and cat patterns
-        assert HUMAN_MOVEMENT_PATTERNS["min_duration_seconds"] > CAT_MOVEMENT_PATTERNS["min_duration_seconds"]
-        assert HUMAN_MOVEMENT_PATTERNS["max_velocity_ms"] < CAT_MOVEMENT_PATTERNS["max_velocity_ms"]
+        assert (
+            HUMAN_MOVEMENT_PATTERNS["min_duration_seconds"]
+            > CAT_MOVEMENT_PATTERNS["min_duration_seconds"]
+        )
+        assert (
+            HUMAN_MOVEMENT_PATTERNS["max_velocity_ms"]
+            < CAT_MOVEMENT_PATTERNS["max_velocity_ms"]
+        )
 
 
 class TestExceptionClasses:
@@ -392,7 +405,7 @@ class TestExceptionClasses:
             context={"key": "value"},
             severity=ErrorSeverity.HIGH,
         )
-        
+
         assert str(error).startswith("Test error message")
         assert error.error_code == "TEST_ERROR"
         assert error.context == {"key": "value"}
@@ -408,7 +421,7 @@ class TestExceptionClasses:
             context={"room_id": "bedroom", "sensor_count": 3},
             cause=cause_exception,
         )
-        
+
         error_string = str(error)
         assert "Main error" in error_string
         assert "Error Code: TEST_001" in error_string
@@ -422,7 +435,7 @@ class TestExceptionClasses:
             config_file="config.yaml",
             error_code="CONFIG_ERROR",
         )
-        
+
         assert isinstance(error, OccupancyPredictionError)
         assert "config_file" in error.context
         assert error.context["config_file"] == "config.yaml"
@@ -433,7 +446,7 @@ class TestExceptionClasses:
             config_file="missing.yaml",
             config_dir="/config",
         )
-        
+
         assert "not found" in str(error)
         assert error.error_code == "CONFIG_FILE_NOT_FOUND_ERROR"
         assert error.severity == ErrorSeverity.CRITICAL
@@ -446,7 +459,7 @@ class TestExceptionClasses:
             value=-5,
             expected="positive integer",
         )
-        
+
         error_msg = str(error)
         assert "Invalid configuration field 'database.pool_size'" in error_msg
         assert "got -5" in error_msg
@@ -462,7 +475,7 @@ class TestExceptionClasses:
             value="TRACE",
             valid_values=["DEBUG", "INFO", "WARNING", "ERROR"],
         )
-        
+
         assert "valid_values" in error.context
         assert "DEBUG" in error.context["valid_values"]
         assert error.context["value"] == "TRACE"
@@ -476,7 +489,7 @@ class TestExceptionClasses:
         )
         assert "token_hint" in error1.context
         assert error1.context["token_hint"] == "very_long_..."
-        
+
         # Test with integer token length
         error2 = HomeAssistantAuthenticationError(
             url="http://ha.local:8123",
@@ -484,7 +497,7 @@ class TestExceptionClasses:
         )
         assert "token_length" in error2.context
         assert error2.context["token_length"] == 180
-        
+
         # Test hint is included
         assert "hint" in error1.context
         assert "Check if token is valid" in error1.context["hint"]
@@ -494,13 +507,13 @@ class TestExceptionClasses:
         error = DatabaseConnectionError(
             connection_string="postgresql://user:secret_password@localhost:5432/db",
         )
-        
+
         # Check that password is masked in both message and context
         error_msg = str(error)
         assert "secret_password" not in error_msg
         assert "***" in error_msg
         assert "postgresql://user:***@localhost:5432/db" in error_msg
-        
+
         # Test the static method directly
         masked = DatabaseConnectionError._mask_password(
             "postgresql+asyncpg://admin:my_secret@db.example.com:5432/mydb"
@@ -517,14 +530,14 @@ class TestExceptionClasses:
             error_type="TimeoutError",
             severity=ErrorSeverity.HIGH,
         )
-        
+
         assert error.error_code == "DB_QUERY_ERROR"
         assert error.severity == ErrorSeverity.HIGH
         assert "error_type" in error.context
         assert error.context["error_type"] == "TimeoutError"
         assert "parameters" in error.context
         assert error.context["parameters"]["room_id"] == "bedroom"
-        
+
         # Check query is truncated in context
         assert len(error.context["query"]) <= 200
 
@@ -536,13 +549,13 @@ class TestExceptionClasses:
             actual_value=-2.5,
             room_id="living_room",
         )
-        
+
         error_msg = str(error)
         assert "Feature validation failed for 'temperature_variance'" in error_msg
         assert "(room: living_room)" in error_msg
         assert error.context["room_id"] == "living_room"
         assert error.context["actual_value"] == -2.5
-        
+
         # Test backward compatibility field
         assert "validation_rule" in error.context
         assert error.context["validation_rule"] == "value must be positive"
@@ -558,7 +571,7 @@ class TestExceptionClasses:
         )
         assert "have 50, need 100" in str(error1)
         assert "lstm" in str(error1)
-        
+
         # Test with required_samples and available_samples
         error2 = InsufficientTrainingDataError(
             room_id="kitchen",
@@ -566,7 +579,7 @@ class TestExceptionClasses:
             available_samples=200,
         )
         assert "need 500, have 200" in str(error2)
-        
+
         # Test minimal parameters
         error3 = InsufficientTrainingDataError(room_id="bathroom")
         assert "Insufficient training data for room bathroom" in str(error3)
@@ -576,13 +589,18 @@ class TestExceptionClasses:
         # Test new signature with validation_errors list
         error1 = DataValidationError(
             data_source="sensor_events",
-            validation_errors=["Missing required field: room_id", "Invalid timestamp format"],
+            validation_errors=[
+                "Missing required field: room_id",
+                "Invalid timestamp format",
+            ],
             sample_data={"sensor_id": "test_sensor", "state": "on"},
         )
-        assert "Missing required field: room_id; Invalid timestamp format" in str(error1)
+        assert "Missing required field: room_id; Invalid timestamp format" in str(
+            error1
+        )
         assert "validation_errors" in error1.context
         assert "sample_data" in error1.context
-        
+
         # Test legacy signature
         error2 = DataValidationError(
             data_source="legacy_validation",
@@ -600,14 +618,14 @@ class TestExceptionClasses:
     def test_api_rate_limit_error_with_reset_time(self):
         """Test RateLimitExceededError includes reset time information."""
         from src.core.exceptions import RateLimitExceededError
-        
+
         error = RateLimitExceededError(
             service="HomeAssistant",
             limit=100,
             window_seconds=60,
             reset_time="2024-01-15T14:30:00Z",
         )
-        
+
         assert "100 requests per 60s" in str(error)
         assert error.context["service"] == "HomeAssistant"
         assert error.context["reset_time"] == "2024-01-15T14:30:00Z"
@@ -619,33 +637,37 @@ class TestExceptionClasses:
         validate_room_id("living_room")
         validate_room_id("bedroom-1")
         validate_room_id("kitchen2")
-        
+
         # Test invalid room IDs
         with pytest.raises(DataValidationError, match="must be non-empty string"):
             validate_room_id("")
-        
+
         with pytest.raises(DataValidationError, match="must be non-empty string"):
             validate_room_id(None)
-        
+
         with pytest.raises(DataValidationError, match="must contain only alphanumeric"):
             validate_room_id("living room")  # Space not allowed
-        
+
         with pytest.raises(DataValidationError, match="must contain only alphanumeric"):
             validate_room_id("kitchen@home")  # Special char not allowed
-        
+
         # Test valid entity IDs
         validate_entity_id("binary_sensor.living_room_motion")
         validate_entity_id("sensor.bedroom_temperature")
         validate_entity_id("switch.kitchen_light")
-        
+
         # Test invalid entity IDs
         with pytest.raises(DataValidationError, match="must be non-empty string"):
             validate_entity_id("")
-        
-        with pytest.raises(DataValidationError, match="must follow Home Assistant format"):
+
+        with pytest.raises(
+            DataValidationError, match="must follow Home Assistant format"
+        ):
             validate_entity_id("invalid_entity_id")
-        
-        with pytest.raises(DataValidationError, match="must follow Home Assistant format"):
+
+        with pytest.raises(
+            DataValidationError, match="must follow Home Assistant format"
+        ):
             validate_entity_id("BINARY_SENSOR.motion")  # Uppercase not allowed
 
 
@@ -663,7 +685,7 @@ class TestConfigurationDataClasses:
         assert config.token == "test_token_123"
         assert config.websocket_timeout == 30  # Default value
         assert config.api_timeout == 10  # Default value
-        
+
         # Test with all parameters
         config_full = HomeAssistantConfig(
             url="https://ha.example.com",
@@ -674,16 +696,14 @@ class TestConfigurationDataClasses:
         assert config_full.websocket_timeout == 60
         assert config_full.api_timeout == 20
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_database_config_post_init_environment_override(self, mock_getenv):
         """Test DatabaseConfig.__post_init__() with DATABASE_URL environment variable override."""
         # Test without environment variable
         mock_getenv.return_value = None
-        config = DatabaseConfig(
-            connection_string="postgresql://localhost:5432/test"
-        )
+        config = DatabaseConfig(connection_string="postgresql://localhost:5432/test")
         assert config.connection_string == "postgresql://localhost:5432/test"
-        
+
         # Test with environment variable override
         mock_getenv.return_value = "postgresql://env-host:5432/env-db"
         config_with_env = DatabaseConfig(
@@ -708,7 +728,7 @@ class TestConfigurationDataClasses:
             system_qos=1,
             keepalive=120,
         )
-        
+
         assert config.broker == "mqtt.example.com"
         assert config.port == 8883
         assert config.username == "mqtt_user"
@@ -720,7 +740,7 @@ class TestConfigurationDataClasses:
         assert config.prediction_qos == 2
         assert config.system_qos == 1
         assert config.keepalive == 120
-        
+
         # Test default values
         default_config = MQTTConfig(broker="localhost")
         assert default_config.port == 1883
@@ -735,7 +755,7 @@ class TestConfigurationDataClasses:
         assert pred_config.interval_seconds == 300
         assert pred_config.accuracy_threshold_minutes == 15
         assert pred_config.confidence_threshold == 0.7
-        
+
         # Test FeaturesConfig defaults
         feat_config = FeaturesConfig()
         assert feat_config.lookback_hours == 24
@@ -743,7 +763,7 @@ class TestConfigurationDataClasses:
         assert feat_config.temporal_features is True
         assert feat_config.sequential_features is True
         assert feat_config.contextual_features is True
-        
+
         # Test LoggingConfig defaults
         log_config = LoggingConfig()
         assert log_config.level == "INFO"
@@ -759,7 +779,7 @@ class TestConfigurationDataClasses:
         config = TrackingConfig()
         assert config.alert_thresholds is not None
         assert isinstance(config.alert_thresholds, dict)
-        
+
         expected_thresholds = {
             "accuracy_warning": 70.0,
             "accuracy_critical": 50.0,
@@ -769,11 +789,11 @@ class TestConfigurationDataClasses:
             "validation_lag_warning": 15.0,
             "validation_lag_critical": 30.0,
         }
-        
+
         for key, value in expected_thresholds.items():
             assert key in config.alert_thresholds
             assert config.alert_thresholds[key] == value
-        
+
         # Test with provided alert_thresholds (should not be overridden)
         custom_thresholds = {"custom_warning": 80.0}
         custom_config = TrackingConfig(alert_thresholds=custom_thresholds)
@@ -786,7 +806,7 @@ class TestConfigurationDataClasses:
             sensor_type="motion",
             room_id="living_room",
         )
-        
+
         assert sensor.entity_id == "binary_sensor.living_room_motion"
         assert sensor.sensor_type == "motion"
         assert sensor.room_id == "living_room"
@@ -795,43 +815,54 @@ class TestConfigurationDataClasses:
 class TestJWTConfiguration:
     """Test JWT configuration with comprehensive environment variable handling."""
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_jwt_config_disabled_via_environment(self, mock_getenv):
         """Test JWTConfig.__post_init__() with JWT_ENABLED environment variable variations."""
         # Test "false" value
-        mock_getenv.side_effect = lambda key, default=None: "false" if key == "JWT_ENABLED" else default
-        config = JWTConfig()
-        assert config.enabled is False
-        
-        # Test "0" value
-        mock_getenv.side_effect = lambda key, default=None: "0" if key == "JWT_ENABLED" else default
-        config = JWTConfig()
-        assert config.enabled is False
-        
-        # Test "no" value
-        mock_getenv.side_effect = lambda key, default=None: "no" if key == "JWT_ENABLED" else default
-        config = JWTConfig()
-        assert config.enabled is False
-        
-        # Test "off" value
-        mock_getenv.side_effect = lambda key, default=None: "off" if key == "JWT_ENABLED" else default
+        mock_getenv.side_effect = lambda key, default=None: (
+            "false" if key == "JWT_ENABLED" else default
+        )
         config = JWTConfig()
         assert config.enabled is False
 
-    @patch('os.getenv')
+        # Test "0" value
+        mock_getenv.side_effect = lambda key, default=None: (
+            "0" if key == "JWT_ENABLED" else default
+        )
+        config = JWTConfig()
+        assert config.enabled is False
+
+        # Test "no" value
+        mock_getenv.side_effect = lambda key, default=None: (
+            "no" if key == "JWT_ENABLED" else default
+        )
+        config = JWTConfig()
+        assert config.enabled is False
+
+        # Test "off" value
+        mock_getenv.side_effect = lambda key, default=None: (
+            "off" if key == "JWT_ENABLED" else default
+        )
+        config = JWTConfig()
+        assert config.enabled is False
+
+    @patch("os.getenv")
     def test_jwt_config_secret_key_from_environment(self, mock_getenv):
         """Test JWTConfig secret key loading from JWT_SECRET_KEY environment variable."""
         mock_getenv.side_effect = lambda key, default="": {
             "JWT_ENABLED": "true",
             "JWT_SECRET_KEY": "environment_secret_key_that_is_long_enough_for_validation",
         }.get(key, default)
-        
+
         config = JWTConfig()
         assert config.enabled is True
-        assert config.secret_key == "environment_secret_key_that_is_long_enough_for_validation"
+        assert (
+            config.secret_key
+            == "environment_secret_key_that_is_long_enough_for_validation"
+        )
 
-    @patch('os.getenv')
-    @patch('builtins.print')
+    @patch("os.getenv")
+    @patch("builtins.print")
     def test_jwt_config_test_environment_fallback(self, mock_print, mock_getenv):
         """Test JWTConfig test environment fallback with default test secret key."""
         mock_getenv.side_effect = lambda key, default="": {
@@ -839,14 +870,16 @@ class TestJWTConfiguration:
             "JWT_SECRET_KEY": "",
             "ENVIRONMENT": "test",
         }.get(key, default)
-        
+
         config = JWTConfig()
         assert config.enabled is True
         assert "test_jwt_secret" in config.secret_key
         assert len(config.secret_key) >= 32
         mock_print.assert_called_once()
-        assert "Warning: Using default test JWT secret key" in mock_print.call_args[0][0]
-        
+        assert (
+            "Warning: Using default test JWT secret key" in mock_print.call_args[0][0]
+        )
+
         # Test with CI environment
         mock_getenv.side_effect = lambda key, default="": {
             "JWT_ENABLED": "true",
@@ -854,12 +887,12 @@ class TestJWTConfiguration:
             "ENVIRONMENT": "",
             "CI": "true",
         }.get(key, default)
-        
+
         config_ci = JWTConfig()
         assert config_ci.enabled is True
         assert len(config_ci.secret_key) >= 32
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_jwt_config_secret_key_length_validation(self, mock_getenv):
         """Test JWTConfig secret key length validation (minimum 32 characters)."""
         # Test with short secret key
@@ -867,20 +900,22 @@ class TestJWTConfiguration:
             "JWT_ENABLED": "true",
             "JWT_SECRET_KEY": "short_key",
         }.get(key, default)
-        
-        with pytest.raises(ValueError, match="JWT secret key must be at least 32 characters long"):
+
+        with pytest.raises(
+            ValueError, match="JWT secret key must be at least 32 characters long"
+        ):
             JWTConfig()
-        
+
         # Test with exactly 32 characters
         mock_getenv.side_effect = lambda key, default="": {
             "JWT_ENABLED": "true",
             "JWT_SECRET_KEY": "a" * 32,
         }.get(key, default)
-        
+
         config = JWTConfig()
         assert len(config.secret_key) == 32
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_jwt_config_missing_secret_key_error(self, mock_getenv):
         """Test JWTConfig ValueError for missing secret key in non-test environments."""
         mock_getenv.side_effect = lambda key, default="": {
@@ -889,18 +924,21 @@ class TestJWTConfiguration:
             "ENVIRONMENT": "production",
             "CI": "",
         }.get(key, default)
-        
-        with pytest.raises(ValueError, match="JWT is enabled but JWT_SECRET_KEY environment variable is not set"):
+
+        with pytest.raises(
+            ValueError,
+            match="JWT is enabled but JWT_SECRET_KEY environment variable is not set",
+        ):
             JWTConfig()
 
     def test_jwt_config_default_values(self):
         """Test JWTConfig default field values."""
-        with patch('os.getenv') as mock_getenv:
+        with patch("os.getenv") as mock_getenv:
             mock_getenv.side_effect = lambda key, default="": {
                 "JWT_ENABLED": "true",
                 "JWT_SECRET_KEY": "test_secret_key_that_is_long_enough_for_jwt_validation",
             }.get(key, default)
-            
+
             config = JWTConfig()
             assert config.algorithm == "HS256"
             assert config.access_token_expire_minutes == 60
@@ -915,7 +953,7 @@ class TestJWTConfiguration:
 class TestAPIConfiguration:
     """Test API configuration with extensive environment variable loading."""
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_api_config_environment_variable_loading(self, mock_getenv):
         """Test APIConfig.__post_init__() environment variable loading."""
         mock_getenv.side_effect = lambda key, default="": {
@@ -925,14 +963,14 @@ class TestAPIConfiguration:
             "API_DEBUG": "true",
             "JWT_ENABLED": "false",  # Disable JWT for this test
         }.get(key, str(default) if default is not None else "")
-        
+
         config = APIConfig()
         assert config.enabled is True
         assert config.host == "127.0.0.1"
         assert config.port == 8080
         assert config.debug is True
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_api_config_cors_configuration(self, mock_getenv):
         """Test APIConfig CORS configuration with CORS_ENABLED, CORS_ALLOW_ORIGINS."""
         mock_getenv.side_effect = lambda key, default="": {
@@ -940,14 +978,14 @@ class TestAPIConfiguration:
             "CORS_ALLOW_ORIGINS": "http://localhost:3000,https://app.example.com",
             "JWT_ENABLED": "false",  # Disable JWT for this test
         }.get(key, str(default) if default is not None else "*")
-        
+
         config = APIConfig()
         assert config.enable_cors is False
         assert "http://localhost:3000" in config.cors_origins
         assert "https://app.example.com" in config.cors_origins
         assert len(config.cors_origins) == 2
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_api_config_api_key_configuration(self, mock_getenv):
         """Test APIConfig API key configuration (API_KEY, API_KEY_ENABLED)."""
         mock_getenv.side_effect = lambda key, default="": {
@@ -955,12 +993,12 @@ class TestAPIConfiguration:
             "API_KEY_ENABLED": "true",
             "JWT_ENABLED": "false",  # Disable JWT for this test
         }.get(key, str(default) if default is not None else "")
-        
+
         config = APIConfig()
         assert config.api_key == "secret_api_key_123"
         assert config.api_key_enabled is True
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_api_config_rate_limiting_settings(self, mock_getenv):
         """Test APIConfig rate limiting settings."""
         mock_getenv.side_effect = lambda key, default="": {
@@ -969,13 +1007,13 @@ class TestAPIConfiguration:
             "API_RATE_LIMIT_BURST": "200",
             "JWT_ENABLED": "false",  # Disable JWT for this test
         }.get(key, str(default) if default is not None else "")
-        
+
         config = APIConfig()
         assert config.rate_limit_enabled is False
         assert config.requests_per_minute == 120
         assert config.burst_limit == 200
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_api_config_background_tasks_settings(self, mock_getenv):
         """Test APIConfig background tasks settings."""
         mock_getenv.side_effect = lambda key, default="": {
@@ -983,12 +1021,12 @@ class TestAPIConfiguration:
             "HEALTH_CHECK_INTERVAL_SECONDS": "120",
             "JWT_ENABLED": "false",  # Disable JWT for this test
         }.get(key, str(default) if default is not None else "")
-        
+
         config = APIConfig()
         assert config.background_tasks_enabled is False
         assert config.health_check_interval_seconds == 120
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_api_config_logging_settings(self, mock_getenv):
         """Test APIConfig logging settings."""
         mock_getenv.side_effect = lambda key, default="": {
@@ -997,67 +1035,70 @@ class TestAPIConfiguration:
             "API_LOG_RESPONSES": "true",
             "JWT_ENABLED": "false",  # Disable JWT for this test
         }.get(key, str(default) if default is not None else "")
-        
+
         config = APIConfig()
         assert config.access_log is False
         assert config.log_requests is False
         assert config.log_responses is True
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_api_config_documentation_settings(self, mock_getenv):
         """Test APIConfig documentation settings."""
         mock_getenv.side_effect = lambda key, default="": {
             "API_INCLUDE_DOCS": "false",
             "JWT_ENABLED": "false",  # Disable JWT for this test
         }.get(key, str(default) if default is not None else "")
-        
+
         config = APIConfig()
         assert config.include_docs is False
         assert config.docs_url == "/docs"  # Default value
         assert config.redoc_url == "/redoc"  # Default value
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_api_config_missing_api_key_error(self, mock_getenv):
         """Test APIConfig ValueError for missing API key when enabled."""
         # We need to create an APIConfig with api_key_enabled=True but no api_key
         mock_getenv.side_effect = lambda key, default="": {
             "JWT_ENABLED": "false",  # Disable JWT for this test
         }.get(key, str(default) if default is not None else "")
-        
+
         # Create config with api_key_enabled=True but empty api_key
-        with pytest.raises(ValueError, match="API key is enabled but API_KEY environment variable is not set"):
+        with pytest.raises(
+            ValueError,
+            match="API key is enabled but API_KEY environment variable is not set",
+        ):
             APIConfig(api_key_enabled=True, api_key="")
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_api_config_default_cors_origins_splitting(self, mock_getenv):
         """Test APIConfig default CORS origins splitting on comma."""
         # Test default behavior (should be ["*"])
         mock_getenv.side_effect = lambda key, default="": {
             "JWT_ENABLED": "false",  # Disable JWT for this test
         }.get(key, str(default) if default is not None else "*")
-        
+
         config = APIConfig()
         assert config.cors_origins == ["*"]
-        
+
         # Test comma-separated origins
         mock_getenv.side_effect = lambda key, default="": {
             "CORS_ALLOW_ORIGINS": "origin1.com, origin2.com , origin3.com",
             "JWT_ENABLED": "false",  # Disable JWT for this test
         }.get(key, str(default) if default is not None else "*")
-        
+
         config_multi = APIConfig()
         expected_origins = ["origin1.com", "origin2.com", "origin3.com"]
         assert config_multi.cors_origins == expected_origins
 
     def test_api_config_nested_jwt_config_initialization(self):
         """Test APIConfig nested JWTConfig field initialization."""
-        with patch('os.getenv') as mock_getenv:
+        with patch("os.getenv") as mock_getenv:
             # Setup environment for both API and JWT configs
             mock_getenv.side_effect = lambda key, default="": {
                 "JWT_ENABLED": "true",
                 "JWT_SECRET_KEY": "test_secret_key_that_is_long_enough_for_jwt_validation",
             }.get(key, str(default) if default is not None else "")
-            
+
             config = APIConfig()
             assert isinstance(config.jwt, JWTConfig)
             assert config.jwt.enabled is True
@@ -1075,23 +1116,23 @@ class TestRoomConfiguration:
             name=bedroom_data["name"],
             sensors=bedroom_data["sensors"],
         )
-        
+
         entity_ids = room.get_all_entity_ids()
         expected_ids = [
             "binary_sensor.bedroom_motion",
             "binary_sensor.bedroom_door",
             "binary_sensor.bedroom_closet_door",
         ]
-        
+
         assert len(entity_ids) == 3
         for expected_id in expected_ids:
             assert expected_id in entity_ids
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_room_config_get_all_entity_ids_list_structure(self, mock_getenv):
         """Test RoomConfig.get_all_entity_ids() with list-based sensor structures."""
         mock_getenv.return_value = None  # No environment variables set
-        
+
         sensors_with_lists = {
             "motion": ["binary_sensor.room_motion_1", "binary_sensor.room_motion_2"],
             "door": "binary_sensor.room_door",
@@ -1100,13 +1141,13 @@ class TestRoomConfiguration:
                 "humidity": ["sensor.room_humidity_1", "sensor.room_humidity_2"],
             },
         }
-        
+
         room = RoomConfig(
             room_id="test_room",
             name="Test Room",
             sensors=sensors_with_lists,
         )
-        
+
         entity_ids = room.get_all_entity_ids()
         expected_ids = [
             "binary_sensor.room_motion_1",
@@ -1116,7 +1157,7 @@ class TestRoomConfiguration:
             "sensor.room_humidity_1",
             "sensor.room_humidity_2",
         ]
-        
+
         assert len(entity_ids) == 6
         for expected_id in expected_ids:
             assert expected_id in entity_ids
@@ -1131,24 +1172,24 @@ class TestRoomConfiguration:
             "camera": "camera.room_security",  # Should be ignored
             "invalid": "not_an_entity_id",  # Should be ignored
         }
-        
+
         room = RoomConfig(
             room_id="filtered_room",
             name="Filtered Room",
             sensors=sensors_mixed,
         )
-        
+
         entity_ids = room.get_all_entity_ids()
         expected_ids = [
             "binary_sensor.room_motion",
             "binary_sensor.room_door",
             "sensor.room_temperature",
         ]
-        
+
         assert len(entity_ids) == 3
         for expected_id in expected_ids:
             assert expected_id in entity_ids
-        
+
         # Ensure filtered out entities are not present
         assert "switch.room_light" not in entity_ids
         assert "camera.room_security" not in entity_ids
@@ -1167,7 +1208,7 @@ class TestRoomConfiguration:
                 "door": "binary_sensor.room_door",
             },
         )
-        
+
         motion_sensors = room.get_sensors_by_type("motion")
         assert isinstance(motion_sensors, dict)
         assert motion_sensors["main"] == "binary_sensor.room_motion_main"
@@ -1183,7 +1224,7 @@ class TestRoomConfiguration:
                 "door": "binary_sensor.room_door",
             },
         )
-        
+
         door_sensors = room.get_sensors_by_type("door")
         assert isinstance(door_sensors, dict)
         assert door_sensors["door"] == "binary_sensor.room_door"
@@ -1197,7 +1238,7 @@ class TestRoomConfiguration:
                 "motion": "binary_sensor.room_motion",
             },
         )
-        
+
         missing_sensors = room.get_sensors_by_type("nonexistent")
         assert isinstance(missing_sensors, dict)
         assert len(missing_sensors) == 0
@@ -1206,7 +1247,9 @@ class TestRoomConfiguration:
 class TestSystemConfiguration:
     """Test SystemConfig aggregation and lookup functionality."""
 
-    def test_system_config_get_all_entity_ids_aggregation(self, sample_config_dict, sample_rooms_dict):
+    def test_system_config_get_all_entity_ids_aggregation(
+        self, sample_config_dict, sample_rooms_dict
+    ):
         """Test SystemConfig.get_all_entity_ids() aggregation from all rooms."""
         # Create individual config objects
         ha_config = HomeAssistantConfig(**sample_config_dict["home_assistant"])
@@ -1217,7 +1260,7 @@ class TestSystemConfiguration:
         log_config = LoggingConfig(**sample_config_dict["logging"])
         track_config = TrackingConfig(**sample_config_dict["tracking"])
         api_config = APIConfig(**sample_config_dict["api"])
-        
+
         # Create room configs
         rooms = {}
         for room_id, room_data in sample_rooms_dict["rooms"].items():
@@ -1235,7 +1278,7 @@ class TestSystemConfiguration:
                     name=room_data["name"],
                     sensors=room_data["sensors"],
                 )
-        
+
         system_config = SystemConfig(
             home_assistant=ha_config,
             database=db_config,
@@ -1247,9 +1290,9 @@ class TestSystemConfiguration:
             api=api_config,
             rooms=rooms,
         )
-        
+
         all_entity_ids = system_config.get_all_entity_ids()
-        
+
         # Should include entities from all rooms
         expected_entities = {
             "binary_sensor.living_room_motion",
@@ -1261,18 +1304,18 @@ class TestSystemConfiguration:
             "binary_sensor.upper_hallway_motion",
             "binary_sensor.lower_hallway_motion",
         }
-        
+
         assert len(all_entity_ids) == len(expected_entities)
         for entity_id in expected_entities:
             assert entity_id in all_entity_ids
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_system_config_get_all_entity_ids_duplicate_removal(self, mock_getenv):
         """Test SystemConfig.get_all_entity_ids() duplicate removal (set conversion)."""
         mock_getenv.side_effect = lambda key, default="": {
             "JWT_ENABLED": "false",  # Disable JWT for this test
         }.get(key, default)
-        
+
         # Create rooms with duplicate entity IDs
         rooms = {
             "room1": RoomConfig(
@@ -1286,7 +1329,7 @@ class TestSystemConfiguration:
                 sensors={"motion": "binary_sensor.shared_motion"},  # Duplicate
             ),
         }
-        
+
         system_config = SystemConfig(
             home_assistant=HomeAssistantConfig(url="http://test", token="test"),
             database=DatabaseConfig(connection_string="test"),
@@ -1298,15 +1341,17 @@ class TestSystemConfiguration:
             api=APIConfig(),
             rooms=rooms,
         )
-        
+
         all_entity_ids = system_config.get_all_entity_ids()
-        
+
         # Should have only one instance of the duplicate entity ID
         assert len(all_entity_ids) == 1
         assert "binary_sensor.shared_motion" in all_entity_ids
 
-    @patch('os.getenv')
-    def test_system_config_get_room_by_entity_id_lookup(self, mock_getenv, sample_rooms_dict):
+    @patch("os.getenv")
+    def test_system_config_get_room_by_entity_id_lookup(
+        self, mock_getenv, sample_rooms_dict
+    ):
         """Test SystemConfig.get_room_by_entity_id() entity lookup across rooms."""
         mock_getenv.side_effect = lambda key, default="": {
             "JWT_ENABLED": "false",  # Disable JWT for this test
@@ -1319,7 +1364,7 @@ class TestSystemConfiguration:
                     name=room_data["name"],
                     sensors=room_data["sensors"],
                 )
-        
+
         system_config = SystemConfig(
             home_assistant=HomeAssistantConfig(url="http://test", token="test"),
             database=DatabaseConfig(connection_string="test"),
@@ -1331,17 +1376,19 @@ class TestSystemConfiguration:
             api=APIConfig(),
             rooms=rooms,
         )
-        
+
         # Test finding existing entities
-        living_room = system_config.get_room_by_entity_id("binary_sensor.living_room_motion")
+        living_room = system_config.get_room_by_entity_id(
+            "binary_sensor.living_room_motion"
+        )
         assert living_room is not None
         assert living_room.room_id == "living_room"
-        
+
         bedroom = system_config.get_room_by_entity_id("binary_sensor.bedroom_door")
         assert bedroom is not None
         assert bedroom.room_id == "bedroom"
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_system_config_get_room_by_entity_id_nonexistent(self, mock_getenv):
         """Test SystemConfig.get_room_by_entity_id() with non-existent entity (None return)."""
         mock_getenv.side_effect = lambda key, default="": {
@@ -1354,7 +1401,7 @@ class TestSystemConfiguration:
                 sensors={"motion": "binary_sensor.room1_motion"},
             ),
         }
-        
+
         system_config = SystemConfig(
             home_assistant=HomeAssistantConfig(url="http://test", token="test"),
             database=DatabaseConfig(connection_string="test"),
@@ -1366,7 +1413,7 @@ class TestSystemConfiguration:
             api=APIConfig(),
             rooms=rooms,
         )
-        
+
         # Test with non-existent entity
         result = system_config.get_room_by_entity_id("binary_sensor.nonexistent_sensor")
         assert result is None
@@ -1377,41 +1424,49 @@ class TestConfigLoader:
 
     def test_config_loader_init_valid_directory(self):
         """Test ConfigLoader.__init__() with valid config directory."""
-        with patch('pathlib.Path.exists', return_value=True):
+        with patch("pathlib.Path.exists", return_value=True):
             loader = ConfigLoader(config_dir="/valid/config/dir")
             assert str(loader.config_dir) == "/valid/config/dir"
 
     def test_config_loader_init_missing_directory(self):
         """Test ConfigLoader.__init__() with missing config directory (FileNotFoundError)."""
-        with patch('pathlib.Path.exists', return_value=False):
-            with pytest.raises(FileNotFoundError, match="Configuration directory not found: /missing/dir"):
+        with patch("pathlib.Path.exists", return_value=False):
+            with pytest.raises(
+                FileNotFoundError,
+                match="Configuration directory not found: /missing/dir",
+            ):
                 ConfigLoader(config_dir="/missing/dir")
 
     def test_config_loader_load_yaml_valid_files(self, sample_config_dict):
         """Test ConfigLoader._load_yaml() with valid YAML files."""
         yaml_content = "home_assistant:\n  url: http://test\n  token: test123"
-        
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('builtins.open', mock_open(read_data=yaml_content)), \
-             patch('yaml.safe_load', return_value=sample_config_dict):
-            
+
+        with patch("pathlib.Path.exists", return_value=True), patch(
+            "builtins.open", mock_open(read_data=yaml_content)
+        ), patch("yaml.safe_load", return_value=sample_config_dict):
+
             loader = ConfigLoader()
             result = loader._load_yaml("config.yaml")
             assert result == sample_config_dict
 
     def test_config_loader_load_yaml_missing_file(self):
         """Test ConfigLoader._load_yaml() with missing files (FileNotFoundError)."""
-        with patch('pathlib.Path.exists', side_effect=lambda: False):  # config dir exists but file doesn't
+        with patch(
+            "pathlib.Path.exists", side_effect=lambda: False
+        ):  # config dir exists but file doesn't
             loader = ConfigLoader()
-            with patch('pathlib.Path.exists', return_value=False):  # file doesn't exist
-                with pytest.raises(FileNotFoundError, match="Configuration file not found"):
+            with patch("pathlib.Path.exists", return_value=False):  # file doesn't exist
+                with pytest.raises(
+                    FileNotFoundError, match="Configuration file not found"
+                ):
                     loader._load_yaml("missing.yaml")
 
     def test_config_loader_load_yaml_invalid_content(self):
         """Test ConfigLoader._load_yaml() with invalid YAML content."""
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('builtins.open', mock_open(read_data="invalid: yaml: content: [")):
-            
+        with patch("pathlib.Path.exists", return_value=True), patch(
+            "builtins.open", mock_open(read_data="invalid: yaml: content: [")
+        ):
+
             loader = ConfigLoader()
             # YAML parsing error should propagate
             with pytest.raises(Exception):  # yaml.YAMLError or similar
@@ -1419,28 +1474,35 @@ class TestConfigLoader:
 
     def test_config_loader_load_yaml_non_dict_return(self):
         """Test ConfigLoader._load_yaml() return type handling (dict vs non-dict)."""
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('builtins.open', mock_open(read_data="just a string")), \
-             patch('yaml.safe_load', return_value="not a dictionary"):
-            
+        with patch("pathlib.Path.exists", return_value=True), patch(
+            "builtins.open", mock_open(read_data="just a string")
+        ), patch("yaml.safe_load", return_value="not a dictionary"):
+
             loader = ConfigLoader()
             result = loader._load_yaml("string.yaml")
             assert result == {}  # Should return empty dict for non-dict content
 
-    @patch('yaml.safe_load')
-    @patch('builtins.open')
-    @patch('pathlib.Path.exists')
-    def test_config_loader_load_config_with_environment(self, mock_exists, mock_open_file, mock_yaml, sample_config_dict, sample_rooms_dict):
+    @patch("yaml.safe_load")
+    @patch("builtins.open")
+    @patch("pathlib.Path.exists")
+    def test_config_loader_load_config_with_environment(
+        self,
+        mock_exists,
+        mock_open_file,
+        mock_yaml,
+        sample_config_dict,
+        sample_rooms_dict,
+    ):
         """Test ConfigLoader.load_config() with environment parameter."""
         mock_exists.return_value = True
         mock_yaml.side_effect = [sample_config_dict, sample_rooms_dict]
-        
+
         loader = ConfigLoader()
-        
+
         # Test loading with specific environment
         config = loader.load_config(environment="production")
         assert isinstance(config, SystemConfig)
-        
+
         # Should attempt to load config.production.yaml first
         expected_calls = [
             call(Path("config") / "config.production.yaml", "r", encoding="utf-8"),
@@ -1448,11 +1510,19 @@ class TestConfigLoader:
         ]
         mock_open_file.assert_has_calls(expected_calls, any_order=False)
 
-    @patch('yaml.safe_load')
-    @patch('builtins.open')
-    @patch('pathlib.Path.exists')
-    def test_config_loader_load_config_environment_fallback(self, mock_exists, mock_open_file, mock_yaml, sample_config_dict, sample_rooms_dict):
+    @patch("yaml.safe_load")
+    @patch("builtins.open")
+    @patch("pathlib.Path.exists")
+    def test_config_loader_load_config_environment_fallback(
+        self,
+        mock_exists,
+        mock_open_file,
+        mock_yaml,
+        sample_config_dict,
+        sample_rooms_dict,
+    ):
         """Test ConfigLoader.load_config() fallback to base config.yaml when environment config missing."""
+
         # Simulate environment-specific config missing, base config exists
         def exists_side_effect(path_obj=None):
             if path_obj is None:  # ConfigLoader init check
@@ -1461,27 +1531,31 @@ class TestConfigLoader:
             if "config.staging.yaml" in path_str:
                 return False  # Environment config doesn't exist
             return True  # Other files exist
-        
+
         mock_exists.side_effect = exists_side_effect
         mock_yaml.side_effect = [sample_config_dict, sample_rooms_dict]
-        
+
         # Mock FileNotFoundError for environment-specific config
         def open_side_effect(path, *args, **kwargs):
             if "config.staging.yaml" in str(path):
                 raise FileNotFoundError("Environment config not found")
             return mock_open().return_value
-        
+
         mock_open_file.side_effect = open_side_effect
-        
+
         loader = ConfigLoader()
-        
+
         # Should fall back to base config.yaml
-        with patch.object(loader, '_load_yaml') as mock_load_yaml:
-            mock_load_yaml.side_effect = [FileNotFoundError(), sample_config_dict, sample_rooms_dict]
-            
+        with patch.object(loader, "_load_yaml") as mock_load_yaml:
+            mock_load_yaml.side_effect = [
+                FileNotFoundError(),
+                sample_config_dict,
+                sample_rooms_dict,
+            ]
+
             config = loader.load_config(environment="staging")
             assert isinstance(config, SystemConfig)
-            
+
             # Should have attempted environment config first, then base config
             expected_calls = [
                 call("config.staging.yaml"),
@@ -1490,17 +1564,24 @@ class TestConfigLoader:
             ]
             mock_load_yaml.assert_has_calls(expected_calls)
 
-    @patch('yaml.safe_load')
-    @patch('builtins.open')
-    @patch('pathlib.Path.exists')
-    def test_config_loader_load_config_rooms_integration(self, mock_exists, mock_open_file, mock_yaml, sample_config_dict, sample_rooms_dict):
+    @patch("yaml.safe_load")
+    @patch("builtins.open")
+    @patch("pathlib.Path.exists")
+    def test_config_loader_load_config_rooms_integration(
+        self,
+        mock_exists,
+        mock_open_file,
+        mock_yaml,
+        sample_config_dict,
+        sample_rooms_dict,
+    ):
         """Test ConfigLoader.load_config() rooms.yaml integration."""
         mock_exists.return_value = True
         mock_yaml.side_effect = [sample_config_dict, sample_rooms_dict]
-        
+
         loader = ConfigLoader()
         config = loader.load_config()
-        
+
         # Should have loaded rooms from rooms.yaml
         assert len(config.rooms) > 0
         assert "living_room" in config.rooms
@@ -1508,40 +1589,54 @@ class TestConfigLoader:
         assert "hallway_upper" in config.rooms  # Nested room
         assert "hallway_lower" in config.rooms  # Nested room
 
-    @patch('yaml.safe_load')
-    @patch('builtins.open')
-    @patch('pathlib.Path.exists')
-    def test_config_loader_load_config_nested_room_handling(self, mock_exists, mock_open_file, mock_yaml, sample_config_dict, sample_rooms_dict):
+    @patch("yaml.safe_load")
+    @patch("builtins.open")
+    @patch("pathlib.Path.exists")
+    def test_config_loader_load_config_nested_room_handling(
+        self,
+        mock_exists,
+        mock_open_file,
+        mock_yaml,
+        sample_config_dict,
+        sample_rooms_dict,
+    ):
         """Test ConfigLoader.load_config() nested room structure handling (hallways example)."""
         mock_exists.return_value = True
         mock_yaml.side_effect = [sample_config_dict, sample_rooms_dict]
-        
+
         loader = ConfigLoader()
         config = loader.load_config()
-        
+
         # Test nested hallway rooms
         assert "hallway_upper" in config.rooms
         assert "hallway_lower" in config.rooms
-        
+
         upper_hallway = config.rooms["hallway_upper"]
         lower_hallway = config.rooms["hallway_lower"]
-        
+
         assert upper_hallway.name == "Upper Hallway"
         assert lower_hallway.name == "Lower Hallway"
         assert upper_hallway.room_id == "hallway_upper"
         assert lower_hallway.room_id == "hallway_lower"
 
-    @patch('yaml.safe_load')
-    @patch('builtins.open')
-    @patch('pathlib.Path.exists')
-    def test_config_loader_load_config_dataclass_creation(self, mock_exists, mock_open_file, mock_yaml, sample_config_dict, sample_rooms_dict):
+    @patch("yaml.safe_load")
+    @patch("builtins.open")
+    @patch("pathlib.Path.exists")
+    def test_config_loader_load_config_dataclass_creation(
+        self,
+        mock_exists,
+        mock_open_file,
+        mock_yaml,
+        sample_config_dict,
+        sample_rooms_dict,
+    ):
         """Test ConfigLoader.load_config() dataclass object creation for all config sections."""
         mock_exists.return_value = True
         mock_yaml.side_effect = [sample_config_dict, sample_rooms_dict]
-        
+
         loader = ConfigLoader()
         config = loader.load_config()
-        
+
         # Test all configuration objects are created
         assert isinstance(config.home_assistant, HomeAssistantConfig)
         assert isinstance(config.database, DatabaseConfig)
@@ -1552,7 +1647,7 @@ class TestConfigLoader:
         assert isinstance(config.tracking, TrackingConfig)
         assert isinstance(config.api, APIConfig)
         assert isinstance(config.api.jwt, JWTConfig)
-        
+
         # Test values are properly set
         assert config.home_assistant.url == "http://homeassistant.local:8123"
         assert config.database.pool_size == 10
@@ -1566,139 +1661,155 @@ class TestGlobalConfiguration:
         """Test get_config() singleton behavior with global _config_instance."""
         # Clear the global instance first
         import src.core.config as config_module
+
         config_module._config_instance = None
-        
-        with patch('src.core.config.ConfigLoader') as mock_loader_class:
+
+        with patch("src.core.config.ConfigLoader") as mock_loader_class:
             mock_loader = Mock()
             mock_system_config = Mock(spec=SystemConfig)
             mock_loader.load_config.return_value = mock_system_config
             mock_loader_class.return_value = mock_loader
-            
+
             # First call should create instance
             config1 = get_config()
             assert config1 is mock_system_config
-            
+
             # Second call should return same instance
             config2 = get_config()
             assert config2 is config1
-            
+
             # Loader should only be called once
             mock_loader_class.assert_called_once()
             mock_loader.load_config.assert_called_once()
-        
+
         # Clean up
         config_module._config_instance = None
 
     def test_get_config_environment_manager_integration(self):
         """Test get_config() environment manager integration (when available)."""
         import src.core.config as config_module
+
         config_module._config_instance = None
-        
+
         # Mock successful environment manager import and usage
         mock_env_manager = Mock()
-        mock_processed_config = {"home_assistant": {"url": "http://test", "token": "test"}}
+        mock_processed_config = {
+            "home_assistant": {"url": "http://test", "token": "test"}
+        }
         mock_env_manager.load_environment_config.return_value = mock_processed_config
-        
+
         mock_system_config = Mock(spec=SystemConfig)
-        
-        with patch('src.core.config.get_environment_manager', return_value=mock_env_manager), \
-             patch('src.core.config.ConfigLoader') as mock_loader_class:
-            
+
+        with patch(
+            "src.core.config.get_environment_manager", return_value=mock_env_manager
+        ), patch("src.core.config.ConfigLoader") as mock_loader_class:
+
             mock_loader = Mock()
             mock_loader._create_system_config.return_value = mock_system_config
             mock_loader_class.return_value = mock_loader
-            
+
             config = get_config()
-            
+
             # Should use environment manager
             mock_env_manager.load_environment_config.assert_called_once()
-            mock_loader._create_system_config.assert_called_once_with(mock_processed_config)
+            mock_loader._create_system_config.assert_called_once_with(
+                mock_processed_config
+            )
             assert config is mock_system_config
-        
+
         # Clean up
         config_module._config_instance = None
 
     def test_get_config_import_error_fallback(self):
         """Test get_config() ImportError fallback to direct ConfigLoader."""
         import src.core.config as config_module
+
         config_module._config_instance = None
-        
+
         mock_system_config = Mock(spec=SystemConfig)
-        
+
         # Mock ImportError when trying to import environment manager
-        with patch('src.core.config.get_environment_manager', side_effect=ImportError("Environment manager not available")), \
-             patch('src.core.config.ConfigLoader') as mock_loader_class:
-            
+        with patch(
+            "src.core.config.get_environment_manager",
+            side_effect=ImportError("Environment manager not available"),
+        ), patch("src.core.config.ConfigLoader") as mock_loader_class:
+
             mock_loader = Mock()
             mock_loader.load_config.return_value = mock_system_config
             mock_loader_class.return_value = mock_loader
-            
+
             config = get_config(environment="test")
-            
+
             # Should fall back to direct ConfigLoader
             mock_loader_class.assert_called_once()
             mock_loader.load_config.assert_called_once_with("test")
             assert config is mock_system_config
-        
+
         # Clean up
         config_module._config_instance = None
 
     def test_reload_config_forced_reload(self):
         """Test reload_config() forced reload behavior."""
         import src.core.config as config_module
-        
+
         # Set up initial state
         old_config = Mock(spec=SystemConfig)
         config_module._config_instance = old_config
-        
+
         new_config = Mock(spec=SystemConfig)
-        
-        with patch('src.core.config.ConfigLoader') as mock_loader_class:
+
+        with patch("src.core.config.ConfigLoader") as mock_loader_class:
             mock_loader = Mock()
             mock_loader.load_config.return_value = new_config
             mock_loader_class.return_value = mock_loader
-            
+
             # Mock ImportError to test direct loading path
-            with patch('src.core.config.get_environment_manager', side_effect=ImportError()):
+            with patch(
+                "src.core.config.get_environment_manager", side_effect=ImportError()
+            ):
                 reloaded_config = reload_config(environment="production")
-                
+
                 # Should create new config instance
                 assert reloaded_config is new_config
                 assert config_module._config_instance is new_config
                 assert reloaded_config is not old_config
-                
+
                 mock_loader.load_config.assert_called_once_with("production")
-        
+
         # Clean up
         config_module._config_instance = None
 
     def test_reload_config_environment_manager_path(self):
         """Test reload_config() environment manager vs direct loading paths."""
         import src.core.config as config_module
+
         config_module._config_instance = None
-        
+
         # Mock environment manager path
         mock_env_manager = Mock()
         mock_processed_config = {"test": "config"}
         mock_env_manager.load_environment_config.return_value = mock_processed_config
-        
+
         new_config = Mock(spec=SystemConfig)
-        
-        with patch('src.core.config.get_environment_manager', return_value=mock_env_manager), \
-             patch('src.core.config.ConfigLoader') as mock_loader_class:
-            
+
+        with patch(
+            "src.core.config.get_environment_manager", return_value=mock_env_manager
+        ), patch("src.core.config.ConfigLoader") as mock_loader_class:
+
             mock_loader = Mock()
             mock_loader._create_system_config.return_value = new_config
             mock_loader_class.return_value = mock_loader
-            
+
             reloaded_config = reload_config()
-            
+
             # Should use environment manager path
             mock_env_manager.load_environment_config.assert_called_once()
-            mock_loader._create_system_config.assert_called_once_with(mock_processed_config)
+            mock_loader._create_system_config.assert_called_once_with(
+                mock_processed_config
+            )
             assert reloaded_config is new_config
             assert config_module._config_instance is new_config
-        
+
         # Clean up
         config_module._config_instance = None
 
@@ -1708,10 +1819,10 @@ class TestConfigurationEdgeCases:
 
     def test_config_loader_with_empty_yaml_files(self):
         """Test configuration loading with empty YAML files."""
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('builtins.open', mock_open(read_data="")), \
-             patch('yaml.safe_load', return_value=None):
-            
+        with patch("pathlib.Path.exists", return_value=True), patch(
+            "builtins.open", mock_open(read_data="")
+        ), patch("yaml.safe_load", return_value=None):
+
             loader = ConfigLoader()
             result = loader._load_yaml("empty.yaml")
             assert result == {}  # Should return empty dict for None content
@@ -1728,10 +1839,11 @@ class TestConfigurationEdgeCases:
                 "device_name": "Détecteur d'Occupancy",
             },
         }
-        
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('yaml.safe_load', return_value=unicode_config):
-            
+
+        with patch("pathlib.Path.exists", return_value=True), patch(
+            "yaml.safe_load", return_value=unicode_config
+        ):
+
             loader = ConfigLoader()
             result = loader._load_yaml("unicode.yaml")
             assert "émojis" in result["home_assistant"]["token"]
@@ -1740,10 +1852,10 @@ class TestConfigurationEdgeCases:
     def test_room_config_with_no_sensors(self):
         """Test room configuration with no sensors defined."""
         room = RoomConfig(room_id="empty_room", name="Empty Room", sensors={})
-        
+
         entity_ids = room.get_all_entity_ids()
         assert len(entity_ids) == 0
-        
+
         motion_sensors = room.get_sensors_by_type("motion")
         assert len(motion_sensors) == 0
 
@@ -1757,13 +1869,13 @@ class TestConfigurationEdgeCases:
                 "backup": None,
             },
         }
-        
+
         room = RoomConfig(
             room_id="null_room",
             name="Room with Nulls",
             sensors=sensors_with_nulls,
         )
-        
+
         entity_ids = room.get_all_entity_ids()
         # Should only include non-None entity IDs that match the prefix pattern
         assert "binary_sensor.room_motion" in entity_ids
@@ -1782,7 +1894,7 @@ class TestConfigurationEdgeCases:
         )
         assert ha_config.websocket_timeout == 86400
         assert ha_config.api_timeout == 3600
-        
+
         # Test with very large pool sizes
         db_config = DatabaseConfig(
             connection_string="postgresql://test",
@@ -1792,16 +1904,16 @@ class TestConfigurationEdgeCases:
         assert db_config.pool_size == 1000
         assert db_config.max_overflow == 2000
 
-    @patch('os.getenv')
+    @patch("os.getenv")
     def test_environment_variable_edge_cases(self, mock_getenv):
         """Test environment variable handling with edge cases."""
         # Test with empty string values
         mock_getenv.side_effect = lambda key, default: {
             "API_ENABLED": "",  # Empty string
-            "API_PORT": "0",    # Zero value
+            "API_PORT": "0",  # Zero value
             "CORS_ALLOW_ORIGINS": "",  # Empty CORS origins
         }.get(key, str(default) if default is not None else "")
-        
+
         config = APIConfig()
         # Empty string should be treated as False for boolean fields
         assert config.enabled is False
@@ -1814,12 +1926,12 @@ class TestConfigurationEdgeCases:
         original_temporal_length = len(TEMPORAL_FEATURE_NAMES)
         original_sequential_length = len(SEQUENTIAL_FEATURE_NAMES)
         original_contextual_length = len(CONTEXTUAL_FEATURE_NAMES)
-        
+
         # Test that constants have expected structure
         assert isinstance(TEMPORAL_FEATURE_NAMES, list)
         assert isinstance(SEQUENTIAL_FEATURE_NAMES, list)
         assert isinstance(CONTEXTUAL_FEATURE_NAMES, list)
-        
+
         # Test feature lists are not empty
         assert original_temporal_length > 0
         assert original_sequential_length > 0
@@ -1828,18 +1940,18 @@ class TestConfigurationEdgeCases:
     def test_model_params_backward_compatibility(self):
         """Test model parameter aliases for backward compatibility."""
         lstm_params = DEFAULT_MODEL_PARAMS[ModelType.LSTM]
-        
+
         # Test that aliases exist alongside main parameters
         assert "hidden_units" in lstm_params
         assert "lstm_units" in lstm_params
         assert "dropout" in lstm_params
         assert "dropout_rate" in lstm_params
-        
+
         # Test that HMM has both n_iter and max_iter
         hmm_params = DEFAULT_MODEL_PARAMS[ModelType.HMM]
         assert "n_iter" in hmm_params
         assert "max_iter" in hmm_params
-        
+
         # Test that GP alias points to same params as GAUSSIAN_PROCESS
         gp_params = DEFAULT_MODEL_PARAMS[ModelType.GP]
         gaussian_params = DEFAULT_MODEL_PARAMS[ModelType.GAUSSIAN_PROCESS]
@@ -1852,11 +1964,11 @@ class TestConfigurationEdgeCases:
         error = OccupancyPredictionError(message=long_message)
         error_str = str(error)
         assert len(error_str) >= len(long_message)
-        
+
         # Test with circular references in context (should not cause infinite recursion)
         context_dict = {"key": "value"}
         context_dict["self_ref"] = context_dict  # Circular reference
-        
+
         # This should not raise an exception
         error_with_circular = OccupancyPredictionError(
             message="Test with circular context",
@@ -1874,7 +1986,7 @@ class TestConfigurationPerformance:
         """Test configuration loading with very large room configurations."""
         # Create a large number of rooms with multiple sensors
         large_rooms_config = {"rooms": {}}
-        
+
         for i in range(100):  # 100 rooms
             room_id = f"room_{i:03d}"
             large_rooms_config["rooms"][room_id] = {
@@ -1887,7 +1999,7 @@ class TestConfigurationPerformance:
                     "light": f"sensor.room_{i:03d}_light",
                 },
             }
-        
+
         sample_config = {
             "home_assistant": {"url": "http://test", "token": "test"},
             "database": {"connection_string": "test://test"},
@@ -1898,20 +2010,21 @@ class TestConfigurationPerformance:
             "tracking": {},
             "api": {"jwt": {}},
         }
-        
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('yaml.safe_load', side_effect=[sample_config, large_rooms_config]):
-            
+
+        with patch("pathlib.Path.exists", return_value=True), patch(
+            "yaml.safe_load", side_effect=[sample_config, large_rooms_config]
+        ):
+
             loader = ConfigLoader()
             config = loader.load_config()
-            
+
             # Should handle large configurations
             assert len(config.rooms) == 100
-            
+
             # Test entity ID aggregation performance
             all_entity_ids = config.get_all_entity_ids()
             assert len(all_entity_ids) == 500  # 5 sensors per room * 100 rooms
-            
+
             # Test room lookup performance
             test_entity = "binary_sensor.room_050_motion"
             found_room = config.get_room_by_entity_id(test_entity)
@@ -1923,7 +2036,7 @@ class TestConfigurationPerformance:
         # Create deeply nested sensor structure
         deep_sensors = {"level_0": {}}
         current_level = deep_sensors["level_0"]
-        
+
         for i in range(10):  # 10 levels deep
             current_level[f"level_{i+1}"] = {}
             if i == 9:  # At the deepest level, add actual sensors
@@ -1933,13 +2046,13 @@ class TestConfigurationPerformance:
                 }
             else:
                 current_level = current_level[f"level_{i+1}"]
-        
+
         room = RoomConfig(
             room_id="deep_room",
             name="Deep Nested Room",
             sensors=deep_sensors,
         )
-        
+
         # Should handle deep nesting without issues
         entity_ids = room.get_all_entity_ids()
         assert len(entity_ids) == 2

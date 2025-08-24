@@ -11,22 +11,24 @@ Covers:
 This test file consolidates testing for all authentication and security functionality.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import time
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
 from fastapi import HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials
+from pydantic import BaseModel, Field, ValidationError
+import pytest
 from starlette.responses import JSONResponse
-from pydantic import ValidationError, BaseModel, Field
 
 
 # Mock authentication models for testing
 class AuthUser(BaseModel):
     """Mock AuthUser model for testing."""
+
     user_id: str
     username: str
     email: Optional[str] = None
@@ -59,6 +61,7 @@ class AuthUser(BaseModel):
 
 class LoginRequest(BaseModel):
     """Mock LoginRequest model for testing."""
+
     username: str
     password: str
     remember_me: bool = False
@@ -66,6 +69,7 @@ class LoginRequest(BaseModel):
 
 class LoginResponse(BaseModel):
     """Mock LoginResponse model for testing."""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -75,11 +79,13 @@ class LoginResponse(BaseModel):
 
 class RefreshRequest(BaseModel):
     """Mock RefreshRequest model for testing."""
+
     refresh_token: str
 
 
 class RefreshResponse(BaseModel):
     """Mock RefreshResponse model for testing."""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -88,12 +94,14 @@ class RefreshResponse(BaseModel):
 
 class LogoutRequest(BaseModel):
     """Mock LogoutRequest model for testing."""
+
     refresh_token: Optional[str] = None
     revoke_all_tokens: bool = False
 
 
 class TokenInfo(BaseModel):
     """Mock TokenInfo model for testing."""
+
     user_id: str
     username: Optional[str] = None
     token_type: str
@@ -107,6 +115,7 @@ class TokenInfo(BaseModel):
 
 class PasswordChangeRequest(BaseModel):
     """Mock PasswordChangeRequest model for testing."""
+
     current_password: str
     new_password: str
     confirm_password: str
@@ -114,6 +123,7 @@ class PasswordChangeRequest(BaseModel):
 
 class UserCreateRequest(BaseModel):
     """Mock UserCreateRequest model for testing."""
+
     username: str
     email: str
     password: str
@@ -124,6 +134,7 @@ class UserCreateRequest(BaseModel):
 
 class APIKey(BaseModel):
     """Mock APIKey model for testing."""
+
     key_id: str
     name: str
     key_hash: str
@@ -148,20 +159,24 @@ class APIKey(BaseModel):
 # Mock JWT configuration
 class JWTConfig:
     """Mock JWT configuration for testing."""
+
     def __init__(self, **kwargs):
-        self.enabled = kwargs.get('enabled', True)
-        self.secret_key = kwargs.get('secret_key', 'test_secret_key_32_characters_long!')
-        self.algorithm = kwargs.get('algorithm', 'HS256')
-        self.access_token_expire_minutes = kwargs.get('access_token_expire_minutes', 60)
-        self.refresh_token_expire_days = kwargs.get('refresh_token_expire_days', 30)
-        self.issuer = kwargs.get('issuer', 'test-issuer')
-        self.audience = kwargs.get('audience', 'test-audience')
-        self.blacklist_enabled = kwargs.get('blacklist_enabled', True)
+        self.enabled = kwargs.get("enabled", True)
+        self.secret_key = kwargs.get(
+            "secret_key", "test_secret_key_32_characters_long!"
+        )
+        self.algorithm = kwargs.get("algorithm", "HS256")
+        self.access_token_expire_minutes = kwargs.get("access_token_expire_minutes", 60)
+        self.refresh_token_expire_days = kwargs.get("refresh_token_expire_days", 30)
+        self.issuer = kwargs.get("issuer", "test-issuer")
+        self.audience = kwargs.get("audience", "test-audience")
+        self.blacklist_enabled = kwargs.get("blacklist_enabled", True)
 
 
 # Mock exception classes
 class APIAuthenticationError(Exception):
     """Mock authentication error."""
+
     def __init__(self, message, error_code="AUTH_ERROR", **kwargs):
         self.message = message
         self.error_code = error_code
@@ -170,6 +185,7 @@ class APIAuthenticationError(Exception):
 
 class APISecurityError(Exception):
     """Mock security error."""
+
     def __init__(self, error_code, message, **kwargs):
         self.error_code = error_code
         self.message = message
@@ -178,7 +194,10 @@ class APISecurityError(Exception):
 
 class AuthenticationError(Exception):
     """Mock authentication error."""
-    def __init__(self, message="Authentication failed", reason=None, context=None, **kwargs):
+
+    def __init__(
+        self, message="Authentication failed", reason=None, context=None, **kwargs
+    ):
         self.message = message
         self.error_code = "AUTHENTICATION_FAILED"
         self.context = context or {}
@@ -189,6 +208,7 @@ class AuthenticationError(Exception):
 
 class AuthorizationError(Exception):
     """Mock authorization error."""
+
     def __init__(self, message="Access denied", **kwargs):
         self.message = message
         self.error_code = "AUTHORIZATION_FAILED"
@@ -198,36 +218,43 @@ class AuthorizationError(Exception):
 
 class TokenExpiredError(AuthenticationError):
     """Mock token expired error."""
+
     pass
 
 
 class TokenInvalidError(AuthenticationError):
     """Mock token invalid error."""
+
     pass
 
 
 class TokenRevokedError(AuthenticationError):
     """Mock token revoked error."""
+
     pass
 
 
 class InsufficientPermissionsError(AuthorizationError):
     """Mock insufficient permissions error."""
+
     pass
 
 
 class AccountDisabledError(AuthenticationError):
     """Mock account disabled error."""
+
     pass
 
 
 class InvalidCredentialsError(AuthenticationError):
     """Mock invalid credentials error."""
+
     pass
 
 
 class RateLimitExceededError(Exception):
     """Mock rate limit error."""
+
     def __init__(self, message="Rate limit exceeded", **kwargs):
         self.message = message
         self.error_code = "RATE_LIMIT_EXCEEDED"
@@ -236,6 +263,7 @@ class RateLimitExceededError(Exception):
 
 class SecurityViolationError(Exception):
     """Mock security violation error."""
+
     def __init__(self, violation_type, message=None, **kwargs):
         self.violation_type = violation_type
         self.message = message or f"Security violation: {violation_type}"
@@ -246,6 +274,7 @@ class SecurityViolationError(Exception):
 # Mock JWT Manager and Token Blacklist
 class TokenBlacklist:
     """Mock token blacklist for testing."""
+
     def __init__(self):
         self._blacklisted_tokens = set()
         self._blacklisted_jti = set()
@@ -267,6 +296,7 @@ class TokenBlacklist:
 
 class JWTManager:
     """Mock JWT manager for testing."""
+
     def __init__(self, config: JWTConfig):
         self.config = config
         self.blacklist = TokenBlacklist() if config.blacklist_enabled else None
@@ -276,17 +306,22 @@ class JWTManager:
         if not config.secret_key or len(config.secret_key) < 32:
             raise ValueError("JWT secret key must be at least 32 characters")
 
-    def generate_access_token(self, user_id: str, permissions: List[str], 
-                            additional_claims: Optional[Dict[str, Any]] = None) -> str:
+    def generate_access_token(
+        self,
+        user_id: str,
+        permissions: List[str],
+        additional_claims: Optional[Dict[str, Any]] = None,
+    ) -> str:
         """Generate mock access token."""
         self._check_rate_limit(user_id)
-        
+
         now = datetime.now(timezone.utc)
         exp = now + timedelta(minutes=self.config.access_token_expire_minutes)
         # Add random component to make tokens unique
         import uuid
+
         jti = f"jti_{user_id}_{int(now.timestamp())}_{str(uuid.uuid4())[:8]}"
-        
+
         payload = {
             "sub": user_id,
             "iat": int(now.timestamp()),
@@ -297,23 +332,24 @@ class JWTManager:
             "type": "access",
             "permissions": permissions,
         }
-        
+
         if additional_claims:
             payload.update(additional_claims)
-        
+
         # Return a mock JWT token
         return f"header.{json.dumps(payload)}.signature"
 
     def generate_refresh_token(self, user_id: str) -> str:
         """Generate mock refresh token."""
         self._check_rate_limit(user_id)
-        
+
         now = datetime.now(timezone.utc)
         exp = now + timedelta(days=self.config.refresh_token_expire_days)
         # Add random component to make tokens unique
         import uuid
+
         jti = f"refresh_jti_{user_id}_{int(now.timestamp())}_{str(uuid.uuid4())[:8]}"
-        
+
         payload = {
             "sub": user_id,
             "iat": int(now.timestamp()),
@@ -323,7 +359,7 @@ class JWTManager:
             "jti": jti,
             "type": "refresh",
         }
-        
+
         return f"header.{json.dumps(payload)}.signature"
 
     def validate_token(self, token: str, token_type: str = "access") -> Dict[str, Any]:
@@ -333,29 +369,33 @@ class JWTManager:
             parts = token.split(".")
             if len(parts) != 3:
                 raise APIAuthenticationError("Invalid token format")
-            
+
             payload = json.loads(parts[1])
-            
+
             # Check token type
             if payload.get("type") != token_type:
-                raise APIAuthenticationError(f"Invalid token type. Expected '{token_type}', got '{payload.get('type')}'")
-            
+                raise APIAuthenticationError(
+                    f"Invalid token type. Expected '{token_type}', got '{payload.get('type')}'"
+                )
+
             # Check blacklist
-            if self.blacklist and self.blacklist.is_blacklisted(token, payload.get("jti")):
+            if self.blacklist and self.blacklist.is_blacklisted(
+                token, payload.get("jti")
+            ):
                 raise APIAuthenticationError("Token has been revoked")
-            
+
             # Check expiration
             if payload.get("exp", 0) < time.time():
                 raise APIAuthenticationError("Token has expired")
-            
+
             # Check issuer and audience
             if payload.get("iss") != self.config.issuer:
                 raise APIAuthenticationError("Invalid token issuer")
             if payload.get("aud") != self.config.audience:
                 raise APIAuthenticationError("Invalid token audience")
-            
+
             return payload
-            
+
         except json.JSONDecodeError:
             raise APIAuthenticationError("Invalid token format")
         except APIAuthenticationError:
@@ -367,28 +407,28 @@ class JWTManager:
         """Refresh access token."""
         payload = self.validate_token(refresh_token, "refresh")
         user_id = payload["sub"]
-        
+
         # Blacklist old token
         if self.blacklist:
             self.blacklist.add_token(refresh_token, payload.get("jti"))
-        
+
         # Generate new tokens
         permissions = ["read", "write"]  # Default permissions
         new_access_token = self.generate_access_token(user_id, permissions)
         new_refresh_token = self.generate_refresh_token(user_id)
-        
+
         return new_access_token, new_refresh_token
 
     def revoke_token(self, token: str) -> bool:
         """Revoke token."""
         if not self.blacklist:
             return False
-        
+
         try:
             payload = json.loads(token.split(".")[1])
             self.blacklist.add_token(token, payload.get("jti"))
             return True
-        except:
+        except (json.JSONDecodeError, IndexError, AttributeError):
             return False
 
     def get_token_info(self, token: str) -> Dict[str, Any]:
@@ -403,9 +443,13 @@ class JWTManager:
                 "permissions": payload.get("permissions", []),
                 "jti": payload.get("jti"),
                 "is_expired": payload.get("exp", 0) < time.time(),
-                "is_blacklisted": self.blacklist.is_blacklisted(token, payload.get("jti")) if self.blacklist else False,
+                "is_blacklisted": (
+                    self.blacklist.is_blacklisted(token, payload.get("jti"))
+                    if self.blacklist
+                    else False
+                ),
             }
-        except:
+        except (json.JSONDecodeError, IndexError, AttributeError):
             return {"error": "Invalid token"}
 
     def _check_rate_limit(self, user_id: str):
@@ -413,16 +457,17 @@ class JWTManager:
         now = time.time()
         if user_id not in self._token_operations:
             self._token_operations[user_id] = []
-        
+
         # Clean old operations
         self._token_operations[user_id] = [
-            t for t in self._token_operations[user_id] 
-            if t > now - 60
+            t for t in self._token_operations[user_id] if t > now - 60
         ]
-        
+
         if len(self._token_operations[user_id]) >= self._max_operations_per_minute:
-            raise APISecurityError("rate_limit_exceeded", f"Too many token operations for user {user_id}")
-        
+            raise APISecurityError(
+                "rate_limit_exceeded", f"Too many token operations for user {user_id}"
+            )
+
         self._token_operations[user_id].append(now)
 
 
@@ -757,11 +802,11 @@ class TestAuthEndpoints:
         """Test password hashing and verification."""
         password = "test_password"
         password_hash = hashlib.sha256(password.encode()).hexdigest()
-        
+
         # Verify password function
         def verify_password(password: str, hash: str) -> bool:
             return hashlib.sha256(password.encode()).hexdigest() == hash
-        
+
         assert verify_password(password, password_hash) is True
         assert verify_password("wrong_password", password_hash) is False
 
@@ -788,7 +833,7 @@ class TestAuthEndpoints:
         # Test successful login logic
         username = "admin"
         password = "admin123!"
-        
+
         user_data = USER_STORE.get(username.lower())
         assert user_data is not None
         assert verify_password(password, user_data["password_hash"]) is True
@@ -910,7 +955,7 @@ class TestAuthMiddleware:
         """Test authentication middleware logic."""
         # Test public endpoint detection
         public_endpoints = {"/", "/health", "/docs", "/auth/login"}
-        
+
         def is_public_endpoint(path: str) -> bool:
             return path in public_endpoints or path.startswith("/static/")
 
@@ -934,34 +979,33 @@ class TestAuthMiddleware:
         # Mock rate limiting
         request_counts = {}
         rate_limit = 60  # requests per minute
-        
+
         def check_rate_limit(client_ip: str) -> bool:
             now = time.time()
             window_start = now - 60  # 1 minute window
-            
+
             if client_ip not in request_counts:
                 request_counts[client_ip] = []
-            
+
             # Clean old requests
             request_counts[client_ip] = [
-                t for t in request_counts[client_ip] 
-                if t > window_start
+                t for t in request_counts[client_ip] if t > window_start
             ]
-            
+
             # Check limit
             if len(request_counts[client_ip]) >= rate_limit:
                 return False
-            
+
             # Record this request
             request_counts[client_ip].append(now)
             return True
 
         client_ip = "127.0.0.1"
-        
+
         # Should allow requests under limit
         for _ in range(rate_limit):
             assert check_rate_limit(client_ip) is True
-        
+
         # Should block requests over limit
         assert check_rate_limit(client_ip) is False
 
@@ -997,10 +1041,7 @@ class TestAuthExceptions:
 
     def test_token_expired_error(self):
         """Test TokenExpiredError exception."""
-        error = TokenExpiredError(
-            message="Token expired", 
-            context={"user_id": "123"}
-        )
+        error = TokenExpiredError(message="Token expired", context={"user_id": "123"})
 
         assert error.message == "Token expired"
         assert error.error_code == "AUTHENTICATION_FAILED"
@@ -1019,9 +1060,7 @@ class TestAuthExceptions:
 
     def test_rate_limit_exceeded_error(self):
         """Test RateLimitExceededError exception."""
-        error = RateLimitExceededError(
-            message="Too many requests"
-        )
+        error = RateLimitExceededError(message="Too many requests")
 
         assert error.message == "Too many requests"
         assert error.error_code == "RATE_LIMIT_EXCEEDED"
@@ -1039,7 +1078,7 @@ class TestIntegratedAuthenticationFlow:
             refresh_token_expire_days=30,
         )
         jwt_manager = JWTManager(jwt_config)
-        
+
         return {
             "jwt_manager": jwt_manager,
             "config": jwt_config,
@@ -1049,18 +1088,18 @@ class TestIntegratedAuthenticationFlow:
     async def test_complete_authentication_flow(self, auth_system):
         """Test complete authentication flow from login to protected access."""
         jwt_manager = auth_system["jwt_manager"]
-        
+
         # Step 1: Generate tokens for user login
         user_id = "test_user"
         permissions = ["read", "write", "prediction_view"]
         access_token = jwt_manager.generate_access_token(user_id, permissions)
         refresh_token = jwt_manager.generate_refresh_token(user_id)
-        
+
         # Step 2: Validate access token
         payload = jwt_manager.validate_token(access_token, "access")
         assert payload["sub"] == user_id
         assert payload["permissions"] == permissions
-        
+
         # Step 3: Create user from token
         user = AuthUser(
             user_id=payload["sub"],
@@ -1069,19 +1108,21 @@ class TestIntegratedAuthenticationFlow:
             roles=payload.get("roles", []),
             is_admin=payload.get("is_admin", False),
         )
-        
+
         # Step 4: Check permissions
         assert user.has_permission("read") is True
         assert user.has_permission("write") is True
         assert user.has_permission("admin") is False
-        
+
         # Step 5: Refresh tokens
-        new_access_token, new_refresh_token = jwt_manager.refresh_access_token(refresh_token)
-        
+        new_access_token, new_refresh_token = jwt_manager.refresh_access_token(
+            refresh_token
+        )
+
         # Step 6: Validate new tokens
         new_payload = jwt_manager.validate_token(new_access_token, "access")
         assert new_payload["sub"] == user_id
-        
+
         # Step 7: Old refresh token should be invalid
         with pytest.raises(APIAuthenticationError):
             jwt_manager.validate_token(refresh_token, "refresh")
@@ -1090,26 +1131,26 @@ class TestIntegratedAuthenticationFlow:
     async def test_security_violation_detection(self, auth_system):
         """Test security violation detection and handling."""
         jwt_manager = auth_system["jwt_manager"]
-        
+
         # Test invalid token format
         with pytest.raises(APIAuthenticationError, match="Invalid token format"):
             jwt_manager.validate_token("invalid.token", "access")
-        
+
         # Test token tampering - modify the token structure to trigger validation error
         valid_token = jwt_manager.generate_access_token("user", ["read"])
         # Tamper with the payload section
         parts = valid_token.split(".")
         tampered_payload = json.dumps({"invalid": "payload"})
         tampered_token = f"{parts[0]}.{tampered_payload}.{parts[2]}"
-        
+
         with pytest.raises(APIAuthenticationError):
             jwt_manager.validate_token(tampered_token, "access")
-        
+
         # Test expired token handling
         jwt_manager.config.access_token_expire_minutes = -1
         expired_token = jwt_manager.generate_access_token("user", ["read"])
         jwt_manager.config.access_token_expire_minutes = 60  # Reset
-        
+
         with pytest.raises(APIAuthenticationError, match="Token has expired"):
             jwt_manager.validate_token(expired_token, "access")
 
@@ -1124,7 +1165,7 @@ class TestIntegratedAuthenticationFlow:
             roles=["viewer"],
             is_admin=False,
         )
-        
+
         operator_user = AuthUser(
             user_id="operator",
             username="operator",
@@ -1132,7 +1173,7 @@ class TestIntegratedAuthenticationFlow:
             roles=["operator"],
             is_admin=False,
         )
-        
+
         admin_user = AuthUser(
             user_id="admin",
             username="admin",
@@ -1140,19 +1181,19 @@ class TestIntegratedAuthenticationFlow:
             roles=["admin"],
             is_admin=True,
         )
-        
+
         # Test viewer permissions
         assert viewer_user.has_permission("read") is True
         assert viewer_user.has_permission("prediction_view") is True
         assert viewer_user.has_permission("write") is False
         assert viewer_user.has_permission("admin") is False
-        
+
         # Test operator permissions
         assert operator_user.has_permission("read") is True
         assert operator_user.has_permission("write") is True
         assert operator_user.has_permission("accuracy_view") is True
         assert operator_user.has_permission("admin") is False
-        
+
         # Test admin permissions (should have all)
         assert admin_user.has_permission("read") is True
         assert admin_user.has_permission("write") is True
@@ -1163,29 +1204,29 @@ class TestIntegratedAuthenticationFlow:
     async def test_token_lifecycle_management(self, auth_system):
         """Test complete token lifecycle management."""
         jwt_manager = auth_system["jwt_manager"]
-        
+
         # Create and validate token
         user_id = "lifecycle_user"
         token = jwt_manager.generate_access_token(user_id, ["read"])
-        
+
         # Token should be valid initially
         payload = jwt_manager.validate_token(token, "access")
         assert payload["sub"] == user_id
-        
+
         # Get token info
         token_info = jwt_manager.get_token_info(token)
         assert token_info["user_id"] == user_id
         assert token_info["is_expired"] is False
         assert token_info["is_blacklisted"] is False
-        
+
         # Revoke token
         revoke_result = jwt_manager.revoke_token(token)
         assert revoke_result is True
-        
+
         # Token should now be invalid
         with pytest.raises(APIAuthenticationError, match="Token has been revoked"):
             jwt_manager.validate_token(token, "access")
-        
+
         # Token info should show blacklisted
         token_info_after_revoke = jwt_manager.get_token_info(token)
         assert token_info_after_revoke["is_blacklisted"] is True

@@ -625,8 +625,7 @@ class InsufficientTrainingDataError(ModelError):
                 )
             else:
                 message = (
-                    f"Insufficient training data for room {room_id}: "
-                    f"{base_message}"
+                    f"Insufficient training data for room {room_id}: " f"{base_message}"
                 )
         elif required_samples is not None and available_samples is not None:
             base_message = f"need {required_samples}, have {available_samples}"
@@ -637,12 +636,13 @@ class InsufficientTrainingDataError(ModelError):
                 )
             else:
                 message = (
-                    f"Insufficient training data for room {room_id}: "
-                    f"{base_message}"
+                    f"Insufficient training data for room {room_id}: " f"{base_message}"
                 )
         else:
             if model_type:
-                message = f"Insufficient training data for {model_type} in room {room_id}"
+                message = (
+                    f"Insufficient training data for {model_type} in room {room_id}"
+                )
             else:
                 message = f"Insufficient training data for room {room_id}"
 
@@ -1290,8 +1290,10 @@ def validate_room_id(room_id: str) -> None:
 
     if not re.match(r"^[a-zA-Z0-9_-]+$", room_id):
         raise DataValidationError(
-            data_source="room_id_validation", 
-            validation_errors=["must contain only alphanumeric characters, underscores, and hyphens"],
+            data_source="room_id_validation",
+            validation_errors=[
+                "must contain only alphanumeric characters, underscores, and hyphens"
+            ],
             sample_data={"room_id": room_id},
         )
 
@@ -1317,5 +1319,8 @@ def validate_entity_id(entity_id: str) -> None:
         raise DataValidationError(
             data_source="entity_id_validation",
             validation_errors=["must follow Home Assistant format (domain.object_id)"],
-            sample_data={"entity_id": entity_id, "expected_format": "sensor.living_room_motion"},
+            sample_data={
+                "entity_id": entity_id,
+                "expected_format": "sensor.living_room_motion",
+            },
         )

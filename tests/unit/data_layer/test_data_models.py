@@ -11,53 +11,62 @@ Covers:
 This test file provides comprehensive testing for all data layer functionality.
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock, AsyncMock, call, PropertyMock, mock_open
-from datetime import datetime, timezone, timedelta
-from decimal import Decimal
-from sqlalchemy import create_engine, text, select, and_, desc
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.exc import IntegrityError, OperationalError, DisconnectionError
-import json
-import uuid
 import asyncio
+from collections import defaultdict, deque
+from datetime import datetime, timedelta, timezone
+import json
 import os
 from pathlib import Path
-from collections import defaultdict, deque
-from typing import Dict, List, Any, Optional, Tuple
-import statistics
 import re
-
-# Import the actual models and data layer components to test
-from src.data.storage.models import (
-    Base,
-    SensorEvent,
-    RoomState,
-    Prediction,
-    ModelAccuracy,
-    FeatureStore,
-    PredictionAudit,
-    SENSOR_TYPES,
-    SENSOR_STATES,
-    TRANSITION_TYPES,
-    MODEL_TYPES,
-    create_timescale_hypertables,
-    optimize_database_performance,
-    get_bulk_insert_query,
-    _is_sqlite_engine,
-    _get_database_specific_column_config,
-    _get_json_column_type,
+from typing import Any, Dict, List, Optional, Tuple
+from unittest.mock import (
+    AsyncMock,
+    MagicMock,
+    Mock,
+    PropertyMock,
+    call,
+    mock_open,
+    patch,
 )
+import uuid
 
-from src.core.config import get_config, SystemConfig
+from decimal import Decimal
+import pytest
+from sqlalchemy import and_, create_engine, desc, select, text
+from sqlalchemy.exc import DisconnectionError, IntegrityError, OperationalError
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+import statistics
+
+from src.core.config import SystemConfig, get_config
 from src.core.exceptions import (
     DatabaseConnectionError,
     DatabaseError,
-    HomeAssistantConnectionError,
-    HomeAssistantAuthenticationError,
-    HomeAssistantAPIError,
     DataValidationError,
+    HomeAssistantAPIError,
+    HomeAssistantAuthenticationError,
+    HomeAssistantConnectionError,
+)
+
+# Import the actual models and data layer components to test
+from src.data.storage.models import (
+    MODEL_TYPES,
+    SENSOR_STATES,
+    SENSOR_TYPES,
+    TRANSITION_TYPES,
+    Base,
+    FeatureStore,
+    ModelAccuracy,
+    Prediction,
+    PredictionAudit,
+    RoomState,
+    SensorEvent,
+    _get_database_specific_column_config,
+    _get_json_column_type,
+    _is_sqlite_engine,
+    create_timescale_hypertables,
+    get_bulk_insert_query,
+    optimize_database_performance,
 )
 
 
@@ -2120,7 +2129,7 @@ class TestHAClient:
 
     def test_ha_client_should_process_event(self, mock_config):
         """Test event processing filtering."""
-        from src.data.ingestion.ha_client import HomeAssistantClient, HAEvent
+        from src.data.ingestion.ha_client import HAEvent, HomeAssistantClient
 
         client = HomeAssistantClient(mock_config)
 
@@ -2218,7 +2227,7 @@ class TestHAClient:
 
     def test_ha_client_convert_ha_event_to_sensor_event(self, mock_config):
         """Test converting HAEvent to SensorEvent."""
-        from src.data.ingestion.ha_client import HomeAssistantClient, HAEvent
+        from src.data.ingestion.ha_client import HAEvent, HomeAssistantClient
 
         client = HomeAssistantClient(mock_config)
 

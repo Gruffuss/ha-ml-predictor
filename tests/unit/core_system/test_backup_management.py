@@ -7,16 +7,16 @@ This test file focuses on backup operations, data persistence, and recovery func
 """
 
 import asyncio
-import gzip
+from datetime import datetime, timedelta
 import json
 import os
+from pathlib import Path
 import shutil
 import subprocess
 import sys
-from datetime import datetime, timedelta
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, Mock, mock_open, patch
 
+import gzip
 import pytest
 
 from src.core.backup_manager import (
@@ -426,7 +426,9 @@ class TestDatabaseBackupManager:
             compressed=False,
         )
 
-        with patch.object(db_backup_manager, "_load_backup_metadata", return_value=metadata):
+        with patch.object(
+            db_backup_manager, "_load_backup_metadata", return_value=metadata
+        ):
             with patch.object(Path, "exists", return_value=True):
                 with patch("subprocess.run") as mock_subprocess:
                     mock_subprocess.return_value = Mock(returncode=0, stderr="")
@@ -437,7 +439,9 @@ class TestDatabaseBackupManager:
 
     def test_restore_backup_missing_metadata(self, db_backup_manager):
         """Test restore_backup() behavior when metadata doesn't exist."""
-        with patch.object(db_backup_manager, "_load_backup_metadata", return_value=None):
+        with patch.object(
+            db_backup_manager, "_load_backup_metadata", return_value=None
+        ):
             with pytest.raises(ValueError, match="Database backup not found"):
                 db_backup_manager.restore_backup("nonexistent")
 
@@ -451,7 +455,9 @@ class TestDatabaseBackupManager:
             compressed=False,
         )
 
-        with patch.object(db_backup_manager, "_load_backup_metadata", return_value=metadata):
+        with patch.object(
+            db_backup_manager, "_load_backup_metadata", return_value=metadata
+        ):
             with pytest.raises(ValueError, match="Database backup not found"):
                 db_backup_manager.restore_backup("wrong_type")
 
@@ -465,9 +471,13 @@ class TestDatabaseBackupManager:
             compressed=True,
         )
 
-        with patch.object(db_backup_manager, "_load_backup_metadata", return_value=metadata):
+        with patch.object(
+            db_backup_manager, "_load_backup_metadata", return_value=metadata
+        ):
             with patch.object(Path, "exists", return_value=True):
-                with patch("gzip.open", mock_open(read_data="-- SQL content")) as mock_gzip:
+                with patch(
+                    "gzip.open", mock_open(read_data="-- SQL content")
+                ) as mock_gzip:
                     with patch("subprocess.run") as mock_subprocess:
                         mock_subprocess.return_value = Mock(returncode=0, stderr="")
                         db_backup_manager.restore_backup("compressed_restore")
@@ -484,7 +494,9 @@ class TestDatabaseBackupManager:
             compressed=False,
         )
 
-        with patch.object(db_backup_manager, "_load_backup_metadata", return_value=metadata):
+        with patch.object(
+            db_backup_manager, "_load_backup_metadata", return_value=metadata
+        ):
             with patch.object(Path, "exists", return_value=True):
                 with patch("subprocess.run") as mock_subprocess:
                     mock_subprocess.return_value = Mock(returncode=0, stderr="")
@@ -509,14 +521,18 @@ class TestDatabaseBackupManager:
             compressed=False,
         )
 
-        with patch.object(db_backup_manager, "_load_backup_metadata", return_value=metadata):
+        with patch.object(
+            db_backup_manager, "_load_backup_metadata", return_value=metadata
+        ):
             with patch.object(Path, "exists", return_value=True):
                 with patch("subprocess.run") as mock_subprocess:
                     mock_subprocess.return_value = Mock(
                         returncode=1, stderr="psql: connection failed"
                     )
                     with patch("builtins.open", mock_open(read_data="-- SQL")):
-                        with pytest.raises(RuntimeError, match="Database restoration failed"):
+                        with pytest.raises(
+                            RuntimeError, match="Database restoration failed"
+                        ):
                             db_backup_manager.restore_backup("psql_fail")
 
     def test_save_backup_metadata_json_format(self, db_backup_manager):
@@ -671,9 +687,7 @@ class TestModelBackupManager:
     @patch("subprocess.run")
     def test_create_backup_tar_failure(self, mock_subprocess, model_backup_manager):
         """Test create_backup() handling tar command failures."""
-        mock_subprocess.return_value = Mock(
-            returncode=1, stderr="tar: cannot access"
-        )
+        mock_subprocess.return_value = Mock(returncode=1, stderr="tar: cannot access")
 
         with patch.object(Path, "exists", return_value=True):
             with pytest.raises(RuntimeError, match="tar command failed"):
@@ -726,7 +740,9 @@ class TestModelBackupManager:
             compressed=True,
         )
 
-        with patch.object(model_backup_manager, "_load_backup_metadata", return_value=metadata):
+        with patch.object(
+            model_backup_manager, "_load_backup_metadata", return_value=metadata
+        ):
             with patch.object(Path, "exists", return_value=True):
                 with patch("subprocess.run") as mock_subprocess:
                     mock_subprocess.return_value = Mock(returncode=0, stderr="")
@@ -745,7 +761,9 @@ class TestModelBackupManager:
             compressed=False,
         )
 
-        with patch.object(model_backup_manager, "_load_backup_metadata", return_value=metadata):
+        with patch.object(
+            model_backup_manager, "_load_backup_metadata", return_value=metadata
+        ):
             with patch.object(Path, "exists", return_value=True):
                 with patch("shutil.move") as mock_move:
                     with patch("subprocess.run") as mock_subprocess:
@@ -768,7 +786,9 @@ class TestModelBackupManager:
             compressed=True,
         )
 
-        with patch.object(model_backup_manager, "_load_backup_metadata", return_value=metadata):
+        with patch.object(
+            model_backup_manager, "_load_backup_metadata", return_value=metadata
+        ):
             with patch.object(Path, "exists", return_value=True):
                 with patch("shutil.move"):
                     with patch("subprocess.run") as mock_subprocess:
@@ -792,7 +812,9 @@ class TestModelBackupManager:
             compressed=False,
         )
 
-        with patch.object(model_backup_manager, "_load_backup_metadata", return_value=metadata):
+        with patch.object(
+            model_backup_manager, "_load_backup_metadata", return_value=metadata
+        ):
             with patch.object(Path, "exists", return_value=True):
                 with patch("shutil.move"):
                     with patch("subprocess.run") as mock_subprocess:
@@ -879,9 +901,7 @@ class TestConfigurationBackupManager:
         assert result.size_bytes == 524288
 
     @patch("subprocess.run")
-    def test_create_backup_metadata_tags(
-        self, mock_subprocess, config_backup_manager
-    ):
+    def test_create_backup_metadata_tags(self, mock_subprocess, config_backup_manager):
         """Test backup metadata creation with configuration-specific tags."""
         mock_subprocess.return_value = Mock(returncode=0, stderr="")
 
@@ -952,7 +972,9 @@ class TestBackupManagerOrchestration:
         with patch("asyncio.sleep") as mock_sleep:
             # Use a timeout to prevent infinite loop in tests
             try:
-                await asyncio.wait_for(backup_manager.run_scheduled_backups(), timeout=0.1)
+                await asyncio.wait_for(
+                    backup_manager.run_scheduled_backups(), timeout=0.1
+                )
             except asyncio.TimeoutError:
                 pass
 
@@ -964,8 +986,14 @@ class TestBackupManagerOrchestration:
         mock_db_backup = Mock()
         mock_db_backup.retention_date = None
 
-        with patch.object(backup_manager.db_backup_manager, "create_backup", return_value=mock_db_backup):
-            with patch.object(backup_manager, "cleanup_expired_backups") as mock_cleanup:
+        with patch.object(
+            backup_manager.db_backup_manager,
+            "create_backup",
+            return_value=mock_db_backup,
+        ):
+            with patch.object(
+                backup_manager, "cleanup_expired_backups"
+            ) as mock_cleanup:
                 with patch("asyncio.sleep") as mock_sleep:
                     # Set up single iteration
                     mock_sleep.side_effect = [asyncio.CancelledError()]
@@ -992,8 +1020,16 @@ class TestBackupManagerOrchestration:
             mock_datetime.now.return_value.hour = 12
             mock_datetime.now.return_value = datetime.now()
 
-            with patch.object(backup_manager.db_backup_manager, "create_backup", return_value=mock_db_backup):
-                with patch.object(backup_manager.model_backup_manager, "create_backup", return_value=mock_model_backup):
+            with patch.object(
+                backup_manager.db_backup_manager,
+                "create_backup",
+                return_value=mock_db_backup,
+            ):
+                with patch.object(
+                    backup_manager.model_backup_manager,
+                    "create_backup",
+                    return_value=mock_model_backup,
+                ):
                     with patch.object(backup_manager, "cleanup_expired_backups"):
                         with patch("asyncio.sleep") as mock_sleep:
                             mock_sleep.side_effect = [asyncio.CancelledError()]
@@ -1017,8 +1053,14 @@ class TestBackupManagerOrchestration:
             mock_datetime.now.return_value.hour = 2
             mock_datetime.now.return_value = datetime.now()
 
-            with patch.object(backup_manager.db_backup_manager, "create_backup", return_value=Mock()):
-                with patch.object(backup_manager.config_backup_manager, "create_backup", return_value=mock_config_backup):
+            with patch.object(
+                backup_manager.db_backup_manager, "create_backup", return_value=Mock()
+            ):
+                with patch.object(
+                    backup_manager.config_backup_manager,
+                    "create_backup",
+                    return_value=mock_config_backup,
+                ):
                     with patch.object(backup_manager, "cleanup_expired_backups"):
                         with patch("asyncio.sleep") as mock_sleep:
                             mock_sleep.side_effect = [asyncio.CancelledError()]
@@ -1033,7 +1075,11 @@ class TestBackupManagerOrchestration:
     @pytest.mark.asyncio
     async def test_run_scheduled_backups_failure_handling(self, backup_manager):
         """Test backup failure handling and error logging."""
-        with patch.object(backup_manager.db_backup_manager, "create_backup", side_effect=Exception("Backup failed")):
+        with patch.object(
+            backup_manager.db_backup_manager,
+            "create_backup",
+            side_effect=Exception("Backup failed"),
+        ):
             with patch("asyncio.sleep") as mock_sleep:
                 mock_sleep.side_effect = [asyncio.CancelledError()]
 
@@ -1073,9 +1119,13 @@ class TestBackupManagerOrchestration:
 
         with patch.object(backup_manager.backup_dir, "rglob", return_value=mock_files):
             with patch("builtins.open", mock_open()) as mock_file:
-                with patch("json.load", side_effect=[metadata1.to_dict(), metadata2.to_dict()]):
+                with patch(
+                    "json.load", side_effect=[metadata1.to_dict(), metadata2.to_dict()]
+                ):
                     with patch.object(Path, "exists", return_value=True):
-                        with patch.object(Path, "stat", return_value=Mock(st_size=1024000)):
+                        with patch.object(
+                            Path, "stat", return_value=Mock(st_size=1024000)
+                        ):
                             with patch.object(Path, "unlink") as mock_unlink:
                                 await backup_manager.cleanup_expired_backups()
 
@@ -1103,7 +1153,9 @@ class TestBackupManagerOrchestration:
         mock_files = [Mock(), Mock()]
         with patch.object(backup_manager.backup_dir, "rglob", return_value=mock_files):
             with patch("builtins.open", mock_open()):
-                with patch("json.load", side_effect=[metadata1.to_dict(), metadata2.to_dict()]):
+                with patch(
+                    "json.load", side_effect=[metadata1.to_dict(), metadata2.to_dict()]
+                ):
                     result = backup_manager.list_backups()
 
         # Should return all backups, sorted by timestamp (newest first)
@@ -1156,14 +1208,18 @@ class TestBackupManagerOrchestration:
 
     def test_restore_database_backup_delegation(self, backup_manager):
         """Test restore_database_backup() delegation to DatabaseBackupManager."""
-        with patch.object(backup_manager.db_backup_manager, "restore_backup") as mock_restore:
+        with patch.object(
+            backup_manager.db_backup_manager, "restore_backup"
+        ) as mock_restore:
             backup_manager.restore_database_backup("test_db_backup")
 
         mock_restore.assert_called_once_with("test_db_backup")
 
     def test_restore_models_backup_delegation(self, backup_manager):
         """Test restore_models_backup() delegation to ModelBackupManager."""
-        with patch.object(backup_manager.model_backup_manager, "restore_backup") as mock_restore:
+        with patch.object(
+            backup_manager.model_backup_manager, "restore_backup"
+        ) as mock_restore:
             backup_manager.restore_models_backup("test_models_backup")
 
         mock_restore.assert_called_once_with("test_models_backup")
@@ -1179,9 +1235,21 @@ class TestBackupManagerOrchestration:
         mock_model_backup.to_dict.return_value = {"type": "models"}
         mock_config_backup.to_dict.return_value = {"type": "config"}
 
-        with patch.object(backup_manager.db_backup_manager, "create_backup", return_value=mock_db_backup):
-            with patch.object(backup_manager.model_backup_manager, "create_backup", return_value=mock_model_backup):
-                with patch.object(backup_manager.config_backup_manager, "create_backup", return_value=mock_config_backup):
+        with patch.object(
+            backup_manager.db_backup_manager,
+            "create_backup",
+            return_value=mock_db_backup,
+        ):
+            with patch.object(
+                backup_manager.model_backup_manager,
+                "create_backup",
+                return_value=mock_model_backup,
+            ):
+                with patch.object(
+                    backup_manager.config_backup_manager,
+                    "create_backup",
+                    return_value=mock_config_backup,
+                ):
                     with patch("builtins.open", mock_open()) as mock_file:
                         with patch("json.dump") as mock_json:
                             result = backup_manager.create_disaster_recovery_package()
@@ -1198,7 +1266,11 @@ class TestBackupManagerOrchestration:
 
     def test_create_disaster_recovery_package_cleanup_on_failure(self, backup_manager):
         """Test disaster recovery package cleanup on failures."""
-        with patch.object(backup_manager.db_backup_manager, "create_backup", side_effect=Exception("Backup failed")):
+        with patch.object(
+            backup_manager.db_backup_manager,
+            "create_backup",
+            side_effect=Exception("Backup failed"),
+        ):
             with patch("shutil.rmtree") as mock_rmtree:
                 with pytest.raises(Exception, match="Backup failed"):
                     backup_manager.create_disaster_recovery_package()
@@ -1219,7 +1291,7 @@ class TestBackupManagerIntegration:
         # Create some test files
         models_dir.mkdir(parents=True)
         (models_dir / "model1.pkl").write_text("mock model data")
-        
+
         config_dir.mkdir(parents=True)
         (config_dir / "config.yaml").write_text("mock: config")
 
@@ -1253,7 +1325,7 @@ class TestBackupManagerIntegration:
         }
 
         manager = BackupManager(str(temp_dirs["backup"]), config)
-        
+
         metadata = BackupMetadata(
             backup_id="file_ops_test",
             backup_type="database",
@@ -1265,7 +1337,9 @@ class TestBackupManagerIntegration:
 
         # Save and load metadata
         manager.db_backup_manager._save_backup_metadata(metadata)
-        loaded_metadata = manager.db_backup_manager._load_backup_metadata("file_ops_test")
+        loaded_metadata = manager.db_backup_manager._load_backup_metadata(
+            "file_ops_test"
+        )
 
         assert loaded_metadata is not None
         assert loaded_metadata.backup_id == "file_ops_test"
@@ -1273,9 +1347,7 @@ class TestBackupManagerIntegration:
         assert loaded_metadata.tags["test"] == "integration"
 
     @patch("subprocess.run")
-    def test_backup_creation_workflow_integration(
-        self, mock_subprocess, temp_dirs
-    ):
+    def test_backup_creation_workflow_integration(self, mock_subprocess, temp_dirs):
         """Test complete backup creation workflow."""
         mock_subprocess.return_value = Mock(returncode=0, stderr="")
 
@@ -1311,14 +1383,14 @@ class TestBackupManagerEdgeCases:
         config = {
             "database": {"connection_string": "postgresql://test@host/db"},
         }
-        
+
         manager = BackupManager(str(backup_dir), config)
-        
+
         # Mock shutil.disk_usage to simulate low disk space
         with patch("shutil.disk_usage") as mock_disk_usage:
             # Simulate very low available space (1KB)
             mock_disk_usage.return_value = (1000, 950, 50)  # total, used, free
-            
+
             with patch("subprocess.run") as mock_subprocess:
                 mock_subprocess.return_value = Mock(returncode=0, stderr="")
                 with patch("builtins.open", mock_open()):
@@ -1337,14 +1409,14 @@ class TestBackupManagerEdgeCases:
         config = {
             "database": {"connection_string": "postgresql://test@host/db"},
         }
-        
+
         manager1 = BackupManager(str(backup_dir), config)
         manager2 = BackupManager(str(backup_dir), config)
-        
+
         # Mock file operations to simulate concurrent access
         with patch("subprocess.run") as mock_subprocess:
             mock_subprocess.return_value = Mock(returncode=0, stderr="")
-            
+
             # Test file locking by mocking file operations
             with patch("builtins.open", mock_open()) as mock_file:
                 # First call raises PermissionError (file locked)
@@ -1352,20 +1424,26 @@ class TestBackupManagerEdgeCases:
                 mock_file.side_effect = [
                     PermissionError("File locked by another process"),
                     mock_open().return_value,
-                    mock_open().return_value  # For metadata save
+                    mock_open().return_value,  # For metadata save
                 ]
-                
+
                 with patch.object(Path, "stat", return_value=Mock(st_size=1024)):
-                    with patch.object(Path, "exists", return_value=False):  # No file to cleanup
+                    with patch.object(
+                        Path, "exists", return_value=False
+                    ):  # No file to cleanup
                         # First manager should raise PermissionError
                         with pytest.raises(PermissionError, match="File locked"):
-                            manager1.db_backup_manager.create_backup(backup_id="concurrent_test_1")
-                    
+                            manager1.db_backup_manager.create_backup(
+                                backup_id="concurrent_test_1"
+                            )
+
                     # Test successful backup when no lock conflict
                     with patch("builtins.open", mock_open()):
                         with patch("gzip.open", mock_open()):
                             with patch("os.remove"):
-                                result = manager2.db_backup_manager.create_backup(backup_id="concurrent_test_2")
+                                result = manager2.db_backup_manager.create_backup(
+                                    backup_id="concurrent_test_2"
+                                )
                                 assert result.backup_id == "concurrent_test_2"
 
     def test_backup_corrupted_metadata_recovery(self, tmp_path):
@@ -1386,7 +1464,7 @@ class TestBackupManagerEdgeCases:
         # This test verifies that corrupted metadata causes a JSONDecodeError
         with pytest.raises(json.JSONDecodeError):
             manager.db_backup_manager._load_backup_metadata("corrupted")
-        
+
         # Test with missing metadata file - should return None
         result = manager.db_backup_manager._load_backup_metadata("nonexistent")
         assert result is None
@@ -1397,23 +1475,25 @@ class TestBackupManagerEdgeCases:
         config = {
             "database": {"connection_string": "postgresql://test@host/db"},
         }
-        
+
         manager = BackupManager(str(backup_dir), config)
-        
+
         # Mock subprocess timeout to simulate very large backup
         with patch("subprocess.run") as mock_subprocess:
             mock_subprocess.side_effect = subprocess.TimeoutExpired("pg_dump", 3600)
-            
+
             # Should handle timeout gracefully
             with pytest.raises((subprocess.TimeoutExpired, RuntimeError)):
                 manager.db_backup_manager.create_backup(backup_id="timeout_test")
-        
+
         # Test model backup timeout
         with patch("subprocess.run") as mock_subprocess:
             mock_subprocess.side_effect = subprocess.TimeoutExpired("tar", 1800)
-            
+
             with pytest.raises((subprocess.TimeoutExpired, RuntimeError)):
-                manager.model_backup_manager.create_backup(backup_id="model_timeout_test")
+                manager.model_backup_manager.create_backup(
+                    backup_id="model_timeout_test"
+                )
 
     def test_backup_network_storage_connectivity(self, tmp_path):
         """Test backup operations with network storage and connectivity issues."""
@@ -1422,22 +1502,24 @@ class TestBackupManagerEdgeCases:
         config = {
             "database": {"connection_string": "postgresql://test@host/db"},
         }
-        
+
         # Test network connectivity issues
         with patch.object(Path, "mkdir") as mock_mkdir:
             mock_mkdir.side_effect = OSError("Network unreachable")
-            
+
             # Should handle network connectivity issues
             with pytest.raises(OSError, match="Network unreachable"):
                 BackupManager(str(network_backup_dir), config)
-        
+
         # Test network storage write issues
         manager = BackupManager(str(tmp_path / "local_backup"), config)
-        
+
         with patch("subprocess.run") as mock_subprocess:
             mock_subprocess.return_value = Mock(returncode=0, stderr="")
-            
-            with patch("builtins.open", side_effect=OSError("Network storage unavailable")):
+
+            with patch(
+                "builtins.open", side_effect=OSError("Network storage unavailable")
+            ):
                 # Should handle network storage write failures
                 with pytest.raises(OSError, match="Network storage unavailable"):
                     manager.db_backup_manager.create_backup(backup_id="network_test")
