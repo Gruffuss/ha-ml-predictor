@@ -2099,6 +2099,19 @@ class TestEnsembleModel:
         assert ensemble.is_trained is False
         assert hasattr(ensemble, "base_models")
         assert hasattr(ensemble, "meta_learner")
+        
+        # Test base models creation
+        assert "lstm" in ensemble.base_models
+        assert "xgboost" in ensemble.base_models 
+        assert "hmm" in ensemble.base_models
+        assert "gp" in ensemble.base_models
+        
+        # Test ensemble state initialization
+        assert ensemble.base_models_trained is False
+        assert ensemble.meta_learner_trained is False
+        assert ensemble.meta_learner is None
+        assert len(ensemble.model_weights) == 0
+        assert len(ensemble.model_performance) == 0
 
     def test_ensemble_initialization_with_base_models(self):
         """Test OccupancyEnsemble initialization interface."""
@@ -2149,7 +2162,7 @@ class TestEnsembleModel:
             mock_model.is_trained = True
             mock_models.append(mock_model)
 
-        ensemble = OccupancyEnsemble(base_models=mock_models, room_id="lobby")
+        ensemble = OccupancyEnsemble(room_id="lobby")
 
         features = pd.DataFrame(
             {
@@ -2159,9 +2172,11 @@ class TestEnsembleModel:
             }
         )
 
-        targets = pd.DataFrame(
-            {"time_until_transition_seconds": np.random.randint(60, 7200, 100)}
-        )
+        targets = pd.DataFrame({
+            "time_until_transition_seconds": np.random.randint(60, 7200, 100),
+            "transition_type": ["vacant_to_occupied"] * 50 + ["occupied_to_vacant"] * 50,
+            "target_time": pd.date_range(start="2024-01-01", periods=100, freq="h")
+        })
 
         with patch.object(ensemble, "_train_base_models_cv"):
             with patch.object(ensemble, "_train_meta_learner"):
@@ -2179,14 +2194,16 @@ class TestEnsembleModel:
 
         # Very small dataset
         features = pd.DataFrame({"feature1": np.random.randn(30)})  # < 50 samples
-        targets = pd.DataFrame(
-            {"time_until_transition_seconds": np.random.randint(60, 3600, 30)}
-        )
+        targets = pd.DataFrame({
+            "time_until_transition_seconds": np.random.randint(60, 3600, 30),
+            "transition_type": ["vacant_to_occupied"] * 15 + ["occupied_to_vacant"] * 15,
+            "target_time": pd.date_range(start="2024-01-01", periods=30, freq="h")
+        })
 
-        result = await ensemble.train(features, targets)
-
-        assert result.success is False
-        assert "insufficient" in result.error_message.lower()
+        with pytest.raises(ModelTrainingError) as exc_info:
+            result = await ensemble.train(features, targets)
+        
+        assert "insufficient" in str(exc_info.value).lower()
         assert ensemble.is_trained is False
 
     @pytest.mark.asyncio
@@ -2210,28 +2227,38 @@ class TestEnsembleModel:
             mock_model.is_trained = True
             mock_models.append(mock_model)
 
-        ensemble = OccupancyEnsemble(base_models=mock_models)
+        ensemble = OccupancyEnsemble()
         ensemble.is_trained = True
+        ensemble.meta_learner_trained = True
         ensemble.meta_learner = Mock()
         ensemble.meta_scaler = Mock()
+        
+        # Mock base models  
+        for model_name, model in ensemble.base_models.items():
+            model.is_trained = True
+            model.predict = AsyncMock(
+                return_value=[
+                    PredictionResult(
+                        predicted_time=prediction_time + timedelta(minutes=25),
+                        transition_type="occupied_to_vacant",
+                        confidence_score=0.7,
+                    )
+                ]
+            )
 
         features = pd.DataFrame(
             {"feature1": [0.5], "feature2": [1.2], "feature3": [0.8]}
         )
 
-        with patch.object(
-            ensemble,
-            "_create_meta_features",
-            return_value=np.array([[0.75, 1800, 0.1]]),
-        ):
-            with patch.object(ensemble, "_combine_predictions") as mock_combine:
-                mock_combine.return_value = [
-                    PredictionResult(
-                        predicted_time=prediction_time + timedelta(minutes=30),
-                        transition_type="occupied_to_vacant",
-                        confidence_score=0.85,
-                    )
-                ]
+        # Mock meta learner prediction - ensure Python int not numpy int
+        ensemble.meta_learner.predict.return_value = np.array([1800.0])  # 30 minutes
+        
+        with patch.object(ensemble, "validate_features", return_value=True):
+            with patch.object(ensemble, "_create_meta_features") as mock_meta:
+                mock_meta_df = pd.DataFrame({
+                    "lstm": [1800], "xgboost": [1650], "hmm": [1900], "gp": [1750]
+                })
+                mock_meta.return_value = mock_meta_df
 
                 results = await ensemble.predict(features, prediction_time)
 
@@ -2261,20 +2288,21 @@ class TestEnsembleModel:
     def test_ensemble_get_feature_importance(self):
         """Test ensemble get_feature_importance method."""
         # Create mock base models with feature importance
-        mock_models = []
-        for i in range(3):
-            mock_model = Mock()
-            mock_model.get_feature_importance.return_value = {
-                "feature1": 0.3 + i * 0.1,
-                "feature2": 0.4 + i * 0.05,
-                "feature3": 0.3 - i * 0.05,
-            }
-            mock_model.is_trained = True
-            mock_models.append(mock_model)
-
-        ensemble = OccupancyEnsemble(base_models=mock_models)
+        ensemble = OccupancyEnsemble()
         ensemble.is_trained = True
-        ensemble.model_weights = np.array([0.4, 0.35, 0.25])  # Weights for models
+        
+        feature_importances = {
+            "lstm": {"feature1": 0.4, "feature2": 0.3, "feature3": 0.3},
+            "xgboost": {"feature1": 0.5, "feature2": 0.3, "feature3": 0.2},
+            "hmm": {"feature1": 0.3, "feature2": 0.4, "feature3": 0.3},
+            "gp": {"feature1": 0.35, "feature2": 0.35, "feature3": 0.3}
+        }
+        
+        for model_name, importance in feature_importances.items():
+            ensemble.base_models[model_name].is_trained = True
+            ensemble.base_models[model_name].get_feature_importance = Mock(return_value=importance)
+
+        ensemble.model_weights = {"lstm": 0.3, "xgboost": 0.4, "hmm": 0.2, "gp": 0.1}
 
         importance = ensemble.get_feature_importance()
 
@@ -2292,9 +2320,7 @@ class TestEnsembleModel:
         """Test ensemble model save and load functionality."""
         ensemble = OccupancyEnsemble(room_id="auditorium")
         ensemble.is_trained = True
-        ensemble.base_models = [Mock(), Mock(), Mock()]
-        ensemble.meta_learner = Mock()
-        ensemble.model_weights = np.array([0.4, 0.35, 0.25])
+        ensemble.model_weights = {"lstm": 0.4, "xgboost": 0.35, "hmm": 0.25}
 
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_path = temp_file.name
@@ -2311,7 +2337,591 @@ class TestEnsembleModel:
 
             assert new_ensemble.room_id == "auditorium"
             assert new_ensemble.is_trained is True
-            assert len(new_ensemble.base_models) == 3
 
         finally:
             Path(temp_path).unlink(missing_ok=True)
+
+    def test_ensemble_initialization_with_params(self):
+        """Test OccupancyEnsemble initialization with custom parameters."""
+        custom_params = {
+            "meta_learner": "random_forest",
+            "cv_folds": 3,
+            "stacking_method": "nonlinear",
+            "blend_weights": "manual",
+            "use_base_features": False,
+            "meta_features_only": True
+        }
+        
+        ensemble = OccupancyEnsemble(room_id="conference_room", **custom_params)
+        
+        assert ensemble.model_type == ModelType.ENSEMBLE
+        assert ensemble.room_id == "conference_room"
+        assert ensemble.model_params["meta_learner"] == "random_forest"
+        assert ensemble.model_params["cv_folds"] == 3
+        assert ensemble.model_params["stacking_method"] == "nonlinear"
+        assert ensemble.model_params["blend_weights"] == "manual"
+        assert ensemble.model_params["use_base_features"] is False
+        assert ensemble.model_params["meta_features_only"] is True
+        
+    def test_ensemble_initialization_with_tracking_manager(self):
+        """Test OccupancyEnsemble initialization with tracking manager."""
+        mock_tracker = Mock()
+        
+        ensemble = OccupancyEnsemble(
+            room_id="library", 
+            tracking_manager=mock_tracker
+        )
+        
+        assert ensemble.tracking_manager == mock_tracker
+        # Should register with tracking manager
+        mock_tracker.register_model.assert_called_once_with(
+            "library", "ensemble", ensemble
+        )
+
+    @pytest.mark.asyncio
+    async def test_ensemble_train_comprehensive_workflow(self):
+        """Test comprehensive ensemble training workflow."""
+        ensemble = OccupancyEnsemble(room_id="studio")
+        
+        # Create comprehensive training data
+        features = pd.DataFrame({
+            "feature1": np.random.randn(100),
+            "feature2": np.random.randn(100),
+            "feature3": np.random.randn(100),
+            "feature4": np.random.randn(100),
+        })
+
+        targets = pd.DataFrame({
+            "time_until_transition_seconds": np.random.randint(60, 7200, 100),
+            "transition_type": ["vacant_to_occupied"] * 50 + ["occupied_to_vacant"] * 50,
+            "target_time": pd.date_range(start="2024-01-01", periods=100, freq="h")
+        })
+        
+        val_features = pd.DataFrame({
+            "feature1": np.random.randn(30),
+            "feature2": np.random.randn(30),
+            "feature3": np.random.randn(30),
+            "feature4": np.random.randn(30),
+        })
+
+        val_targets = pd.DataFrame({
+            "time_until_transition_seconds": np.random.randint(60, 7200, 30),
+            "transition_type": ["vacant_to_occupied"] * 15 + ["occupied_to_vacant"] * 15,
+            "target_time": pd.date_range(start="2024-02-01", periods=30, freq="h")
+        })
+        
+        # Mock internal methods for controlled testing
+        with patch.object(ensemble, "_train_base_models_cv") as mock_cv:
+            mock_cv.return_value = pd.DataFrame({
+                "lstm": np.random.randn(100),
+                "xgboost": np.random.randn(100),
+                "hmm": np.random.randn(100),
+                "gp": np.random.randn(100)
+            })
+            
+            with patch.object(ensemble, "_train_meta_learner") as mock_meta:
+                with patch.object(ensemble, "_train_base_models_final") as mock_final:
+                    with patch.object(ensemble, "_predict_ensemble") as mock_predict:
+                        # Mock both training and validation predictions
+                        mock_predict.side_effect = [
+                            np.random.randint(60, 7200, 100),  # Training predictions
+                            np.random.randint(60, 7200, 30)    # Validation predictions
+                        ]
+                        
+                        result = await ensemble.train(
+                            features, targets, val_features, val_targets
+                        )
+
+        assert result.success is True
+        assert result.training_samples == 100
+        assert result.model_version.startswith("v")
+        assert ensemble.is_trained is True
+        assert ensemble.feature_names == list(features.columns)
+        
+        # Check comprehensive training metrics
+        metrics = result.training_metrics
+        assert "ensemble_mae" in metrics
+        assert "ensemble_rmse" in metrics
+        assert "ensemble_r2" in metrics
+        assert "ensemble_validation_mae" in metrics
+        assert "ensemble_validation_rmse" in metrics
+        assert "ensemble_validation_r2" in metrics
+        assert "base_model_count" in metrics
+        assert "meta_learner_type" in metrics
+        assert "cv_folds" in metrics
+        assert "model_weights" in metrics
+        assert "base_model_performance" in metrics
+        
+        # Verify method calls
+        mock_cv.assert_called_once()
+        mock_meta.assert_called_once()
+        mock_final.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_ensemble_train_validation_errors(self):
+        """Test ensemble training validation with various data errors."""
+        ensemble = OccupancyEnsemble()
+        
+        features = pd.DataFrame({
+            "feature1": np.random.randn(60),
+            "feature2": np.random.randn(60),
+        })
+        
+        # Test invalid targets - missing required columns
+        invalid_targets = pd.DataFrame({
+            "invalid_column": np.random.randn(60)
+        })
+        
+        with pytest.raises(ModelTrainingError) as exc_info:
+            result = await ensemble.train(features, invalid_targets)
+        assert "missing required columns" in str(exc_info.value).lower()
+        
+        # Test NaN in features
+        nan_features = features.copy()
+        nan_features.loc[0, "feature1"] = np.nan
+        
+        valid_targets = pd.DataFrame({
+            "time_until_transition_seconds": np.random.randint(60, 7200, 60),
+            "transition_type": ["vacant_to_occupied"] * 30 + ["occupied_to_vacant"] * 30,
+            "target_time": pd.date_range(start="2024-01-01", periods=60, freq="h")
+        })
+        
+        with pytest.raises(ModelTrainingError) as exc_info:
+            result = await ensemble.train(nan_features, valid_targets)
+        assert "nan values" in str(exc_info.value).lower()
+        
+        # Test mismatched feature/target lengths
+        short_targets = pd.DataFrame({
+            "time_until_transition_seconds": np.random.randint(60, 7200, 30),
+            "transition_type": ["vacant_to_occupied"] * 15 + ["occupied_to_vacant"] * 15,
+            "target_time": pd.date_range(start="2024-01-01", periods=30, freq="h")
+        })
+        
+        with pytest.raises(ModelTrainingError) as exc_info:
+            result = await ensemble.train(features, short_targets)
+        assert "same length" in str(exc_info.value).lower()
+
+    @pytest.mark.asyncio
+    async def test_ensemble_predict_comprehensive(self):
+        """Test comprehensive ensemble prediction workflow."""
+        ensemble = OccupancyEnsemble(room_id="boardroom")
+        ensemble.is_trained = True
+        ensemble.meta_learner_trained = True
+        ensemble.meta_learner = Mock()
+        ensemble.model_weights = {"lstm": 0.3, "xgboost": 0.4, "hmm": 0.2, "gp": 0.1}
+        
+        prediction_time = datetime.now(timezone.utc)
+        
+        # Mock base models with different predictions
+        for model_name, model in ensemble.base_models.items():
+            model.is_trained = True
+            model.predict = AsyncMock(
+                return_value=[
+                    PredictionResult(
+                        predicted_time=prediction_time + timedelta(minutes=30),
+                        transition_type="vacant_to_occupied",
+                        confidence_score=0.75,
+                        prediction_metadata={"model_confidence": 0.75}
+                    )
+                ]
+            )
+        
+        features = pd.DataFrame({
+            "feature1": [0.5], 
+            "feature2": [1.2], 
+            "feature3": [0.8]
+        })
+        
+        # Mock meta-learner prediction - ensure Python int not numpy int  
+        ensemble.meta_learner.predict.return_value = np.array([1800.0])  # 30 minutes
+        
+        with patch.object(ensemble, "validate_features", return_value=True):
+            with patch.object(ensemble, "_create_meta_features") as mock_meta:
+                mock_meta_df = pd.DataFrame({
+                    "lstm": [1800], "xgboost": [1650], "hmm": [1900], "gp": [1750]
+                })
+                mock_meta.return_value = mock_meta_df
+                
+                results = await ensemble.predict(
+                    features, prediction_time, current_state="vacant"
+                )
+
+        assert len(results) == 1
+        result = results[0]
+        assert isinstance(result, PredictionResult)
+        assert result.predicted_time > prediction_time
+        assert result.model_type == "ensemble"
+        assert "base_model_predictions" in result.prediction_metadata
+        assert "model_weights" in result.prediction_metadata
+        assert "meta_learner_type" in result.prediction_metadata
+
+    @pytest.mark.asyncio
+    async def test_ensemble_predict_error_scenarios(self):
+        """Test ensemble prediction error handling."""
+        ensemble = OccupancyEnsemble(room_id="errorroom")
+        
+        features = pd.DataFrame({"feature1": [0.5]})
+        prediction_time = datetime.now(timezone.utc)
+        
+        # Test untrained model
+        with pytest.raises(ModelPredictionError) as exc_info:
+            await ensemble.predict(features, prediction_time)
+        assert "ensemble" in str(exc_info.value)
+        
+        # Test invalid features
+        ensemble.is_trained = True
+        ensemble.meta_learner_trained = True
+        
+        with patch.object(ensemble, "validate_features", return_value=False):
+            with pytest.raises(ModelPredictionError):
+                await ensemble.predict(features, prediction_time)
+                
+        # Test all base models fail
+        for model in ensemble.base_models.values():
+            model.is_trained = True
+            model.predict = AsyncMock(side_effect=Exception("Model failed"))
+        
+        with patch.object(ensemble, "validate_features", return_value=True):
+            with pytest.raises(ModelPredictionError) as exc_info:
+                await ensemble.predict(features, prediction_time)
+            # Check that prediction failed due to base model issues
+            assert "prediction failed" in str(exc_info.value).lower()
+
+    @pytest.mark.asyncio 
+    async def test_ensemble_incremental_update(self):
+        """Test ensemble incremental update functionality."""
+        ensemble = OccupancyEnsemble(room_id="updateroom")
+        ensemble.is_trained = True
+        ensemble.meta_learner_trained = True
+        ensemble.meta_learner = Mock()
+        
+        # Mock base models with incremental update capability
+        for model_name, model in ensemble.base_models.items():
+            model.is_trained = True
+            model.incremental_update = AsyncMock(
+                return_value=TrainingResult(True, 5.0, "v1.1", 20)
+            )
+            model.predict = AsyncMock(
+                return_value=[
+                    PredictionResult(
+                        predicted_time=datetime.now(timezone.utc) + timedelta(minutes=25),
+                        transition_type="vacant_to_occupied",
+                        confidence_score=0.8
+                    )
+                ]
+            )
+        
+        features = pd.DataFrame({
+            "feature1": np.random.randn(20),
+            "feature2": np.random.randn(20)
+        })
+        
+        targets = pd.DataFrame({
+            "time_until_transition_seconds": np.random.randint(60, 7200, 20),
+            "transition_type": ["vacant_to_occupied"] * 10 + ["occupied_to_vacant"] * 10,
+            "target_time": pd.date_range(start="2024-01-01", periods=20, freq="h")
+        })
+        
+        with patch.object(ensemble, "_predict_ensemble") as mock_predict:
+            mock_predict.return_value = np.random.randint(60, 7200, 20)
+            
+            result = await ensemble.incremental_update(features, targets, learning_rate=0.05)
+        
+        assert result.success is True
+        assert result.training_samples == 20
+        assert "incremental" in result.training_metrics["update_type"]
+        assert result.training_metrics["learning_rate"] == 0.05
+        assert "base_models_updated" in result.training_metrics
+        assert "ensemble_weights_updated" in result.training_metrics
+
+    @pytest.mark.asyncio
+    async def test_ensemble_incremental_update_untrained(self):
+        """Test incremental update on untrained ensemble falls back to full training."""
+        ensemble = OccupancyEnsemble()
+        
+        features = pd.DataFrame({"feature1": np.random.randn(60)})
+        targets = pd.DataFrame({
+            "time_until_transition_seconds": np.random.randint(60, 7200, 60),
+            "transition_type": ["vacant_to_occupied"] * 30 + ["occupied_to_vacant"] * 30,
+            "target_time": pd.date_range(start="2024-01-01", periods=60, freq="h")
+        })
+        
+        with patch.object(ensemble, "train") as mock_train:
+            mock_train.return_value = TrainingResult(True, 30.0, "v1.0", 60)
+            
+            result = await ensemble.incremental_update(features, targets)
+            
+        # Should call full training instead
+        mock_train.assert_called_once_with(features, targets)
+        
+    @pytest.mark.asyncio
+    async def test_ensemble_incremental_update_insufficient_data(self):
+        """Test incremental update with insufficient data."""
+        ensemble = OccupancyEnsemble()
+        ensemble.is_trained = True
+        
+        # Too little data (< 10 samples)
+        features = pd.DataFrame({"feature1": [1, 2, 3]})
+        targets = pd.DataFrame({
+            "time_until_transition_seconds": [600, 1200, 1800],
+            "transition_type": ["vacant_to_occupied"] * 3,
+            "target_time": pd.date_range(start="2024-01-01", periods=3, freq="h")
+        })
+        
+        with pytest.raises(ModelTrainingError) as exc_info:
+            await ensemble.incremental_update(features, targets)
+        
+        # Check that it failed due to data issues, handling wrapper exceptions
+        assert "training failed" in str(exc_info.value).lower() or "insufficient" in str(exc_info.value).lower()
+
+    def test_ensemble_get_feature_importance_comprehensive(self):
+        """Test comprehensive feature importance calculation."""
+        ensemble = OccupancyEnsemble(room_id="importanceroom")
+        ensemble.is_trained = True
+        
+        # Mock base models with varying feature importance
+        feature_importances = {
+            "lstm": {"feature1": 0.4, "feature2": 0.3, "feature3": 0.3},
+            "xgboost": {"feature1": 0.5, "feature2": 0.3, "feature3": 0.2},
+            "hmm": {"feature1": 0.3, "feature2": 0.4, "feature3": 0.3},
+            "gp": {"feature1": 0.35, "feature2": 0.35, "feature3": 0.3}
+        }
+        
+        for model_name, importance in feature_importances.items():
+            ensemble.base_models[model_name].is_trained = True
+            ensemble.base_models[model_name].get_feature_importance = Mock(return_value=importance)
+        
+        # Set model weights
+        ensemble.model_weights = {"lstm": 0.3, "xgboost": 0.4, "hmm": 0.2, "gp": 0.1}
+        
+        combined_importance = ensemble.get_feature_importance()
+        
+        assert isinstance(combined_importance, dict)
+        assert len(combined_importance) == 3
+        assert all(score > 0 for score in combined_importance.values())
+        
+        # Feature1 should have highest importance (weighted average)
+        assert combined_importance["feature1"] >= combined_importance["feature2"]
+        
+    def test_ensemble_get_feature_importance_untrained(self):
+        """Test feature importance with untrained ensemble."""
+        ensemble = OccupancyEnsemble()
+        
+        importance = ensemble.get_feature_importance()
+        
+        assert isinstance(importance, dict)
+        assert len(importance) == 0
+
+    def test_ensemble_get_ensemble_info(self):
+        """Test get_ensemble_info method."""
+        ensemble = OccupancyEnsemble(room_id="inforoom")
+        ensemble.is_trained = True
+        ensemble.base_models_trained = True
+        ensemble.meta_learner_trained = True
+        ensemble.model_weights = {"lstm": 0.4, "xgboost": 0.6}
+        ensemble.model_performance = {"lstm": {"training_score": 0.8}}
+        ensemble.cross_validation_scores = {"lstm": [0.7, 0.8, 0.75]}
+        
+        info = ensemble.get_ensemble_info()
+        
+        assert info["ensemble_type"] == "stacking"
+        assert "base_models" in info
+        assert "meta_learner" in info
+        assert "model_weights" in info
+        assert "model_performance" in info
+        assert "cv_scores" in info
+        assert info["is_trained"] is True
+        assert info["base_models_trained"] is True
+        assert info["meta_learner_trained"] is True
+
+    def test_ensemble_save_load_comprehensive(self):
+        """Test comprehensive ensemble save/load functionality."""
+        ensemble = OccupancyEnsemble(room_id="saveroom")
+        ensemble.is_trained = True
+        ensemble.base_models_trained = True
+        ensemble.meta_learner_trained = True
+        ensemble.model_version = "v2.1"
+        ensemble.feature_names = ["temp", "humidity", "light"]
+        ensemble.model_weights = {"lstm": 0.4, "xgboost": 0.6}
+        ensemble.meta_learner = None  # Don't use Mock for persistence test
+        
+        # Simplify base models for save/load test
+        for model in ensemble.base_models.values():
+            model.save_model = Mock(return_value=True)
+            model.load_model = Mock(return_value=True)
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pkl") as temp_file:
+            temp_path = temp_file.name
+
+        try:
+            # Test saving
+            success = ensemble.save_model(temp_path)
+            assert success is True
+
+            # Test loading
+            new_ensemble = OccupancyEnsemble()
+            success = new_ensemble.load_model(temp_path)
+            assert success is True
+
+            assert new_ensemble.room_id == "saveroom"
+            assert new_ensemble.model_version == "v2.1"
+            assert new_ensemble.is_trained is True
+            assert new_ensemble.feature_names == ["temp", "humidity", "light"]
+
+        finally:
+            Path(temp_path).unlink(missing_ok=True)
+            
+    def test_ensemble_save_model_failure(self):
+        """Test ensemble save model failure handling."""
+        ensemble = OccupancyEnsemble(room_id="failroom")
+        
+        # Try to save to invalid directory
+        invalid_path = "/nonexistent/directory/model.pkl"
+        success = ensemble.save_model(invalid_path)
+        assert success is False
+        
+    def test_ensemble_load_model_failure(self):
+        """Test ensemble load model failure handling."""
+        ensemble = OccupancyEnsemble()
+        
+        # Try to load from nonexistent file
+        success = ensemble.load_model("/nonexistent/file.pkl")
+        assert success is False
+
+    def test_ensemble_create_meta_features_comprehensive(self):
+        """Test _create_meta_features method thoroughly."""
+        ensemble = OccupancyEnsemble()
+        ensemble.model_params["use_base_features"] = True
+        ensemble.model_params["meta_features_only"] = False
+        
+        # Mock scaler
+        ensemble.meta_scaler = Mock()
+        ensemble.meta_scaler.n_features_in_ = 8  # 4 base models + 4 original features
+        ensemble.meta_scaler.transform.return_value = np.random.randn(3, 8)
+        
+        base_predictions = {
+            "lstm": [1800, 1650, 1900],
+            "xgboost": [1750, 1700, 1850], 
+            "hmm": [1850, 1600, 1950],
+            "gp": [1780, 1680, 1880]
+        }
+        
+        original_features = pd.DataFrame({
+            "feature1": [0.5, 0.6, 0.7],
+            "feature2": [1.2, 1.1, 1.3],
+            "feature3": [0.8, 0.9, 0.7],
+            "feature4": [2.1, 2.0, 2.2]
+        })
+        
+        meta_df = ensemble._create_meta_features(base_predictions, original_features)
+        
+        assert isinstance(meta_df, pd.DataFrame)
+        assert len(meta_df) == 3  # Same as original_features
+        assert meta_df.shape[1] == 8  # 4 base models + 4 selected original features
+        
+    def test_ensemble_create_meta_features_error_cases(self):
+        """Test _create_meta_features error handling."""
+        ensemble = OccupancyEnsemble()
+        
+        # Test empty base predictions
+        with pytest.raises(ValueError, match="No base predictions provided"):
+            ensemble._create_meta_features({}, pd.DataFrame({"f1": [1, 2, 3]}))
+            
+        # Test zero-length original features
+        with pytest.raises(ValueError, match="Cannot create meta-features with zero-length"):
+            ensemble._create_meta_features({"lstm": [1800]}, pd.DataFrame())
+
+    def test_ensemble_prepare_targets(self):
+        """Test _prepare_targets method."""
+        ensemble = OccupancyEnsemble()
+        
+        # Test with time_until_transition_seconds column
+        targets1 = pd.DataFrame({
+            "time_until_transition_seconds": [300, 1800, 7200, 30, 90000]
+        })
+        
+        prepared = ensemble._prepare_targets(targets1)
+        assert isinstance(prepared, np.ndarray)
+        assert len(prepared) == 5
+        # Values should be clipped between 60 and 86400
+        assert all(60 <= val <= 86400 for val in prepared)
+        assert prepared[3] == 60  # 30 clipped to 60
+        assert prepared[4] == 86400  # 90000 clipped to 86400
+        
+        # Test with datetime columns
+        target_times = pd.date_range("2024-01-01 10:00", periods=3, freq="h")
+        next_times = pd.date_range("2024-01-01 10:30", periods=3, freq="h")
+        
+        targets2 = pd.DataFrame({
+            "target_time": target_times,
+            "next_transition_time": next_times
+        })
+        
+        prepared = ensemble._prepare_targets(targets2)
+        assert isinstance(prepared, np.ndarray)
+        assert len(prepared) == 3
+        assert all(60 <= val <= 86400 for val in prepared)
+
+    def test_ensemble_calculate_ensemble_confidence(self):
+        """Test _calculate_ensemble_confidence method."""
+        ensemble = OccupancyEnsemble()
+        ensemble.model_weights = {"lstm": 0.4, "xgboost": 0.3, "hmm": 0.2, "gp": 0.1}
+        
+        prediction_time = datetime.now(timezone.utc)
+        
+        # Create mock base results with GP uncertainty
+        base_results = {
+            "lstm": [PredictionResult(
+                predicted_time=prediction_time + timedelta(minutes=30),
+                transition_type="vacant_to_occupied",
+                confidence_score=0.8
+            )],
+            "xgboost": [PredictionResult(
+                predicted_time=prediction_time + timedelta(minutes=32),
+                transition_type="vacant_to_occupied", 
+                confidence_score=0.75
+            )],
+            "gp": [PredictionResult(
+                predicted_time=prediction_time + timedelta(minutes=28),
+                transition_type="vacant_to_occupied",
+                confidence_score=0.85,
+                prediction_metadata={
+                    "uncertainty_quantification": {
+                        "aleatoric_uncertainty": 200,
+                        "epistemic_uncertainty": 150
+                    },
+                    "prediction_std": 180
+                }
+            )]
+        }
+        
+        confidence = ensemble._calculate_ensemble_confidence(
+            base_results, 0, 1800  # 30 minutes ensemble prediction
+        )
+        
+        assert isinstance(confidence, float)
+        assert 0.1 <= confidence <= 0.95
+        
+    def test_ensemble_calculate_model_weights(self):
+        """Test _calculate_model_weights method."""
+        ensemble = OccupancyEnsemble()
+        
+        # Create meta features with different prediction patterns
+        meta_features = pd.DataFrame({
+            "lstm": [1800, 1750, 1820, 1780, 1800],
+            "xgboost": [1700, 1650, 1720, 1680, 1700], 
+            "hmm": [1900, 2100, 1850, 2050, 1900],
+            "gp": [1750, 1730, 1760, 1740, 1750]
+        })
+        
+        y_true = np.array([1800, 1800, 1800, 1800, 1800])
+        
+        ensemble._calculate_model_weights(meta_features, y_true)
+        
+        assert len(ensemble.model_weights) == 4
+        assert all(isinstance(w, float) for w in ensemble.model_weights.values())
+        assert abs(sum(ensemble.model_weights.values()) - 1.0) < 1e-6  # Should sum to 1
+        
+        # LSTM and GP should have higher weights (more consistent/accurate)
+        assert ensemble.model_weights["lstm"] > ensemble.model_weights["hmm"]
+        assert ensemble.model_weights["gp"] > ensemble.model_weights["hmm"]
