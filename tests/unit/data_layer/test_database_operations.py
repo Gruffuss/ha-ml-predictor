@@ -433,7 +433,7 @@ class TestDatabaseManager:
 
         mock_session_factory.assert_called_once()
 
-    @pytest.mark.asyncio 
+    @pytest.mark.asyncio
     async def test_get_session_retry_exhaustion(
         self, mock_database_config, mock_session_factory
     ):
@@ -449,21 +449,21 @@ class TestDatabaseManager:
 
         # Test retry configuration
         assert db_manager.max_retries == 2
-        
+
         # Test exponential backoff calculation
         # delay = base_delay * (backoff_multiplier ** (retry_count - 1))
-        expected_delay_1 = 1.0 * (2.0 ** 0)  # First retry: 1.0 seconds
-        expected_delay_2 = 1.0 * (2.0 ** 1)  # Second retry: 2.0 seconds
-        
+        expected_delay_1 = 1.0 * (2.0**0)  # First retry: 1.0 seconds
+        expected_delay_2 = 1.0 * (2.0**1)  # Second retry: 2.0 seconds
+
         assert db_manager.base_delay == 1.0
         assert db_manager.backoff_multiplier == 2.0
         assert db_manager.max_delay == 60.0  # Maximum delay cap
-        
+
         # Test that a successful session works normally
         mock_session = AsyncMock()
         mock_session.commit.return_value = None
         mock_session_factory.return_value = mock_session
-        
+
         async with db_manager.get_session() as session:
             assert session == mock_session
 
@@ -561,7 +561,11 @@ class TestDatabaseManager:
 
     @pytest.mark.asyncio
     async def test_execute_optimized_query_with_prepared_statements(
-        self, mock_database_config, mock_async_engine, mock_async_session, mock_session_factory
+        self,
+        mock_database_config,
+        mock_async_engine,
+        mock_async_session,
+        mock_session_factory,
     ):
         """Test optimized query execution with prepared statements."""
         from src.data.storage.database import DatabaseManager
@@ -591,7 +595,11 @@ class TestDatabaseManager:
 
     @pytest.mark.asyncio
     async def test_execute_optimized_query_prepared_statement_fallback(
-        self, mock_database_config, mock_async_engine, mock_async_session, mock_session_factory
+        self,
+        mock_database_config,
+        mock_async_engine,
+        mock_async_session,
+        mock_session_factory,
     ):
         """Test optimized query fallback when prepared statement fails."""
         from sqlalchemy.exc import SQLAlchemyError
@@ -901,7 +909,7 @@ class TestDatabaseManager:
         async def mock_health_check():
             while True:
                 await asyncio.sleep(0.1)
-        
+
         mock_task = asyncio.create_task(mock_health_check())
         # We don't need to mock done() since it's a real task
 
@@ -1536,7 +1544,9 @@ class TestDialectUtils:
 
             # Should use PostgreSQL percentile_cont function
             mock_sql_func.percentile_cont.assert_called_once_with(0.5)
-            mock_percentile_func.within_group.assert_called_once_with(mock_column.asc.return_value)
+            mock_percentile_func.within_group.assert_called_once_with(
+                mock_column.asc.return_value
+            )
 
     def test_statistical_functions_percentile_cont_sqlite_median(self):
         """Test percentile_cont function for SQLite with median."""
@@ -1567,7 +1577,9 @@ class TestDialectUtils:
 
         with patch("src.data.storage.dialect_utils.sql_func") as mock_sql_func:
             # Test Q1 (25th percentile) - use static method
-            result = StatisticalFunctions.percentile_cont(mock_engine, 0.25, mock_column)
+            result = StatisticalFunctions.percentile_cont(
+                mock_engine, 0.25, mock_column
+            )
 
             # Should use SQLite quartile approximation
             mock_sql_func.min.assert_called()

@@ -402,14 +402,18 @@ class SensorEvent(Base):
                     sql_func.count().filter(cls.state != cls.previous_state)
                     / sql_func.count().cast(Float)
                 ).label("state_change_ratio"),
-                sql_func.extract(
-                    "epoch",
-                    sql_func.avg(
-                        cls.timestamp
-                        - sql_func.lag(cls.timestamp).over(
-                            partition_by=cls.sensor_id, order_by=cls.timestamp
-                        )
+                # Use simpler calculation for SQLite compatibility
+                sql_func.coalesce(
+                    sql_func.extract(
+                        "epoch",
+                        sql_func.avg(
+                            cls.timestamp
+                            - sql_func.lag(cls.timestamp).over(
+                                partition_by=cls.sensor_id, order_by=cls.timestamp
+                            )
+                        ),
                     ),
+                    0,
                 ).label("avg_interval_seconds"),
             )
             .where(and_(cls.room_id == room_id, cls.timestamp >= start_time))

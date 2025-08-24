@@ -110,29 +110,46 @@ class DatabaseManager:
         conn_string = self.config.connection_string
         if conn_string.startswith("postgresql://"):
             conn_string = conn_string.replace("postgresql://", "postgresql+asyncpg://")
-        elif not conn_string.startswith("postgresql+asyncpg://"):
+        elif conn_string.startswith("sqlite://"):
+            # For testing - convert to async SQLite
+            conn_string = conn_string.replace("sqlite://", "sqlite+aiosqlite://")
+        elif not (
+            conn_string.startswith("postgresql+asyncpg://")
+            or conn_string.startswith("sqlite+aiosqlite://")
+        ):
             raise ValueError(
-                "Connection string must use postgresql:// or postgresql+asyncpg://"
+                "Connection string must use postgresql://, postgresql+asyncpg://, or sqlite:// (for testing)"
             )
 
         # Engine configuration optimized for TimescaleDB and SQLAlchemy 2.0
         engine_kwargs = {
             "url": conn_string,
             "echo": False,  # Set to True for SQL debugging
-            "pool_size": self.config.pool_size,
-            "max_overflow": self.config.max_overflow,
-            "pool_timeout": 30,
-            "pool_recycle": 3600,  # Recycle connections every hour
-            "pool_pre_ping": True,  # Validate connections before use
         }
 
-        # For async engines, don't specify poolclass - SQLAlchemy will use the correct async pool
-        # QueuePool is not compatible with async engines - SQLAlchemy will use AsyncAdaptedQueuePool automatically
-        if self.config.pool_size <= 0:
-            # Only set NullPool for testing scenarios
-            from sqlalchemy.pool import NullPool
+        # SQLite uses different pool parameters than PostgreSQL
+        if not conn_string.startswith("sqlite"):
+            # PostgreSQL/TimescaleDB pool configuration
+            engine_kwargs.update(
+                {
+                    "pool_size": self.config.pool_size,
+                    "max_overflow": self.config.max_overflow,
+                    "pool_timeout": 30,
+                    "pool_recycle": 3600,  # Recycle connections every hour
+                    "pool_pre_ping": True,  # Validate connections before use
+                }
+            )
 
-            engine_kwargs["poolclass"] = NullPool
+            # For async engines, don't specify poolclass - SQLAlchemy will use the correct async pool
+            # QueuePool is not compatible with async engines - SQLAlchemy will use AsyncAdaptedQueuePool automatically
+            if self.config.pool_size <= 0:
+                # Only set NullPool for testing scenarios
+                from sqlalchemy.pool import NullPool
+
+                engine_kwargs["poolclass"] = NullPool
+        else:
+            # SQLite configuration - uses StaticPool for in-memory databases
+            pass  # SQLite will use appropriate defaults
 
         self.engine = create_async_engine(**engine_kwargs)
 
@@ -220,16 +237,21 @@ class DatabaseManager:
             result = await conn.execute(text("SELECT 1"))
             assert result.scalar() == 1
 
-            # Verify TimescaleDB extension
-            result = await conn.execute(
-                text("SELECT COUNT(*) FROM pg_extension WHERE extname = 'timescaledb'")
-            )
-            if result.scalar() == 0:
-                logger.warning(
-                    "TimescaleDB extension not found - some features may not work"
+            # Verify TimescaleDB extension (skip for SQLite)
+            if not str(self.engine.url).startswith("sqlite"):
+                result = await conn.execute(
+                    text(
+                        "SELECT COUNT(*) FROM pg_extension WHERE extname = 'timescaledb'"
+                    )
                 )
+                if result.scalar() == 0:
+                    logger.warning(
+                        "TimescaleDB extension not found - some features may not work"
+                    )
+                else:
+                    logger.info("TimescaleDB extension verified")
             else:
-                logger.info("TimescaleDB extension verified")
+                logger.info("SQLite database verified (TimescaleDB checks skipped)")
 
     @asynccontextmanager
     async def get_session(self) -> AsyncGenerator[AsyncSession, None]:
@@ -412,8 +434,8 @@ class DatabaseManager:
         """
         try:
             async with self.get_session() as session:
-                # Enable query plan caching if requested
-                if enable_query_cache:
+                # Enable query plan caching if requested (PostgreSQL only)
+                if enable_query_cache and not str(self.engine.url).startswith("sqlite"):
                     await session.execute(
                         text("SET plan_cache_mode = force_generic_plan")
                     )
@@ -649,59 +671,70 @@ class DatabaseManager:
             async with self.get_session() as session:
                 await session.execute(text("SELECT 1"))
 
-                # Check TimescaleDB status and extract version information
-                try:
-                    result = await session.execute(
-                        text("SELECT timescaledb_information.get_version_info()")
-                    )
-
-                    # Extract TimescaleDB version information from the result
-                    version_info = {}
+                # Check TimescaleDB status and extract version information (skip for SQLite)
+                if not str(self.engine.url).startswith("sqlite"):
                     try:
-                        version_row = result.fetchone()
-                        if version_row and version_row[0]:
-                            # Parse the version info (format: "TimescaleDB version X.Y.Z on PostgreSQL A.B.C")
-                            version_string = str(version_row[0])
-                            version_info["full_version"] = version_string
-
-                            # Extract TimescaleDB version number
-                            if "TimescaleDB version" in version_string:
-                                # Extract version between "TimescaleDB version " and " on" (or end of string)
-                                start = version_string.find("TimescaleDB version ") + 20
-                                end = version_string.find(" on", start)
-                                if end == -1:  # No " on" found, use end of string
-                                    end = len(version_string)
-                                if end > start:
-                                    version_info["timescale_version"] = version_string[
-                                        start:end
-                                    ].strip()
-
-                            # Extract PostgreSQL version
-                            if "PostgreSQL" in version_string:
-                                pg_start = version_string.find("PostgreSQL ") + 11
-                                # Find end of version (next space or end of string)
-                                pg_end = version_string.find(" ", pg_start)
-                                if pg_end == -1:
-                                    pg_end = len(version_string)
-                                version_info["postgresql_version"] = version_string[
-                                    pg_start:pg_end
-                                ]
-
-                    except Exception as parse_error:
-                        logger.debug(
-                            f"Failed to parse TimescaleDB version info: {parse_error}"
+                        result = await session.execute(
+                            text("SELECT timescaledb_information.get_version_info()")
                         )
-                        version_info["parse_error"] = str(parse_error)
 
-                    health_status["timescale_status"] = "available"
-                    health_status["timescale_version_info"] = version_info
+                        # Extract TimescaleDB version information from the result
+                        version_info = {}
+                        try:
+                            version_row = result.fetchone()
+                            if version_row and version_row[0]:
+                                # Parse the version info (format: "TimescaleDB version X.Y.Z on PostgreSQL A.B.C")
+                                version_string = str(version_row[0])
+                                version_info["full_version"] = version_string
 
-                except Exception as timescale_error:
-                    health_status["timescale_status"] = "unavailable"
+                                # Extract TimescaleDB version number
+                                if "TimescaleDB version" in version_string:
+                                    # Extract version between "TimescaleDB version " and " on" (or end of string)
+                                    start = (
+                                        version_string.find("TimescaleDB version ") + 20
+                                    )
+                                    end = version_string.find(" on", start)
+                                    if end == -1:  # No " on" found, use end of string
+                                        end = len(version_string)
+                                    if end > start:
+                                        version_info["timescale_version"] = (
+                                            version_string[start:end].strip()
+                                        )
+
+                                # Extract PostgreSQL version
+                                if "PostgreSQL" in version_string:
+                                    pg_start = version_string.find("PostgreSQL ") + 11
+                                    # Find end of version (next space or end of string)
+                                    pg_end = version_string.find(" ", pg_start)
+                                    if pg_end == -1:
+                                        pg_end = len(version_string)
+                                    version_info["postgresql_version"] = version_string[
+                                        pg_start:pg_end
+                                    ]
+
+                        except Exception as parse_error:
+                            logger.debug(
+                                f"Failed to parse TimescaleDB version info: {parse_error}"
+                            )
+                            version_info["parse_error"] = str(parse_error)
+
+                        health_status["timescale_status"] = "available"
+                        health_status["timescale_version_info"] = version_info
+
+                    except Exception as timescale_error:
+                        health_status["timescale_status"] = "unavailable"
+                        health_status["timescale_version_info"] = {
+                            "error": str(timescale_error)
+                        }
+                        logger.debug(
+                            f"TimescaleDB version check failed: {timescale_error}"
+                        )
+                else:
+                    # SQLite - skip TimescaleDB checks
+                    health_status["timescale_status"] = "not_applicable"
                     health_status["timescale_version_info"] = {
-                        "error": str(timescale_error)
+                        "database_type": "sqlite"
                     }
-                    logger.debug(f"TimescaleDB version check failed: {timescale_error}")
 
                 # Performance metrics
                 response_time = time.time() - start_time

@@ -196,13 +196,15 @@ class JWTConfig:
                 env = os.getenv("ENVIRONMENT", "").lower()
                 ci = os.getenv("CI", "").lower() in ("true", "1")
                 pytest_running = "PYTEST_CURRENT_TEST" in os.environ
-                
+
                 if env == "test" or ci or pytest_running:
                     # Use a cryptographically secure test secret key
                     self.secret_key = "test_jwt_secret_key_for_comprehensive_security_validation_testing_minimum_32_characters_required_for_hmac_sha256_algorithm"
                     # Note: Only log in development, never in production
                     if env == "test" or pytest_running:
-                        print(f"Security Warning: Using test JWT secret key in {env or 'pytest'} environment")
+                        print(
+                            f"Security Warning: Using test JWT secret key in {env or 'pytest'} environment"
+                        )
                 else:
                     raise ValueError(
                         "SECURITY ERROR: JWT is enabled but JWT_SECRET_KEY environment variable is not set. "
