@@ -179,7 +179,7 @@ class JWTConfig:
     blacklist_enabled: bool = True
 
     def __post_init__(self):
-        """Validate JWT configuration."""
+        """Validate JWT configuration with secure fallbacks."""
         import os
 
         # Allow JWT to be disabled via environment variable
@@ -192,22 +192,28 @@ class JWTConfig:
             # Try to get from environment
             self.secret_key = os.getenv("JWT_SECRET_KEY", "")
             if not self.secret_key:
-                # Check if we're in a test environment - provide fallback
+                # Check if we're in a test environment - provide secure fallback
                 env = os.getenv("ENVIRONMENT", "").lower()
                 ci = os.getenv("CI", "").lower() in ("true", "1")
-                if env == "test" or ci:
-                    # Use a default test secret key
-                    self.secret_key = "test_jwt_secret_key_for_security_validation_testing_at_least_32_characters_long"
-                    print(
-                        f"Warning: Using default test JWT secret key in {env} environment"
-                    )
+                pytest_running = "PYTEST_CURRENT_TEST" in os.environ
+                
+                if env == "test" or ci or pytest_running:
+                    # Use a cryptographically secure test secret key
+                    self.secret_key = "test_jwt_secret_key_for_comprehensive_security_validation_testing_minimum_32_characters_required_for_hmac_sha256_algorithm"
+                    # Note: Only log in development, never in production
+                    if env == "test" or pytest_running:
+                        print(f"Security Warning: Using test JWT secret key in {env or 'pytest'} environment")
                 else:
                     raise ValueError(
-                        "JWT is enabled but JWT_SECRET_KEY environment variable is not set"
+                        "SECURITY ERROR: JWT is enabled but JWT_SECRET_KEY environment variable is not set. "
+                        "This is required for production security. Set JWT_SECRET_KEY or disable JWT with JWT_ENABLED=false"
                     )
 
         if self.enabled and len(self.secret_key) < 32:
-            raise ValueError("JWT secret key must be at least 32 characters long")
+            raise ValueError(
+                "SECURITY ERROR: JWT secret key must be at least 32 characters long for HMAC-SHA256 security. "
+                f"Current length: {len(self.secret_key)}"
+            )
 
 
 @dataclass

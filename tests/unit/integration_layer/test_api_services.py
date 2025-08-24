@@ -50,7 +50,7 @@ from src.integration.api_server import (
     get_tracking_manager,
     verify_api_key,
 )
-from src.integration.dashboard import DashboardIntegration
+from src.integration.dashboard import PerformanceDashboard
 from src.integration.monitoring_api import (
     AlertsResponse,
     HealthCheckResponse,
@@ -427,14 +427,14 @@ class TestRESTAPIServer:
     async def test_health_endpoint_comprehensive(
         self,
         mock_db_manager,
-        mock_tracking_manager,
+        mock_get_tracking_manager,
         mock_get_config,
         mock_config,
-        mock_tracking_manager_fixture,
+        mock_tracking_manager,
     ):
         """Test comprehensive health endpoint functionality."""
         mock_get_config.return_value = mock_config
-        mock_tracking_manager.return_value = mock_tracking_manager_fixture
+        mock_get_tracking_manager.return_value = mock_tracking_manager
 
         # Mock database manager
         mock_db_instance = Mock()
@@ -461,14 +461,14 @@ class TestRESTAPIServer:
     @patch("src.integration.api_server.get_tracking_manager")
     async def test_prediction_endpoints(
         self,
-        mock_tracking_manager,
+        mock_get_tracking_manager,
         mock_get_config,
         mock_config,
-        mock_tracking_manager_fixture,
+        mock_tracking_manager,
     ):
         """Test prediction API endpoints."""
         mock_get_config.return_value = mock_config
-        mock_tracking_manager.return_value = mock_tracking_manager_fixture
+        mock_get_tracking_manager.return_value = mock_tracking_manager
 
         app = create_app()
         client = TestClient(app)
@@ -493,14 +493,14 @@ class TestRESTAPIServer:
     @patch("src.integration.api_server.get_tracking_manager")
     async def test_accuracy_metrics_endpoint(
         self,
-        mock_tracking_manager,
+        mock_get_tracking_manager,
         mock_get_config,
         mock_config,
-        mock_tracking_manager_fixture,
+        mock_tracking_manager,
     ):
         """Test accuracy metrics API endpoint."""
         mock_get_config.return_value = mock_config
-        mock_tracking_manager.return_value = mock_tracking_manager_fixture
+        mock_get_tracking_manager.return_value = mock_tracking_manager
 
         app = create_app()
         client = TestClient(app)
@@ -518,14 +518,14 @@ class TestRESTAPIServer:
     @patch("src.integration.api_server.get_tracking_manager")
     async def test_manual_retrain_endpoint(
         self,
-        mock_tracking_manager,
+        mock_get_tracking_manager,
         mock_get_config,
         mock_config,
-        mock_tracking_manager_fixture,
+        mock_tracking_manager,
     ):
         """Test manual retrain API endpoint."""
         mock_get_config.return_value = mock_config
-        mock_tracking_manager.return_value = mock_tracking_manager_fixture
+        mock_get_tracking_manager.return_value = mock_tracking_manager
 
         app = create_app()
         client = TestClient(app)
@@ -1874,7 +1874,7 @@ class TestMonitoringAPI:
         }
 
 
-class TestDashboardIntegration:
+class TestPerformanceDashboard:
     """Test dashboard integration functionality."""
 
     @pytest.fixture
@@ -1899,7 +1899,7 @@ class TestDashboardIntegration:
         assert dashboard is not None
 
         # Test that the module has expected components
-        assert hasattr(dashboard, "DashboardIntegration")
+        assert hasattr(dashboard, "PerformanceDashboard")
         assert hasattr(dashboard, "FASTAPI_AVAILABLE")
 
         # Test configuration validation
@@ -1938,7 +1938,7 @@ class TestDashboardIntegration:
         from src.integration import dashboard
 
         # Test that module has expected structure
-        assert hasattr(dashboard, "DashboardIntegration")
+        assert hasattr(dashboard, "PerformanceDashboard")
         assert hasattr(dashboard, "FASTAPI_AVAILABLE")
 
         # Test that TYPE_CHECKING imports work
@@ -1956,7 +1956,7 @@ class TestDashboardIntegration:
 
         # Test that it has the basic structure we expect
         expected_attributes = [
-            "DashboardIntegration",
+            "PerformanceDashboard",
             "FASTAPI_AVAILABLE",
             "datetime",
             "logging",
