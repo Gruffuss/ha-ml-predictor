@@ -308,15 +308,15 @@ class TestPredictionValidation:
         error = ValidationError("Test validation error", "VALIDATION_001")
         assert error.error_code == "VALIDATION_001"
         assert str(error) == "Test validation error"
-        
+
     def test_prediction_validator_confidence_calibration_analysis(self):
         """Test confidence calibration analysis functionality."""
         validator = PredictionValidator()
-        
+
         # Add predictions with various confidence levels and actual outcomes
         now = datetime.now(timezone.utc)
         test_records = []
-        
+
         # Create test data for calibration analysis
         confidence_levels = [0.9, 0.8, 0.7, 0.6, 0.5]
         for i, confidence in enumerate(confidence_levels):
@@ -328,73 +328,73 @@ class TestPredictionValidation:
                     predicted_time=now,
                     confidence=confidence,
                     transition_type="occupied",
-                    recorded_at=now
+                    recorded_at=now,
                 )
-                
+
                 # Vary accuracy based on confidence (higher confidence = more accurate)
                 error_minutes = 20 - (confidence * 15)  # High confidence = low error
                 actual_time = now + timedelta(minutes=error_minutes)
                 record.validate_against_actual(actual_time, "occupied")
-                
+
                 test_records.append(record)
                 validator._predictions[record.prediction_id] = record
-        
+
         # Analyze calibration
-        calibration_analysis = validator._analyze_confidence_calibration("calibration_room")
-        
+        calibration_analysis = validator._analyze_confidence_calibration(
+            "calibration_room"
+        )
+
         assert "calibration_score" in calibration_analysis
         assert "reliability_diagram" in calibration_analysis
         assert isinstance(calibration_analysis["calibration_score"], float)
-        
+
     def test_prediction_validator_accuracy_level_classification(self):
         """Test accuracy level classification logic."""
         validator = PredictionValidator()
-        
+
         # Test different error ranges
         test_cases = [
-            (3.0, AccuracyLevel.EXCELLENT),    # < 5 minutes
-            (8.0, AccuracyLevel.GOOD),         # 5-10 minutes
-            (15.0, AccuracyLevel.ACCEPTABLE),   # 10-20 minutes
-            (25.0, AccuracyLevel.POOR),         # 20-30 minutes
-            (45.0, AccuracyLevel.UNACCEPTABLE)  # > 30 minutes
+            (3.0, AccuracyLevel.EXCELLENT),  # < 5 minutes
+            (8.0, AccuracyLevel.GOOD),  # 5-10 minutes
+            (15.0, AccuracyLevel.ACCEPTABLE),  # 10-20 minutes
+            (25.0, AccuracyLevel.POOR),  # 20-30 minutes
+            (45.0, AccuracyLevel.UNACCEPTABLE),  # > 30 minutes
         ]
-        
+
         for error_minutes, expected_level in test_cases:
             level = validator._classify_accuracy_level(error_minutes)
             assert level == expected_level
-            
+
     def test_prediction_validator_batch_validation(self):
         """Test batch validation functionality."""
         validator = PredictionValidator()
-        
+
         # Create multiple pending predictions
         now = datetime.now(timezone.utc)
         prediction_ids = []
-        
+
         for i in range(5):
             record = ValidationRecord(
                 prediction_id=f"batch_{i}",
                 room_id="batch_room",
                 model_type=ModelType.HMM,
-                predicted_time=now + timedelta(minutes=i*10),
+                predicted_time=now + timedelta(minutes=i * 10),
                 confidence=0.8,
                 transition_type="vacant",
-                recorded_at=now
+                recorded_at=now,
             )
             validator._predictions[record.prediction_id] = record
             prediction_ids.append(record.prediction_id)
-        
+
         # Batch validate with actual state change
         actual_time = now + timedelta(minutes=12)  # Should validate predictions 0 and 1
-        
+
         validated_count = validator._batch_validate_predictions(
-            "batch_room", 
-            actual_time, 
-            "vacant"
+            "batch_room", actual_time, "vacant"
         )
-        
+
         assert validated_count >= 0
-        
+
         # Check that appropriate predictions were validated
         for pred_id in prediction_ids[:2]:  # First two should be validated
             record = validator._predictions[pred_id]
@@ -643,73 +643,76 @@ class TestDriftDetection:
         error = DriftDetectionError("Drift detection failed", "DRIFT_001")
         assert error.error_code == "DRIFT_001"
         assert str(error) == "Drift detection failed"
-        
+
     @pytest.mark.asyncio
     async def test_psi_calculation_edge_cases(self):
         """Test PSI calculation edge cases for comprehensive coverage."""
         detector = ConceptDriftDetector()
-        
+
         # Test with zeros in expected (should handle gracefully)
         expected = np.array([0.0, 0.5, 0.5, 0.0])
         actual = np.array([0.1, 0.4, 0.4, 0.1])
-        
+
         psi = detector._calculate_numerical_psi(expected, actual)
         assert isinstance(psi, float)
         assert psi >= 0
-        
+
         # Test with identical distributions
         expected = np.array([0.25, 0.25, 0.25, 0.25])
         actual = np.array([0.25, 0.25, 0.25, 0.25])
-        
+
         psi = detector._calculate_numerical_psi(expected, actual)
         assert psi == 0.0  # No shift should result in PSI = 0
-        
+
     @pytest.mark.asyncio
     async def test_page_hinkley_test_comprehensive(self):
         """Test Page-Hinkley test with different patterns."""
         detector = ConceptDriftDetector()
-        
+
         # Test with stable data (no drift)
         stable_data = np.random.normal(0, 1, 100)
         drift_detected, p_value = detector._run_page_hinkley_test(stable_data)
-        
+
         assert isinstance(drift_detected, bool)
         assert isinstance(p_value, float)
         assert 0 <= p_value <= 1
-        
+
         # Test with drift pattern
-        drift_data = np.concatenate([
-            np.random.normal(0, 1, 50),
-            np.random.normal(2, 1, 50)  # Mean shift
-        ])
+        drift_data = np.concatenate(
+            [np.random.normal(0, 1, 50), np.random.normal(2, 1, 50)]  # Mean shift
+        )
         drift_detected, p_value = detector._run_page_hinkley_test(drift_data)
-        
+
         assert isinstance(drift_detected, bool)
         assert isinstance(p_value, float)
-        
+
     @pytest.mark.asyncio
     async def test_categorical_drift_detection_comprehensive(self):
         """Test categorical feature drift detection."""
         detector = ConceptDriftDetector()
-        
+
         # Historical data with categorical features
-        historical = pd.DataFrame({
-            'sensor_type': ['motion', 'door', 'motion', 'door'] * 25,
-            'room_state': ['occupied', 'vacant'] * 50,
-            'timestamp': pd.date_range('2024-01-01', periods=100, freq='H')
-        })
-        
+        historical = pd.DataFrame(
+            {
+                "sensor_type": ["motion", "door", "motion", "door"] * 25,
+                "room_state": ["occupied", "vacant"] * 50,
+                "timestamp": pd.date_range("2024-01-01", periods=100, freq="H"),
+            }
+        )
+
         # Current data with different distribution
-        current = pd.DataFrame({
-            'sensor_type': ['motion'] * 80 + ['door'] * 20,  # Different ratio
-            'room_state': ['occupied'] * 60 + ['vacant'] * 40,  # Different ratio
-            'timestamp': pd.date_range('2024-01-02', periods=100, freq='H')
-        })
-        
-        metrics = await detector.detect_drift(historical, current, 'room1')
-        
+        current = pd.DataFrame(
+            {
+                "sensor_type": ["motion"] * 80 + ["door"] * 20,  # Different ratio
+                "room_state": ["occupied"] * 60 + ["vacant"] * 40,  # Different ratio
+                "timestamp": pd.date_range("2024-01-02", periods=100, freq="H"),
+            }
+        )
+
+        metrics = await detector.detect_drift(historical, current, "room1")
+
         assert isinstance(metrics, DriftMetrics)
-        assert hasattr(metrics, 'drift_score')
+        assert hasattr(metrics, "drift_score")
 
 
 class TestAdaptiveRetraining:
@@ -1030,74 +1033,83 @@ class TestAdaptiveRetraining:
         error = RetrainingError("Retraining failed", "RETRAIN_001")
         assert error.error_code == "RETRAIN_001"
         assert str(error) == "Retraining failed"
-        
+
     @pytest.mark.asyncio
     async def test_adaptive_retrainer_strategy_selection(self):
         """Test retraining strategy selection based on performance context."""
         retrainer = AdaptiveRetrainer(adaptive_retraining_enabled=True)
-        
+
         # Test incremental strategy selection for minor degradation
         minor_context = {
-            'accuracy_degradation': 0.1,
-            'error_increase': 5.0,
-            'drift_severity': DriftSeverity.LOW
+            "accuracy_degradation": 0.1,
+            "error_increase": 5.0,
+            "drift_severity": DriftSeverity.LOW,
         }
-        
-        strategy = retrainer._select_retraining_strategy('room1', ModelType.LSTM, minor_context)
-        assert strategy in [RetrainingStrategy.INCREMENTAL, RetrainingStrategy.FEATURE_REFRESH]
-        
+
+        strategy = retrainer._select_retraining_strategy(
+            "room1", ModelType.LSTM, minor_context
+        )
+        assert strategy in [
+            RetrainingStrategy.INCREMENTAL,
+            RetrainingStrategy.FEATURE_REFRESH,
+        ]
+
         # Test full retrain strategy for major degradation
         major_context = {
-            'accuracy_degradation': 0.4,
-            'error_increase': 25.0,
-            'drift_severity': DriftSeverity.CRITICAL
+            "accuracy_degradation": 0.4,
+            "error_increase": 25.0,
+            "drift_severity": DriftSeverity.CRITICAL,
         }
-        
-        strategy = retrainer._select_retraining_strategy('room1', ModelType.LSTM, major_context)
-        assert strategy in [RetrainingStrategy.FULL_RETRAIN, RetrainingStrategy.ENSEMBLE_REBALANCE]
-        
+
+        strategy = retrainer._select_retraining_strategy(
+            "room1", ModelType.LSTM, major_context
+        )
+        assert strategy in [
+            RetrainingStrategy.FULL_RETRAIN,
+            RetrainingStrategy.ENSEMBLE_REBALANCE,
+        ]
+
     @pytest.mark.asyncio
     async def test_adaptive_retrainer_cooldown_management(self):
         """Test retraining cooldown period enforcement."""
         retrainer = AdaptiveRetrainer(
-            adaptive_retraining_enabled=True,
-            retraining_cooldown_hours=2
+            adaptive_retraining_enabled=True, retraining_cooldown_hours=2
         )
-        
+
         # Simulate recent retraining
         recent_time = datetime.now(timezone.utc) - timedelta(minutes=30)
-        retrainer._last_retraining_time['test_room'] = recent_time
-        
+        retrainer._last_retraining_time["test_room"] = recent_time
+
         # Should be in cooldown period
-        is_cooldown = retrainer._is_in_cooldown_period('test_room')
+        is_cooldown = retrainer._is_in_cooldown_period("test_room")
         assert is_cooldown is True
-        
+
         # Simulate old retraining
         old_time = datetime.now(timezone.utc) - timedelta(hours=3)
-        retrainer._last_retraining_time['test_room'] = old_time
-        
+        retrainer._last_retraining_time["test_room"] = old_time
+
         # Should not be in cooldown period
-        is_cooldown = retrainer._is_in_cooldown_period('test_room')
+        is_cooldown = retrainer._is_in_cooldown_period("test_room")
         assert is_cooldown is False
-        
+
     @pytest.mark.asyncio
     async def test_adaptive_retrainer_performance_improvement_tracking(self):
         """Test tracking of retraining performance improvements."""
         retrainer = AdaptiveRetrainer(adaptive_retraining_enabled=True)
-        
+
         # Mock pre-retraining metrics
         pre_metrics = Mock()
         pre_metrics.accuracy_rate = 0.7
         pre_metrics.average_error_minutes = 20.0
-        
-        # Mock post-retraining metrics  
+
+        # Mock post-retraining metrics
         post_metrics = Mock()
         post_metrics.accuracy_rate = 0.85
         post_metrics.average_error_minutes = 12.0
-        
+
         # Calculate improvement
         improvement = retrainer._calculate_improvement_score(pre_metrics, post_metrics)
-        
+
         assert isinstance(improvement, float)
         assert improvement > 0  # Should show improvement
 
@@ -1829,12 +1841,12 @@ class TestPerformanceTracking:
         error = AccuracyTrackingError("Tracking failed", "TRACK_001")
         assert error.error_code == "TRACK_001"
         assert str(error) == "Tracking failed"
-        
+
     @pytest.mark.asyncio
     async def test_accuracy_tracker_real_time_metrics_comprehensive(self):
         """Test AccuracyTracker real-time metrics functionality."""
         mock_validator = Mock(spec=PredictionValidator)
-        
+
         # Mock accuracy metrics from validator
         mock_metrics = Mock(spec=AccuracyMetrics)
         mock_metrics.room_id = "test_room"
@@ -1842,27 +1854,27 @@ class TestPerformanceTracking:
         mock_metrics.average_error_minutes = 12.0
         mock_metrics.total_predictions = 100
         mock_validator.get_accuracy_metrics.return_value = mock_metrics
-        
+
         tracker = AccuracyTracker(prediction_validator=mock_validator)
-        
+
         # Test getting real-time metrics
         metrics = await tracker.get_real_time_metrics("test_room")
-        
+
         # Verify metrics structure
         assert isinstance(metrics, RealTimeMetrics)
         assert metrics.room_id == "test_room"
-        assert hasattr(metrics, 'accuracy_1h')
-        assert hasattr(metrics, 'accuracy_24h')
-        
+        assert hasattr(metrics, "accuracy_1h")
+        assert hasattr(metrics, "accuracy_24h")
+
     @pytest.mark.asyncio
     async def test_accuracy_tracker_trend_analysis(self):
         """Test AccuracyTracker trend analysis functionality."""
         mock_validator = Mock(spec=PredictionValidator)
         tracker = AccuracyTracker(prediction_validator=mock_validator)
-        
+
         # Test getting accuracy trends
         trends = await tracker.get_accuracy_trends("test_room")
-        
+
         # Verify trends structure
         assert isinstance(trends, dict)
         # Trends may be empty for a new room, which is valid
@@ -1870,21 +1882,24 @@ class TestPerformanceTracking:
             room_trend = trends["test_room"]
             assert "direction" in room_trend
             assert "slope" in room_trend
-        
+
     @pytest.mark.asyncio
     async def test_accuracy_tracker_alert_management(self):
         """Test AccuracyTracker alert management functionality."""
         mock_validator = Mock(spec=PredictionValidator)
-        tracker = AccuracyTracker(prediction_validator=mock_validator, alert_thresholds={'warning': 20, 'critical': 30})
-        
+        tracker = AccuracyTracker(
+            prediction_validator=mock_validator,
+            alert_thresholds={"warning": 20, "critical": 30},
+        )
+
         # Test getting active alerts (initially should be empty)
         alerts = await tracker.get_active_alerts()
         assert isinstance(alerts, list)
-        
+
         # Test alert acknowledgment (should return False for non-existent alert)
         acknowledged = await tracker.acknowledge_alert("non_existent", "test_user")
         assert acknowledged is False
-        
+
         # Test tracker stats
         stats = tracker.get_tracker_stats()
         assert isinstance(stats, dict)
@@ -2615,7 +2630,7 @@ class TestEnhancedMonitoring:
 
 class TestComprehensiveAdaptationIntegration:
     """Test comprehensive integration of all adaptation components."""
-    
+
     @pytest.mark.asyncio
     async def test_complete_adaptation_system_integration(self):
         """Test complete integration of all adaptation components."""
@@ -2626,113 +2641,107 @@ class TestComprehensiveAdaptationIntegration:
             accuracy_tracking_enabled=True,
             drift_detection_enabled=True,
             adaptive_retraining_enabled=True,
-            enable_background_tasks=False  # Disable background tasks for testing
+            enable_background_tasks=False,  # Disable background tasks for testing
         )
-        
+
         # Initialize components
         validator = PredictionValidator(
-            accuracy_threshold_minutes=15,
-            enable_background_tasks=False
+            accuracy_threshold_minutes=15, enable_background_tasks=False
         )
-        
+
         tracker = AccuracyTracker(
-            prediction_validator=validator,
-            enable_background_tasks=False
+            prediction_validator=validator, enable_background_tasks=False
         )
-        
-        drift_detector = ConceptDriftDetector(
-            prediction_validator=validator
-        )
-        
+
+        drift_detector = ConceptDriftDetector(prediction_validator=validator)
+
         retrainer = AdaptiveRetrainer(
             prediction_validator=validator,
             drift_detector=drift_detector,
-            adaptive_retraining_enabled=True
+            adaptive_retraining_enabled=True,
         )
-        
+
         # Create tracking manager with all components
         tracking_manager = TrackingManager(
             config=config,
             prediction_validator=validator,
             accuracy_tracker=tracker,
             drift_detector=drift_detector,
-            adaptive_retrainer=retrainer
+            adaptive_retrainer=retrainer,
         )
-        
+
         # Initialize the complete system
         await tracking_manager.initialize()
         await tracking_manager.start_tracking()
-        
+
         # Test system functionality
         # 1. Record a prediction
         test_prediction = Mock(spec=PredictionResult)
         test_prediction.prediction_id = "integration_test_1"
         test_prediction.room_id = "integration_room"
         test_prediction.model_type = ModelType.LSTM
-        test_prediction.predicted_time = datetime.now(timezone.utc) + timedelta(minutes=30)
+        test_prediction.predicted_time = datetime.now(timezone.utc) + timedelta(
+            minutes=30
+        )
         test_prediction.confidence = 0.85
         test_prediction.transition_type = "occupied"
-        
+
         tracking_manager.record_prediction(test_prediction)
-        
+
         # 2. Simulate room state change
         actual_time = datetime.now(timezone.utc) + timedelta(minutes=35)  # 5 min error
         await tracking_manager.handle_room_state_change(
-            room_id="integration_room",
-            new_state="occupied", 
-            timestamp=actual_time
+            room_id="integration_room", new_state="occupied", timestamp=actual_time
         )
-        
+
         # 3. Get system status
         system_status = tracking_manager.get_tracking_status()
-        
+
         # Verify system is functioning
         assert system_status["enabled"] is True
         assert system_status["tracking_active"] is True
         assert "components" in system_status
-        
+
         # 4. Get real-time metrics
         metrics = tracking_manager.get_real_time_metrics("integration_room")
-        
+
         # Should return valid metrics
         assert metrics is not None
         assert metrics.room_id == "integration_room"
-        
+
         # 5. Check for drift
         drift_result = await tracking_manager.check_drift("integration_room")
-        
+
         # Should return drift metrics
         assert drift_result is not None
         assert drift_result.room_id == "integration_room"
-        
+
         # 6. Get comprehensive system statistics
         system_stats = tracking_manager.get_system_stats()
-        
+
         # Verify all component stats are included
         assert "tracking" in system_stats
         assert "validation" in system_stats
         assert "accuracy_tracking" in system_stats
         assert "retraining" in system_stats
-        
+
         # 7. Stop tracking
         await tracking_manager.stop_tracking()
-        
+
         final_status = tracking_manager.get_tracking_status()
         assert final_status["tracking_active"] is False
-        
+
     def test_adaptation_modules_error_propagation(self):
         """Test error propagation between adaptation modules."""
         # Test that errors in one module don't crash others
         validator = PredictionValidator()
-        
+
         # Simulate validation error
         with pytest.raises(ValidationError):
             validator.validate_prediction(
-                "nonexistent_prediction", 
-                datetime.now(timezone.utc),
-                "occupied"
+                "nonexistent_prediction", datetime.now(timezone.utc), "occupied"
             )
-        
+
         # Validator should still be functional after error
         test_prediction = Mock(spec=PredictionResult)
         test_prediction.prediction_id = "error_test"
@@ -2741,34 +2750,29 @@ class TestComprehensiveAdaptationIntegration:
         test_prediction.predicted_time = datetime.now(timezone.utc)
         test_prediction.confidence = 0.7
         test_prediction.transition_type = "vacant"
-        
+
         # Should still work after error
         validator.record_prediction(test_prediction)
         assert "error_test" in validator._predictions
-        
+
     @pytest.mark.asyncio
     async def test_adaptation_system_performance_under_load(self):
         """Test adaptation system performance under load."""
         # Create system with minimal configuration for performance testing
-        config = TrackingConfig(
-            enabled=True,
-            enable_background_tasks=False
-        )
-        
+        config = TrackingConfig(enabled=True, enable_background_tasks=False)
+
         validator = PredictionValidator()
         tracker = AccuracyTracker(prediction_validator=validator)
-        
+
         tracking_manager = TrackingManager(
-            config=config,
-            prediction_validator=validator,
-            accuracy_tracker=tracker
+            config=config, prediction_validator=validator, accuracy_tracker=tracker
         )
-        
+
         await tracking_manager.initialize()
-        
+
         # Record many predictions quickly
         start_time = datetime.now()
-        
+
         for i in range(100):  # Record 100 predictions
             test_prediction = Mock(spec=PredictionResult)
             test_prediction.prediction_id = f"load_test_{i}"
@@ -2777,79 +2781,79 @@ class TestComprehensiveAdaptationIntegration:
             test_prediction.predicted_time = datetime.now(timezone.utc)
             test_prediction.confidence = 0.8
             test_prediction.transition_type = "occupied"
-            
+
             tracking_manager.record_prediction(test_prediction)
-        
+
         end_time = datetime.now()
         processing_time = (end_time - start_time).total_seconds()
-        
+
         # Should process 100 predictions in reasonable time (less than 1 second)
         assert processing_time < 1.0
-        
+
         # Verify all predictions were recorded
         assert len(validator._predictions) == 100
-        
+
         # System should still be responsive
         status = tracking_manager.get_tracking_status()
         assert status["enabled"] is True
-        
+
     def test_comprehensive_coverage_validation(self):
         """Validate that comprehensive test coverage targets are met."""
         # This test serves as documentation of coverage enhancement
-        
+
         # Key methods that should now be covered:
         drift_detector_methods = [
-            '_calculate_numerical_psi',
-            '_run_page_hinkley_test', 
-            'detect_drift',
-            '_analyze_feature_importance',
-            '_calculate_adaptive_thresholds'
+            "_calculate_numerical_psi",
+            "_run_page_hinkley_test",
+            "detect_drift",
+            "_analyze_feature_importance",
+            "_calculate_adaptive_thresholds",
         ]
-        
+
         retrainer_methods = [
-            '_select_retraining_strategy',
-            '_is_in_cooldown_period',
-            '_calculate_improvement_score',
-            'evaluate_retraining_need',
-            'request_retraining'
+            "_select_retraining_strategy",
+            "_is_in_cooldown_period",
+            "_calculate_improvement_score",
+            "evaluate_retraining_need",
+            "request_retraining",
         ]
-        
+
         validator_methods = [
-            '_analyze_confidence_calibration',
-            '_classify_accuracy_level',
-            '_batch_validate_predictions',
-            'record_prediction',
-            'validate_prediction'
+            "_analyze_confidence_calibration",
+            "_classify_accuracy_level",
+            "_batch_validate_predictions",
+            "record_prediction",
+            "validate_prediction",
         ]
-        
+
         tracker_methods = [
-            '_calculate_sliding_window_metrics',
-            '_calculate_trend', 
-            '_check_alert_conditions',
-            'get_real_time_metrics',
-            'start_monitoring'
+            "_calculate_sliding_window_metrics",
+            "_calculate_trend",
+            "_check_alert_conditions",
+            "get_real_time_metrics",
+            "start_monitoring",
         ]
-        
+
         tracking_manager_methods = [
-            'initialize',
-            'start_tracking',
-            'record_prediction',
-            'handle_room_state_change',
-            'get_system_stats'
+            "initialize",
+            "start_tracking",
+            "record_prediction",
+            "handle_room_state_change",
+            "get_system_stats",
         ]
-        
+
         # All these methods should now have comprehensive test coverage
         all_methods = (
-            drift_detector_methods + 
-            retrainer_methods + 
-            validator_methods + 
-            tracker_methods + 
-            tracking_manager_methods
+            drift_detector_methods
+            + retrainer_methods
+            + validator_methods
+            + tracker_methods
+            + tracking_manager_methods
         )
-        
+
         # This test documents that we've added coverage for 25+ key methods
         assert len(all_methods) >= 25
-        
+
         # Test passes if we reach this point - indicates comprehensive enhancement
         assert True, "Comprehensive test coverage enhancement completed successfully"
 
@@ -2865,10 +2869,18 @@ def mock_comprehensive_prediction_result():
     result.predicted_time = datetime.now(timezone.utc) + timedelta(minutes=25)
     result.confidence = 0.88
     result.transition_type = "vacant"
-    result.prediction_interval = (datetime.now(timezone.utc) + timedelta(minutes=20),
-                                 datetime.now(timezone.utc) + timedelta(minutes=30))
-    result.feature_importance = {'temporal': 0.4, 'sequential': 0.35, 'contextual': 0.25}
-    result.model_metadata = {'ensemble_weights': {'lstm': 0.3, 'xgboost': 0.4, 'hmm': 0.3}}
+    result.prediction_interval = (
+        datetime.now(timezone.utc) + timedelta(minutes=20),
+        datetime.now(timezone.utc) + timedelta(minutes=30),
+    )
+    result.feature_importance = {
+        "temporal": 0.4,
+        "sequential": 0.35,
+        "contextual": 0.25,
+    }
+    result.model_metadata = {
+        "ensemble_weights": {"lstm": 0.3, "xgboost": 0.4, "hmm": 0.3}
+    }
     return result
 
 
@@ -2886,15 +2898,27 @@ def mock_comprehensive_accuracy_metrics():
         std_error_minutes=15.2,
         confidence_score=0.84,
         accuracy_by_time_of_day={
-            'morning': 0.88, 'afternoon': 0.82, 'evening': 0.85, 'night': 0.79
+            "morning": 0.88,
+            "afternoon": 0.82,
+            "evening": 0.85,
+            "night": 0.79,
         },
         accuracy_by_day_of_week={
-            'monday': 0.86, 'tuesday': 0.84, 'wednesday': 0.85,
-            'thursday': 0.83, 'friday': 0.81, 'saturday': 0.87, 'sunday': 0.88
+            "monday": 0.86,
+            "tuesday": 0.84,
+            "wednesday": 0.85,
+            "thursday": 0.83,
+            "friday": 0.81,
+            "saturday": 0.87,
+            "sunday": 0.88,
         },
         error_percentiles={
-            'p50': 8.5, 'p75': 18.2, 'p90': 28.7, 'p95': 35.4, 'p99': 52.1
-        }
+            "p50": 8.5,
+            "p75": 18.2,
+            "p90": 28.7,
+            "p95": 35.4,
+            "p99": 52.1,
+        },
     )
 
 
